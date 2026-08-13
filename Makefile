@@ -96,13 +96,17 @@ lint: ## ESLint, including the no-network rule that enforces INV-NET-2
 	@npx eslint .
 
 type-check: ## TypeScript, no emit, across the whole monorepo
-	@npx tsc --build --dry 2>/dev/null || true
-	@npx tsc --build
+	@npx tsc --build tsconfig.build.json --force
 
 # --- build -------------------------------------------------------------------
 
 build: ## Build every package
-	@npx tsc --build
+	# The solution file is named explicitly. A bare `tsc --build` resolves
+	# tsconfig.json, which is the lint/IDE config with noEmit and composite off,
+	# so it silently emits NOTHING and exits 0. On a workstation that looks fine
+	# because dist/ is already there from an earlier build; on a clean checkout
+	# the next step cannot find the CLI it just "built". CI caught this.
+	@npx tsc --build tsconfig.build.json
 
 dev: ## Run the daemon and UI locally against a Unix socket
 	@npm run dev --workspace @nullroute/daemon

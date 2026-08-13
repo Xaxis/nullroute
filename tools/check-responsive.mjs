@@ -143,6 +143,14 @@ async function main() {
       '--no-first-run',
       '--no-default-browser-check',
       '--disable-background-networking',
+      // CI runners execute as a user without the kernel namespaces Chrome's
+      // sandbox needs, and Chrome exits before opening the debugging port. The
+      // page being driven is a local static file from our own build, so the
+      // sandbox is not protecting anything here.
+      '--no-sandbox',
+      // The default /dev/shm in a container is too small and Chrome crashes
+      // partway through rendering rather than failing cleanly.
+      '--disable-dev-shm-usage',
       '--remote-debugging-port=9223',
       'about:blank',
     ],

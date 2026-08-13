@@ -72,7 +72,17 @@ function send(ws, state, method, params = {}) {
 async function main() {
   const chrome = spawn(
     chromePath,
-    ['--headless', '--disable-gpu', '--no-first-run', `--remote-debugging-port=${PORT}`, 'about:blank'],
+    [
+      '--headless',
+      '--disable-gpu',
+      '--no-first-run',
+      // See check-responsive.mjs: CI runners lack the namespaces Chrome's
+      // sandbox needs, and it exits before opening the debugging port.
+      '--no-sandbox',
+      '--disable-dev-shm-usage',
+      `--remote-debugging-port=${PORT}`,
+      'about:blank',
+    ],
     { stdio: 'ignore' }
   )
 
