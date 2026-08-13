@@ -20,3 +20,9 @@ tmp/
 
 # OS
 .DS_Store
+
+# Build artifacts from the verification pipeline
+verification-report.json
+test-report.json
+sbom.cdx.json
+*.tsbuildinfo

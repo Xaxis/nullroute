@@ -1,0 +1,112 @@
+id: core.entropy.combiner
+version: 1
+title: Multi-source entropy combiner
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Combine N independent entropy sources into a single 256-bit seed such that the
+  output retains full entropy if ANY single input source has full entropy. This
+  is what makes mixed-source mode worth offering: a user who does not trust the
+  Pi hardware RNG can add dice, and a broken or adversarially chosen /dev/hwrng
+  cannot weaken the result.
+
+covers:
+  - packages/core/src/entropy/combine.ts::combineEntropy
+  - packages/core/src/entropy/combine.ts::EntropyCombinerError
+  - packages/core/src/entropy/combine.ts::SEED_LENGTH
+  - packages/core/src/entropy/combine.ts::MIN_SOURCES
+  - packages/core/src/entropy/combine.ts::MAX_SOURCES
+  - packages/core/src/entropy/combine.ts::MIN_SOURCE_BYTES
+  - packages/core/src/entropy/combine.ts::MAX_SOURCE_BYTES
+  - packages/core/src/entropy/combine.ts::MAX_SOURCE_ID_BYTES
+
+inputs:
+  - name: sources
+    type: readonly EntropySource[]
+    constraints: "1..8 sources, each 16..64 bytes, each tagged with a unique source id of at most 255 UTF-8 bytes"
+
+outputs:
+  - name: seed
+    type: Secret
+    constraints: "exactly 32 bytes"
+
+algorithm: >
+  Sources are ordered canonically by the UTF-8 bytes of their id (not by
+  JavaScript string comparison, which is UTF-16 code-unit order and differs for
+  astral-plane characters), then each is encoded as:
+
+    [idLen: u8][id: UTF-8][materialLen: u16 big endian][material]
+
+  The concatenation of those encodings is the input keying material.
+
+    prk  = HKDF-Extract(hash = SHA-256, salt = "nullroute/entropy/v1", ikm)
+    seed = HKDF-Expand(hash = SHA-256, prk, info = "seed", length = 32)
+
+  The length prefixes are load-bearing rather than decoration. Without them,
+  source set (id "a", material "bc") and (id "ab", material "c") both flatten to
+  the byte string "abc", so two distinct inputs would derive the same seed.
+
+  The intermediate pseudorandom key and the assembled input keying material are
+  zeroized before returning, since both hold every source's bytes verbatim.
+
+invariants:
+  - id: INV-ENT-1
+    statement: Output is exactly 32 bytes for any valid input.
+    tests:
+      - packages/core/test/entropy.combine.test.ts::length
+
+  - id: INV-ENT-2
+    statement: Changing any single input byte changes the output (avalanche).
+    tests:
+      - packages/core/test/entropy.combine.test.ts::avalanche
+
+  - id: INV-ENT-3
+    statement: >
+      Source ordering is canonical, so combining the same set in any collection
+      order is deterministic.
+    tests:
+      - packages/core/test/entropy.combine.test.ts::ordering
+
+  - id: INV-ENT-4
+    statement: >
+      A zeroed or stuck source cannot reduce the entropy of the result, and
+      cannot drive the output toward the value the stuck source alone produces.
+    tests:
+      - packages/core/test/entropy.combine.test.ts::stuck-source
+
+  - id: INV-ENT-5
+    statement: >
+      The length-prefixed encoding is injective: two distinct source sets cannot
+      produce the same input keying material.
+    tests:
+      - packages/core/test/entropy.combine.test.ts::no-concatenation-collision
+
+  - id: INV-ENT-6
+    statement: >
+      The source id is bound into the derivation, so identical bytes arriving
+      from a different origin derive a different seed.
+    tests:
+      - packages/core/test/entropy.combine.test.ts::source-id-is-bound
+
+threats:
+  - INV-KEY-2
+
+security_notes: >
+  Safe under the standard HKDF extraction assumption (RFC 5869 section 4): if any
+  single input contributes sufficient min-entropy, the extracted key is
+  computationally indistinguishable from uniform.
+
+  It does NOT detect a low-entropy source, and cannot. A source supplying 32
+  zero bytes is indistinguishable here from a source supplying 32 good bytes.
+  Detection is the caller's responsibility, which is why the daemon health-gates
+  machine sources (stuck-output check, entropy_avail, /dev/hwrng presence)
+  before they ever reach this function. See docs/ENTROPY.md.
+
+  It also does not protect against an attacker who controls ALL sources. The
+  guarantee is one-good-source, not zero-good-sources.
+
+references:
+  - RFC 5869, HMAC-based Extract-and-Expand Key Derivation Function (HKDF)
+  - RFC 6234, US Secure Hash Algorithms
+  - docs/ENTROPY.md, Mode B

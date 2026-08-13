@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nullroute.space/spec/schema.json",
+  "title": "nullroute module specification",
+  "description": "Every module in packages/core, and every security-relevant module elsewhere, has a sibling *.spec.yaml conforming to this schema. `make verify` asserts that every exported symbol is covered by some spec and that every declared invariant names a test that exists and passed. A spec is not documentation: the device refuses to boot if code, specs, and tests disagree.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "version",
+    "title",
+    "assurance_tier",
+    "status",
+    "purpose",
+    "covers",
+    "invariants"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable dotted identifier, e.g. core.entropy.combiner. Referenced by commit messages and by other specs.",
+      "pattern": "^[a-z][a-z0-9]*(\\.[a-z0-9-]+)+$"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Bumped when the specified behaviour changes in a way that would break a third-party reimplementation."
+    },
+    "title": { "type": "string", "minLength": 4, "maxLength": 120 },
+
+    "assurance_tier": {
+      "enum": ["critical", "standard", "experimental"],
+      "description": "critical: runs near key material (packages/core, signing paths in packages/daemon). standard: the wallet layer, where invariants are about correctness and clarity rather than key safety. experimental: not permitted to claim status `verified`."
+    },
+    "status": {
+      "enum": ["draft", "implemented", "verified"],
+      "description": "draft: the spec exists, the code may not. implemented: code and tests exist and pass. verified: a human has reviewed the algorithm against its references. Only a maintainer sets `verified`."
+    },
+
+    "purpose": {
+      "type": "string",
+      "minLength": 20,
+      "description": "What this module is for, and the property that makes it worth having. Not a restatement of the title."
+    },
+
+    "covers": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "Exported symbols this spec accounts for. `make verify` fails if any export of packages/core is not covered by some spec.",
+      "items": {
+        "type": "string",
+        "description": "Format: <repo-relative POSIX path>::<Symbol>, optionally <Class>#<method>. `::` is used because neither a POSIX path nor a JS identifier can contain it.",
+        "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))[A-Za-z0-9._/-]+\\.tsx?::[A-Za-z_$][A-Za-z0-9_$]*(#[A-Za-z_$][A-Za-z0-9_$]*)?$"
+      }
+    },
+
+    "inputs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/parameter" }
+    },
+    "outputs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/parameter" }
+    },
+
+    "algorithm": {
+      "type": "string",
+      "minLength": 20,
+      "description": "The construction, precisely enough that a third party could reimplement it and get byte-identical results. Required at the `critical` tier."
+    },
+
+    "invariants": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Testable assertions. Each must bind to at least one test that exists and passed.",
+      "items": { "$ref": "#/$defs/invariant" }
+    },
+
+    "threats": {
+      "type": "array",
+      "uniqueItems": true,
+      "description": "Threat identifiers from docs/THREAT-MODEL.md that this module mitigates. The schema only checks the shape; verify checks that the ids resolve.",
+      "items": { "type": "string", "pattern": "^INV-[A-Z]+-[0-9]+$" }
+    },
+
+    "vectors": {
+      "type": "array",
+      "uniqueItems": true,
+      "description": "Official test vector files this module must pass, pinned by content hash so a vector file cannot be edited to make a failing implementation pass.",
+      "items": { "$ref": "#/$defs/vector" }
+    },
+
+    "differential": {
+      "$ref": "#/$defs/differential",
+      "description": "Cross-implementation agreement. Required at the `critical` tier for anything producing a value another implementation can also compute."
+    },
+
+    "security_notes": {
+      "type": "string",
+      "minLength": 20,
+      "description": "What this module does NOT protect against, and under what assumption it is safe. Overclaiming here is a defect."
+    },
+
+    "references": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 3 },
+      "description": "RFCs, BIPs, and papers the algorithm follows."
+    }
+  },
+
+  "allOf": [
+    {
+      "$comment": "The critical tier carries the real burden. A module that runs near key material must state its algorithm precisely enough to reimplement, must say what it does not defend against, and must cite what it follows.",
+      "if": { "properties": { "assurance_tier": { "const": "critical" } }, "required": ["assurance_tier"] },
+      "then": { "required": ["algorithm", "security_notes", "references"] }
+    },
+    {
+      "$comment": "An experimental module may not claim to be verified. Otherwise `verified` would mean nothing.",
+      "if": { "properties": { "assurance_tier": { "const": "experimental" } }, "required": ["assurance_tier"] },
+      "then": { "properties": { "status": { "enum": ["draft", "implemented"] } } }
+    }
+  ],
+
+  "$defs": {
+    "parameter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[A-Za-z_$][A-Za-z0-9_$]*$" },
+        "type": { "type": "string", "minLength": 1 },
+        "constraints": {
+          "type": "string",
+          "description": "Bounds a reimplementation must honour, e.g. \"exactly 32 bytes\" or \"1..8 sources\"."
+        }
+      }
+    },
+
+    "invariant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "statement", "tests"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^INV-[A-Z]+-[0-9]+$",
+          "description": "e.g. INV-ENT-1. Unique across the repository; verify enforces uniqueness."
+        },
+        "statement": {
+          "type": "string",
+          "minLength": 10,
+          "description": "A falsifiable assertion. If you cannot imagine the test that fails, it is not an invariant."
+        },
+        "tests": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Test selectors. Each MUST resolve to exactly one test that ran and passed. Zero matches and multiple matches are both hard failures, because a duplicate test title would otherwise let a passing test stand in for a failing one.",
+          "items": {
+            "type": "string",
+            "description": "Format: <path>.test.ts::<segment>[ > <segment>]*, matched as a suffix of the test's [...ancestorTitles, title].",
+            "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))[A-Za-z0-9._/-]+\\.test\\.tsx?::[^:]+$"
+          }
+        }
+      }
+    },
+
+    "vector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "file", "sha256"],
+      "properties": {
+        "name": { "type": "string", "minLength": 3 },
+        "file": {
+          "type": "string",
+          "pattern": "^spec/vectors/(?!.*(^|/)\\.\\.(/|$))[A-Za-z0-9._/-]+$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "Content hash of the vector file. Pinned so a vector cannot be edited to make a failing implementation pass."
+        },
+        "source": { "type": "string", "description": "Provenance URL." }
+      }
+    },
+
+    "differential": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["oracle", "min_cases"],
+      "properties": {
+        "oracle": {
+          "type": "string",
+          "description": "The independent implementation checked against, e.g. bitcoinjs-lib.",
+          "minLength": 3
+        },
+        "min_cases": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Minimum number of cases the differential suite must exercise."
+        },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}

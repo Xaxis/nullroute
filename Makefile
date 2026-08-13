@@ -16,7 +16,7 @@ SHELL := /bin/bash
 MANIFEST_ROOTS := packages spec
 
 .PHONY: help install dev build check check-fast verify manifest manifest-check \
-        lint type-check test test-vectors test-differential test-repro \
+        lint type-check test test-report test-vectors test-differential test-repro \
         prose sbom repro-check clean web web-build web-lint web-type-check \
         image
 
@@ -33,8 +33,14 @@ install: ## Install dependencies exactly as the lockfile pins them
 # --- verification ------------------------------------------------------------
 # Each of these is a claim the repository makes about itself.
 
-verify: ## The six checks from docs/VERIFICATION.md, emits verification-report.json
+verify: build test-report ## The six checks from docs/VERIFICATION.md, emits verification-report.json
 	@node packages/verify/dist/cli.js
+
+test-report: ## Run the suite and emit the machine-readable report verify consumes
+	# verify asserts the status of each individual test rather than trusting the
+	# exit code. `it.skip` leaves vitest at exit 0 with success:true, so an
+	# exit-code check would certify invariants that never ran.
+	@npx vitest run --reporter=json --outputFile=test-report.json > /dev/null
 
 manifest: ## Regenerate MANIFEST.lock from the tracked sources
 	# Plain `sha256sum` output format, sorted under LC_ALL=C, so a third party

@@ -1,0 +1,132 @@
+id: core.entropy.dice
+version: 1
+title: Dice entropy collection, validation, and accounting
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Turn physical dice rolls into 256 bits of entropy by a rule the user can
+  reproduce by hand on any machine with sha256sum. A hardware wallet that
+  generates a seed inside a black box asks you to trust the box. This module
+  exists so that the device cannot lie to a user about their seed without being
+  caught with a pocket calculator and a laptop.
+
+covers:
+  - packages/core/src/entropy/dice.ts::diceToEntropy
+  - packages/core/src/entropy/dice.ts::validateRolls
+  - packages/core/src/entropy/dice.ts::accountEntropy
+  - packages/core/src/entropy/dice.ts::detectPatterns
+  - packages/core/src/entropy/dice.ts::DiceValidationError
+  - packages/core/src/entropy/dice.ts::BITS_PER_ROLL
+  - packages/core/src/entropy/dice.ts::TARGET_BITS
+  - packages/core/src/entropy/dice.ts::MIN_ROLLS
+
+inputs:
+  - name: rolls
+    type: string
+    constraints: "at least 100 ASCII digits in 1..6, no separators, no whitespace, no trailing newline"
+
+outputs:
+  - name: entropy
+    type: Secret
+    constraints: "exactly 32 bytes"
+
+algorithm: >
+  Each roll is one ASCII digit, 0x31 through 0x36. Rolls are concatenated in
+  entry order with no separators and no trailing newline, giving exactly N bytes
+  for N rolls. The entropy is SHA-256 of those bytes.
+
+    entropy = SHA-256( ascii(roll_1) || ... || ascii(roll_N) )
+
+  Those 32 bytes are then standard BIP-39 entropy for a 24-word mnemonic, with
+  no nullroute-specific behaviour anywhere in the conversion.
+
+  The minimum is 100 rolls, from ceil(256 / log2(6)) = ceil(99.033) = 100. Note
+  that 99 rolls yields 255.911 bits and is therefore short of 256; the project
+  brief stated 99 was sufficient and was wrong by 0.089 bits.
+
+  Hashing the ASCII text rather than converting a base-6 integer is deliberate.
+  Both are sound, but only the hash is reproducible with a tool already present
+  on every machine. A base-6 to binary conversion of a 100-digit number requires
+  trusting some other program's bignum arithmetic, which reintroduces exactly
+  the problem this design removes. With 100 rolls the input carries 258.5 bits
+  and the output is 256 wide, so nothing that matters is lost.
+
+invariants:
+  - id: INV-DICE-1
+    statement: >
+      The module refuses to derive entropy from fewer than 100 rolls, because
+      99 rolls is 255.911 bits and short of the 256-bit target.
+    tests:
+      - packages/core/test/entropy.dice.test.ts::minimum-rolls
+      - packages/core/test/entropy.dice.test.ts::refuses-insufficient-entropy
+
+  - id: INV-DICE-2
+    statement: >
+      Input is strictly canonical. Whitespace, separators, a trailing newline,
+      and any character outside 1..6 are rejected rather than normalised, so the
+      bytes hashed are exactly the bytes the user entered.
+    tests:
+      - packages/core/test/entropy.dice.test.ts::rejects-non-canonical-input
+
+  - id: INV-DICE-3
+    statement: >
+      The encoding matches the worked example published in docs/ENTROPY.md, which
+      users verify by hand with sha256sum.
+    tests:
+      - packages/core/test/entropy.dice.test.ts::published-worked-example
+
+  - id: INV-DICE-4
+    statement: Output is exactly 32 bytes.
+    tests:
+      - packages/core/test/entropy.dice.test.ts::output-length
+
+  - id: INV-DICE-5
+    statement: >
+      Live entropy accounting truncates rather than rounds, so the display can
+      never claim more entropy than has been collected.
+    tests:
+      - packages/core/test/entropy.dice.test.ts::accounting-truncates
+
+  - id: INV-DICE-6
+    statement: >
+      Suspicious roll patterns produce warnings but never a rejection. Silently
+      discarding real rolls would substitute the device's judgement for the
+      user's entropy.
+    tests:
+      - packages/core/test/entropy.dice.test.ts::warns-without-rejecting
+      - packages/core/test/entropy.dice.test.ts::detects-monotonic-runs
+
+  - id: INV-DICE-7
+    statement: The same roll sequence always produces the same bytes.
+    tests:
+      - packages/core/test/entropy.dice.test.ts::deterministic
+
+  - id: INV-DICE-8
+    statement: Changing any single roll changes the output.
+    tests:
+      - packages/core/test/entropy.dice.test.ts::avalanche
+
+threats:
+  - INV-KEY-2
+
+security_notes: >
+  This module guarantees only that the seed follows from the rolls by a published
+  rule. It cannot tell whether the dice are fair, whether they were rolled
+  properly, or whether someone was watching. Those are the user's problem and
+  docs/ENTROPY.md says so.
+
+  The pattern detector is a courtesy, not a security control. A fair die can
+  produce a suspicious-looking sequence, and the chi-squared band is set at the
+  0.999 critical value (20.515 at 5 degrees of freedom) so it fires on roughly 1
+  in 1000 fair sequences. A warning users learn to ignore is worse than no
+  warning.
+
+  SHA-256 is modelled as a random oracle here. If SHA-256 were broken in a way
+  that let an attacker predict outputs from partial input knowledge, this
+  construction would fail, but so would BIP-39 itself.
+
+references:
+  - BIP-39, Mnemonic code for generating deterministic keys
+  - FIPS 180-4, Secure Hash Standard
+  - docs/ENTROPY.md, Mode A
