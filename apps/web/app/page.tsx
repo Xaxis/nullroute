@@ -200,6 +200,7 @@ export default function HomePage() {
               <h3 className="text-ink-100 font-medium group-hover:text-signal-400 transition-colors">
                 {doc.title}
               </h3>
+              <p className="mt-1 text-sm text-signal-400/80">{doc.question}</p>
               <p className="mt-1.5 text-sm text-ink-400 leading-relaxed">{doc.summary}</p>
             </Link>
           ))}

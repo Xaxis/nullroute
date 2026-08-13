@@ -14,6 +14,8 @@ export interface DocMeta {
   readonly file: string
   readonly title: string
   readonly summary: string
+  /** The question a reader actually arrived with. */
+  readonly question: string
   /** Shown in the docs index to set expectations before someone clicks. */
   readonly weight: number
 }
@@ -25,6 +27,7 @@ export const DOCS: readonly DocMeta[] = [
     title: 'Threat model',
     summary:
       'What the device defends against, what it partially defends against, and the long list of what it does not. Read this before trusting it with anything.',
+    question: 'What is this safe against, and what is it not?',
     weight: 1,
   },
   {
@@ -33,6 +36,7 @@ export const DOCS: readonly DocMeta[] = [
     title: 'Verification',
     summary:
       'How to check, yourself, that a device runs the code it claims to. Written for someone who does not trust this project and should not have to.',
+    question: 'How do I check the device is honest?',
     weight: 2,
   },
   {
@@ -41,6 +45,7 @@ export const DOCS: readonly DocMeta[] = [
     title: 'Entropy and seed generation',
     summary:
       'The dice procedure, the exact byte encoding, and a worked example you can reproduce with sha256sum on any machine.',
+    question: 'How do dice become a seed, and how do I check it?',
     weight: 3,
   },
   {
@@ -49,6 +54,7 @@ export const DOCS: readonly DocMeta[] = [
     title: 'Provisioning a device',
     summary:
       'The hardware, the hardening actually applied (and the standard controls deliberately skipped as theater here), and how to verify an image before and after flashing it.',
+    question: 'How do I build and verify the device image?',
     weight: 4,
   },
 ]
