@@ -50,7 +50,18 @@ export default tseslint.config(
       // INV-NET-2. node:net is allowed only in the daemon's IPC layer, because
       // a Unix domain socket is not a network socket but comes from the same
       // module. Widening this list is a reviewable change, which is the point.
-      'nullroute/no-network': ['error', { allowUnixSocketIn: ['packages/daemon/src/ipc/'] }],
+      'nullroute/no-network': [
+        'error',
+        {
+          allowUnixSocketIn: [
+            'packages/daemon/src/ipc/',
+            // The IPC layer's own test has to connect to the socket it is
+            // testing. Listed here rather than disabled inline so the exemption
+            // is one place, reviewable, and greppable.
+            'packages/daemon/test/ipc.test.ts',
+          ],
+        },
+      ],
 
       // INV-WALLET-1: dependency direction between assurance tiers.
       'nullroute/no-cross-tier-import': 'error',

@@ -28,7 +28,19 @@ const REPO_ROOT = process.env['NULLROUTE_ROOT'] ?? fileURLToPath(new URL('../../
 
 const SPEC_DIRS = ['packages']
 const SCHEMA = join(REPO_ROOT, 'spec', 'schema.json')
-const CORE_ENTRY = 'packages/core/src/index.ts'
+
+/**
+ * Packages whose public API must be fully covered by specs.
+ *
+ * Coverage is measured against each package's ENTRY POINT rather than every
+ * file, so a symbol exported from an internal module but never re-exported is
+ * not public API and does not need a spec. Requiring one would push the project
+ * toward specifying its own internals.
+ */
+const COVERED_ENTRIES = [
+  'packages/core/src/index.ts',
+  'packages/daemon/src/index.ts',
+]
 const TEST_REPORT = join(REPO_ROOT, 'test-report.json')
 const OUT = join(REPO_ROOT, 'verification-report.json')
 
@@ -75,7 +87,7 @@ function main(): number {
   // --- 1. Coverage --------------------------------------------------------
   let coverage: ReturnType<typeof checkCoverage> | undefined
   try {
-    const exports = enumerateExports(REPO_ROOT, CORE_ENTRY)
+    const exports = COVERED_ENTRIES.flatMap((entry) => enumerateExports(REPO_ROOT, entry))
     coverage = checkCoverage(
       exports,
       specs.map((s) => s.spec.covers)
@@ -127,7 +139,7 @@ function main(): number {
     status: vectors.declared === 0 ? 'not-applicable' : vectors.ok ? 'passed' : 'failed',
     detail:
       vectors.declared === 0
-        ? 'no official vectors declared yet (phase 1 has no BIP surface)'
+        ? 'no official vectors declared yet'
         : `${String(vectors.verified)} of ${String(vectors.declared)} vector files match their pinned hash`,
     failures: vectors.failures,
   })
@@ -140,7 +152,7 @@ function main(): number {
       differential.declared === 0 ? 'not-applicable' : differential.ok ? 'passed' : 'failed',
     detail:
       differential.declared === 0
-        ? 'no differential oracle declared yet (nothing to cross-check until BIP-32/39 land)'
+        ? 'no differential oracle declared yet (cross-check against bitcoinjs-lib lands with phase 2)'
         : `${String(differential.declared)} modules cross-checked`,
     failures: differential.failures,
   })

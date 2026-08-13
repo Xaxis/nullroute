@@ -114,8 +114,12 @@ build: ## Build every package
 	# the next step cannot find the CLI it just "built". CI caught this.
 	@npx tsc --build tsconfig.build.json
 
-dev: ## Run the daemon and UI locally against a Unix socket
-	@npm run dev --workspace @nullroute/daemon
+dev: build verify ## Run the daemon locally against a Unix socket in /tmp
+	# --jitless because the production systemd unit sets
+	# MemoryDenyWriteExecute=true, which crashes V8's baseline compiler.
+	# Running the same way locally means a crash shows up here, not on the device.
+	@NULLROUTE_SOCKET=$${NULLROUTE_SOCKET:-/tmp/nullrouted.sock} \
+	  node --jitless packages/daemon/dist/main.js
 
 image: ## Build the hardened Raspberry Pi image
 	@bash tools/build-image/build.sh

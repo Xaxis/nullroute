@@ -1,0 +1,120 @@
+id: daemon.ipc.socket
+version: 1
+title: Unix socket IPC and boot attestation
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Hold every impure operation the device performs: the socket, the filesystem,
+  and eventually the hardware. packages/core stays pure so a reviewer can load
+  it standalone and reproduce results; this package is where the impurity is
+  concentrated so it can be audited in one place.
+
+  It is also where two invariants are enforced rather than described: the
+  process listens on a Unix domain socket and nothing else, and it refuses to
+  start unless the build verified.
+
+covers:
+  - packages/daemon/src/ipc/socket.ts::startIpcServer
+  - packages/daemon/src/ipc/socket.ts::assertNoNetworkListeners
+  - packages/daemon/src/ipc/socket.ts::MAX_REQUEST_BYTES
+  - packages/daemon/src/ipc/socket.ts::IpcError
+  - packages/daemon/src/boot/attestation.ts::requirePassingVerification
+  - packages/daemon/src/boot/attestation.ts::manifestRootHash
+  - packages/daemon/src/boot/attestation.ts::abbreviateHash
+  - packages/daemon/src/boot/attestation.ts::AttestationError
+  - packages/daemon/src/handler.ts::createHandler
+
+algorithm: >
+  The server binds with listen({ path }), never listen({ port }). A Unix domain
+  socket has no address family reaching off the machine, no port and no route;
+  it lives in node:net only because that is where the API is. The socket file is
+  chmod 0600 so another user on the machine cannot connect.
+
+  After binding, the process inspects its own active handles and throws if any
+  reports an address carrying a port, which is what distinguishes a TCP or UDP
+  listener from a Unix socket.
+
+  Messages are newline-delimited JSON. A line is a complete message, so a
+  truncated message cannot be read as a shorter valid one. Anything over
+  MAX_REQUEST_BYTES destroys the connection before parsing.
+
+  At startup the verification report must exist, must record passed, must
+  contain no failed check, and must record a manifest root hash equal to
+  SHA-256 of the MANIFEST.lock on disk. Any of the four failing aborts startup.
+
+invariants:
+  - id: INV-NET-1
+    statement: >
+      The process listens on a Unix domain socket and holds no listener on any
+      network address family.
+    tests:
+      - packages/daemon/test/ipc.test.ts::holds-no-network-listener
+
+  - id: INV-KEY-1
+    statement: >
+      No IPC response contains seed bytes, mnemonic entropy, the mnemonic, the
+      passphrase, or an extended private key, on any method or any error path.
+    tests:
+      - packages/daemon/test/ipc.test.ts::never-returns-key-material
+
+  - id: INV-KEY-6
+    statement: >
+      A passphrase changes the reported fingerprint, and both the presence and
+      absence of one succeed, which is why the fingerprint is the only signal a
+      user gets that they mistyped it.
+    tests:
+      - packages/daemon/test/ipc.test.ts::fingerprint-changes-with-passphrase
+
+  - id: INV-IPC-1
+    statement: >
+      Errors are reported to the caller rather than swallowed, and a failing
+      request never returns a result.
+    tests:
+      - packages/daemon/test/ipc.test.ts::reports-errors-without-swallowing-them
+
+  - id: INV-IPC-2
+    statement: >
+      Both hardened path notations reach the same key across the IPC boundary,
+      and the canonical form is returned.
+    tests:
+      - packages/daemon/test/ipc.test.ts::normalizes-path-notation-across-ipc
+
+  - id: INV-IPC-3
+    statement: The attestation method serves the manifest root hash to the lock screen.
+    tests:
+      - packages/daemon/test/ipc.test.ts::serves-attestation
+
+threats:
+  - INV-NET-1
+  - INV-NET-2
+  - INV-KEY-1
+  - INV-BUILD-1
+
+security_notes: >
+  assertNoNetworkListeners reads a Node internal that is not a public API. Its
+  absence is tolerated rather than fatal, because two other defences cover the
+  same invariant and fail differently: the lint rule proves no source file can
+  open a socket, and the systemd unit sets RestrictAddressFamilies=AF_UNIX with
+  IPAddressDeny=any so the kernel refuses regardless. Three checks at three
+  layers, none of which is sufficient alone.
+
+  The method table returns public material by construction rather than by
+  filtering. There is no method that returns a seed and no debug flag that
+  enables one. The INV-KEY-1 test searches serialised responses rather than
+  inspecting each method, because the realistic failure is a richer object than
+  intended or an error message interpolating something it should not, not a
+  method deliberately returning a key.
+
+  The 0600 mode on the socket is meaningful only where more than one user
+  exists. On the device there is one, and the daemon does not rely on that.
+
+  This module does not authenticate its caller. On the device the only client is
+  the local kiosk, reaching a socket no other user can open. If the daemon ever
+  serves a second client, that assumption has to be revisited rather than
+  inherited.
+
+references:
+  - docs/THREAT-MODEL.md
+  - docs/VERIFICATION.md
+  - systemd.exec(5), RestrictAddressFamilies and IPAddressDeny
