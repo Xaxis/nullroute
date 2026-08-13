@@ -17,7 +17,7 @@ MANIFEST_ROOTS := packages spec
 
 .PHONY: help install dev build check check-fast verify manifest manifest-check \
         lint type-check test test-report test-vectors test-differential test-repro \
-        prose sbom repro-check clean web web-build web-lint web-type-check \
+        prose sbom sbom-check repro-check clean web web-build web-lint web-type-check \
         web-isolation web-csp web-responsive web-check web-live-check deploy image
 
 help: ## List available targets
@@ -64,6 +64,9 @@ prose: ## No em dashes, no emoji, no overclaiming markers in docs and UI copy
 sbom: ## Emit a CycloneDX SBOM as a build artifact
 	@node tools/gen-sbom.mjs
 
+sbom-check: ## The committed SBOM still matches the installed tree
+	@node tools/gen-sbom.mjs --check
+
 repro-check: ## Build twice and assert the output is byte-identical
 	@node tools/check-reproducible.mjs
 
@@ -72,13 +75,18 @@ repro-check: ## Build twice and assert the output is byte-identical
 test: ## Unit and property tests across all workspaces
 	@npx vitest run
 
-test-vectors: ## Official BIP test vectors from spec/vectors/
+# These three land with phase 2. Until there is a BIP surface there are no
+# official vectors, no second implementation to disagree with, and no signature
+# to reproduce. They are wired here and gated off in CI rather than made to pass
+# vacuously, for the same reason `make verify` reports them as not-applicable.
+
+test-vectors: ## Official BIP test vectors from spec/vectors/ (phase 2)
 	@npx vitest run --project vectors
 
-test-differential: ## Cross-check against bitcoinjs-lib as an independent implementation
+test-differential: ## Cross-check against bitcoinjs-lib, an independent implementation (phase 2)
 	@npx vitest run --project differential
 
-test-repro: ## Sign the same PSBT repeatedly, assert byte-identical output
+test-repro: ## Sign the same PSBT repeatedly, assert byte-identical output (phase 2)
 	@npx vitest run --project reproducibility
 
 lint: ## ESLint, including the no-network rule that enforces INV-NET-2
@@ -109,6 +117,13 @@ web: ## Run the website locally
 	@npm run dev --workspace @nullroute/web
 
 web-build: ## Production build of the website
+	# Always from clean. Turbopack's incremental cache in .next changes the
+	# emitted chunk filenames, which changes the inline RSC payload, which
+	# changes the sha256 hashes the CSP pins. A warm build and a cold build of
+	# identical source therefore produce different hashes. Removing the cache
+	# makes the output a function of the source alone, which is what
+	# `make web-csp` needs in order to mean anything.
+	@rm -rf apps/web/.next apps/web/out
 	@npm run build --workspace @nullroute/web
 
 web-lint: ## ESLint the website workspace
@@ -148,4 +163,4 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.space
 
 check-fast: lint type-check prose test manifest-check ## Everything except the slow suites
 
-check: check-fast build verify test-vectors test-differential test-repro repro-check web-check ## Everything CI runs
+check: check-fast build verify repro-check sbom web-check ## Everything CI runs
