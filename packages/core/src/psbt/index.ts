@@ -19,3 +19,6 @@ export type {
   FeeSummary,
   OutputKind,
 } from './review.js'
+
+export { signTransaction, AUX_RAND } from './sign.js'
+export type { SignOptions, SignResult } from './sign.js'

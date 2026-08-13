@@ -1,0 +1,119 @@
+id: core.psbt.sign
+version: 1
+title: Deterministic transaction signing
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Produce a signature that carries no information beyond the transaction and the
+  key. Signing is the only irreversible act this device performs, so it happens
+  behind the review and it happens the same way every time.
+
+covers:
+  - packages/core/src/psbt/sign.ts::signTransaction
+  - packages/core/src/psbt/sign.ts::AUX_RAND
+
+algorithm: >
+  The caller passes the review of this exact transaction. If the review says the
+  transaction is not signable, signing throws unless the caller asked to
+  override for this one call, which is never persisted.
+
+  Each derivation path is derived from the seed and offered to the signer, which
+  matches the key against every input itself and signs the ones it can. A path
+  that matches nothing is not an error, because a device holding one key of a
+  quorum will legitimately fail to sign inputs belonging to its cosigners. Zero
+  signatures across all paths IS an error and throws rather than returning an
+  unsigned PSBT that a caller might mistake for success.
+
+  The allowed sighash set is restricted to what the review accepted. When the
+  review passed it lists both SIGHASH_ALL and SIGHASH_DEFAULT, which are the
+  same intent encoded differently: taproot writes "commits to everything" as 0
+  and omits the byte, every other script type writes it as 1. Listing one alone
+  would silently sign nothing for the other half of the script types.
+
+  ECDSA nonces come from RFC 6979. Schnorr signing uses BIP-340 with `aux_rand`
+  fixed to 32 zero bytes. Nothing else in the path consumes randomness, so the
+  output is a pure function of the key and the transaction.
+
+invariants:
+  - id: INV-SIG-1
+    statement: >
+      Every ECDSA signature uses RFC 6979 deterministic nonces and every Schnorr
+      signature uses BIP-340 with aux_rand set to 32 zero bytes, so no
+      randomness enters the signature.
+    tests:
+      - packages/core/test/psbt.sign.test.ts::uses-zero-aux-rand
+      - packages/core/test/differential.test.ts::agrees-byte-for-byte-on-a-p2wpkh-signature
+
+  - id: INV-SIG-2
+    statement: >
+      The same seed and the same PSBT produce byte-identical output across a
+      hundred signings, and those bytes match an independent implementation.
+    tests:
+      - packages/core/test/psbt.sign.test.ts::produces-byte-identical-signatures
+      - packages/core/test/differential.test.ts::agrees-byte-for-byte-on-a-p2wpkh-signature
+
+  - id: INV-SIG-3
+    statement: >
+      Signing refuses any transaction whose review is not signable. The refusal
+      can only be lifted by an explicit per-call override that is never stored.
+    tests:
+      - packages/core/test/psbt.sign.test.ts::refuses-to-sign-a-transaction-the-review-rejected
+      - packages/core/test/psbt.sign.test.ts::allows-an-explicit-per-signature-override
+
+  - id: INV-SIG-4
+    statement: >
+      Signing nothing fails loudly. A transaction that no supplied path owns
+      throws rather than returning an unsigned PSBT.
+    tests:
+      - packages/core/test/psbt.sign.test.ts::fails-loudly-when-no-path-matches
+      - packages/core/test/psbt.sign.test.ts::rejects-an-empty-path-list
+      - packages/core/test/psbt.sign.test.ts::different-seeds-produce-different-signatures
+
+  - id: INV-SIG-5
+    statement: >
+      A signature is produced for an input the device owns, and the resulting
+      PSBT is returned rather than a bare transaction.
+    tests:
+      - packages/core/test/psbt.sign.test.ts::signs-an-input-it-owns
+
+threats:
+  - INV-SIG-1
+  - INV-SIG-2
+
+security_notes: >
+  Fixing `aux_rand` to zero is a genuine trade, not a free win. BIP-340 permits
+  a random value, and randomising it defends against certain fault injection
+  attacks on the signing hardware. Zero gives that up in exchange for a property
+  that matters more here: anyone holding the seed can recompute the exact bytes
+  this device produced and confirm it is not leaking. A device whose premise is
+  that a user can audit it should be auditable. That judgement is recorded here
+  rather than left implicit in a constant.
+
+  What determinism buys is the closure of a covert channel. A signer free to
+  choose its nonce can grind until chosen bits of the signature encode part of
+  the key, publish, and repeat. Every signature verifies, the screen looks
+  correct, and an observer reads the key off the chain over a few dozen spends.
+  Byte-identical output leaves no space for that to live in.
+
+  Determinism verified against ourselves proves only self-consistency, which a
+  backdoored nonce would also have. The differential test is what makes the
+  claim mean something: two implementations sharing no code, reaching the same
+  bytes through @noble/secp256k1 and through libsecp256k1 in WASM.
+
+  Key material lifetime is best effort. `wipePrivateData` runs in a `finally`,
+  but the signing library holds key bytes in arrays this module does not own and
+  a garbage-collected runtime makes no promises about copies. The real
+  mitigations are architectural: no swap, tmpfs only, and a short-lived process.
+  See docs/PROVISIONING.md.
+
+  The override exists because a knowledgeable user occasionally has a real
+  reason to sign a SIGHASH_SINGLE input. It applies to one call, is never
+  written to disk, and has a deliberately awkward name. If it ever gains a
+  "remember this" affordance, INV-SIG-3 is void.
+
+references:
+  - RFC 6979, Deterministic Usage of DSA and ECDSA
+  - BIP-340, Schnorr Signatures for secp256k1
+  - BIP-174, Partially Signed Bitcoin Transaction Format
+  - docs/THREAT-MODEL.md

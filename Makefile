@@ -93,8 +93,14 @@ test-differential: ## Cross-check against bitcoinjs-lib, an independent implemen
 # Lands with PSBT signing. There is no signature to reproduce until then, and a
 # target that passed with nothing to examine would report assurance the project
 # has not earned.
-test-repro: ## Sign the same PSBT repeatedly, assert byte-identical output (not yet)
-	@echo "test-repro: no signing path yet; lands with PSBT support"
+test-repro: ## Sign the same PSBT 100 times and cross-check the bytes against libsecp256k1
+	# INV-SIG-1 and INV-SIG-2. A hundred signings of one transaction must yield
+	# one distinct result, and that result must equal what an independent
+	# implementation produces. Self-consistency alone proves nothing: a
+	# backdoored nonce is perfectly self-consistent. The second half is the half
+	# that means something.
+	@npx vitest run --project core \
+	  -t "produces-byte-identical-signatures|agrees-byte-for-byte-on-a-p2wpkh-signature"
 
 lint: ## ESLint, including the no-network rule that enforces INV-NET-2
 	@npx eslint .

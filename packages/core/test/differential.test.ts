@@ -1,7 +1,7 @@
 /**
  * Differential testing against bitcoinjs-lib.
  *
- * Spec: core.address.derive, core.derive.hd
+ * Spec: core.address.derive, core.derive.hd, core.psbt.sign
  *
  * bitcoinjs-lib is an independent implementation, written by different people
  * from the same specifications. Where it and the noble/scure stack agree, that
@@ -22,16 +22,20 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { hexToBytes } from '@noble/hashes/utils.js'
+import { bytesToHex, hexToBytes } from '@noble/hashes/utils.js'
 import * as bitcoin from 'bitcoinjs-lib'
 import { BIP32Factory } from 'bip32'
 import * as ecc from 'tiny-secp256k1'
+
+import * as btc from '@scure/btc-signer'
 
 import { Secret } from '../src/util/secret.js'
 import { mnemonicToSeed } from '../src/bip39/mnemonic.js'
 import { rootFromSeed } from '../src/derive/hd.js'
 import { MAINNET, TESTNET3, type Network } from '../src/network/networks.js'
 import { addressFromKey, type ScriptType } from '../src/address/address.js'
+import { reviewTransaction } from '../src/psbt/review.js'
+import { signTransaction } from '../src/psbt/sign.js'
 
 const bip32 = BIP32Factory(ecc)
 
@@ -169,5 +173,89 @@ describe('differential: nullroute against bitcoinjs-lib', () => {
       expect(derived.publicExtendedKey, path).toBe(theirsDerived.neutered().toBase58())
       ours.wipePrivateData()
     }
+  })
+})
+
+/**
+ * Signature reproducibility against an independent implementation.
+ *
+ * Spec: core.psbt.sign. INV-SIG-2 claims the same seed and the same transaction
+ * produce byte-identical output "confirmed against an independent
+ * implementation", and this is that confirmation. Signing a hundred times with
+ * our own code proves only that our own code is consistent, which a backdoored
+ * nonce would also be. Two implementations that never shared a line agreeing on
+ * every byte is a much harder thing to fake.
+ *
+ * Both sides reduce to RFC 6979 by different routes: ours through
+ * @noble/secp256k1, theirs through libsecp256k1 compiled to WASM. If those
+ * agree, the nonce came from the message and the key and nothing else, which is
+ * exactly the property that leaves no room to hide a key in.
+ */
+describe('core.psbt.sign differential', () => {
+  const SIGNING_PATH = "m/84'/0'/0'/0/0"
+  const RECIPIENT = 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'
+  // Palindromic under byte reversal, so the two libraries' differing txid
+  // conventions cannot silently make this a comparison of two different
+  // transactions.
+  const TXID = 'a'.repeat(64)
+  const SEQUENCE = 0xfffffffd
+  const IN_SATS = 100_000n
+  const OUT_SATS = 90_000n
+
+  it('agrees-byte-for-byte-on-a-p2wpkh-signature', () => {
+    using seed = mnemonicToSeed(MNEMONIC, '')
+    const seedBytes = Uint8Array.from(seed.bytes)
+
+    // Our side.
+    const root = rootFromSeed(seed, MAINNET)
+    const signingKey = root.derive(SIGNING_PATH)
+    const script = btc.p2wpkh(signingKey.publicKey, MAINNET).script
+    root.wipePrivateData()
+
+    const tx = new btc.Transaction({ version: 2, lockTime: 0 })
+    tx.addInput({
+      txid: hexToBytes(TXID),
+      index: 0,
+      sequence: SEQUENCE,
+      witnessUtxo: { script, amount: IN_SATS },
+    })
+    tx.addOutputAddress(RECIPIENT, OUT_SATS, MAINNET)
+
+    const review = reviewTransaction(tx, { network: MAINNET, isChange: () => undefined })
+    signTransaction(tx, seed, { network: MAINNET, paths: [SIGNING_PATH], review })
+
+    const ours = tx.getInput(0).partialSig
+    expect(ours, 'our signature').toBeDefined()
+
+    // Their side, built independently through bitcoinjs-lib.
+    const node = bip32.fromSeed(Buffer.from(seedBytes), bitcoin.networks.bitcoin).derivePath(
+      SIGNING_PATH
+    )
+    const psbt = new bitcoin.Psbt({ network: bitcoin.networks.bitcoin })
+    psbt.setVersion(2)
+    psbt.setLocktime(0)
+    psbt.addInput({
+      hash: TXID,
+      index: 0,
+      sequence: SEQUENCE,
+      witnessUtxo: { script: Buffer.from(script), value: IN_SATS },
+    })
+    psbt.addOutput({ address: RECIPIENT, value: OUT_SATS })
+    psbt.signInput(0, node)
+
+    const theirs = psbt.data.inputs[0]?.partialSig
+    expect(theirs, 'oracle signature').toBeDefined()
+
+    // The public keys must match, or the two sides signed with different keys
+    // and the byte comparison below would be meaningless.
+    expect(bytesToHex(Uint8Array.from(ours?.[0]?.[0] ?? []))).toBe(
+      bytesToHex(Uint8Array.from(theirs?.[0]?.pubkey ?? []))
+    )
+
+    // The signature itself. Every byte, including the DER encoding and the
+    // trailing sighash flag.
+    expect(bytesToHex(Uint8Array.from(ours?.[0]?.[1] ?? []))).toBe(
+      bytesToHex(Uint8Array.from(theirs?.[0]?.signature ?? []))
+    )
   })
 })
