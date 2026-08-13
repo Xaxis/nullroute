@@ -97,14 +97,107 @@ suggest the weaker one was the real defence.
 
 | Control | Implementation |
 | --- | --- |
-| Module loading | Locked down after boot, so a module cannot be inserted at runtime |
 | Memory hygiene | `init_on_alloc=1 init_on_free=1` on the kernel command line, so freed pages are zeroed by the kernel rather than only by application code |
-| Daemon sandbox | The signer runs under systemd with `ProtectSystem=strict`, `ProtectHome=yes`, `PrivateTmp=yes`, `PrivateDevices=yes` (with `/dev/hwrng` explicitly allowed), `NoNewPrivileges=yes`, `MemoryDenyWriteExecute=yes`, an empty `CapabilityBoundingCommon`, and `RestrictAddressFamilies=AF_UNIX` |
+| Daemon sandbox | The signer runs under systemd with `ProtectSystem=strict`, `ProtectHome=true`, `PrivateTmp=true`, `PrivateUsers=true`, `PrivateNetwork=true`, `NoNewPrivileges=true`, an empty `CapabilityBoundingSet`, `RestrictAddressFamilies=AF_UNIX`, `IPAddressDeny=any`, and a `@system-service` syscall filter |
+| Device access | `DevicePolicy=closed` with `DeviceAllow=/dev/hwrng r` and nothing else |
 | No shell on the console | The device boots into the kiosk, not into a login prompt |
 
-`RestrictAddressFamilies=AF_UNIX` is worth calling out: it means that even if
-every application-level defence failed and code tried to open an internet
-socket, the kernel would refuse. It is the backstop behind INV-NET-2.
+`RestrictAddressFamilies=AF_UNIX` and `IPAddressDeny=any` are worth calling out:
+they mean that even if every application-level defence failed and code tried to
+open an internet socket, the kernel would refuse. They are the backstop behind
+INV-NET-2, which is otherwise enforced only by a lint rule.
+
+### Three claims this document deliberately does not make
+
+Each of these is a hardening measure that reads well, appears in most
+checklists, and does not do what it appears to do on this hardware. Writing them
+down as applied would be exactly the kind of overclaim this project treats as a
+defect.
+
+**Kernel lockdown is not enabled, because it cannot be.** Passing `lockdown=` on
+the kernel command line is a no-op on stock Raspberry Pi kernels: the
+`rpi-6.12.y` defconfig does not build `CONFIG_SECURITY_LOCKDOWN_LSM`. Enabling
+it would mean shipping a custom kernel, which makes this project a kernel
+maintainer with a permanent CVE backlog. If a future release does ship one, this
+paragraph changes.
+
+**AppArmor confinement is not claimed.** AppArmor is compiled into the Pi kernel
+but inert, because the defconfig sets `CONFIG_LSM=""`. It does nothing until
+`lsm=apparmor` is passed on the command line. Where profiles are shipped, that
+parameter is set and the fact is checked at build time; where it is not, the
+confinement is decorative and is not counted.
+
+**`MemoryDenyWriteExecute` is not set on the daemon.** It is the single most
+effective directive in the list and it crashes Node: V8's baseline compiler
+needs writable-then-executable pages, and the process dies during startup. It
+works under `node --jitless`, which is an acceptable trade for a workload that
+is not throughput bound, but it changes the interpreter's code paths and any
+constant-time assumption in the crypto layer has to be re-validated under it
+first. Until that work is done and tested, the directive is absent rather than
+present-and-broken.
+
+The Chromium kiosk cannot be hardened anywhere near the daemon, and averaging
+the two would hide that. Chromium's own sandbox requires unprivileged user
+namespaces, so the directives that make the daemon safe (`PrivateUsers=true`,
+`RestrictNamespaces=~user`) force `--no-sandbox`, which is strictly worse than
+a slightly higher exposure score. **The browser is the weakest component on the
+device.** The design response is to keep trust out of it: the daemon holds the
+keys, and the frontend receives only xpubs, addresses, descriptors and PSBTs
+(INV-KEY-1).
+
+### How the hardening is checked
+
+A checklist nobody verifies is prose. Each control above is machine-checked, at
+the point where it can actually be observed:
+
+- **At build time**, against the unbooted image, with
+  `systemd-analyze security --offline=true --root=<rootfs> --json=short`. This
+  is the one standard tool that machine-checks real unit hardening offline, with
+  no network and no booted system, and it emits JSON that binds into the same
+  spec system the application code uses.
+- **At build time**, by asserting on the plain text a human can also read:
+  `cmdline.txt`, `config.txt`, `/etc/fstab`, `/etc/sysctl.d/*`, and the absence
+  of `openssh-server`, `chrony`, `auditd` and `cron` from the package list.
+  Greppable and hashable, which preserves hand-verifiability.
+- **At first boot on the device**, for the facts that are provably invisible to
+  offline inspection: actual `/proc/sys` values, actual mount options from
+  `/proc/mounts`, actual unit state, zero listening sockets, `/dev/hwrng`
+  present, `/dev/rtc0` absent.
+
+That last split is not fastidiousness. Offline compliance scanning of a built
+image produces **false passes** on exactly the controls that matter here: a scan
+of an unbooted rootfs reports `noexec` and `nosuid` mount options as passing
+while simultaneously reporting that the partition in question does not exist.
+The checks pass vacuously because `/proc/mounts` is absent. A gate that can
+report success for hardening that was never applied is worse than no gate, so
+mount options and kernel parameters are verified on the running device or not
+counted.
+
+`systemd-analyze security` has an honest limit too, and it is stated here rather
+than in a footnote: **it measures declared directives, not enforced behaviour.**
+A good score certifies that a unit file asks for sandboxing. It certifies
+nothing about what the binary does inside that sandbox. It is a configuration
+linter, and treating its number as a security measurement would be an overclaim.
+Its weights also change between systemd releases, so the systemd version used
+for verification is pinned and recorded in the report.
+
+### The standard this follows
+
+**ANSSI-BP-028**, cited by control id, rather than CIS or DISA STIG.
+
+ANSSI is the only one of the three with maintained first-class Debian profiles,
+and its levels suit an appliance. CIS Debian control ids are referenced where
+they genuinely apply.
+
+What is not done is shipping a scanner and reporting a compliance percentage.
+Roughly 125 of the 343 controls in the CIS Debian benchmark are irrelevant or
+actively wrong on this device. The `auditd` family (55 controls), `sshd` (23),
+PAM (25), password aging (17), banners (6) and firewall (5) are vacuous with no
+network, no interactive users and one application, and the time synchronisation
+family (6) would actively violate this device's no-network and no-wall-clock
+constraints. Publishing that reasoning is worth more than a percentage, and a
+high score achieved by applying controls that do nothing would be actively
+misleading.
 
 ### The kiosk
 
@@ -160,10 +253,23 @@ A mistake is permanent and can brick the board. It will never be the default,
 and any device that has it enabled cannot be returned to a state where it does
 not.
 
-**An integrity hash tree detects modification; it does not prevent it.** An
-attacker with the card can replace the system partition. What they cannot do is
-make the replacement produce the same root hash, so the device notices. That
-only helps if someone reads the number.
+**On its own, dm-verity moves the gap rather than closing it.** This is the most
+important limitation on the page. A verity hash tree means an attacker cannot
+alter the system partition without changing its root hash. But without a signed
+boot chain, the boot partition is unprotected, and an attacker who rewrites it
+supplies their own `roothash=` on the kernel command line along with their own
+initramfs. The device then cheerfully displays whatever root hash the attacker
+chose. That is the same failure the threat model already describes, relocated
+one layer down. Only OTP-fused secure boot, with the root hash carried inside
+the signed image, actually closes it.
+
+**An integrity hash tree detects modification; it does not prevent it.** What an
+attacker cannot do is make a replacement produce the same root hash, so the
+device notices. That only helps if someone reads the number.
+
+**dm-verity provides integrity, not confidentiality.** It says nothing about
+whether anyone can read the system partition, and nothing at all about the boot
+partition.
 
 **Nothing here defends the hardware.** We check the software supply chain. We
 cannot check that your Pi is a real Pi, that its BootROM is the published one,
