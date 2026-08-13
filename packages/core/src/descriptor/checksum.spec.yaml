@@ -1,0 +1,92 @@
+id: core.descriptor.checksum
+version: 1
+title: BIP-380 output descriptor checksum
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Compute and verify the checksum on an output descriptor. A descriptor is how a
+  wallet moves between programs and is routinely copied by hand, read aloud, or
+  transcribed off a screen. The checksum is the only thing standing between a
+  single mistyped character and a valid descriptor for a different wallet, which
+  would send funds somewhere unrecoverable.
+
+covers:
+  - packages/core/src/descriptor/checksum.ts::descriptorChecksum
+  - packages/core/src/descriptor/checksum.ts::withChecksum
+  - packages/core/src/descriptor/checksum.ts::stripChecksum
+  - packages/core/src/descriptor/checksum.ts::verifyChecksum
+  - packages/core/src/descriptor/checksum.ts::DescriptorChecksumError
+
+algorithm: >
+  A BCH code over a 95-character input alphabet, as BIP-380 specifies. Each
+  character contributes its POSITION in the alphabet, not its code point. The low
+  five bits are fed to the polymod immediately; the high bits accumulate in
+  groups of three and are fed as one symbol per group. Eight zero symbols are
+  then fed to make room, the state is XORed with 1, and the result is rendered as
+  eight bech32 characters.
+
+  The polymod state is 40 bits wide. This is implemented with BigInt throughout
+  because JavaScript's bitwise operators coerce to 32 bits: a Number-based port
+  does not throw or overflow visibly, it silently returns WRONG checksums.
+
+  Implemented here because @scure/btc-signer provides no BIP-380 support at all.
+  That was verified rather than assumed: the package contains neither the
+  INPUT_CHARSET nor any of the five generator constants.
+
+invariants:
+  - id: INV-DESC-1
+    statement: The checksum matches BIP-380's published value.
+    tests:
+      - packages/core/test/descriptor.checksum.test.ts::matches-official-vectors
+
+  - id: INV-DESC-2
+    statement: >
+      Every rejection case BIP-380 lists is refused, including a checksum of the
+      wrong length, which is a distinct failure from a wrong value.
+    tests:
+      - packages/core/test/descriptor.checksum.test.ts::rejects-every-invalid-case
+      - packages/core/test/descriptor.checksum.test.ts::rejects-characters-outside-the-charset
+
+  - id: INV-DESC-3
+    statement: >
+      Any single-character corruption of a descriptor body is detected.
+    tests:
+      - packages/core/test/descriptor.checksum.test.ts::detects-single-character-corruption
+
+  - id: INV-DESC-4
+    statement: >
+      A descriptor arriving with no checksum is reported invalid rather than
+      accepted, while still exposing the expected value so that accepting one
+      anyway is a visible decision.
+    tests:
+      - packages/core/test/descriptor.checksum.test.ts::treats-a-missing-checksum-as-invalid
+
+  - id: INV-DESC-5
+    statement: A descriptor we checksum is one we accept.
+    tests:
+      - packages/core/test/descriptor.checksum.test.ts::round-trips
+      - packages/core/test/descriptor.checksum.test.ts::appends-and-replaces-a-checksum
+
+vectors:
+  - name: BIP-380 checksum test vectors
+    file: spec/vectors/bip380-checksum.json
+    sha256: 95fbbdb2da28f22b67f90b353df12c5325ddd140a256ca3594ea6c66d7b01209
+    source: https://github.com/bitcoin/bips/blob/master/bip-0380.mediawiki
+
+threats:
+  - INV-INTEROP-1
+
+security_notes: >
+  The checksum detects transcription errors. It is not a signature and not an
+  authentication mechanism: anyone can compute a valid checksum for any
+  descriptor, including a malicious one. A descriptor that checksums correctly
+  has been transcribed correctly and says nothing about where it came from.
+  Cosigner registration is what establishes provenance, by comparing the
+  checksum out of band with the other party.
+
+  It also cannot detect a semantically wrong but well-formed descriptor, such as
+  a correct descriptor for the wrong account.
+
+references:
+  - BIP-380, Output Script Descriptors General Operation

@@ -1,0 +1,118 @@
+id: core.address.derive
+version: 1
+title: Address derivation for the standard script types
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Derive addresses for BIP-44 legacy, BIP-49 nested segwit, BIP-84 native segwit
+  and BIP-86 taproot. An address is where money goes, so a wrong one is not a
+  display bug.
+
+covers:
+  - packages/core/src/address/address.ts::addressFromKey
+  - packages/core/src/address/address.ts::deriveAddresses
+  - packages/core/src/address/address.ts::accountPath
+  - packages/core/src/address/address.ts::branchPath
+  - packages/core/src/address/address.ts::PURPOSE
+
+algorithm: >
+  Standard BIP-44 style paths: m / purpose' / coin_type' / account' / change /
+  index, with purpose 44, 49, 84 or 86 selecting the script type.
+
+  p2pkh and p2wpkh take the 33-byte compressed public key. p2sh-p2wpkh is the
+  composition p2sh(p2wpkh(key)) rather than a distinct primitive. p2tr takes the
+  32-byte x-only key, which is the compressed key with its parity prefix
+  removed, and is built key-path only with no script tree.
+
+  Key formats are kept strictly separate because the library performs no
+  coercion: passing a compressed key to p2tr throws, and passing an x-only key
+  to p2wpkh throws.
+
+invariants:
+  - id: INV-ADDR-1
+    statement: Native segwit addresses match the official BIP-84 vectors.
+    tests:
+      - packages/core/test/vectors.address.test.ts::bip84-native-segwit
+
+  - id: INV-ADDR-2
+    statement: Taproot addresses match the official BIP-86 vectors.
+    tests:
+      - packages/core/test/vectors.address.test.ts::bip86-taproot
+
+  - id: INV-ADDR-3
+    statement: Account paths follow BIP-44, BIP-49, BIP-84 and BIP-86.
+    tests:
+      - packages/core/test/vectors.address.test.ts::standard-account-paths
+
+  - id: INV-ADDR-4
+    statement: >
+      Each script type produces a distinct address from the same key, with the
+      prefix its format requires.
+    tests:
+      - packages/core/test/vectors.address.test.ts::script-types-are-distinct
+
+  - id: INV-DIFF-1
+    statement: >
+      The differential oracle is wired for taproot, so p2tr comparisons cannot
+      silently degrade.
+    tests:
+      - packages/core/test/differential.test.ts::oracle-is-wired-for-taproot
+
+  - id: INV-DIFF-2
+    statement: >
+      Extended key derivation agrees with bitcoinjs-lib across 144 paths.
+    tests:
+      - packages/core/test/differential.test.ts::extended-keys-agree
+
+  - id: INV-DIFF-3
+    statement: >
+      Addresses agree with bitcoinjs-lib across 192 comparisons, spanning every
+      script type on both mainnet and a test network.
+    tests:
+      - packages/core/test/differential.test.ts::addresses-agree
+
+  - id: INV-DIFF-4
+    statement: >
+      The two implementations agree on a private key with a leading zero byte,
+      the case BIP-32 test vector 4 exists to cover.
+    tests:
+      - packages/core/test/differential.test.ts::agrees-on-leading-zero-private-keys
+
+vectors:
+  - name: BIP-84 and BIP-86 address vectors
+    file: spec/vectors/bip84-86-addresses.json
+    sha256: 99647ab80c9616a30f6b3a8b71386780c20e39220a4ba33fe3ce49d00eff56e3
+    source: https://github.com/bitcoin/bips/blob/master/bip-0086.mediawiki
+
+differential:
+  oracle: bitcoinjs-lib
+  min_cases: 336
+  notes: >
+    An independent implementation written by different people from the same
+    specifications. Agreement is evidence; disagreement means one of them is
+    wrong and we do not get to guess which. It is a development dependency and
+    never ships. It installs and runs under the mandatory ignore-scripts policy:
+    tiny-secp256k1 has no lifecycle scripts and ships prebuilt WASM, verified
+    rather than assumed.
+
+threats:
+  - INV-PSBT-2
+  - INV-INTEROP-1
+
+security_notes: >
+  Agreement between two implementations catches a disagreement. It does not
+  catch both being wrong in the same way, which is a real possibility where both
+  derive from the same specification text and the specification is ambiguous.
+  The official vectors are the defence against that, and neither check
+  substitutes for the other.
+
+  This module derives addresses from a public key and holds no secrets. That
+  does not lower its tier: a wrong version byte produces a valid address on the
+  wrong chain, and a botched x-only conversion produces a valid taproot address
+  nobody can spend from. Both lose funds as effectively as a leaked key, and
+  neither looks wrong on screen.
+
+references:
+  - BIP-44, BIP-49, BIP-84, BIP-86
+  - BIP-341, Taproot, on x-only public keys

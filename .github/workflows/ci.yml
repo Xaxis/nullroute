@@ -76,13 +76,6 @@ jobs:
   vectors:
     name: official BIP vectors and differential agreement
     runs-on: ubuntu-latest
-    # Enabled when phase 2 lands the BIP surface. Phase 1 is entropy and the
-    # spec system, which have no official vectors and no second implementation
-    # to disagree with. A job that passes because it had nothing to check is
-    # worse than an absent job: it reports assurance the project has not earned.
-    # The same reasoning is why `make verify` reports these as not-applicable
-    # rather than as passed.
-    if: false
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -94,6 +87,9 @@ jobs:
 
       # BIP-32, BIP-39 (every bundled wordlist), BIP-84/86 addresses, BIP-174
       # PSBTs, BIP-340 Schnorr, BIP-322, BIP-380 descriptor checksums.
+      # BIP-32, BIP-39, BIP-84/86 addresses and BIP-380 checksums, all vendored
+      # and pinned by hash in the spec files so a vector cannot be edited to
+      # make a failing implementation pass.
       - name: Official BIP test vectors
         run: make test-vectors
 
@@ -102,11 +98,6 @@ jobs:
       # disagreement is a defect in one of them and we do not get to guess which.
       - name: Differential agreement with bitcoinjs-lib
         run: make test-differential
-
-      # A signature that is not byte-identical across runs has room in it to
-      # hide key material. See docs/VERIFICATION.md section 4.
-      - name: Signatures are byte-reproducible
-        run: make test-repro
 
   # ---------------------------------------------------------------------------
   # Supply chain and reproducibility. The manifest root hash is worthless if a

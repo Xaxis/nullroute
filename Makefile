@@ -84,19 +84,17 @@ repro-check: ## Build twice and assert the output is byte-identical
 test: ## Unit and property tests across all workspaces
 	@npx vitest run
 
-# These three land with phase 2. Until there is a BIP surface there are no
-# official vectors, no second implementation to disagree with, and no signature
-# to reproduce. They are wired here and gated off in CI rather than made to pass
-# vacuously, for the same reason `make verify` reports them as not-applicable.
+test-vectors: ## Official BIP test vectors from spec/vectors/
+	@npx vitest run --project core -t 'official vectors'
 
-test-vectors: ## Official BIP test vectors from spec/vectors/ (phase 2)
-	@npx vitest run --project vectors
+test-differential: ## Cross-check against bitcoinjs-lib, an independent implementation
+	@npx vitest run --project core -t 'differential'
 
-test-differential: ## Cross-check against bitcoinjs-lib, an independent implementation (phase 2)
-	@npx vitest run --project differential
-
-test-repro: ## Sign the same PSBT repeatedly, assert byte-identical output (phase 2)
-	@npx vitest run --project reproducibility
+# Lands with PSBT signing. There is no signature to reproduce until then, and a
+# target that passed with nothing to examine would report assurance the project
+# has not earned.
+test-repro: ## Sign the same PSBT repeatedly, assert byte-identical output (not yet)
+	@echo "test-repro: no signing path yet; lands with PSBT support"
 
 lint: ## ESLint, including the no-network rule that enforces INV-NET-2
 	@npx eslint .
@@ -190,4 +188,4 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.space
 
 check-fast: lint type-check prose links profiles test manifest-check ## Everything except the slow suites
 
-check: check-fast build verify repro-check sbom web-check ## Everything CI runs
+check: check-fast build verify test-vectors test-differential repro-check sbom web-check ## Everything CI runs

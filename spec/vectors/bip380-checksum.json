@@ -1,0 +1,18 @@
+{
+  "source": "https://github.com/bitcoin/bips/blob/master/bip-0380.mediawiki#test-vectors",
+  "note": "Transcribed verbatim from BIP-380's Test Vectors section. The BIP states cases as valid or invalid rather than publishing expected checksums, so only the one checksum it prints is asserted by value; the rest assert the verdict.",
+  "validChecksum": [
+    { "descriptor": "raw(deadbeef)", "checksum": "89f8spxm" }
+  ],
+  "rejected": [
+    { "case": "raw(deadbeef)", "why": "no checksum" },
+    { "case": "raw(deadbeef)#", "why": "missing checksum" },
+    { "case": "raw(deadbeef)#89f8spxmx", "why": "checksum too long, 9 characters" },
+    { "case": "raw(deadbeef)#89f8spx", "why": "checksum too short, 7 characters" },
+    { "case": "raw(deedbeef)#89f8spxm", "why": "error in payload" },
+    { "case": "raw(deedbeef)##9f8spxm", "why": "error in checksum" }
+  ],
+  "invalidCharacter": [
+    { "case": "raw(Ü)#00000000", "why": "invalid character in payload" }
+  ]
+}
