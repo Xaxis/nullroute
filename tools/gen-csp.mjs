@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Generate (or check) the Content-Security-Policy for nullroute.space.
+ * Generate (or check) the Content-Security-Policy for nullroute.diy.
  *
  * IMPORTANT: this only holds because the site is deployed PREBUILT. The hashes
  * below are computed from a specific build's bytes, and Vercel building the same

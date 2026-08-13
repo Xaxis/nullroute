@@ -41,7 +41,7 @@ const FORBIDDEN = [
   {
     from: 'apps/web/',
     deny: ['@nullroute/daemon', '@nullroute/wallet', '@nullroute/bridge', '@nullroute/ui'],
-    why: 'nullroute.space is a networked Next.js site that never ships to the device. Importing device code would fold the website into the artifact whose hash users check before entering a PIN. Render docs/ instead, or generate a static artifact.',
+    why: 'nullroute.diy is a networked Next.js site that never ships to the device. Importing device code would fold the website into the artifact whose hash users check before entering a PIN. Render docs/ instead, or generate a static artifact.',
   },
 ]
 

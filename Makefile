@@ -136,7 +136,7 @@ clean: ## Remove build output
 	rm -rf packages/*/dist apps/web/.next apps/web/out **/*.tsbuildinfo
 
 # --- the website -------------------------------------------------------------
-# nullroute.space. Never ships to the device, never enters MANIFEST.lock.
+# nullroute.diy. Never ships to the device, never enters MANIFEST.lock.
 
 web: ## Run the website locally
 	@npm run dev --workspace @nullroute/web
@@ -174,7 +174,7 @@ web-live-check: ## Load the DEPLOYED site in a real browser and assert nothing i
 	# the console and nowhere else.
 	@node tools/check-web-live.mjs
 
-deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.space
+deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 	# PREBUILT on purpose. Vercel building the same commit on its own runners
 	# emits a different RSC payload than a local build, so the committed CSP
 	# hashes would not cover the served scripts. The failure is silent: the page

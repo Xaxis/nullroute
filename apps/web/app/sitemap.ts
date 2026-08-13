@@ -5,7 +5,7 @@ export const dynamic = 'force-static'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
-    { url: 'https://nullroute.space/', priority: 1 },
-    ...DOCS.map((doc) => ({ url: `https://nullroute.space/docs/${doc.slug}`, priority: 0.8 })),
+    { url: 'https://nullroute.diy/', priority: 1 },
+    ...DOCS.map((doc) => ({ url: `https://nullroute.diy/docs/${doc.slug}`, priority: 0.8 })),
   ]
 }

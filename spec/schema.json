@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://nullroute.space/spec/schema.json",
+  "$id": "https://nullroute.diy/spec/schema.json",
   "title": "nullroute module specification",
   "description": "Every module in packages/core, and every security-relevant module elsewhere, has a sibling *.spec.yaml conforming to this schema. `make verify` asserts that every exported symbol is covered by some spec and that every declared invariant names a test that exists and passed. A spec is not documentation: the device refuses to boot if code, specs, and tests disagree.",
   "type": "object",

@@ -3,7 +3,7 @@ import Link from 'next/link'
 import '../styles/globals.css'
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://nullroute.space'),
+  metadataBase: new URL('https://nullroute.diy'),
   title: {
     default: 'nullroute',
     template: '%s | nullroute',
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'nullroute',
     description: 'An air-gapped Bitcoin signing device you can actually verify.',
-    url: 'https://nullroute.space',
+    url: 'https://nullroute.diy',
     siteName: 'nullroute',
     type: 'website',
   },

@@ -203,7 +203,7 @@ jobs:
         run: make profiles
 
   # ---------------------------------------------------------------------------
-  # nullroute.space. Never ships to the device and never enters MANIFEST.lock,
+  # nullroute.diy. Never ships to the device and never enters MANIFEST.lock,
   # so it is checked separately and cannot affect the signer's root hash.
   # ---------------------------------------------------------------------------
   web:

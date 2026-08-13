@@ -113,7 +113,7 @@ export default tseslint.config(
   },
 
   // ---------------------------------------------------------------------------
-  // nullroute.space. A networked Next.js site that never ships to the device,
+  // nullroute.diy. A networked Next.js site that never ships to the device,
   // so the no-network rule does not apply. The tier rule still does: the site
   // must never import device code.
   // ---------------------------------------------------------------------------

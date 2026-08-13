@@ -176,7 +176,7 @@ review.
 
 ## The website is not the device
 
-`apps/web` builds nullroute.space. It is a Next.js site, it obviously uses the
+`apps/web` builds nullroute.diy. It is a Next.js site, it obviously uses the
 network, and it is fenced off from the device build the same way
 `packages/bridge` is:
 

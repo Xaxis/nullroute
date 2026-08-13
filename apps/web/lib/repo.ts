@@ -28,7 +28,7 @@ function findRepoRoot(start: string): string {
     dir = parent
   }
   throw new Error(
-    `nullroute.space: could not locate the repository root from ${start}. ` +
+    `nullroute.diy: could not locate the repository root from ${start}. ` +
       `Looked upward for ${MARKER}. The site renders docs/ from the repo root, ` +
       `so without it every documentation page would build empty.`
   )

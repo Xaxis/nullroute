@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://nullroute.space/provisioning/schema.json",
+  "$id": "https://nullroute.diy/provisioning/schema.json",
   "title": "nullroute hardening profile",
   "description": "A distribution-independent statement of what must be true of a built nullroute image. Every assertion carries an executable verifier that inspects the built artifact or the running device. Backends are advisory: a backend is correct when the unchanged verifiers pass against its output, not when someone reviewed its recipe.",
   "type": "object",

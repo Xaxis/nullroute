@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * nullroute.space loads nothing from anywhere but itself.
+ * nullroute.diy loads nothing from anywhere but itself.
  *
  * The site documents a device whose entire premise is that it has no network
  * capability. A documentation site that pulled a font from a CDN, or ran an

@@ -116,7 +116,7 @@ Other things worth running:
 make verify      # the six checks, and the hash the lock screen shows
 make check       # everything CI runs, about a minute
 make test        # 162 tests
-make web         # the nullroute.space website, at localhost:3000
+make web         # the nullroute.diy website, at localhost:3000
 ```
 
 `make` on its own lists every target.
@@ -266,7 +266,7 @@ Start with whichever question you have:
 | [Entropy](docs/ENTROPY.md) | How do dice become a seed, and how do I check it? |
 | [Provisioning](docs/PROVISIONING.md) | How do I build and verify the device image? |
 
-All four are rendered at [nullroute.space](https://nullroute.space) directly
+All four are rendered at [nullroute.diy](https://nullroute.diy) directly
 from this repository, so the published page and the file that ships with the
 code are the same bytes.
 
@@ -283,7 +283,7 @@ packages/
   daemon/      Holds the keys. Unix socket only. Refuses to start unverified.
   ui/          The device screens
   verify/      The tool that checks code, specs and tests agree
-apps/web/      nullroute.space. Never ships to the device.
+apps/web/      nullroute.diy. Never ships to the device.
 ```
 
 ---

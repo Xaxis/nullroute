@@ -1,7 +1,7 @@
 # nullroute
 
 An air-gapped Bitcoin signing device (software, runs on a Raspberry Pi), plus
-the website that documents it. Site at **nullroute.space**, deployed on Vercel.
+the website that documents it. Site at **nullroute.diy**, deployed on Vercel.
 The GitHub repo is `Xaxis/nullroute` and the local checkout is
 `~/Projects/nullroute`.
 
@@ -69,7 +69,7 @@ packages/
   verify/   The spec verification CLI
   wallet/   Phase 5. Lower assurance tier. Compile-time removable.
   bridge/   Phase 6. Runs on a NETWORKED machine. Never on the device.
-apps/web/   nullroute.space. Never ships to the device.
+apps/web/   nullroute.diy. Never ships to the device.
 tools/      check-prose, gen-sbom, check-reproducible, build-image
 ```
 

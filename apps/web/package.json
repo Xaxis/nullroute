@@ -2,7 +2,7 @@
   "name": "@nullroute/web",
   "version": "0.1.0",
   "private": true,
-  "description": "nullroute.space. The public website. Never ships to the device.",
+  "description": "nullroute.diy. The public website. Never ships to the device.",
   "license": "MIT",
   "scripts": {
     "dev": "next dev",
