@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { DOCS } from '../lib/docs'
+import { Hero } from '../components/hero/Hero'
 
 /**
  * The home page makes exactly one argument: you should not have to trust this
@@ -40,34 +41,7 @@ const PHASES = [
 export default function HomePage() {
   return (
     <div className="mx-auto max-w-5xl px-5">
-      {/* --- Statement ------------------------------------------------- */}
-      <section className="pt-16 pb-14 border-b border-ink-800">
-        <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight text-ink-100 leading-[1.1]">
-          An air-gapped Bitcoin signing device{' '}
-          <span className="block sm:inline">you can actually verify.</span>
-        </h1>
-
-        <p className="mt-6 text-lg text-ink-300 max-w-2xl leading-relaxed">
-          Runs on a Raspberry Pi. Generates seeds from dice you rolled yourself. Signs PSBTs
-          across an air gap. Every module ships with a machine-checkable specification, and the
-          device refuses to run unless code, specs, and tests all agree.
-        </p>
-
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Link
-            href="/docs/verification"
-            className="px-4 py-2 rounded bg-signal-500 text-ink-950 font-medium text-sm hover:bg-signal-400 transition-colors"
-          >
-            How to verify it
-          </Link>
-          <Link
-            href="/docs/threat-model"
-            className="px-4 py-2 rounded border border-ink-700 text-ink-200 text-sm hover:border-ink-500 hover:text-ink-100 transition-colors"
-          >
-            What it does not do
-          </Link>
-        </div>
-      </section>
+      <Hero />
 
       {/* --- The argument ----------------------------------------------- */}
       <section className="py-14 border-b border-ink-800">
