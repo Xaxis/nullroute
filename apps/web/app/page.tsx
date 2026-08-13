@@ -14,7 +14,11 @@ import { Hero } from '../components/hero/Hero'
  */
 
 const PHASES = [
-  { n: 1, scope: 'Spec system, entropy, BIP-39/32, daemon skeleton', state: 'in progress' },
+  {
+    n: 1,
+    scope: 'Spec system, entropy, BIP-39/32, daemon, lock screen, networks',
+    state: 'complete',
+  },
   {
     n: 2,
     scope: 'Single-sig signing, descriptors, PSBT review',
@@ -243,9 +247,11 @@ export default function HomePage() {
                   <td className="px-4 py-2.5">
                     <span
                       className={
-                        phase.state === 'in progress'
-                          ? 'text-signal-400 font-medium'
-                          : 'text-ink-600'
+                        phase.state === 'complete'
+                          ? 'text-verify-300 font-medium'
+                          : phase.state === 'in progress'
+                            ? 'text-signal-400 font-medium'
+                            : 'text-ink-600'
                       }
                     >
                       {phase.state}

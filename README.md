@@ -182,12 +182,20 @@ real means:
 
 ## Status
 
-**Phase 1, in progress.** The signer is being built before the wallet, and the
+**Phase 1 complete.** The signer is being built before the wallet, and the
 verification system was built before the signer.
+
+Phase 1's definition of done, all green: `verify` passes and emits a root hash,
+spec coverage is 100 percent of every package's public API, the official BIP-32
+and BIP-39 vectors pass, the dice path is reproducible by hand with `sha256sum`,
+the daemon binds only to a Unix socket and refuses to start without a passing
+report, the lock screen displays the root hash, network selection carries
+correct version bytes with a persistent non-mainnet banner, and two clean builds
+produce identical output.
 
 | Phase | Scope | State |
 | --- | --- | --- |
-| 1 | Spec system, verify CLI, entropy, BIP-39/32, daemon skeleton, network selection | In progress |
+| 1 | Spec system, verify CLI, entropy, BIP-39/32, daemon, lock screen, network selection | **Complete** |
 | 2 | Single-sig signing, descriptors, PSBT review, address verification. **Provisioning tier 0.** | Not started |
 | 3 | Multisig, cosigner registration, multi-wallet, encrypted backup. **Provisioning tier 1.** | Not started |
 | 4 | BIP-322 message signing, BIP-85, BIP-329 labels | Not started |
