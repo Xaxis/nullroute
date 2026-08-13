@@ -215,7 +215,7 @@ produce identical output.
 | Phase | Scope | State |
 | --- | --- | --- |
 | 1 | Spec system, verify CLI, entropy, BIP-39/32, daemon, lock screen, network selection | **Complete** |
-| 2 | Single-sig signing, descriptors, PSBT review, address verification. **Provisioning tier 0.** | Not started |
+| 2 | Single-sig signing, descriptors, PSBT review, address verification. **Provisioning tier 0.** | In progress |
 | 3 | Multisig, cosigner registration, multi-wallet, encrypted backup. **Provisioning tier 1.** | Not started |
 | 4 | BIP-322 message signing, BIP-85, BIP-329 labels | Not started |
 | 5 | Wallet layer, optional and lower assurance | Not started |

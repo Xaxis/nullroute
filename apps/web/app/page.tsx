@@ -23,7 +23,7 @@ const PHASES = [
     n: 2,
     scope: 'Single-sig signing, descriptors, PSBT review',
     provisioning: 'Tier 0: reproducible, signed image',
-    state: 'not started',
+    state: 'in progress',
   },
   {
     n: 3,
