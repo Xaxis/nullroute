@@ -1,0 +1,300 @@
+@import 'tailwindcss';
+
+/*
+ * The device UI.
+ *
+ * Designed for a 7 inch 800x480 touchscreen and a user who is in a hurry but is
+ * being asked to check something carefully. Everything here follows from that
+ * one sentence.
+ *
+ * Dark by default because the device is often used in low light. There is a
+ * light mode, and its only purpose is photographing xpub QR codes, where a dark
+ * background makes a camera struggle.
+ *
+ * No animation anywhere on a security screen. Motion belongs to progress
+ * indicators. A screen that moves invites a glance, and every screen here is
+ * asking to be read.
+ */
+
+@theme {
+  --color-ink-950: #08090b;
+  --color-ink-900: #101216;
+  --color-ink-850: #171a20;
+  --color-ink-800: #1f232b;
+  --color-ink-700: #2d323d;
+  --color-ink-600: #414856;
+  --color-ink-500: #5f6878;
+  --color-ink-400: #949cab;
+  --color-ink-300: #c2c8d2;
+  --color-ink-200: #e2e6ec;
+  --color-ink-100: #f4f6f9;
+
+  --color-signal-500: #e8833a;
+  --color-signal-400: #f39c5c;
+
+  --color-caution-600: #b23c38;
+  --color-caution-500: #d9534f;
+  --color-caution-300: #f0918e;
+
+  --color-verify-500: #4fa88a;
+  --color-verify-300: #86c9b2;
+
+  /*
+   * Glyph disambiguation is a security property here, not typography taste. A
+   * user comparing a hash needs 0 and O, and 1 and l, to be unmistakable. The
+   * stack is ordered by how well each face separates them.
+   */
+  --font-mono:
+    'JetBrains Mono', 'IBM Plex Mono', 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background-color: var(--color-ink-950);
+  color: var(--color-ink-200);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  /* The device is a touchscreen with no text to select and no pinch to zoom. */
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  overscroll-behavior: none;
+}
+
+/*
+ * Hashes, addresses and hex. Ligatures off so a sequence of characters cannot
+ * be drawn as a single glyph, and slashed zero so 0 and O separate at a glance.
+ */
+.nr-mono {
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  font-feature-settings:
+    'zero' 1,
+    'ss01' 1;
+  letter-spacing: 0.01em;
+}
+
+/* --- Lock screen ---------------------------------------------------------- */
+
+.nr-lock {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: 1.5rem 1.75rem;
+  gap: 1.25rem;
+}
+
+.nr-lock__head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.nr-lock__title {
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-ink-100);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.nr-lock__version {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--color-ink-500);
+}
+
+.nr-lock__attestation {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 1.125rem 1.25rem;
+  background-color: var(--color-ink-900);
+  border: 1px solid var(--color-ink-800);
+  border-radius: 8px;
+}
+
+.nr-lock__row {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.nr-lock__label {
+  flex: 0 0 8.5rem;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-ink-500);
+}
+
+.nr-lock__value {
+  font-size: 0.9375rem;
+  color: var(--color-ink-200);
+}
+
+/* --- The hash ------------------------------------------------------------- */
+
+.nr-hash {
+  font-size: 0.9375rem;
+  color: var(--color-ink-100);
+  word-break: break-all;
+  line-height: 1.6;
+  text-align: left;
+}
+
+.nr-hash--toggle {
+  background: none;
+  border: none;
+  padding: 0.25rem 0;
+  margin: -0.25rem 0;
+  cursor: pointer;
+  /* A touch target that a finger can actually hit. */
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+  color: inherit;
+  font: inherit;
+}
+
+.nr-hash--toggle:focus-visible {
+  outline: 2px solid var(--color-signal-500);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* --- Status --------------------------------------------------------------- */
+
+.nr-status {
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.nr-status--ok {
+  color: var(--color-verify-300);
+}
+
+.nr-status--fail {
+  color: var(--color-caution-300);
+  font-weight: 600;
+}
+
+/* --- Network banner ------------------------------------------------------- */
+
+/*
+ * Persistent, and deliberately loud. The mistake it prevents is treating a test
+ * wallet as real, which is made mid-session rather than at setup, so this is on
+ * every screen rather than only at creation.
+ */
+.nr-banner {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.625rem 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.nr-banner--testnet {
+  background-color: color-mix(in srgb, var(--color-caution-600) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-caution-500) 45%, transparent);
+  color: var(--color-caution-300);
+}
+
+.nr-banner strong {
+  font-family: var(--font-mono);
+  color: var(--color-ink-100);
+  white-space: nowrap;
+}
+
+/* --- Caveat and blocked message ------------------------------------------- */
+
+.nr-lock__caveat {
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--color-ink-500);
+  max-width: 46rem;
+  margin: 0;
+}
+
+.nr-lock__blocked {
+  margin: 0.75rem 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--color-caution-300);
+  font-weight: 500;
+  max-width: 42rem;
+}
+
+/* --- Actions -------------------------------------------------------------- */
+
+.nr-lock__actions {
+  margin-top: auto;
+}
+
+.nr-button {
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 500;
+  /* 3rem minimum: a finger on a 7 inch panel, not a mouse pointer. */
+  min-height: 3rem;
+  padding: 0 2rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.nr-button--primary {
+  background-color: var(--color-signal-500);
+  color: var(--color-ink-950);
+}
+
+.nr-button--primary:hover:not(:disabled) {
+  background-color: var(--color-signal-400);
+}
+
+.nr-button:disabled {
+  background-color: var(--color-ink-800);
+  color: var(--color-ink-600);
+  border-color: var(--color-ink-700);
+  cursor: not-allowed;
+}
+
+.nr-button:focus-visible {
+  outline: 2px solid var(--color-signal-400);
+  outline-offset: 3px;
+}
+
+/*
+ * Light mode exists for one reason: photographing an xpub QR code, where a dark
+ * background defeats most phone cameras. It is not a general theme and is not
+ * offered as a preference.
+ */
+[data-theme='qr'] {
+  color-scheme: light;
+}
+[data-theme='qr'] body {
+  background-color: #ffffff;
+  color: #101216;
+}
+
+/* Motion is for progress indicators. There is none on a security screen. */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

@@ -150,6 +150,25 @@ make install     # npm ci, exact versions from the committed lockfile
 make check       # everything CI runs: verify, tests, vectors, differential
 ```
 
+To run the device itself:
+
+```bash
+make dev         # daemon plus UI, at http://127.0.0.1:5180
+```
+
+That starts the signing daemon on a Unix socket and serves the device UI against
+it, so the lock screen shows a real attestation rather than a placeholder. The
+daemon will refuse to start if verification fails, which is the same thing that
+happens on the device.
+
+Other useful targets:
+
+```bash
+make verify      # the six checks, prints the manifest root hash
+make dev-daemon  # just the daemon, on /tmp/nullrouted.sock
+make web         # nullroute.space, at http://localhost:3000
+```
+
 Run `make` with no arguments to list every target.
 
 To verify a build rather than develop on it, follow

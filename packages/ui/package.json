@@ -14,15 +14,24 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsc --build"
+    "build": "tsc --build",
+    "dev": "vite",
+    "build:app": "vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@nullroute/core": "*"
+    "@nullroute/core": "*",
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
     "@testing-library/react": "16.3.0",
     "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "@vitejs/plugin-react": "6.0.5",
     "happy-dom": "20.11.2",
-    "react": "19.2.8"
+    "react": "19.2.8",
+    "tailwindcss": "4.3.3",
+    "vite": "8.2.1"
   }
 }

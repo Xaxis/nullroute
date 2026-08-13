@@ -59,6 +59,14 @@ export const noNetwork = {
             description:
               'Path substrings where node:net may be imported for Unix domain socket IPC.',
           },
+          allowFetchIn: {
+            type: 'array',
+            items: { type: 'string' },
+            description:
+              'Path substrings where fetch may be called, for the frontend transport that ' +
+              'reaches the loopback proxy. Same-origin only; the CSP is what constrains where ' +
+              'it can actually reach.',
+          },
         },
       },
     ],
@@ -77,10 +85,15 @@ export const noNetwork = {
   create(context) {
     const options = context.options[0] ?? {}
     const allowUnixSocketIn = options.allowUnixSocketIn ?? []
+    const allowFetchIn = options.allowFetchIn ?? []
     const filename = context.filename ?? context.getFilename()
     // Normalise so the allowlist can be written with forward slashes on any OS.
     const normalised = filename.replaceAll('\\', '/')
     const ipcAllowed = allowUnixSocketIn.some((frag) => normalised.includes(frag))
+    // The frontend's transport reaches a same-origin loopback proxy. INV-NET-2
+    // permits an allowlisted IPC layer, and this is the browser's half of it.
+    // Listed by path so the exemption is one place and shows up in a diff.
+    const fetchAllowed = allowFetchIn.some((frag) => normalised.includes(frag))
 
     /**
      * @param {unknown} raw
@@ -142,13 +155,19 @@ export const noNetwork = {
         }
 
         // fetch(...)
-        if (callee.type === 'Identifier' && callee.name === 'fetch' && isGlobalFetch(callee)) {
+        if (
+          !fetchAllowed &&
+          callee.type === 'Identifier' &&
+          callee.name === 'fetch' &&
+          isGlobalFetch(callee)
+        ) {
           context.report({ node, messageId: 'bannedFetch' })
           return
         }
 
         // globalThis.fetch(...) / window.fetch(...) / self.fetch(...)
         if (
+          !fetchAllowed &&
           callee.type === 'MemberExpression' &&
           !callee.computed &&
           callee.property.type === 'Identifier' &&

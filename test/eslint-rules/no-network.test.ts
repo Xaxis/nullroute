@@ -44,6 +44,20 @@ ruleTester.run('nullroute/no-network (INV-NET-2)', noNetwork, {
       filename: '/repo/packages/daemon/src/ipc/socket.ts',
       options: [{ allowUnixSocketIn: ['packages/daemon/src/ipc/'] }],
     },
+
+    // fetch inside the allowlisted frontend transport. This is the browser's
+    // half of the same loopback IPC layer: it POSTs to a same-origin proxy, and
+    // the CSP's connect-src 'self' is what stops it reaching off the machine.
+    {
+      code: `await fetch("/ipc", { method: "POST" });`,
+      filename: '/repo/packages/ui/src/lib/transport.ts',
+      options: [{ allowFetchIn: ['packages/ui/src/lib/transport.ts'] }],
+    },
+    {
+      code: `await globalThis.fetch("/ipc");`,
+      filename: '/repo/packages/ui/src/lib/transport.ts',
+      options: [{ allowFetchIn: ['packages/ui/src/lib/transport.ts'] }],
+    },
   ],
 
   invalid: [
@@ -90,6 +104,23 @@ ruleTester.run('nullroute/no-network (INV-NET-2)', noNetwork, {
     {
       // With no allowlist configured at all, node:net is banned everywhere.
       code: `import net from "node:net";`,
+      errors: [{ messageId: 'socketOutsideIpc' }],
+    },
+
+    // fetch OUTSIDE the transport allowlist. This is the case that matters:
+    // the exemption exists for one file and must not leak into the rest of the
+    // frontend, where a component could otherwise call out directly.
+    {
+      code: `await fetch("https://example.com");`,
+      filename: '/repo/packages/ui/src/screens/LockScreen.tsx',
+      options: [{ allowFetchIn: ['packages/ui/src/lib/transport.ts'] }],
+      errors: [{ messageId: 'bannedFetch' }],
+    },
+    {
+      // An allowlist for fetch must not also permit a socket.
+      code: `import net from "node:net";`,
+      filename: '/repo/packages/ui/src/lib/transport.ts',
+      options: [{ allowFetchIn: ['packages/ui/src/lib/transport.ts'] }],
       errors: [{ messageId: 'socketOutsideIpc' }],
     },
   ],

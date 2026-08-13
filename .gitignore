@@ -27,3 +27,4 @@ verification-report.json
 test-report.json
 sbom.cdx.json
 *.tsbuildinfo
+packages/ui/dist-app/

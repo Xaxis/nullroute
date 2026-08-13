@@ -9,5 +9,6 @@
     "lib": ["ES2023", "DOM"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["src/main.tsx", "src/App.tsx", "src/lib/transport.ts"],
   "references": [{ "path": "../core/tsconfig.build.json" }]
 }

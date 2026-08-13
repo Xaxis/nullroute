@@ -13,6 +13,7 @@ export default tseslint.config(
       'apps/web/.next/**',
       'apps/web/.next-dev/**',
       'apps/web/out/**',
+      'packages/ui/dist-app/**',
       // Generated deploy bundle: a copy of apps/web/out plus a config, emitted
       // by tools/build-vercel-output.mjs. Minified vendor code, not ours.
       '.vercel/**',
@@ -60,6 +61,11 @@ export default tseslint.config(
             // is one place, reviewable, and greppable.
             'packages/daemon/test/ipc.test.ts',
           ],
+          // The browser's half of the same IPC layer. It POSTs to a same-origin
+          // loopback proxy, which is the only channel the page has: the CSP
+          // sets connect-src 'self', so this fetch cannot reach off the machine
+          // even if the path were widened by accident.
+          allowFetchIn: ['packages/ui/src/lib/transport.ts'],
         },
       ],
 
@@ -126,6 +132,17 @@ export default tseslint.config(
       '@typescript-eslint/no-non-null-assertion': 'off',
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/no-unsafe-member-access': 'off',
+    },
+  },
+
+  // Build configuration, not device code. Vite requires a default export, and
+  // the dev-server proxy legitimately opens the daemon's Unix socket: it is the
+  // development stand-in for the local forwarder that runs beside the kiosk.
+  {
+    files: ['**/vite.config.ts', '**/vitest.config.ts'],
+    rules: {
+      'no-restricted-syntax': 'off',
+      'nullroute/no-network': 'off',
     },
   },
 

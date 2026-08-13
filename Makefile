@@ -17,7 +17,7 @@ MANIFEST_ROOTS := packages spec provisioning
 
 .PHONY: help install dev build check check-fast verify manifest manifest-check \
         lint type-check test test-report test-vectors test-differential test-repro \
-        prose links profiles sbom sbom-check repro-check clean web web-build web-lint web-type-check \
+        prose links profiles sbom sbom-check repro-check clean dev-daemon build-app web web-build web-lint web-type-check \
         web-isolation web-csp web-responsive web-check web-live-check deploy image
 
 help: ## List available targets
@@ -114,12 +114,22 @@ build: ## Build every package
 	# the next step cannot find the CLI it just "built". CI caught this.
 	@npx tsc --build tsconfig.build.json
 
-dev: build verify ## Run the daemon locally against a Unix socket in /tmp
-	# --jitless because the production systemd unit sets
-	# MemoryDenyWriteExecute=true, which crashes V8's baseline compiler.
-	# Running the same way locally means a crash shows up here, not on the device.
+# `manifest` before `verify`, on the dev targets only. The daemon refuses to
+# start against a stale manifest, which is right on a device and pure friction
+# in an edit-run loop: every source change would otherwise need a hand-run
+# `make manifest` before the app would launch. Regenerating here does NOT weaken
+# the guarantee, because `make manifest-check` in `check` and in CI is what
+# asserts the COMMITTED manifest matches the tree, and that is the claim a user
+# actually verifies against a release.
+dev: build manifest verify ## Run the whole device locally: daemon plus UI at 127.0.0.1:5180
+	@bash tools/dev.sh
+
+dev-daemon: build manifest verify ## Just the daemon, on a Unix socket in /tmp
 	@NULLROUTE_SOCKET=$${NULLROUTE_SOCKET:-/tmp/nullrouted.sock} \
 	  node --jitless packages/daemon/dist/main.js
+
+build-app: ## Production build of the device UI
+	@npm run build:app --workspace @nullroute/ui
 
 image: ## Build the hardened Raspberry Pi image
 	@bash tools/build-image/build.sh
