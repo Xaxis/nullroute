@@ -1,0 +1,128 @@
+id: core.psbt.review
+version: 1
+title: PSBT review, sighash policy and fee accounting
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Turn a transaction into something a person can check before signing it. The
+  screen is the trust anchor: a user who reads it carefully must not be
+  defrauded, and this module decides what that screen is allowed to say.
+
+covers:
+  - packages/core/src/psbt/review.ts::reviewTransaction
+  - packages/core/src/psbt/review.ts::describeSighash
+  - packages/core/src/psbt/review.ts::formatBtc
+  - packages/core/src/psbt/review.ts::PsbtError
+  - packages/core/src/psbt/review.ts::SIGHASH_ALL
+  - packages/core/src/psbt/review.ts::SIGHASH_NONE
+  - packages/core/src/psbt/review.ts::SIGHASH_SINGLE
+  - packages/core/src/psbt/review.ts::SIGHASH_ANYONECANPAY
+  - packages/core/src/psbt/review.ts::SIGHASH_DEFAULT
+
+algorithm: >
+  Every input contributes its amount, taken from the witness or non-witness UTXO
+  and never from any field the PSBT could assert independently. The fee is
+  inputs minus outputs, computed in bigint. A negative fee is an invalid
+  transaction and throws.
+
+  Every output is classified by asking the caller's re-derivation function
+  whether its address belongs to the wallet. An output is `change` only when
+  that function returns a path. Nothing else, including position, amount or any
+  derivation hint carried in the PSBT, can earn the change label.
+
+  The sighash flag is decoded into plain language describing what the signature
+  does NOT commit to. Anything other than SIGHASH_ALL or SIGHASH_DEFAULT is a
+  blocking warning, as is a transaction whose inputs do not agree on one flag.
+
+  Fee rate is computed by scaling to integer hundredths before dividing, so the
+  arithmetic is exact and rounds once. Fee percentage is measured against what
+  leaves the wallet rather than total output, because a large self-send would
+  otherwise make any fee look negligible.
+
+invariants:
+  - id: INV-PSBT-2
+    statement: >
+      An output is labelled change only when its address re-derives from a
+      registered descriptor. An attacker's address placed in the change position
+      is shown as a payment.
+    tests:
+      - packages/core/test/psbt.review.test.ts::labels-change-only-when-it-re-derives
+      - packages/core/test/psbt.review.test.ts::refuses-to-call-an-attackers-address-change
+
+  - id: INV-PSBT-3
+    statement: >
+      Any sighash flag other than SIGHASH_ALL or SIGHASH_DEFAULT blocks signing,
+      including every ANYONECANPAY variant and any mixed set across inputs.
+    tests:
+      - packages/core/test/psbt.review.test.ts::refuses-sighash-flags-that-do-not-commit-to-outputs
+      - packages/core/test/psbt.review.test.ts::accepts-sighash-all
+
+  - id: INV-PSBT-4
+    statement: >
+      The fee is derived from inputs minus outputs, never read from the PSBT,
+      and a transaction spending more than it holds is refused.
+    tests:
+      - packages/core/test/psbt.review.test.ts::computes-the-fee-from-inputs-minus-outputs
+      - packages/core/test/psbt.review.test.ts::refuses-a-transaction-that-spends-more-than-it-has
+
+  - id: INV-PSBT-5
+    statement: >
+      A PSBT that does not state an input amount is refused rather than
+      reviewed with a guessed fee.
+    tests:
+      - packages/core/test/psbt.review.test.ts::refuses-a-psbt-with-no-input-amount
+
+  - id: INV-PSBT-6
+    statement: >
+      The sighash flag is described in terms of what the signature does not
+      commit to, rather than as a hex constant.
+    tests:
+      - packages/core/test/psbt.review.test.ts::describes-sighash-in-plain-language
+
+  - id: INV-PSBT-7
+    statement: >
+      Replaceability and any timelock are surfaced in human terms.
+    tests:
+      - packages/core/test/psbt.review.test.ts::reports-replaceability-and-locktime
+
+  - id: INV-PSBT-8
+    statement: >
+      Amounts are handled as integers throughout and render exactly beyond the
+      range a double represents.
+    tests:
+      - packages/core/test/psbt.review.test.ts::handles-amounts-without-floating-point
+
+threats:
+  - INV-PSBT-1
+  - INV-PSBT-2
+  - INV-PSBT-3
+
+security_notes: >
+  This module reviews. It does not sign, and it does not enforce its own
+  verdict: `signable` is a report, and the caller is what refuses. That split is
+  deliberate so the review can be rendered and read even when the answer is no,
+  but it does mean a caller that ignored `signable` would sign anyway. The
+  daemon is where that is enforced.
+
+  The change check is only as good as the function passed in. If a caller
+  supplies one that returns a path for an address it did not actually
+  re-derive, this module will label it change and the whole guarantee is void.
+  The daemon supplies that function from the seed.
+
+  Fee percentage is undefined when a transaction sends nothing outside the
+  wallet. It reports 100 percent in that case, which is arguably right for a
+  consolidation and is at least not silently zero.
+
+  vsize is estimated where the transaction cannot yet be serialised, because an
+  unsigned PSBT has no witnesses. The fee RATE is therefore approximate and is a
+  sanity check rather than a consensus value. The absolute fee is exact.
+
+  Unknown PSBT key-value pairs are not yet surfaced. That is a gap against the
+  brief and is tracked for phase 2 completion.
+
+references:
+  - BIP-174, Partially Signed Bitcoin Transaction Format
+  - BIP-370, PSBT Version 2
+  - BIP-125, Opt-in Full Replace-by-Fee Signalling
+  - docs/THREAT-MODEL.md
