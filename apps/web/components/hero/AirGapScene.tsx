@@ -62,12 +62,22 @@ export function AirGapScene() {
     camera.position.set(0.9, 0.25, 10.5)
     camera.lookAt(0.9, 0, 0)
 
+    // Probe for WebGL BEFORE constructing the renderer. Three logs an error to
+    // the console on its way to throwing, so a try/catch around the constructor
+    // degrades silently for the user but still leaves noise in the console, and
+    // the deployed-site check treats a console error as a broken page. Asking a
+    // throwaway canvas first is the only way to fail quietly.
+    const probe = document.createElement('canvas')
+    const supportsWebGL =
+      probe.getContext('webgl2') !== null || probe.getContext('webgl') !== null
+    if (!supportsWebGL) return
+
     let renderer: THREE.WebGLRenderer
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
     } catch {
-      // No WebGL. The page is complete without this, so leave silently rather
-      // than logging noise into a console the CSP work keeps clean.
+      // Context creation can still fail after a successful probe, for instance
+      // when the GPU process dies. The page is complete without the scene.
       return
     }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
