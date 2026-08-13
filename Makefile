@@ -17,7 +17,7 @@ MANIFEST_ROOTS := packages spec
 
 .PHONY: help install dev build check check-fast verify manifest manifest-check \
         lint type-check test test-report test-vectors test-differential test-repro \
-        prose sbom sbom-check repro-check clean web web-build web-lint web-type-check \
+        prose links sbom sbom-check repro-check clean web web-build web-lint web-type-check \
         web-isolation web-csp web-responsive web-check web-live-check deploy image
 
 help: ## List available targets
@@ -60,6 +60,9 @@ manifest-check: ## Every tracked source still matches MANIFEST.lock
 
 prose: ## No em dashes, no emoji, no overclaiming markers in docs and UI copy
 	@node tools/check-prose.mjs
+
+links: ## Every internal link resolves, and every anchor exists on its target
+	@node tools/check-links.mjs
 
 sbom: ## Emit a CycloneDX SBOM as a build artifact
 	@node tools/gen-sbom.mjs
@@ -161,6 +164,6 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.space
 
 # --- aggregates --------------------------------------------------------------
 
-check-fast: lint type-check prose test manifest-check ## Everything except the slow suites
+check-fast: lint type-check prose links test manifest-check ## Everything except the slow suites
 
 check: check-fast build verify repro-check sbom web-check ## Everything CI runs

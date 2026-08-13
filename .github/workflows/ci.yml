@@ -197,6 +197,12 @@ jobs:
       - name: No em dashes, no emoji, no unmarked claims
         run: make prose
 
+      # Anchors, not just paths. A threat model that sends a reader to a section
+      # of the verification procedure has to land on that section, or the reader
+      # concludes the procedure does not exist.
+      - name: Internal links and anchors resolve
+        run: make links
+
   # ---------------------------------------------------------------------------
   # nullroute.space. Never ships to the device and never enters MANIFEST.lock,
   # so it is checked separately and cannot affect the signer's root hash.
