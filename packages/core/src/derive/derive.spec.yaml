@@ -1,0 +1,100 @@
+id: core.derive.hd
+version: 1
+title: BIP-32 derivation and path handling
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Derive hierarchical deterministic keys from a seed, and parse the derivation
+  paths that say where. Adds three things to the audited library: notation
+  normalisation so descriptors from other software do not throw, network version
+  bytes threaded through both serialisation and parsing, and a hard boundary
+  between the private half (wrapped) and the public half (plain data).
+
+covers:
+  - packages/core/src/derive/hd.ts::rootFromSeed
+  - packages/core/src/derive/hd.ts::deriveAccountXpub
+  - packages/core/src/derive/hd.ts::masterFingerprint
+  - packages/core/src/derive/hd.ts::parseExtendedKey
+  - packages/core/src/derive/hd.ts::derivePublic
+  - packages/core/src/derive/hd.ts::publicKeyHex
+  - packages/core/src/derive/hd.ts::DerivationError
+  - packages/core/src/derive/path.ts::parsePath
+  - packages/core/src/derive/path.ts::normalizePath
+  - packages/core/src/derive/path.ts::formatPath
+  - packages/core/src/derive/path.ts::isFullyHardened
+  - packages/core/src/derive/path.ts::HARDENED_OFFSET
+  - packages/core/src/derive/path.ts::PathError
+
+algorithm: >
+  Standard BIP-32. The master key is HMAC-SHA512 of the seed under the key
+  "Bitcoin seed", split into a 32-byte private key and a 32-byte chain code.
+  Child derivation is CKDpriv and CKDpub as specified; indices at or above
+  0x80000000 are hardened and require the private key.
+
+  Paths accept both hardened notations, the apostrophe form from BIP-32 and the
+  "h" form that BIP-380 descriptors and Bitcoin Core emit, and normalise to the
+  apostrophe form before reaching the library, which rejects the other.
+
+invariants:
+  - id: INV-BIP32-1
+    statement: >
+      Derivation matches the official BIP-32 vectors, for every chain in all
+      four vectors, on both the extended public and extended private key.
+    tests:
+      - packages/core/test/vectors.bip32.test.ts::derivation-matches-bip32
+
+  - id: INV-BIP32-2
+    statement: Both hardened notations derive the same key.
+    tests:
+      - packages/core/test/vectors.bip32.test.ts::both-hardened-notations-agree
+
+  - id: INV-PATH-1
+    statement: >
+      Path normalisation maps both hardened notations to the canonical
+      apostrophe form.
+    tests:
+      - packages/core/test/derive.path.test.ts::normalizes-both-hardened-notations
+
+  - id: INV-PATH-2
+    statement: >
+      Path parsing rejects ambiguous or out-of-range input rather than
+      interpreting it.
+    tests:
+      - packages/core/test/derive.path.test.ts::rejects-ambiguous-input
+
+  - id: INV-PATH-3
+    statement: Indices round-trip through parse and format unchanged.
+    tests:
+      - packages/core/test/derive.path.test.ts::round-trips-through-format
+
+vectors:
+  - name: BIP-32 test vectors
+    file: spec/vectors/bip32.json
+    sha256: 05eb0497e7069b0f6cc6ea3490e063476bb7b46c8f60c9f73b73e755b87d2b1e
+    source: https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
+
+threats:
+  - INV-KEY-1
+  - INV-KEY-2
+
+security_notes: >
+  Private material is best-effort wiped after derivation with the library's own
+  wipePrivateData. That is genuinely best effort: the library holds key bytes in
+  arrays this module does not own, and a managed runtime may have copied them
+  already. The real mitigations are at the system level, in no swap and a
+  short-lived process. See docs/PROVISIONING.md.
+
+  deriveAccountXpub returns only public material by construction rather than by
+  filtering, which is why it is the function the daemon exposes toward the UI.
+  Returning a structure that never contained a private key is stronger than
+  remembering not to serialise one.
+
+  Vector 4 of BIP-32 is included specifically because implementations have
+  historically mishandled a private key with a leading zero byte, producing a
+  divergent chain.
+
+references:
+  - BIP-32, Hierarchical Deterministic Wallets
+  - BIP-44, BIP-49, BIP-84, BIP-86 derivation path conventions
+  - BIP-380, Output Script Descriptors, on the "h" hardened notation

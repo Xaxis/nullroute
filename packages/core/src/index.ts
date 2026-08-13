@@ -11,3 +11,6 @@
 
 export { Secret, SecretDisposedError } from './util/secret.js'
 export * from './entropy/index.js'
+export * from './network/index.js'
+export * from './bip39/index.js'
+export * from './derive/index.js'

@@ -1,0 +1,89 @@
+id: core.bip39.mnemonic
+version: 1
+title: BIP-39 mnemonic generation, validation and seed derivation
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Convert entropy to a mnemonic, a mnemonic back to entropy, and a mnemonic plus
+  optional passphrase to a 64-byte seed. Deliberately thin: plain BIP-39 with no
+  nullroute-specific behaviour, which is what makes a wallet recoverable from the
+  mnemonic alone with third-party software.
+
+covers:
+  - packages/core/src/bip39/mnemonic.ts::entropyToWords
+  - packages/core/src/bip39/mnemonic.ts::wordsToEntropy
+  - packages/core/src/bip39/mnemonic.ts::mnemonicToSeed
+  - packages/core/src/bip39/mnemonic.ts::isValidMnemonic
+  - packages/core/src/bip39/mnemonic.ts::normalizeMnemonic
+  - packages/core/src/bip39/mnemonic.ts::wordCount
+  - packages/core/src/bip39/mnemonic.ts::MnemonicError
+
+algorithm: >
+  Standard BIP-39. Entropy of 16, 20, 24, 28 or 32 bytes is appended with the
+  first entropy_length/32 bits of its SHA-256 and split into 11-bit groups
+  indexing the wordlist. The seed is PBKDF2-HMAC-SHA512 over the NFKD-normalised
+  mnemonic with salt "mnemonic" plus the NFKD-normalised passphrase, 2048
+  iterations, 64 bytes out.
+
+  Input is normalised to NFKD, trimmed, lowercased and collapsed to single
+  spaces before any operation, because the seed is derived from the exact bytes
+  and a stray double space silently derives a different wallet.
+
+invariants:
+  - id: INV-BIP39-1
+    statement: Entropy converts to the mnemonic the official vectors specify.
+    tests:
+      - packages/core/test/vectors.bip39.test.ts::entropy-to-mnemonic
+
+  - id: INV-BIP39-2
+    statement: A mnemonic converts back to its original entropy.
+    tests:
+      - packages/core/test/vectors.bip39.test.ts::mnemonic-to-entropy
+
+  - id: INV-BIP39-3
+    statement: >
+      A mnemonic and passphrase derive the seed the official vectors specify.
+    tests:
+      - packages/core/test/vectors.bip39.test.ts::mnemonic-to-seed
+
+  - id: INV-BIP39-4
+    statement: >
+      The derived seed produces the extended private key the official vectors
+      specify, end to end through BIP-32.
+    tests:
+      - packages/core/test/vectors.bip39.test.ts::seed-to-root-key
+
+  - id: INV-BIP39-5
+    statement: >
+      A different passphrase silently derives a different valid seed rather than
+      failing, which is why the fingerprint must be displayed before use.
+    tests:
+      - packages/core/test/vectors.bip39.test.ts::passphrase-changes-the-seed-silently
+
+vectors:
+  - name: BIP-39 English test vectors
+    file: spec/vectors/bip39-english.json
+    sha256: fa3b937b7cff9c9b8ecd3aa011faeb8d6dd67993174b72326e83f4de8fdb30f8
+    source: https://github.com/trezor/python-mnemonic/blob/master/vectors.json
+
+threats:
+  - INV-INTEROP-1
+
+security_notes: >
+  The passphrase is not recoverable and is not stored. It is part of the key
+  rather than a credential guarding it, so there is no reset and forgetting it
+  loses the funds.
+
+  The dangerous property is that a wrong passphrase does not error. It derives a
+  valid, different, empty wallet. Nothing in this module can detect it, because
+  from the arithmetic's point of view nothing went wrong. The only defence is
+  the fingerprint, displayed at unlock and before any funds-related action.
+
+  Mnemonics shorter than 24 words are accepted on import for compatibility and
+  are never generated. 128 bits is adequate today, and this device is intended
+  to outlive that judgement.
+
+references:
+  - BIP-39, Mnemonic code for generating deterministic keys
+  - Unicode Standard Annex 15, Normalization Forms

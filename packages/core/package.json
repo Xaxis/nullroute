@@ -6,15 +6,24 @@
   "description": "Pure crypto and Bitcoin logic. Zero I/O, zero side effects.",
   "license": "MIT",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
-    "./entropy": { "types": "./dist/entropy/index.d.ts", "import": "./dist/entropy/index.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./entropy": {
+      "types": "./dist/entropy/index.d.ts",
+      "import": "./dist/entropy/index.js"
+    }
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "scripts": { "build": "tsc --build" },
+  "scripts": {
+    "build": "tsc --build"
+  },
   "dependencies": {
     "@noble/hashes": "2.3.0",
     "@scure/base": "2.3.0",
+    "@scure/bip32": "2.3.0",
     "@scure/bip39": "2.3.0"
   }
 }

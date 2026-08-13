@@ -1,0 +1,73 @@
+id: core.network.networks
+version: 1
+title: Bitcoin network definitions and version bytes
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Define the five networks nullroute supports, with the version bytes that make
+  an address or an extended key belong to one of them. The property that drives
+  the whole design is that testnet3, testnet4 and signet are address-identical,
+  so the network cannot be recovered from an address and must be carried as an
+  explicit tag.
+
+covers:
+  - packages/core/src/network/networks.ts::MAINNET
+  - packages/core/src/network/networks.ts::TESTNET3
+  - packages/core/src/network/networks.ts::TESTNET4
+  - packages/core/src/network/networks.ts::SIGNET
+  - packages/core/src/network/networks.ts::REGTEST
+  - packages/core/src/network/networks.ts::NETWORKS
+  - packages/core/src/network/networks.ts::networkById
+  - packages/core/src/network/networks.ts::isAddressIdentical
+  - packages/core/src/network/networks.ts::UnknownNetworkError
+
+algorithm: >
+  Static tables. Mainnet uses BIP-32 version bytes 0x0488b21e (public) and
+  0x0488ade4 (private), P2PKH prefix 0x00, P2SH 0x05, WIF 0x80, bech32 "bc".
+  Every test network shares 0x043587cf / 0x04358394, 0x6f, 0xc4, 0xef and coin
+  type 1. Regtest alone differs in its bech32 prefix, "bcrt". Signet, testnet3
+  and testnet4 are identical in every field.
+
+invariants:
+  - id: INV-NET-4
+    statement: Version bytes are correct for every supported network.
+    tests:
+      - packages/core/test/network.test.ts::version-bytes
+
+  - id: INV-NET-5
+    statement: >
+      An extended key serialises with its own network's version bytes, so a
+      mainnet key is visibly distinct from a test network key.
+    tests:
+      - packages/core/test/network.test.ts::extended-keys-carry-the-network
+
+  - id: INV-NET-6
+    statement: >
+      testnet3, testnet4 and signet produce identical addresses and identical
+      extended keys, so the network must be carried explicitly and can never be
+      inferred from an address.
+    tests:
+      - packages/core/test/network.test.ts::test-networks-are-address-identical
+
+  - id: INV-NET-7
+    statement: Only mainnet reports isMainnet, which drives the non-mainnet banner.
+    tests:
+      - packages/core/test/network.test.ts::mainnet-is-the-only-mainnet
+
+security_notes: >
+  Because three of the five networks are indistinguishable by address, a user
+  who selects the wrong one gets no error and no visible difference: the same
+  addresses, the same xpub, no funds. Nothing in this module can detect that,
+  and nothing downstream can either. The mitigation is entirely in the interface:
+  the network is chosen once at wallet creation, locked to that wallet, and
+  shown as a persistent banner on every non-mainnet screen.
+
+  This module holds no secrets and performs no cryptography. It is critical tier
+  because a wrong version byte produces an address on the wrong chain, which
+  loses funds as effectively as a wrong key.
+
+references:
+  - BIP-32, Hierarchical Deterministic Wallets
+  - BIP-44, Multi-Account Hierarchy for Deterministic Wallets
+  - SLIP-0132, Registered HD version bytes
