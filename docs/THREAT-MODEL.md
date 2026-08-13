@@ -168,11 +168,32 @@ attached to the board.
 
 **A compromised host OS image installed before first boot.** If the image you
 flashed was already backdoored, the manifest hash it displays is whatever the
-backdoor wants it to say. Build the image yourself from `tools/build-image/`, or
-verify the signature on a published one. The verification system defends the
+backdoor wants it to say. The application verification system defends the
 application, and it cannot bootstrap trust in the thing that runs it.
 
-**Evil maid attacks, absent secure boot.** See above.
+This is being addressed rather than merely conceded, and
+[docs/PROVISIONING.md](PROVISIONING.md) states exactly how far each step gets:
+
+- **Tier 0** (phase 2) makes the image reproducible and signed, so you can check
+  it against a published hash and signature before flashing, and read the card
+  back afterwards. This closes the "was the download tampered with" question and
+  leaves the "was the build itself honest" question to reproducing it yourself.
+- **Tier 1** (phase 3) puts the system partition under a dm-verity hash tree and
+  shows its root hash at boot. Read carefully: **on its own this moves the gap
+  rather than closing it.** Without a signed boot chain, an attacker who
+  rewrites the boot partition supplies their own root hash and their own
+  initramfs, and the device displays whatever number they chose.
+- **Tier 2** (phase 7) is what actually closes it, by chaining the verity root
+  hash into a boot image the silicon verifies. It burns one-time fuses, cannot
+  be undone, and rests on a closed-source BootROM that nobody outside Raspberry
+  Pi can audit. It will never be the default.
+
+Until tier 2, treat the operating system as trusted-by-assumption. Build the
+image yourself, or verify the signature on a published one.
+
+**Evil maid attacks, absent secure boot.** See above. Tier 1 makes an
+unsophisticated modification visible to a user who reads the boot screen. It
+does not defeat an attacker who also rewrites the boot partition.
 
 **A determined adversary with unlimited time, you in custody, and knowledge of
 this codebase.** Nothing in this repository helps you here. Duress profiles do

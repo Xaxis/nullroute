@@ -183,21 +183,53 @@ real means:
 ## Status
 
 **Phase 1, in progress.** The signer is being built before the wallet, and the
-verification system is being built before the signer.
+verification system was built before the signer.
 
 | Phase | Scope | State |
 | --- | --- | --- |
 | 1 | Spec system, verify CLI, entropy, BIP-39/32, daemon skeleton, network selection | In progress |
-| 2 | Single-sig signing, descriptors, PSBT review, address verification | Not started |
-| 3 | Multisig, cosigner registration, multi-wallet, encrypted backup | Not started |
+| 2 | Single-sig signing, descriptors, PSBT review, address verification. **Provisioning tier 0.** | Not started |
+| 3 | Multisig, cosigner registration, multi-wallet, encrypted backup. **Provisioning tier 1.** | Not started |
 | 4 | BIP-322 message signing, BIP-85, BIP-329 labels | Not started |
 | 5 | Wallet layer, optional and lower assurance | Not started |
 | 6 | Bridge companion, runs on a networked machine | Not started |
-| 7 | Miniscript, taproot script paths, SeedXOR, silent payments, firmware update | Not started |
+| 7 | Miniscript, taproot script paths, SeedXOR, silent payments. **Provisioning tier 2.** | Not started |
 
 Nothing later is pulled forward. The phase ordering and the tier boundary are
 what keep a large feature set from eroding the assurance of the small part that
 holds keys.
+
+### Provisioning moved earlier, on purpose
+
+The original plan treated the operating system as a build script and put secure
+boot in phase 7 as a stretch goal. That was wrong. An application verification
+system running on an unverifiable operating system is a lock on a door in a
+paper wall: the manifest root hash on the lock screen is only as trustworthy as
+the code drawing it.
+
+So provisioning is now three tiers, and the first one lands as soon as there is
+something worth running on hardware:
+
+| Tier | What you get | Cost | Lands |
+| --- | --- | --- | --- |
+| 0 | Reproducible image, signed release, verify before and after flashing. Works on any supported board. | None. No irreversible changes. | Phase 2 |
+| 1 | Immutable system partition under a dm-verity hash tree, with its root hash displayed at boot beside the application manifest hash. | Slightly more involved build. | Phase 3 |
+| 2 | Signed boot chain from silicon: the BootROM verifies a signed image, and the verity root hash is carried inside it. | **Irreversible.** Burns one-time fuses. Losing the key bricks every device provisioned with it. | Phase 7 |
+
+Tier 0 is what "spin up another one quickly, in a way I can check" actually
+means, and it needs no fuses burned and no key custody. **Tier 2 stays late
+precisely because it cannot be undone.**
+
+Be clear about what tier 1 buys on its own: **dm-verity moves the gap rather
+than closing it.** Without a signed boot chain, an attacker who rewrites the
+boot partition supplies their own root hash and their own initramfs, and the
+device displays whatever number they chose. Only tier 2 closes it. See
+[docs/PROVISIONING.md](docs/PROVISIONING.md).
+
+The build system is layered so the hardening profile is a set of assertions
+checked against the built artifact rather than a recipe, which is what makes
+supporting a second distribution a matter of adding a backend rather than
+rewriting the tooling.
 
 ---
 

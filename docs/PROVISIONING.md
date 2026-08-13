@@ -215,6 +215,38 @@ that constraint is easier to hold if it is stated up front.
 
 ---
 
+## The three tiers
+
+Provisioning is staged, because the strongest option is irreversible and the
+useful option is not. Never describe a lower tier using a higher tier's
+language.
+
+| Tier | What it establishes | What it costs | Lands |
+| --- | --- | --- | --- |
+| 0 | The image you flashed is the image that was published, and the published image was built from the published source. | Nothing irreversible. Works on any supported board. | Phase 2 |
+| 1 | The system partition has not been modified since the build, and the device says so at boot. | A more involved build. Still reversible. | Phase 3 |
+| 2 | The boot chain itself is verified by the silicon, so the root hash the device shows cannot be chosen by an attacker. | **Irreversible.** Burns one-time fuses. Losing the signing key bricks every device provisioned with it. | Phase 7 |
+
+**Tier 0 is the one that answers "let me spin up another one".** It needs no
+fuses burned, no key custody, and no special hardware, and it is the default.
+
+**Tier 1's limit is the important one.** A dm-verity hash tree means the system
+partition cannot be altered without changing its root hash. But the boot
+partition is not covered, and the root hash is passed to the kernel from there.
+An attacker who rewrites the boot partition supplies their own `roothash=` and
+their own initramfs, and the device displays exactly the number they chose. Tier
+1 raises the bar and gives an attentive user a chance to notice. It does not
+close the gap.
+
+**Tier 2 closes it, at a real price.** The root hash travels inside an image the
+BootROM verifies against a key whose hash is fused into the chip. The chain runs
+from silicon to every block of the root filesystem. It also means the earliest
+link is closed-source code nobody outside Raspberry Pi can audit, so the honest
+description is that tier 2 moves the question from "do you trust this SD card"
+to "do you trust this BootROM", which is better without being elimination.
+
+---
+
 ## Verifying an image
 
 The full procedure lands with the image build system. The shape it will take,

@@ -124,10 +124,40 @@ phase ordering and the tier boundary in `docs/THREAT-MODEL.md` are what keep a
 large feature set from eroding the assurance of the small part that holds keys.
 Finish and verify each phase before opening the next.
 
+**Provisioning has three tiers and they are not interchangeable.** Tier 0
+(reproducible signed image, verify before flashing) lands in phase 2 and costs
+nothing irreversible. Tier 1 (dm-verity plus boot attestation) lands in phase 3.
+Tier 2 (signed boot chain) stays in phase 7 because it burns one-time fuses and
+losing the key bricks every device provisioned with it. Never describe a lower
+tier using a higher tier's language.
+
+**dm-verity on its own moves the OS-integrity gap rather than closing it.**
+Without a signed boot chain, an attacker who rewrites the boot partition
+supplies their own `roothash=` and their own initramfs, and the device displays
+whatever number they chose. Say "detects modification of the system partition",
+never "prevents tampering".
+
 **Overclaiming in the docs is a security bug, and `make prose` checks for it.**
 This project's value rests on being honest about its boundaries. A defence that
 is partial gets described as partial. `docs/THREAT-MODEL.md` has a long
 out-of-scope list and it is supposed to be long.
+
+**Three hardening measures look applied and are not, on this hardware.**
+`lockdown=` is a no-op on stock Pi kernels (no `CONFIG_SECURITY_LOCKDOWN_LSM`).
+AppArmor is compiled in but inert without `lsm=apparmor`. And
+`MemoryDenyWriteExecute=true` crashes Node, because V8's baseline compiler needs
+writable-then-executable pages; it works under `node --jitless`, but that
+changes code paths and every constant-time assumption in the crypto layer has to
+be re-validated first. Do not write any of these into docs as applied.
+
+**Offline compliance scanning of a built image emits false passes.** A scan of
+an unbooted rootfs reports `noexec` and `nosuid` mount options as passing while
+the same scan reports the partition does not exist, because `/proc/mounts` is
+absent. Mount options and kernel parameters are verified on the running device
+or not counted. Build-time unit hardening is checked with
+`systemd-analyze security --offline=true --root=<rootfs> --json=short`, which
+measures declared directives rather than enforced behaviour, and that limit gets
+stated wherever the score is.
 
 **Never imply the device protects someone under credible physical threat.** The
 duress features buy time against an unsophisticated adversary and nothing more,

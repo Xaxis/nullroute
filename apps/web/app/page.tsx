@@ -14,12 +14,27 @@ import { DOCS } from '../lib/docs'
 
 const PHASES = [
   { n: 1, scope: 'Spec system, entropy, BIP-39/32, daemon skeleton', state: 'in progress' },
-  { n: 2, scope: 'Single-sig signing, descriptors, PSBT review', state: 'not started' },
-  { n: 3, scope: 'Multisig, cosigner registration, multi-wallet', state: 'not started' },
+  {
+    n: 2,
+    scope: 'Single-sig signing, descriptors, PSBT review',
+    provisioning: 'Tier 0: reproducible, signed image',
+    state: 'not started',
+  },
+  {
+    n: 3,
+    scope: 'Multisig, cosigner registration, multi-wallet',
+    provisioning: 'Tier 1: dm-verity, boot attestation',
+    state: 'not started',
+  },
   { n: 4, scope: 'BIP-322 message signing, BIP-85, BIP-329 labels', state: 'not started' },
   { n: 5, scope: 'Wallet layer, optional and lower assurance', state: 'not started' },
   { n: 6, scope: 'Bridge companion, runs on a networked machine', state: 'not started' },
-  { n: 7, scope: 'Miniscript, taproot script paths, SeedXOR, silent payments', state: 'not started' },
+  {
+    n: 7,
+    scope: 'Miniscript, taproot script paths, SeedXOR, silent payments',
+    provisioning: 'Tier 2: signed boot chain (irreversible)',
+    state: 'not started',
+  },
 ]
 
 export default function HomePage() {
@@ -222,6 +237,13 @@ export default function HomePage() {
           boundary are what keep a large feature set from eroding the assurance of the small part
           that holds keys.
         </p>
+        <p className="mt-3 text-sm text-ink-400 max-w-2xl leading-relaxed">
+          Provisioning the operating system moved earlier. An application verification system
+          running on an unverifiable OS is a lock on a door in a paper wall, so a reproducible,
+          signed image you can check before flashing lands as soon as there is something worth
+          running on hardware. The signed boot chain stays last, because it burns fuses and
+          cannot be undone.
+        </p>
 
         <div className="mt-6 rounded-lg border border-ink-800 overflow-hidden">
           <table className="w-full text-sm">
@@ -236,7 +258,14 @@ export default function HomePage() {
               {PHASES.map((phase) => (
                 <tr key={phase.n} className="border-t border-ink-850">
                   <td className="px-4 py-2.5 font-mono text-ink-400">{phase.n}</td>
-                  <td className="px-4 py-2.5 text-ink-300">{phase.scope}</td>
+                  <td className="px-4 py-2.5 text-ink-300">
+                    {phase.scope}
+                    {phase.provisioning !== undefined && (
+                      <span className="block mt-1 text-xs text-signal-400/80">
+                        {phase.provisioning}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-2.5">
                     <span
                       className={
