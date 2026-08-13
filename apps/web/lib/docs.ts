@@ -43,6 +43,14 @@ export const DOCS: readonly DocMeta[] = [
       'The dice procedure, the exact byte encoding, and a worked example you can reproduce with sha256sum on any machine.',
     weight: 3,
   },
+  {
+    slug: 'provisioning',
+    file: 'docs/PROVISIONING.md',
+    title: 'Provisioning a device',
+    summary:
+      'The hardware, the hardening actually applied (and the standard controls deliberately skipped as theater here), and how to verify an image before and after flashing it.',
+    weight: 4,
+  },
 ]
 
 export function docBySlug(slug: string): DocMeta | undefined {

@@ -30,6 +30,7 @@ const NAV = [
   { href: '/docs/threat-model', label: 'Threat model' },
   { href: '/docs/verification', label: 'Verification' },
   { href: '/docs/entropy', label: 'Entropy' },
+  { href: '/docs/provisioning', label: 'Provisioning' },
 ]
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
