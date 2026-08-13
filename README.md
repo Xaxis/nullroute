@@ -106,6 +106,14 @@ it. You will see the real lock screen, with the real hash of the code you just
 built. From there you can roll dice, create a wallet, and browse addresses
 exactly as you would on hardware.
 
+Ctrl-C stops both halves. If it ever reports that port 5180 is in use, an
+earlier run is still going; the message names the process and how to stop it.
+To run alongside one instead, set the port:
+
+```bash
+NULLROUTE_UI_PORT=5181 make dev
+```
+
 Try this once it is running: press **Unlock**, pick **Signet** (a test network,
 so nothing is real), and roll some dice. Watch the entropy counter. Then try
 entering the same digit a hundred times and read what it says.
