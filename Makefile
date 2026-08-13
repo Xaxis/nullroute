@@ -18,7 +18,7 @@ MANIFEST_ROOTS := packages spec
 .PHONY: help install dev build check check-fast verify manifest manifest-check \
         lint type-check test test-report test-vectors test-differential test-repro \
         prose sbom repro-check clean web web-build web-lint web-type-check \
-        web-isolation web-csp web-responsive web-check image
+        web-isolation web-csp web-responsive web-check web-live-check deploy image
 
 help: ## List available targets
 	@grep -hE '^[a-z][a-z-]*:.*?## ' $(MAKEFILE_LIST) \
@@ -127,6 +127,22 @@ web-responsive: ## No page scrolls sideways at 320px or 390px. Drives a real bro
 	@node tools/check-responsive.mjs
 
 web-check: web-lint web-type-check web-build web-isolation web-csp web-responsive ## Every website check
+
+web-live-check: ## Load the DEPLOYED site in a real browser and assert nothing is broken
+	# The one check that caught a broken CSP. Every other check passed while
+	# hydration was dead: 200s, correct HTML, perfect screenshots, React #412 in
+	# the console and nowhere else.
+	@node tools/check-web-live.mjs
+
+deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.space
+	# PREBUILT on purpose. Vercel building the same commit on its own runners
+	# emits a different RSC payload than a local build, so the committed CSP
+	# hashes would not cover the served scripts. The failure is silent: the page
+	# renders and hydration dies with React #412. Deploying prebuilt means what
+	# was hashed is what is served.
+	@node tools/build-vercel-output.mjs
+	@npx vercel deploy --prebuilt --prod
+	@$(MAKE) --no-print-directory web-live-check
 
 # --- aggregates --------------------------------------------------------------
 

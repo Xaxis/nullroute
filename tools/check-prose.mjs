@@ -25,7 +25,19 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const SEARCH_ROOTS = ['docs', 'packages', 'apps', 'spec', 'tools', '.github']
 const ROOT_FILES = ['README.md', 'CONTRIBUTING.md', 'SECURITY.md', 'CHANGELOG.md', 'CLAUDE.md']
 
-const SKIP_DIRS = new Set(['node_modules', 'dist', '.next', 'out', '.git', 'vectors', 'interop'])
+// Build output and vendored fixtures. Generated code is not ours to style, and
+// official BIP test vectors must be byte-exact copies of upstream.
+const SKIP_DIRS = new Set([
+  'node_modules',
+  'dist',
+  '.next',
+  '.next-dev',
+  '.vercel',
+  'out',
+  '.git',
+  'vectors',
+  'interop',
+])
 const TEXT_EXT = new Set(['.md', '.ts', '.tsx', '.mjs', '.js', '.yaml', '.yml', '.css'])
 
 /** @type {{id: string, why: string, test: (line: string) => number | -1}[]} */

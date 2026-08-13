@@ -11,7 +11,11 @@ export default tseslint.config(
       '**/*.d.ts',
       '**/coverage/**',
       'apps/web/.next/**',
+      'apps/web/.next-dev/**',
       'apps/web/out/**',
+      // Generated deploy bundle: a copy of apps/web/out plus a config, emitted
+      // by tools/build-vercel-output.mjs. Minified vendor code, not ours.
+      '.vercel/**',
       // Fixtures that violate the rules on purpose. `npm run lint:prove` lints
       // them with --no-ignore and asserts the rules actually report. Permanent
       // coverage lives in test/eslint-rules/.

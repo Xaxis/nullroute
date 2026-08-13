@@ -2,6 +2,18 @@
 /**
  * Generate (or check) the Content-Security-Policy for nullroute.space.
  *
+ * IMPORTANT: this only holds because the site is deployed PREBUILT. The hashes
+ * below are computed from a specific build's bytes, and Vercel building the same
+ * commit on its own Linux runners produces a different RSC payload (the emitted
+ * chunk filenames differ), so a host-side build would serve scripts the
+ * committed policy does not cover. The symptom is nasty: the page renders
+ * perfectly and hydration dies with React error #412, which no build check and
+ * no crawler would notice.
+ *
+ * So `make deploy` builds, hashes that build, and ships those exact bytes. The
+ * property this buys is worth stating plainly: what was hashed is what is
+ * served.
+ *
  * The policy is strict: `default-src 'none'`, and every directive that is
  * allowed at all is `'self'`. No `'unsafe-inline'` anywhere, including for
  * styles, which is normally the directive people give up on first. It works
@@ -113,7 +125,18 @@ const config = {
   buildCommand: 'npm run build --workspace @nullroute/web',
   installCommand: 'npm ci',
   outputDirectory: 'apps/web/out',
-  framework: 'nextjs',
+  // Deliberately null, not "nextjs". The Next.js framework preset expects a
+  // .next directory with routes-manifest.json and fails the deploy without one.
+  // This site is `output: 'export'`, so the build produces a plain folder of
+  // files and there is no server runtime to configure. Treating it as static is
+  // both what it is and what we want: the deployed artifact cannot do anything
+  // the source does not show.
+  framework: null,
+  // Without this, /docs/threat-model 404s and only /docs/threat-model.html
+  // resolves, because the Next.js preset's routing is what normally strips the
+  // extension and we are deliberately not using it.
+  cleanUrls: true,
+  trailingSlash: false,
   headers: [{ source: '/(.*)', headers: SECURITY_HEADERS(csp) }],
 }
 

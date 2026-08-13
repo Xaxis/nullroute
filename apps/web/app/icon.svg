@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- nullroute: the empty-set slash. A route that goes nowhere, which is the
+       point of the name and of the device. Drawn rather than fetched, because
+       the CSP forbids loading anything off-origin and the site should not make
+       an exception for its own icon. -->
+  <rect width="32" height="32" rx="6" fill="#0b0c0e"/>
+  <circle cx="16" cy="16" r="8.5" fill="none" stroke="#e8833a" stroke-width="2.5"/>
+  <line x1="9.5" y1="22.5" x2="22.5" y2="9.5" stroke="#e8833a" stroke-width="2.5" stroke-linecap="round"/>
+</svg>
