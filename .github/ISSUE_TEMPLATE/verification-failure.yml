@@ -1,0 +1,40 @@
+name: Verification failure
+description: A check in docs/VERIFICATION.md did not reproduce
+labels: [verification]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        If a hash you computed does not match a hash we published, that is
+        potentially serious. If it affects a released build and you think it
+        indicates tampering rather than a bug, report it privately instead:
+        https://github.com/Xaxis/nullroute/security/advisories/new
+  - type: input
+    id: release
+    attributes:
+      label: Release tag or commit
+    validations: { required: true }
+  - type: dropdown
+    id: which
+    attributes:
+      label: Which check failed
+      options:
+        - Manifest does not match the sources (sha256sum -c)
+        - Root hash differs from the published one
+        - Root hash differs from the device lock screen
+        - Two builds of the same commit differ
+        - make verify reports a failure
+        - A signature was not byte-reproducible
+        - Recovery in Bitcoin Core did not match
+    validations: { required: true }
+  - type: textarea
+    id: commands
+    attributes:
+      label: Exact commands and their output
+      render: console
+    validations: { required: true }
+  - type: input
+    id: platform
+    attributes:
+      label: OS, architecture, Node version
+    validations: { required: true }

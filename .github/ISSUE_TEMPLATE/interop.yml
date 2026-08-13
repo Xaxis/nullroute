@@ -1,0 +1,46 @@
+name: Interoperability problem
+description: nullroute did not work with another wallet, coordinator, or signer
+labels: [interop]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        nullroute is meant to sit in a vendor-diverse multisig quorum, so an
+        interop failure is a core defect rather than an edge case. If you can
+        attach the artifact that failed to parse (with any xpubs redacted), that
+        is the single most useful thing you can include.
+  - type: input
+    id: counterparty
+    attributes:
+      label: Other software or device, and its version
+      placeholder: Sparrow 2.1.3, Coldcard Mk4 5.3.3
+    validations: { required: true }
+  - type: dropdown
+    id: surface
+    attributes:
+      label: What was being exchanged
+      options:
+        - Output descriptor
+        - PSBT
+        - xpub export
+        - Multisig cosigner registration
+        - Labels (BIP-329)
+        - QR transport (UR or BBQr)
+        - SD card file
+    validations: { required: true }
+  - type: dropdown
+    id: direction
+    attributes:
+      label: Direction
+      options: [Importing into nullroute, Exporting from nullroute, Both]
+    validations: { required: true }
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what you expected
+    validations: { required: true }
+  - type: textarea
+    id: artifact
+    attributes:
+      label: The artifact, with xpubs and addresses redacted
+      render: text

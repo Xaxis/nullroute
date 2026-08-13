@@ -1,0 +1,205 @@
+name: ci
+
+# The premise of this repository is that the device refuses to run unless code,
+# specs, and tests all agree. That is only true if CI actually checks it. Every
+# job here is also a `make` target, so what CI runs and what a contributor runs
+# locally cannot diverge.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Reproducible builds need a fixed timestamp. Anything deriving a date from
+  # "now" makes two builds of the same commit differ.
+  SOURCE_DATE_EPOCH: 1
+  # No package runs arbitrary code at install time, in CI as on a workstation.
+  NPM_CONFIG_IGNORE_SCRIPTS: 'true'
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # The signer. This is the tier that holds keys and it gets checked hardest.
+  # ---------------------------------------------------------------------------
+  signer:
+    name: signer holds together
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # ci, never install. A lockfile that resolves differently in CI than on a
+      # workstation would make the published root hash unreproducible.
+      - run: npm ci
+
+      - name: Types
+        run: make type-check
+
+      # Includes the custom no-network rule enforcing INV-NET-2. A `fetch` call
+      # or a `node:net` import anywhere under packages/ fails the build here.
+      - name: Lint, including the no-network rule
+        run: make lint
+
+      - name: Build
+        run: make build
+
+      - name: Unit and property tests
+        run: make test
+
+      # The specification system: coverage, invariant binding, vectors,
+      # differential, integrity, report. See docs/VERIFICATION.md section 3.
+      - name: Specs, invariants and integrity
+        run: make verify
+
+      - name: Upload verification report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-report
+          path: verification-report.json
+          if-no-files-found: warn
+
+  # ---------------------------------------------------------------------------
+  # Correctness against the outside world, rather than against ourselves.
+  # ---------------------------------------------------------------------------
+  vectors:
+    name: official BIP vectors and differential agreement
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: make build
+
+      # BIP-32, BIP-39 (every bundled wordlist), BIP-84/86 addresses, BIP-174
+      # PSBTs, BIP-340 Schnorr, BIP-322, BIP-380 descriptor checksums.
+      - name: Official BIP test vectors
+        run: make test-vectors
+
+      # bitcoinjs-lib is an independent implementation written by different
+      # people from the same specifications. Agreement is evidence; a
+      # disagreement is a defect in one of them and we do not get to guess which.
+      - name: Differential agreement with bitcoinjs-lib
+        run: make test-differential
+
+      # A signature that is not byte-identical across runs has room in it to
+      # hide key material. See docs/VERIFICATION.md section 4.
+      - name: Signatures are byte-reproducible
+        run: make test-repro
+
+  # ---------------------------------------------------------------------------
+  # Supply chain and reproducibility. The manifest root hash is worthless if a
+  # third party cannot arrive at the same number.
+  # ---------------------------------------------------------------------------
+  supply-chain:
+    name: build is reproducible and the manifest is honest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+
+      # Regenerating the manifest must reproduce exactly what is committed. A
+      # drift here means the published root hash describes a tree that no longer
+      # exists.
+      - name: MANIFEST.lock matches the tracked sources
+        run: make manifest-check
+
+      # Two clean builds, diffed. This catches an embedded timestamp or a
+      # filesystem-ordering dependency at the commit that introduced it rather
+      # than at the release.
+      - name: Two builds produce identical output
+        run: make repro-check
+
+      - name: SBOM
+        run: make sbom
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.cdx.json
+          if-no-files-found: warn
+
+  # ---------------------------------------------------------------------------
+  # The no-lock-in promise. If this fails, funds are at risk of being
+  # unrecoverable, which is worse than any other failure mode in this repo.
+  # ---------------------------------------------------------------------------
+  recovery-drill:
+    name: every wallet recovers in Bitcoin Core alone
+    runs-on: ubuntu-latest
+    # Enabled once phase 2 lands wallet types to drill. Until then there is
+    # nothing to recover, and a job that vacuously passes is worse than no job.
+    if: false
+    services:
+      bitcoind:
+        image: ruimarinho/bitcoin-core:latest
+        options: >-
+          --entrypoint bitcoind
+        ports:
+          - 18443:18443
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: make build
+
+      # For every supported wallet type: create in nullroute, export the
+      # descriptor, import into a regtest Core, assert identical addresses and
+      # balance, and spend. No nullroute code in the recovery path.
+      - name: Recovery drill (INV-INTEROP-1)
+        run: make test-recovery-drill
+
+  # ---------------------------------------------------------------------------
+  # Prose. The documentation is a deliverable, and overclaiming in it is a
+  # security bug in a project whose value rests on honest boundaries.
+  # ---------------------------------------------------------------------------
+  prose:
+    name: documentation style holds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: No em dashes, no emoji, no unmarked claims
+        run: make prose
+
+  # ---------------------------------------------------------------------------
+  # nullroute.space. Never ships to the device and never enters MANIFEST.lock,
+  # so it is checked separately and cannot affect the signer's root hash.
+  # ---------------------------------------------------------------------------
+  web:
+    name: website builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: make web-lint
+      - run: make web-type-check
+      - run: make web-build

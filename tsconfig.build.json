@@ -1,0 +1,7 @@
+{
+  "//": "Solution file for `tsc --build`: the composite project-reference graph. apps/web is NOT here; Next builds itself and never ships to the device.",
+  "files": [],
+  "references": [
+    { "path": "./packages/core/tsconfig.build.json" }
+  ]
+}

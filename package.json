@@ -1,0 +1,44 @@
+{
+  "name": "@nullroute/root",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "An air-gapped Bitcoin signing device you can actually verify.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Xaxis/nullroute.git"
+  },
+  "homepage": "https://nullroute.space",
+  "bugs": {
+    "url": "https://github.com/Xaxis/nullroute/issues"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "build": "tsc --build tsconfig.build.json",
+    "type-check": "tsc --build tsconfig.build.json --force",
+    "lint": "eslint .",
+    "lint:prove": "node tools/prove-lint.mjs",
+    "test": "vitest run",
+    "verify": "node packages/verify/dist/cli.js",
+    "prose": "node tools/check-prose.mjs",
+    "manifest": "make manifest",
+    "clean": "rm -rf packages/*/dist apps/web/.next apps/web/out"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@fast-check/vitest": "0.4.1",
+    "@types/node": "24.13.3",
+    "eslint": "9.39.5",
+    "fast-check": "4.9.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.67.0",
+    "vitest": "4.1.10"
+  }
+}

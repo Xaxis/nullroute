@@ -1,0 +1,32 @@
+name: Spec disagreement
+description: The code and its specification say different things
+labels: [spec]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        The whole premise here is that code, specs, and tests agree. A place
+        where they do not is a real defect even if the code happens to be
+        correct, because it means the spec system missed something.
+  - type: input
+    id: spec_id
+    attributes:
+      label: Spec id
+      placeholder: core.entropy.combiner
+    validations: { required: true }
+  - type: textarea
+    id: says
+    attributes:
+      label: What the spec says
+    validations: { required: true }
+  - type: textarea
+    id: does
+    attributes:
+      label: What the code does
+    validations: { required: true }
+  - type: dropdown
+    id: which_wrong
+    attributes:
+      label: Which one do you think is wrong
+      options: [The spec, The code, Not sure]
+    validations: { required: true }

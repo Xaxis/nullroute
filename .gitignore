@@ -1,0 +1,22 @@
+.idea
+*.iml
+
+# Secrets: never commit
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.next/
+out/
+
+# Local scratch
+tmp/
+.vercel
+
+# OS
+.DS_Store

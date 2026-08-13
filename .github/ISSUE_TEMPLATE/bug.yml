@@ -1,0 +1,32 @@
+name: Bug
+description: Something behaves incorrectly
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        For anything touching key material, signing, or the verification system,
+        report privately instead:
+        https://github.com/Xaxis/nullroute/security/advisories/new
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what you expected instead
+    validations: { required: true }
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: A failing test is worth more than a description.
+    validations: { required: true }
+  - type: input
+    id: version
+    attributes:
+      label: Version, and the manifest root hash if this is a built device
+    validations: { required: true }
+  - type: dropdown
+    id: network
+    attributes:
+      label: Network
+      options: [mainnet, testnet4, testnet3, signet, regtest, not applicable]
+    validations: { required: true }

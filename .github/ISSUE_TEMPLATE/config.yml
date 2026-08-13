@@ -1,0 +1,7 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Xaxis/nullroute/security/advisories/new
+    about: >-
+      Do not open a public issue for anything affecting key material, signing,
+      or the verification system. Report it privately here.

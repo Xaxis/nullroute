@@ -1,0 +1,14 @@
+{
+  "//": "Root lint/IDE config. typescript-eslint's projectService walks up from each file to the nearest tsconfig.json, so this must cover root-level stragglers (tools, config files, lint fixtures).",
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "incremental": false,
+    "allowJs": true,
+    "checkJs": false
+  },
+  "include": ["*.ts", "*.mjs", "tools/**/*.mjs", "eslint-rules/**/*.js", "test/**/*.ts"]
+}

@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.next/
+out/
+.vercel/
+package-lock.json
+MANIFEST.lock
+spec/vectors/
+spec/interop/
+*.md

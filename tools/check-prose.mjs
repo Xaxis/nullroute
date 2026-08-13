@@ -1,0 +1,129 @@
+#!/usr/bin/env node
+// Style rules for documentation, code comments, and UI copy.
+//
+// Two of these are house style and one is a security rule.
+//
+// The security rule is `overclaim`. This project's entire value rests on being
+// honest about its boundaries, so a document that says the device "prevents"
+// something it can only "detect", or that makes an absolute safety claim, is a
+// defect in the same sense a wrong invariant is. Overstating a defence is how a
+// user ends up relying on something that is not there.
+//
+// This file necessarily contains the patterns it bans, so its rule definitions
+// carry the `prose-check-ignore` marker. That marker is the only exemption
+// mechanism, and it is deliberately visible so an exemption is a decision
+// someone made rather than something that happened.
+//
+// Run: node tools/check-prose.mjs [--fix-hint]
+
+import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { join, relative, extname } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const ROOT = fileURLToPath(new URL('..', import.meta.url))
+
+const SEARCH_ROOTS = ['docs', 'packages', 'apps', 'spec', 'tools', '.github']
+const ROOT_FILES = ['README.md', 'CONTRIBUTING.md', 'SECURITY.md', 'CHANGELOG.md', 'CLAUDE.md']
+
+const SKIP_DIRS = new Set(['node_modules', 'dist', '.next', 'out', '.git', 'vectors', 'interop'])
+const TEXT_EXT = new Set(['.md', '.ts', '.tsx', '.mjs', '.js', '.yaml', '.yml', '.css'])
+
+/** @type {{id: string, why: string, test: (line: string) => number | -1}[]} */
+const RULES = [
+  {
+    id: 'em-dash',
+    why: 'No em dashes. Use a comma, a colon, parentheses, or two sentences.',
+    test: (line) => line.indexOf('—'), // prose-check-ignore
+  },
+  {
+    id: 'en-dash-as-punctuation',
+    why: 'No en dashes as punctuation. Use a hyphen in ranges, or rewrite.',
+    // An en dash surrounded by spaces is punctuation. Inside a numeric range it
+    // is a legitimate typographic choice, so only the spaced form is flagged.
+    test: (line) => line.search(/ – /), // prose-check-ignore
+  },
+  {
+    id: 'emoji',
+    why: 'No emoji in documentation or UI copy. This is a security tool, not a product page.',
+    // U+FE0F (variation selector) is a combining mark, so listing it in a
+    // character class alongside base emoji is flagged as misleading. It is
+    // intentional: a bare variation selector in prose is itself a defect.
+    // eslint-disable-next-line no-misleading-character-class
+    test: (line) => line.search(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/u),
+  },
+  {
+    id: 'overclaim',
+    why:
+      'Overclaiming is a security defect here. Say what the defence actually does, ' +
+      'and name the part that is partial. See docs/THREAT-MODEL.md.',
+    test: (line) => {
+      // Deliberately narrow. These are absolute claims that no software on a
+      // Raspberry Pi with no secure element can honestly make.
+      const banned =
+        /\b(unhackable|impenetrable|100% secure|completely secure|totally secure|bank[- ]grade|military[- ]grade|NSA[- ]proof|guarantees? (?:your )?(?:safety|security)|cannot be (?:hacked|broken|compromised))\b/i // prose-check-ignore
+      return line.search(banned)
+    },
+  },
+]
+
+// Lines that are quoting a banned pattern in order to forbid it, or that are
+// showing a hash, are exempt. The marker is explicit so an exemption is a
+// visible decision rather than an accident.
+const EXEMPT = /prose-check-ignore/
+
+function walk(dir, out = []) {
+  let entries
+  try {
+    entries = readdirSync(dir)
+  } catch {
+    return out
+  }
+  for (const name of entries) {
+    if (SKIP_DIRS.has(name)) continue
+    const full = join(dir, name)
+    const st = statSync(full)
+    if (st.isDirectory()) walk(full, out)
+    else if (TEXT_EXT.has(extname(name))) out.push(full)
+  }
+  return out
+}
+
+const files = [
+  ...SEARCH_ROOTS.flatMap((d) => walk(join(ROOT, d))),
+  ...ROOT_FILES.map((f) => join(ROOT, f)),
+]
+
+let failures = 0
+let scanned = 0
+
+for (const file of files) {
+  let text
+  try {
+    text = readFileSync(file, 'utf8')
+  } catch {
+    continue
+  }
+  scanned++
+  const lines = text.split('\n')
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    if (line === undefined || EXEMPT.test(line)) continue
+    for (const rule of RULES) {
+      const col = rule.test(line)
+      if (col >= 0) {
+        failures++
+        const rel = relative(ROOT, file)
+        console.error(`${rel}:${i + 1}:${col + 1}  ${rule.id}`)
+        console.error(`  ${line.trim()}`)
+        console.error(`  ${rule.why}\n`)
+      }
+    }
+  }
+}
+
+if (failures > 0) {
+  console.error(`prose: ${failures} violation${failures === 1 ? '' : 's'} across ${scanned} files`)
+  process.exit(1)
+}
+
+console.log(`prose: ${scanned} files clean`)
