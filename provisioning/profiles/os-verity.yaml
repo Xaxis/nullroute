@@ -1,0 +1,72 @@
+id: nullroute.os.verity
+version: 1
+title: Immutable system partition under a dm-verity hash tree
+tier: 1
+purpose: >
+  Assert the properties that only exist once the system partition is covered by
+  a dm-verity hash tree. Kept separate from the tier 0 profile because a tier 0
+  build genuinely does not have these, and a profile that asserted them anyway
+  would be describing a device that was not built.
+
+  Read the limit before reading the assertions. On its own, dm-verity MOVES the
+  OS integrity gap rather than closing it: the boot partition is not covered,
+  and the root hash is handed to the kernel from there. An attacker who rewrites
+  the boot partition supplies their own root hash and their own initramfs, and
+  the device displays exactly the number they chose. Only a signed boot chain
+  (tier 2) closes it.
+
+boards:
+  - raspberrypi-5
+  - raspberrypi-4
+  - raspberrypi-cm5
+
+backends:
+  - name: rpi-image-gen
+    distribution: debian-trixie
+    pin: v2.8.0
+    status: planned
+    notes: >
+      Its gpt/ab_userdata layout already builds the verity hash tree. The salt
+      defect described in INV-PROV-4 must be fixed before any of this is
+      meaningful.
+
+assertions:
+  - id: INV-PROV-4
+    statement: >
+      The dm-verity salt is a pinned deterministic function of the release
+      version, never a random value.
+    stage: image
+    tier: 1
+    verify:
+      - check: verity-salt-pinned
+    rationale: >
+      libcryptsetup generates a random 32-byte salt when none is given, and the
+      root hash is a function of (data, salt). With a random salt the root hash
+      changes on every build even when the filesystem is byte-identical, which
+      makes the single number this device displays at boot meaningless as a
+      published value. This is an upstream default that has to be overridden.
+    does_not_cover: >
+      Whether the resulting root hash is displayed correctly, or whether the
+      boot partition that carries it is protected. See INV-PROV-9.
+
+  - id: INV-PROV-9
+    statement: >
+      The dm-verity hash tree is written to its own GPT partition on the card,
+      not left beside the image as a build artifact.
+    stage: image
+    tier: 1
+    verify:
+      - check: partition-present
+        params: { role: verity }
+    rationale: >
+      A hash tree that does not ship cannot be used at boot, and an image that
+      verifies only on the build machine verifies nothing for the user.
+    does_not_cover: >
+      That the hash tree is actually consulted at boot, which is a runtime fact
+      and is asserted separately.
+
+references:
+  - cryptsetup, veritysetup(8)
+  - Linux kernel, Documentation/admin-guide/device-mapper/verity.rst
+  - docs/PROVISIONING.md
+  - docs/THREAT-MODEL.md

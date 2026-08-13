@@ -203,6 +203,14 @@ jobs:
       - name: Internal links and anchors resolve
         run: make links
 
+      # A hardening profile states what must be true of the BUILT ARTIFACT, and
+      # every assertion carries a verifier that inspects the artifact rather
+      # than the recipe. This enforces that inversion: no assertion without a
+      # verifier, no assertion without a stated limit, and no assertion claiming
+      # to check at build time a fact only a running device can answer.
+      - name: Hardening profiles are falsifiable
+        run: make profiles
+
   # ---------------------------------------------------------------------------
   # nullroute.space. Never ships to the device and never enters MANIFEST.lock,
   # so it is checked separately and cannot affect the signer's root hash.

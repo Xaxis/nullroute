@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nullroute.space/provisioning/schema.json",
+  "title": "nullroute hardening profile",
+  "description": "A distribution-independent statement of what must be true of a built nullroute image. Every assertion carries an executable verifier that inspects the built artifact or the running device. Backends are advisory: a backend is correct when the unchanged verifiers pass against its output, not when someone reviewed its recipe.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "version", "title", "tier", "purpose", "assertions", "references"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(\\.[a-z0-9-]+)+$",
+      "description": "Dotted identifier, e.g. nullroute.os.signer"
+    },
+    "version": { "type": "integer", "minimum": 1 },
+    "title": { "type": "string", "minLength": 4, "maxLength": 120 },
+
+    "tier": {
+      "enum": [0, 1, 2],
+      "description": "0: reproducible signed image, nothing irreversible. 1: adds a dm-verity hash tree over the system partition and a boot-time attestation display. 2: adds a signed boot chain rooted in fused silicon, which is irreversible. A profile must not assert a capability above its declared tier."
+    },
+
+    "purpose": { "type": "string", "minLength": 20 },
+
+    "boards": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string" },
+      "description": "Board identifiers this profile targets. A tier 2 profile may list only boards whose silicon supports a verified boot chain."
+    },
+
+    "backends": {
+      "type": "array",
+      "description": "How to build this, per distribution. ADVISORY ONLY, and the verifier is forbidden from reading this key (INV-PROV-2). Recorded so that adding a second distribution is a matter of adding an entry rather than rewriting the tooling.",
+      "items": { "$ref": "#/$defs/backend" }
+    },
+
+    "assertions": {
+      "type": "array",
+      "minItems": 1,
+      "description": "What must be true of the built artifact or the running device. This is the contract.",
+      "items": { "$ref": "#/$defs/assertion" }
+    },
+
+    "excluded_controls": {
+      "type": "array",
+      "description": "Controls from a published baseline that are deliberately NOT applied, with the reason. Publishing this is worth more than a compliance percentage: roughly a third of a general-purpose server baseline is vacuous or actively wrong on an air-gapped single-application device, and a high score achieved by applying controls that do nothing would be misleading.",
+      "items": { "$ref": "#/$defs/exclusion" }
+    },
+
+    "references": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 3 }
+    }
+  },
+
+  "$defs": {
+    "backend": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "distribution", "status"],
+      "properties": {
+        "name": { "type": "string", "minLength": 2 },
+        "distribution": { "type": "string", "minLength": 2 },
+        "pin": {
+          "type": "string",
+          "description": "Exact commit or tag. Pin the commit: rpi-image-gen removed INI config support in v2.8.0 and breaks between minor versions."
+        },
+        "status": {
+          "enum": ["supported", "experimental", "planned"],
+          "description": "`supported` requires that the UNCHANGED verifier suite passes in CI against an artifact this backend produced. Nothing else earns the word."
+        },
+        "notes": { "type": "string" }
+      }
+    },
+
+    "assertion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "statement", "stage", "verify", "rationale", "does_not_cover"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^INV-PROV-[0-9]+$",
+          "description": "Unique across the repository, reported alongside the code invariants."
+        },
+        "statement": {
+          "type": "string",
+          "minLength": 10,
+          "description": "A falsifiable claim about the built artifact or the running device."
+        },
+        "stage": {
+          "enum": ["image", "boot"],
+          "description": "WHERE the fact is observable. `image` reads the built artifact offline; `boot` reads the running device. An assertion answerable only on a running system must not claim `image`, because offline inspection of mount options and kernel parameters produces false passes: the checks pass vacuously when /proc is absent."
+        },
+        "verify": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Executable verifiers. At least one is mandatory (INV-PROV-1): an assertion with an intent and no verifier is unfalsifiable, and unfalsifiable hardening is the failure mode this whole design exists to avoid.",
+          "items": { "$ref": "#/$defs/verifier" }
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 20,
+          "description": "Why this matters on THIS device. A rationale that would read identically in a generic server baseline is a sign the control was imported rather than chosen."
+        },
+        "does_not_cover": {
+          "type": "string",
+          "minLength": 10,
+          "description": "REQUIRED (INV-PROV-34). What this assertion does not establish. Forcing the honest wording at authoring time is cheaper than discovering an overclaim in the threat model later."
+        },
+        "tier": {
+          "enum": [0, 1, 2],
+          "description": "Minimum tier at which this assertion applies. Defaults to the profile's tier."
+        },
+        "standard": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Control ids from a published baseline, e.g. ANSSI-BP-028 R11. Cited, not shipped as a scanner."
+        }
+      }
+    },
+
+    "verifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["check"],
+      "properties": {
+        "check": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "description": "Verifier implementation under provisioning/checks/, keyed by this name."
+        },
+        "params": {
+          "type": "object",
+          "description": "Arguments to the verifier. Shape is the verifier's own concern."
+        },
+        "tool": {
+          "type": "string",
+          "description": "External tool this verifier shells out to, if any. Must appear in the profile's tool allowlist so the verification path's own dependencies are enumerable."
+        }
+      }
+    },
+
+    "exclusion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["family", "reason"],
+      "properties": {
+        "family": { "type": "string", "minLength": 2 },
+        "control_count": { "type": "integer", "minimum": 1 },
+        "reason": {
+          "type": "string",
+          "minLength": 20,
+          "description": "Why the control does not apply here. 'Not applicable' alone is not a reason."
+        }
+      }
+    }
+  }
+}

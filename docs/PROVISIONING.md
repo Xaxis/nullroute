@@ -249,25 +249,82 @@ to "do you trust this BootROM", which is better without being elimination.
 
 ## Verifying an image
 
-The full procedure lands with the image build system. The shape it will take,
-consistent with how `MANIFEST.lock` already works, is:
-
-**Before flashing.** Check the published `sha256` of the image and a detached
-signature over it, using tools that are not ours. That is one hash command and
-one signature-verification command.
-
-**After flashing.** Read the card back and confirm it matches what you wrote,
-then confirm the integrity hash tree over the system partition verifies. This
-catches a bad write as well as a tampered one.
-
-**At boot.** The device displays the integrity root hash of its own system
-partition alongside the application manifest root hash, before unlock. Two
-numbers, both comparable against what was published.
-
 The design principle is the one already load-bearing elsewhere in this project:
 **you check our tool with someone else's tools.** A verification procedure that
 requires running a nullroute binary to check a nullroute image is not
-verification.
+verification. Every command below is `sha256sum`, `minisign`, `dd` or
+`veritysetup`, none of which are ours.
+
+### The published artifact set
+
+A release publishes, alongside the image:
+
+| File | What it is |
+| --- | --- |
+| `nullroute-<version>.img.xz` | The image |
+| `SHA256SUMS` | Plain `sha256sum` output covering every other file in the set |
+| `SHA256SUMS.minisig` | Detached signature over `SHA256SUMS` |
+| `system.roothash` | The dm-verity root hash, tier 1 and above |
+| `BUILD.lock` | Every value the build pinned to be deterministic: the epoch, the snapshot timestamp, the verity salt, and every UUID and GUID |
+| `PACKAGES.lock` | Exact package list, `dpkg-query` output sorted under `LC_ALL=C` |
+| `DEBS.lock` | Every contributing `.deb` with a sha256 and a resolvable pool URL |
+| `sbom.spdx.json` | Software bill of materials |
+| `REPRODUCE.md` | How to rebuild it and arrive at the same hashes |
+
+Note the shape of `SHA256SUMS`: it is the same choice as `MANIFEST.lock`, for
+the same reason. One file, in the output format of a tool that already exists on
+every machine, so `sha256sum -c` checks the set and `minisign -V` checks the
+file.
+
+### Before flashing
+
+```console
+$ minisign -Vm SHA256SUMS -P <the project public key>
+$ sha256sum -c SHA256SUMS
+```
+
+The public key appears verbatim in this repository, in the release, and on the
+device's own boot screen. Compare all three: a key you fetched from the same
+place as the file it verifies is not an independent check.
+
+### After flashing
+
+Read the card back and confirm the bytes that landed are the bytes you wrote.
+This catches a failing SD card as readily as a tampered one:
+
+```console
+$ sudo dd if=/dev/<card> bs=4M count=<image size> | sha256sum
+```
+
+Then, at tier 1 and above, confirm the hash tree over the system partition:
+
+```console
+$ sudo veritysetup verify /dev/<card>p2 /dev/<card>p3 $(cat system.roothash)
+```
+
+### At boot
+
+The lock screen shows exactly two hashes: the dm-verity root hash of the system
+partition, and `sha256sum MANIFEST.lock` for the application. Compare both
+against the release.
+
+**Both numbers are reported by the software you are looking at.** That is not a
+reason to skip reading them, and it is a reason not to treat them as proof on
+their own. They catch an accident, a failed write, and an unsophisticated
+substitution. Until tier 2, they do not catch an attacker who replaced the code
+that draws them.
+
+### Reproducing the build
+
+The strongest check available, and the only one that does not rely on us at all,
+is to build the image yourself and compare hashes. `REPRODUCE.md` in each
+release gives the exact commands, the pinned builder commit, and the snapshot
+timestamp.
+
+Where reproducibility stops short, that is stated rather than glossed. Until the
+image reproduces byte-identically across different machines, different paths and
+different times, the honest claim is a reproducible root filesystem and a
+non-reproducible disk image, and nothing stronger.
 
 ---
 

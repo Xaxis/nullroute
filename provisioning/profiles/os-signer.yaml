@@ -1,0 +1,362 @@
+id: nullroute.os.signer
+version: 1
+title: Air-gapped signer, hardened base image
+tier: 0
+purpose: >
+  State what must be true of a built nullroute image, in terms a verifier can
+  check against the artifact rather than against the recipe that produced it.
+  This is the contract a build backend has to satisfy. A backend is supported
+  when the unchanged verifiers below pass against its output, and not before.
+
+boards:
+  - raspberrypi-5
+  - raspberrypi-4
+  - raspberrypi-cm5
+
+backends:
+  # ADVISORY. The verifier is forbidden from reading this key (INV-PROV-2),
+  # because an abstraction where the backend can influence its own verdict is
+  # not an abstraction, it is a claim.
+  - name: rpi-image-gen
+    distribution: debian-trixie
+    pin: v2.8.0
+    status: planned
+    notes: >
+      The official Raspberry Pi builder. Its gpt/ab_userdata layout already
+      implements an immutable erofs system partition with a dm-verity hash tree
+      over it, A/B tryboot slots, and a separate persistent partition, which is
+      most of what this profile asserts. It is built on mmdebstrap, which claims
+      bit-for-bit reproducible output when SOURCE_DATE_EPOCH is set, and it
+      pins packages against snapshot.debian.org.
+
+      Two upstream defects have to be fixed before the reproducibility
+      assertions can hold, and the first one is severe: the verity setup passes
+      --salt "$(uuidgen)", and since the root hash is a function of (data,
+      salt), THE ROOT HASH CHANGES ON EVERY BUILD even when the filesystem is
+      byte-identical. Until that is pinned, the number this project most wants
+      to publish is meaningless. The second is that mke2fs is never given
+      -E hash_seed=, leaving the ext4 directory index seed random per build.
+
+      Pin the commit rather than the tag: v2.8.0 removed INI configuration
+      support outright, so this project breaks between minor versions.
+
+  - name: mkosi
+    distribution: multiple
+    status: planned
+    notes: >
+      The candidate second backend, and the reason the assertion/verifier split
+      exists at all. It genuinely targets many distributions from one
+      configuration. It is not first because its model is UEFI-centric and the
+      Pi has no native UEFI, and because a systemd maintainer states plainly
+      that nobody has tried it on a Pi.
+
+  # Deliberately not listed as a backend: Buildroot. SeedSigner's architecture
+  # (whole rootfs baked into the kernel image, so "verify the OS" collapses to
+  # hashing one file) is philosophically better than what is chosen here, and
+  # it is unavailable: the Pi boot ramdisk limit is 180 MB, and a Chromium
+  # kiosk plus a Node daemon does not fit. The two-partition split is forced by
+  # the platform, not preferred.
+
+assertions:
+  # --- Meta: the abstraction has to be falsifiable ------------------------
+  - id: INV-PROV-1
+    statement: >
+      Every assertion in this profile carries at least one executable verifier.
+    stage: image
+    verify:
+      - check: profile-self-check
+    rationale: >
+      The failure mode this whole design exists to avoid is a hardening rule
+      that is documented, believed, and not applied. An assertion without a
+      verifier is exactly that: it reads as a guarantee and checks nothing.
+    does_not_cover: >
+      That the verifiers are correct, or that they check what their assertion
+      says. A verifier that always returns true satisfies this assertion.
+      Verifier correctness is covered by the verifier suite's own tests.
+
+  - id: INV-PROV-2
+    statement: >
+      The verifier never reads the `backends` key of any assertion, so a
+      backend cannot influence its own verdict.
+    stage: image
+    verify:
+      - check: verifier-ignores-backends
+    rationale: >
+      If the verifier consulted the backend, a backend that failed to implement
+      a rule could describe itself as exempt from it. The verdict has to come
+      from the artifact alone or the abstraction is decorative.
+    does_not_cover: >
+      Backends influencing the verdict indirectly by producing an artifact that
+      happens to satisfy a weakly written verifier.
+
+  # --- Determinism and identity -------------------------------------------
+  - id: INV-PROV-3
+    statement: >
+      Two clean builds of the same commit produce byte-identical image files.
+    stage: image
+    verify:
+      - check: rebuild-identical
+    rationale: >
+      Everything else here is conditional on this. A published hash that a third
+      party cannot arrive at independently is a number, not a check.
+    does_not_cover: >
+      Reproducibility across different machines, paths and times, which is a
+      strictly stronger property and is gated separately. Until that passes, the
+      honest claim is a reproducible root filesystem and a non-reproducible disk
+      image, and nothing stronger.
+    standard: ['Reproducible Builds']
+
+  - id: INV-PROV-5
+    statement: >
+      Every filesystem UUID, FAT volume id, GPT disk GUID and GPT partition GUID
+      in the image is a pinned deterministic function of the release version.
+    stage: image
+    verify:
+      - check: identifiers-pinned
+    rationale: >
+      Randomly generated identifiers are the most common single cause of an
+      otherwise reproducible image failing to reproduce, and they are invisible
+      in a file-level diff of the root filesystem.
+    does_not_cover: >
+      Identifiers created at runtime on first boot, such as the state partition
+      created by the user, which are deliberately not pinned.
+
+  # --- Image structure -----------------------------------------------------
+  - id: INV-PROV-11
+    statement: No swap device and no swap file exists, at build time or at runtime.
+    stage: boot
+    verify:
+      - check: no-swap
+    rationale: >
+      Swap is how a seed reaches persistent storage in plaintext without anyone
+      deciding that it should. On a device holding key material this is not a
+      performance setting.
+    does_not_cover: >
+      Kernel memory reaching storage by other routes, such as a crash dump or
+      hibernation image, which are separately disabled.
+    standard: ['ANSSI-BP-028 R4']
+
+  - id: INV-PROV-12
+    statement: >
+      /tmp, /var/tmp and /run are tmpfs mounted noexec, nosuid and nodev,
+      confirmed from /proc/mounts on the running device.
+    stage: boot
+    verify:
+      - check: mount-options
+        params:
+          mounts:
+            - { path: /tmp, fstype: tmpfs, options: [noexec, nosuid, nodev] }
+            - { path: /var/tmp, fstype: tmpfs, options: [noexec, nosuid, nodev] }
+            - { path: /run, fstype: tmpfs, options: [noexec, nosuid, nodev] }
+    rationale: >
+      Scratch space holds decrypted material in the ordinary course of
+      operation, and it must not survive a power cut or be executable.
+    does_not_cover: >
+      Anything about the encrypted state partition, which is persistent by
+      design.
+    standard: ['ANSSI-BP-028 R12', 'CIS Debian 1.1.2']
+
+  # --- Removing the network, not disabling it ------------------------------
+  - id: INV-PROV-13
+    statement: >
+      No wireless or Bluetooth kernel module, firmware file, or userspace
+      package is present in the image.
+    stage: image
+    verify:
+      - check: absent-packages
+        params:
+          packages: [firmware-brcm80211, bluez, wpasupplicant, wireless-tools]
+      - check: absent-paths
+        params:
+          globs: ['lib/modules/*/kernel/drivers/net/wireless/**', 'lib/firmware/brcm/**']
+    rationale: >
+      Disabling a radio in configuration leaves the capability present for
+      whoever next edits that configuration. Removing the driver and the
+      firmware means reverting a device tree overlay is not enough to bring the
+      radio back.
+    does_not_cover: >
+      The radio hardware itself, which is still physically present and still
+      attached to the SoC. Only a board without the chip gives physical
+      certainty.
+    standard: ['ANSSI-BP-028 R9']
+
+  - id: INV-PROV-15
+    statement: >
+      At runtime, zero sockets listen on any address family other than AF_UNIX.
+    stage: boot
+    verify:
+      - check: no-listening-sockets
+    rationale: >
+      This is INV-NET-1 checked at the layer below the application. The lint
+      rule proves no source file can open a socket; this proves nothing on the
+      running device has.
+    does_not_cover: >
+      Outbound connections, which are separately prevented by there being no
+      route and no configured interface.
+
+  - id: INV-PROV-16
+    statement: >
+      No network-configuration daemon, time-synchronisation daemon, SSH server,
+      cron daemon, audit daemon or firewall package is installed.
+    stage: image
+    verify:
+      - check: absent-packages
+        params:
+          packages:
+            [openssh-server, chrony, systemd-timesyncd, ntp, cron, at, auditd, ufw, nftables, dhcpcd-base, avahi-daemon]
+    rationale: >
+      Each of these is a service with a parser, a configuration file and a CVE
+      history, present on this device for no reason. The time daemons are worse
+      than useless here: they would require a network and would contradict the
+      rule that nothing cryptographic depends on wall time.
+    does_not_cover: >
+      Equivalent functionality statically linked into another binary, which
+      package-level absence cannot see.
+
+  - id: INV-PROV-17
+    statement: >
+      /dev/rtc0 is absent and no unit is ordered after time-sync.target.
+    stage: boot
+    verify:
+      - check: absent-paths
+        params: { globs: ['/dev/rtc0'] }
+      - check: no-unit-ordering
+        params: { after: time-sync.target }
+    rationale: >
+      The board has no battery-backed clock, so wall time after a power cut is
+      arbitrary. Any code that trusts it is wrong, and rate limiting uses
+      monotonic time for that reason. A systemd DevicePolicy that silently
+      grants char-rtc access would undermine this quietly.
+    does_not_cover: >
+      Application logic that derives a timestamp from user input or from an
+      imported snapshot, which is the wallet layer's problem.
+
+  # --- Process isolation ---------------------------------------------------
+  - id: INV-PROV-18
+    statement: >
+      The signing daemon unit scores at most 0.5 under
+      `systemd-analyze security --offline=true` with the pinned systemd version.
+    stage: image
+    verify:
+      - check: systemd-exposure
+        tool: systemd-analyze
+        params: { unit: nullrouted.service, max_exposure: 0.5 }
+    rationale: >
+      The daemon holds key material and talks to one Unix socket and one device
+      node. There is no reason for it to retain any capability, any address
+      family beyond AF_UNIX, or any view of the rest of the filesystem.
+    does_not_cover: >
+      What the binary does inside the sandbox. This measures DECLARED
+      directives, not enforced behaviour: it is a configuration linter, and its
+      number is not a security measurement. The score is also coupled to the
+      systemd version, whose weights change between releases, which is why that
+      version is pinned and recorded.
+    standard: ['ANSSI-BP-028 R70']
+
+  - id: INV-PROV-19
+    statement: >
+      The kiosk unit scores at most 3.0, and the documentation states that it is
+      the weakest component on the device.
+    stage: image
+    verify:
+      - check: systemd-exposure
+        tool: systemd-analyze
+        params: { unit: nullroute-kiosk.service, max_exposure: 3.0 }
+      - check: documented-weakness
+        params: { document: docs/PROVISIONING.md, claim: weakest-component }
+    rationale: >
+      Chromium's own sandbox needs unprivileged user namespaces, so the
+      directives that make the daemon safe force --no-sandbox, which is a net
+      loss. The asymmetry is permanent and roughly sixfold. Averaging the two
+      scores would hide the one number a reader should take away.
+    does_not_cover: >
+      Any claim that the browser is adequately hardened. It is not, and the
+      design response is to keep trust out of it rather than to harden it
+      further.
+
+  - id: INV-PROV-20
+    statement: >
+      The daemon starts with --jitless under MemoryDenyWriteExecute=true, and a
+      build-time test proves it starts under both.
+    stage: image
+    verify:
+      - check: daemon-starts-under-mdwe
+    rationale: >
+      MemoryDenyWriteExecute is the single most effective directive available
+      and it crashes Node outright, because V8's baseline compiler needs
+      writable-then-executable pages. Running --jitless makes the directive
+      usable for a workload that is not throughput bound. Asserting both
+      together is what stops someone quietly dropping one of them.
+    does_not_cover: >
+      Whether the crypto layer's constant-time assumptions still hold under the
+      interpreter, which takes different code paths and must be re-validated
+      separately. Until that is done this assertion is not enabled.
+
+  - id: INV-PROV-21
+    statement: >
+      The kernel command line inside the artifact matches the pinned token set
+      exactly and contains no `lockdown=` token.
+    stage: image
+    verify:
+      - check: cmdline-exact
+    rationale: >
+      Pinning the whole command line rather than checking for the presence of
+      individual tokens catches additions as well as removals. `lockdown=` is
+      explicitly excluded because it is a no-op on stock Raspberry Pi kernels,
+      which do not build CONFIG_SECURITY_LOCKDOWN_LSM, and a parameter that
+      does nothing reads to a later maintainer as a protection that exists.
+    does_not_cover: >
+      The command line the firmware actually read, which lives on the boot
+      partition and is only covered once the boot chain is signed.
+
+excluded_controls:
+  - family: Audit daemon (auditd)
+    control_count: 55
+    reason: >
+      An audit trail exists to reconstruct who did what on a multi-user system.
+      This device has no interactive users and one application, the logs would
+      have to be written to the encrypted state partition to survive, and the
+      device already keeps a hash-chained operation log at the application layer
+      that records exactly the events that matter.
+
+  - family: SSH server configuration
+    control_count: 23
+    reason: >
+      There is no SSH server. Hardening the configuration of an absent daemon is
+      the clearest possible example of a control that raises a compliance score
+      without changing the attack surface.
+
+  - family: PAM and password aging
+    control_count: 42
+    reason: >
+      No account has a valid password hash and nothing logs in. Access control
+      on this device is the PIN gate in front of the encrypted store, which is
+      not a PAM concern.
+
+  - family: Time synchronisation
+    control_count: 6
+    reason: >
+      Applying these would require a network and a time daemon, both of which
+      this device deliberately lacks. This family is not merely vacuous here, it
+      is actively contrary to the design.
+
+  - family: Firewall
+    control_count: 5
+    reason: >
+      A firewall states that certain traffic is not permitted to leave. Having
+      no configured interface, no route, and no code able to open a socket is a
+      stronger statement, and adding a firewall on top would suggest the weaker
+      one was the real defence.
+
+  - family: Login banners
+    control_count: 6
+    reason: >
+      A banner warns unauthorised users of monitoring before they log in.
+      Nothing logs in.
+
+references:
+  - ANSSI-BP-028 v2.0, Recommandations de configuration d'un systeme GNU/Linux
+  - CIS Debian Linux Benchmark, cited by control id where genuinely applicable
+  - Reproducible Builds, https://reproducible-builds.org
+  - docs/PROVISIONING.md
+  - docs/THREAT-MODEL.md

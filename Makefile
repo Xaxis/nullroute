@@ -13,11 +13,11 @@ SHELL := /bin/bash
 
 # The manifest covers what ships to the device. apps/web is the public website
 # and is deliberately excluded: see docs/VERIFICATION.md.
-MANIFEST_ROOTS := packages spec
+MANIFEST_ROOTS := packages spec provisioning
 
 .PHONY: help install dev build check check-fast verify manifest manifest-check \
         lint type-check test test-report test-vectors test-differential test-repro \
-        prose links sbom sbom-check repro-check clean web web-build web-lint web-type-check \
+        prose links profiles sbom sbom-check repro-check clean web web-build web-lint web-type-check \
         web-isolation web-csp web-responsive web-check web-live-check deploy image
 
 help: ## List available targets
@@ -63,6 +63,12 @@ prose: ## No em dashes, no emoji, no overclaiming markers in docs and UI copy
 
 links: ## Every internal link resolves, and every anchor exists on its target
 	@node tools/check-links.mjs
+
+profiles: ## Hardening profiles validate, and every assertion is falsifiable
+	# Enforces the rules a JSON Schema cannot: every assertion carries a
+	# verifier, every assertion states what it does NOT cover, and no assertion
+	# claims to check at build time a fact only observable on a running device.
+	@node tools/check-profiles.mjs
 
 sbom: ## Emit a CycloneDX SBOM as a build artifact
 	@node tools/gen-sbom.mjs
@@ -168,6 +174,6 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.space
 
 # --- aggregates --------------------------------------------------------------
 
-check-fast: lint type-check prose links test manifest-check ## Everything except the slow suites
+check-fast: lint type-check prose links profiles test manifest-check ## Everything except the slow suites
 
 check: check-fast build verify repro-check sbom web-check ## Everything CI runs
