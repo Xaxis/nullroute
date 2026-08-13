@@ -1,0 +1,106 @@
+id: ui.screens.lock
+version: 1
+title: Lock screen and device attestation display
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Put the device's own attestation in front of a user before they enter a PIN,
+  so that a swapped, modified or unverified device can be noticed rather than
+  merely feared. This is the screen the whole verification apparatus reports to,
+  and the last point at which a user can decline.
+
+covers:
+  - packages/ui/src/screens/LockScreen.tsx::LockScreen
+  - packages/ui/src/components/Hash.tsx::Hash
+  - packages/ui/src/components/Hash.tsx::chunk
+  - packages/ui/src/components/Hash.tsx::abbreviate
+  - packages/ui/src/components/NetworkBanner.tsx::NetworkBanner
+  - packages/ui/src/lib/client.ts::call
+  - packages/ui/src/lib/client.ts::IpcCallError
+
+algorithm: >
+  Renders the manifest root hash, the verification status with spec and
+  invariant counts, the build tier, and where a wallet exists its fingerprint.
+
+  Hashes are chunked in groups of four and shown abbreviated as first eight and
+  last eight characters, expanding on tap. Four is the span a person can hold
+  while glancing between two screens; a full unbroken 64 characters gets skimmed,
+  and a skimmed hash is worse than an abbreviated one because it feels like it
+  was read.
+
+  Unlock is disabled outright when any check failed. The screen states the limit
+  of what its own numbers prove.
+
+invariants:
+  - id: INV-UI-1
+    statement: The lock screen displays the manifest root hash before unlock.
+    tests:
+      - packages/ui/test/lock-screen.test.tsx::shows-the-manifest-root-hash
+      - packages/ui/test/lock-screen.test.tsx::expands-to-the-full-hash
+
+  - id: INV-UI-2
+    statement: >
+      A failed verification disables unlock and says so plainly. It warns and
+      then proceeds under no circumstances.
+    tests:
+      - packages/ui/test/lock-screen.test.tsx::blocks-unlock-when-verification-failed
+
+  - id: INV-UI-3
+    statement: >
+      A non-mainnet wallet carries a persistent banner naming the network, since
+      signet, testnet3 and testnet4 are otherwise indistinguishable.
+    tests:
+      - packages/ui/test/lock-screen.test.tsx::shows-a-persistent-banner-off-mainnet
+      - packages/ui/test/lock-screen.test.tsx::shows-no-banner-on-mainnet
+
+  - id: INV-UI-4
+    statement: >
+      The wallet fingerprint is shown before unlock, which is the only signal a
+      user gets that a passphrase was mistyped.
+    tests:
+      - packages/ui/test/lock-screen.test.tsx::shows-the-wallet-fingerprint-before-unlock
+
+  - id: INV-UI-5
+    statement: >
+      The screen states that its own values are reported by the software being
+      looked at, rather than implying they are independent proof.
+    tests:
+      - packages/ui/test/lock-screen.test.tsx::states-the-limit-of-what-these-numbers-prove
+
+  - id: INV-UI-6
+    statement: Hashes render chunked and abbreviated consistently.
+    tests:
+      - packages/ui/test/lock-screen.test.tsx::chunks-in-groups-of-four
+      - packages/ui/test/lock-screen.test.tsx::abbreviates-to-first-and-last-eight
+
+threats:
+  - INV-KEY-1
+  - INV-BUILD-1
+
+security_notes: >
+  The values on this screen are reported by the software being looked at. That
+  is stated on the screen itself rather than in the documentation, because it is
+  the single most consequential place in the product to overclaim. They catch an
+  accident, a failed write, and an unsophisticated substitution. Until the boot
+  chain is signed (provisioning tier 2), they do not catch an attacker who
+  replaced the code that draws them.
+
+  Unlock is not the focused default action, so a stray tap cannot carry a user
+  past the one screen asking them to look. There is no animation: motion belongs
+  to progress indicators, and a security screen that moves invites a glance
+  rather than a read.
+
+  This package receives xpubs, addresses, descriptors and PSBTs, and never a
+  seed, a mnemonic or a private key (INV-KEY-1). It also never generates
+  entropy: a lint rule bans crypto.getRandomValues here, because entropy
+  collection happens in the daemon or it does not happen at all.
+
+  The fingerprint shown here cannot detect a wrong passphrase. Nothing can. It
+  only lets a user who recorded the correct value notice a mismatch, which
+  depends on them having recorded it.
+
+references:
+  - docs/VERIFICATION.md
+  - docs/THREAT-MODEL.md
+  - docs/ENTROPY.md, on passphrases and fingerprints

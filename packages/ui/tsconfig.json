@@ -1,0 +1,14 @@
+{
+  "//": "Lint/IDE config: covers src AND test, emits nothing. Composite build configs cannot include test files (rootDir/outDir constraints), but type-aware lint needs them in a project.",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "incremental": false,
+    "jsx": "react-jsx",
+    "lib": ["ES2023", "DOM"]
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx"]
+}

@@ -10,6 +10,9 @@
     },
     {
       "path": "./packages/daemon/tsconfig.build.json"
+    },
+    {
+      "path": "./packages/ui/tsconfig.build.json"
     }
   ]
 }

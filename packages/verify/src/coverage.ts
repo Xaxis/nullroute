@@ -55,6 +55,10 @@ export function enumerateExports(root: string, entryPoint: string): ExportedSymb
     strict: true,
     noEmit: true,
     skipLibCheck: true,
+    // The UI package is .tsx. Without this the compiler cannot parse it, its
+    // declarations are invisible, and every symbol a spec covers there looks
+    // like it does not exist.
+    jsx: ts.JsxEmit.ReactJSX,
   })
 
   const checker = program.getTypeChecker()

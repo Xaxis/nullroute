@@ -40,6 +40,7 @@ const SCHEMA = join(REPO_ROOT, 'spec', 'schema.json')
 const COVERED_ENTRIES = [
   'packages/core/src/index.ts',
   'packages/daemon/src/index.ts',
+  'packages/ui/src/index.ts',
 ]
 const TEST_REPORT = join(REPO_ROOT, 'test-report.json')
 const OUT = join(REPO_ROOT, 'verification-report.json')

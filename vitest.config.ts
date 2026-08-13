@@ -29,6 +29,16 @@ export default defineConfig({
         },
       },
       {
+        root: './packages/ui',
+        test: {
+          name: 'ui',
+          // The lock screen is a rendered surface, so it is tested by rendering
+          // it. Asserting on props would test the test.
+          environment: 'happy-dom',
+          include: ['test/**/*.test.tsx'],
+        },
+      },
+      {
         // The lint rules that enforce the invariants get their own regression
         // suite. A rule that silently stops matching is an invariant that
         // silently stopped being enforced.
