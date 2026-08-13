@@ -1,0 +1,49 @@
+{
+  "//": "The website is not part of the device build graph and is deliberately not referenced from tsconfig.build.json. It is a networked Next.js app; folding it into the artifact whose hash users check before entering a PIN would be wrong.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    // Regex capture groups are genuinely `undefined` at runtime when a group is
+    // optional or the alternation did not match, but without this TypeScript
+    // types them as plain `string`. The result is that real runtime guards get
+    // flagged as unnecessary conditionals. Matching the device packages' setting
+    // makes the types describe reality.
+    "noUncheckedIndexedAccess": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next-dev/types/**/*.ts",
+    "next-env.d.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

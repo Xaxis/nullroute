@@ -1,0 +1,250 @@
+@import 'tailwindcss';
+
+/*
+ * nullroute.space
+ *
+ * The visual direction is deliberately close to a terminal and a technical
+ * specification, because that is what the project is. No gradients, no hero
+ * animation, no stock photography of a padlock. A site that looks like a
+ * fintech landing page would be making a claim the threat model spends four
+ * pages walking back.
+ *
+ * Dark by default: the device runs a dark theme (it is used in low light), and
+ * the site should look like it belongs to the same object.
+ */
+
+@theme {
+  /* Near-black rather than pure black: pure black against bright text causes
+     halation on OLED and is genuinely harder to read for long stretches. */
+  --color-ink-950: #0b0c0e;
+  --color-ink-900: #111317;
+  --color-ink-850: #171a1f;
+  --color-ink-800: #1e222a;
+  --color-ink-700: #2b313b;
+  --color-ink-600: #3d4552;
+  --color-ink-500: #5a6472;
+  --color-ink-400: #8b94a3;
+  --color-ink-300: #b6bdc8;
+  --color-ink-200: #d8dce3;
+  --color-ink-100: #eef0f4;
+
+  /* One accent, used sparingly. Signal orange reads as "attend to this"
+     without borrowing the Bitcoin logo's exact colour. */
+  --color-signal-500: #e8833a;
+  --color-signal-400: #f39c5c;
+  --color-signal-300: #f7b884;
+
+  /* Reserved strictly for honest limitations and hard warnings. If this colour
+     appears, the text next to it is telling you what the device cannot do. */
+  --color-caution-500: #d9534f;
+  --color-caution-300: #f0918e;
+
+  --color-verify-500: #4fa88a;
+  --color-verify-300: #86c9b2;
+
+  --font-mono:
+    ui-monospace, 'SF Mono', 'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace;
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-ink-950);
+  color: var(--color-ink-200);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/*
+ * Hashes, addresses and hex are chunked and monospaced everywhere they appear.
+ * The device does the same thing for the same reason: a user comparing a root
+ * hash on a screen against one in a terminal needs the glyphs to be
+ * unambiguous and the grouping to be identical in both places.
+ */
+.hash {
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  word-break: break-all;
+  font-feature-settings: 'zero' 1;
+}
+
+/* Long-form documentation rendered from docs/ at the repository root. */
+.prose-doc {
+  color: var(--color-ink-200);
+  line-height: 1.7;
+}
+.prose-doc h1,
+.prose-doc h2,
+.prose-doc h3,
+.prose-doc h4 {
+  color: var(--color-ink-100);
+  font-weight: 600;
+  scroll-margin-top: 6rem;
+}
+.prose-doc h1 {
+  font-size: 1.875rem;
+  line-height: 1.2;
+  margin-bottom: 1.5rem;
+  letter-spacing: -0.02em;
+}
+.prose-doc h2 {
+  font-size: 1.375rem;
+  margin-top: 3rem;
+  margin-bottom: 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-ink-800);
+  letter-spacing: -0.01em;
+}
+.prose-doc h3 {
+  font-size: 1.0625rem;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+}
+.prose-doc h4 {
+  font-size: 0.9375rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--color-ink-300);
+}
+.prose-doc p {
+  margin-bottom: 1.125rem;
+}
+.prose-doc a {
+  color: var(--color-signal-400);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+.prose-doc a:hover {
+  color: var(--color-signal-300);
+}
+.prose-doc strong {
+  color: var(--color-ink-100);
+  font-weight: 600;
+}
+.prose-doc ul,
+.prose-doc ol {
+  margin-bottom: 1.125rem;
+  padding-left: 1.5rem;
+}
+.prose-doc ul {
+  list-style: disc;
+}
+.prose-doc ol {
+  list-style: decimal;
+}
+.prose-doc li {
+  margin-bottom: 0.4rem;
+}
+.prose-doc li::marker {
+  color: var(--color-ink-500);
+}
+.prose-doc code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  background-color: var(--color-ink-850);
+  border: 1px solid var(--color-ink-800);
+  border-radius: 3px;
+  padding: 0.1em 0.35em;
+  color: var(--color-ink-100);
+  word-break: break-word;
+}
+.prose-doc pre {
+  background-color: var(--color-ink-900);
+  border: 1px solid var(--color-ink-800);
+  border-radius: 6px;
+  padding: 1rem 1.125rem;
+  margin-bottom: 1.25rem;
+  /* Wide content scrolls inside its own box. Without this a single long hash
+     pushes the whole page sideways on a phone. */
+  overflow-x: auto;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+.prose-doc pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+}
+.prose-doc blockquote {
+  border-left: 3px solid var(--color-signal-500);
+  padding-left: 1rem;
+  margin: 1.25rem 0;
+  color: var(--color-ink-300);
+}
+.prose-doc hr {
+  border: 0;
+  border-top: 1px solid var(--color-ink-800);
+  margin: 2.5rem 0;
+}
+/* These documents use `---` before most section headings, and h2 already draws
+   a top rule. Without this the reader sees two lines a few pixels apart. */
+.prose-doc hr + h2 {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+/* Tables carry the threat model and the interop matrix, so they need to stay
+   readable rather than merely present. */
+.prose-doc .table-scroll {
+  overflow-x: auto;
+  margin-bottom: 1.25rem;
+  border: 1px solid var(--color-ink-800);
+  border-radius: 6px;
+}
+.prose-doc table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.prose-doc th {
+  text-align: left;
+  padding: 0.625rem 0.875rem;
+  background-color: var(--color-ink-900);
+  color: var(--color-ink-100);
+  font-weight: 600;
+  border-bottom: 1px solid var(--color-ink-800);
+  white-space: nowrap;
+}
+.prose-doc td {
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--color-ink-850);
+  vertical-align: top;
+}
+.prose-doc tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Anchor links on headings, revealed on hover. */
+.prose-doc .heading-anchor {
+  color: var(--color-ink-600);
+  text-decoration: none;
+  margin-left: 0.4rem;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.prose-doc h2:hover .heading-anchor,
+.prose-doc h3:hover .heading-anchor {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

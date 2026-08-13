@@ -130,6 +130,14 @@ export default tseslint.config(
         TextDecoder: 'readonly',
         Buffer: 'readonly',
         __dirname: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        // tools/ may use fetch and WebSocket: check-responsive.mjs drives a
+        // local headless browser over the DevTools protocol. Note that the
+        // no-network rule is scoped to packages/ and apps/, so this permission
+        // stops at the build tooling and never reaches the device.
+        fetch: 'readonly',
+        WebSocket: 'readonly',
       },
     },
   }

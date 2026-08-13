@@ -18,11 +18,12 @@ permissions:
   contents: read
 
 env:
-  # Reproducible builds need a fixed timestamp. Anything deriving a date from
-  # "now" makes two builds of the same commit differ.
-  SOURCE_DATE_EPOCH: 1
   # No package runs arbitrary code at install time, in CI as on a workstation.
   NPM_CONFIG_IGNORE_SCRIPTS: 'true'
+  # Note: SOURCE_DATE_EPOCH is deliberately NOT set. It is honored by nothing in
+  # the Node toolchain (not tsc, not npm, not node), so setting it here would be
+  # a build variable that looks load-bearing and does nothing. It becomes
+  # relevant when the Debian image build lands, where it genuinely applies.
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -203,3 +204,25 @@ jobs:
       - run: make web-lint
       - run: make web-type-check
       - run: make web-build
+
+      # The site documents a device whose premise is that it has no network
+      # capability. A docs site pulling a font from a CDN would undercut its own
+      # argument on the page where it makes it.
+      - name: Site loads nothing off-origin
+        run: make web-isolation
+
+      # Next inlines an RSC bootstrap into every page, so the CSP carries their
+      # sha256 hashes. If they drift, the deployed policy blocks the scripts and
+      # the site fails to hydrate while still looking fine to a crawler.
+      - name: CSP hashes match the build
+        run: make web-csp
+
+      # Drives a real browser and measures the real layout. A flex item does not
+      # shrink below its content, so one wide element can push every page
+      # sideways while the build, the types and the tests all stay green.
+      - uses: browser-actions/setup-chrome@v1
+        id: chrome
+      - name: No page scrolls sideways on a phone
+        run: make web-responsive
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}

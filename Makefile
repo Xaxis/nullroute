@@ -18,7 +18,7 @@ MANIFEST_ROOTS := packages spec
 .PHONY: help install dev build check check-fast verify manifest manifest-check \
         lint type-check test test-report test-vectors test-differential test-repro \
         prose sbom repro-check clean web web-build web-lint web-type-check \
-        image
+        web-isolation web-csp web-responsive web-check image
 
 help: ## List available targets
 	@grep -hE '^[a-z][a-z-]*:.*?## ' $(MAKEFILE_LIST) \
@@ -117,8 +117,19 @@ web-lint: ## ESLint the website workspace
 web-type-check: ## TypeScript for the website
 	@npm run type-check --workspace @nullroute/web
 
+web-isolation: ## The site loads nothing off-origin and emits no inline styles
+	@node tools/check-web-isolation.mjs
+
+web-csp: ## vercel.json's CSP still matches the built inline script hashes
+	@node tools/gen-csp.mjs --check
+
+web-responsive: ## No page scrolls sideways at 320px or 390px. Drives a real browser.
+	@node tools/check-responsive.mjs
+
+web-check: web-lint web-type-check web-build web-isolation web-csp web-responsive ## Every website check
+
 # --- aggregates --------------------------------------------------------------
 
 check-fast: lint type-check prose test manifest-check ## Everything except the slow suites
 
-check: check-fast build verify test-vectors test-differential test-repro repro-check web-build ## Everything CI runs
+check: check-fast build verify test-vectors test-differential test-repro repro-check web-check ## Everything CI runs

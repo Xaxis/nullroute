@@ -193,6 +193,28 @@ If you find yourself wanting to import device code into the website to show
 something off, that is the boundary doing its job. Copy the values into
 `docs/` or generate a static artifact instead.
 
+### Editing a page changes the CSP
+
+`vercel.json` carries a strict Content-Security-Policy with no `'unsafe-inline'`
+anywhere, including for styles. Next inlines a small RSC bootstrap into every
+page, so `script-src` enumerates the sha256 hash of each of those blocks.
+
+Those hashes are content-derived, which means **any edit to any page changes
+them**. After changing the site, run:
+
+```bash
+make web-build
+node tools/gen-csp.mjs     # rewrites vercel.json
+```
+
+`make web-csp` fails in CI if you forget. That is friction, and it is the price
+of not writing `'unsafe-inline'` and moving on. A policy with `'unsafe-inline'`
+in `script-src` permits exactly the injection the policy exists to prevent, on
+the site that tells people to verify things.
+
+This works only because the hashes are stable across builds, which is only true
+because `next.config.mjs` pins `generateBuildId`. Do not remove that pin.
+
 ---
 
 ## Documentation
