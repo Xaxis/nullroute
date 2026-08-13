@@ -12,6 +12,14 @@ purpose: >
 
 covers:
   - packages/ui/src/screens/LockScreen.tsx::LockScreen
+  - packages/ui/src/screens/SetupScreen.tsx::SetupScreen
+  - packages/ui/src/screens/DiceScreen.tsx::DiceScreen
+  - packages/ui/src/screens/SeedScreen.tsx::SeedScreen
+  - packages/ui/src/screens/ImportScreen.tsx::ImportScreen
+  - packages/ui/src/screens/WalletScreen.tsx::WalletScreen
+  - packages/ui/src/components/Screen.tsx::Screen
+  - packages/ui/src/components/Button.tsx::Button
+  - packages/ui/src/components/Choice.tsx::Choice
   - packages/ui/src/components/Hash.tsx::Hash
   - packages/ui/src/components/Hash.tsx::chunk
   - packages/ui/src/components/Hash.tsx::abbreviate
@@ -73,6 +81,36 @@ invariants:
     tests:
       - packages/ui/test/lock-screen.test.tsx::chunks-in-groups-of-four
       - packages/ui/test/lock-screen.test.tsx::abbreviates-to-first-and-last-eight
+
+  - id: INV-UI-7
+    statement: >
+      Dice entropy accounting is displayed as the daemon reports it, and the
+      continue action is unavailable until enough entropy has been collected.
+    tests:
+      - packages/ui/test/dice-screen.test.tsx::shows-accounting-from-the-daemon
+      - packages/ui/test/dice-screen.test.tsx::blocks-continue-until-sufficient
+
+  - id: INV-UI-8
+    statement: >
+      A pattern warning is displayed and does NOT prevent the user proceeding.
+      The device does not discard a user's rolls.
+    tests:
+      - packages/ui/test/dice-screen.test.tsx::warns-without-blocking
+
+  - id: INV-UI-9
+    statement: >
+      The rolls entered remain visible in order, so the user can check them
+      against what they rolled and reproduce the hash elsewhere.
+    tests:
+      - packages/ui/test/dice-screen.test.tsx::keeps-the-rolls-visible
+
+  - id: INV-UI-10
+    statement: >
+      Confirming a seed backup requires an explicit acknowledgement and is
+      styled as irreversible rather than as the obvious next step.
+    tests:
+      - packages/ui/test/seed-screen.test.tsx::requires-acknowledgement
+      - packages/ui/test/seed-screen.test.tsx::warns-that-this-is-the-only-showing
 
 threats:
   - INV-KEY-1

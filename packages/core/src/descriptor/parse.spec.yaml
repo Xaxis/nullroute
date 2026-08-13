@@ -1,0 +1,112 @@
+id: core.descriptor.parse
+version: 1
+title: BIP-380 output descriptor parsing
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Turn a descriptor string into a structure the device can reason about. Every
+  script-ownership decision rests on this: an output is labelled change only if
+  it re-derives from a registered descriptor, and an input is signable only if
+  its script matches one. A parser that guesses eventually labels an attacker's
+  address as change.
+
+covers:
+  - packages/core/src/descriptor/parse.ts::parseDescriptor
+  - packages/core/src/descriptor/parse.ts::parseKeyExpression
+  - packages/core/src/descriptor/parse.ts::descriptorKeys
+  - packages/core/src/descriptor/parse.ts::DescriptorParseError
+
+algorithm: >
+  Recursive descent over the BIP-380 grammar. A descriptor is a function call;
+  arguments are split at the top level only, tracking parenthesis and bracket
+  depth so that nesting and key origins do not confuse the split.
+
+  A key expression is an optional [fingerprint/path] origin followed by either a
+  raw hex key of 32, 33 or 65 bytes, or an extended public key with an optional
+  derivation suffix. Both hardened notations are accepted and normalised to the
+  apostrophe form. A trailing /* marks a range; BIP-389 /<a;b> multipath is
+  recorded as alternatives.
+
+  The checksum is verified as part of parsing rather than left to the caller,
+  and is required unless allowBadChecksum is explicitly passed.
+
+  Anything not understood exactly is refused. There is no lenient mode and no
+  partial parse.
+
+invariants:
+  - id: INV-DPARSE-1
+    statement: The key expression forms BIP-380 lists as valid are accepted.
+    tests:
+      - packages/core/test/descriptor.parse.test.ts::accepts-bip380-key-expressions
+
+  - id: INV-DPARSE-2
+    statement: >
+      Both hardened notations normalise, so a descriptor from Bitcoin Core
+      parses identically to one written per BIP-32.
+    tests:
+      - packages/core/test/descriptor.parse.test.ts::normalizes-hardened-notation-in-origins
+
+  - id: INV-DPARSE-3
+    statement: >
+      Malformed origins, unknown key formats, hardened wildcards and malformed
+      multipath are refused rather than interpreted.
+    tests:
+      - packages/core/test/descriptor.parse.test.ts::refuses-what-it-does-not-understand
+      - packages/core/test/descriptor.parse.test.ts::refuses-malformed-or-unknown-scripts
+
+  - id: INV-DPARSE-4
+    statement: A descriptor containing an extended private key is refused.
+    tests:
+      - packages/core/test/descriptor.parse.test.ts::refuses-extended-private-keys
+
+  - id: INV-DPARSE-5
+    statement: >
+      The checksum is enforced at the parse boundary, not left to a caller who
+      might forget.
+    tests:
+      - packages/core/test/descriptor.parse.test.ts::enforces-the-checksum
+
+  - id: INV-DPARSE-6
+    statement: >
+      Arguments are split at the top level only, so nested scripts parse
+      correctly.
+    tests:
+      - packages/core/test/descriptor.parse.test.ts::splits-arguments-at-the-top-level-only
+      - packages/core/test/descriptor.parse.test.ts::parses-nested-scripts
+
+  - id: INV-DPARSE-7
+    statement: >
+      Multisig forms parse into the tree even though they are not evaluable
+      until phase 3, so that phase extends the evaluator rather than reshaping
+      the parse.
+    tests:
+      - packages/core/test/descriptor.parse.test.ts::parses-multisig-into-the-tree
+      - packages/core/test/descriptor.parse.test.ts::parses-the-single-sig-forms
+
+threats:
+  - INV-PSBT-1
+  - INV-PSBT-2
+  - INV-INTEROP-1
+
+security_notes: >
+  Parsing is not evaluation. This module produces a structure; it does not yet
+  derive scripts for multisig or taproot script paths, and those forms are
+  refused at evaluation rather than silently treated as something simpler. A
+  tr() with a script tree is refused outright, because deriving its key-path
+  address would present an address whose funds may only be spendable by script.
+
+  A valid parse says nothing about provenance. Anyone can write a well-formed
+  descriptor, including one describing someone else's keys. Establishing that a
+  descriptor is the one your cosigner sent is what out-of-band checksum
+  comparison is for.
+
+  WIF private keys are not accepted at all, and an extended private key is
+  refused with an explicit message rather than parsed and ignored.
+
+references:
+  - BIP-380, Output Script Descriptors General Operation
+  - BIP-381, Non-Segwit Output Script Descriptors
+  - BIP-382, Segwit Output Script Descriptors
+  - BIP-386, tr() Output Script Descriptors
+  - BIP-389, Multipath Descriptor Key Expressions

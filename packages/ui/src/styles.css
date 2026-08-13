@@ -5,15 +5,19 @@
  *
  * Designed for a 7 inch 800x480 touchscreen and a user who is in a hurry but is
  * being asked to check something carefully. Everything here follows from that
- * one sentence.
+ * one sentence, and where taste and that sentence disagree, the sentence wins.
  *
- * Dark by default because the device is often used in low light. There is a
- * light mode, and its only purpose is photographing xpub QR codes, where a dark
- * background makes a camera struggle.
+ * The screen is the trust anchor. A user who reads it carefully must not be
+ * defrauded, which puts real constraints on the design:
  *
- * No animation anywhere on a security screen. Motion belongs to progress
- * indicators. A screen that moves invites a glance, and every screen here is
- * asking to be read.
+ *   - Glyph disambiguation is a security property. 0/O and 1/l must be
+ *     unmistakable, because the whole verification story is people comparing
+ *     strings between two screens.
+ *   - No animation on anything security relevant. Motion belongs to progress.
+ *     A screen that moves invites a glance, and these screens want a read.
+ *   - Destructive and irreversible actions are never the default focus.
+ *   - 480px of height is not much. Layout is a fixed header, a scrolling body,
+ *     and a fixed action bar, so the primary action never scrolls away.
  */
 
 @theme {
@@ -29,21 +33,20 @@
   --color-ink-200: #e2e6ec;
   --color-ink-100: #f4f6f9;
 
+  --color-signal-600: #cf6f2a;
   --color-signal-500: #e8833a;
   --color-signal-400: #f39c5c;
+  --color-signal-300: #f7b884;
 
+  --color-caution-700: #8e2f2c;
   --color-caution-600: #b23c38;
   --color-caution-500: #d9534f;
   --color-caution-300: #f0918e;
 
+  --color-verify-600: #3d8a71;
   --color-verify-500: #4fa88a;
   --color-verify-300: #86c9b2;
 
-  /*
-   * Glyph disambiguation is a security property here, not typography taste. A
-   * user comparing a hash needs 0 and O, and 1 and l, to be unmistakable. The
-   * stack is ordered by how well each face separates them.
-   */
   --font-mono:
     'JetBrains Mono', 'IBM Plex Mono', 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
   --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -64,18 +67,16 @@ body {
   background-color: var(--color-ink-950);
   color: var(--color-ink-200);
   font-family: var(--font-sans);
+  font-size: 15px;
   -webkit-font-smoothing: antialiased;
-  /* The device is a touchscreen with no text to select and no pinch to zoom. */
+  /* A touchscreen with no text to select and no pinch to zoom. */
   user-select: none;
   -webkit-user-select: none;
   touch-action: manipulation;
   overscroll-behavior: none;
 }
 
-/*
- * Hashes, addresses and hex. Ligatures off so a sequence of characters cannot
- * be drawn as a single glyph, and slashed zero so 0 and O separate at a glance.
- */
+/* Anything a user must compare against another screen. */
 .nr-mono {
   font-family: var(--font-mono);
   font-variant-ligatures: none;
@@ -85,73 +86,202 @@ body {
   letter-spacing: 0.01em;
 }
 
-/* --- Lock screen ---------------------------------------------------------- */
+/* ==========================================================================
+   Screen scaffold: fixed header, scrolling body, fixed actions.
+   480px of height means the primary action must never scroll out of reach.
+   ========================================================================== */
 
-.nr-lock {
+.nr-app {
   display: flex;
   flex-direction: column;
-  min-height: 100%;
-  padding: 1.5rem 1.75rem;
-  gap: 1.25rem;
+  height: 100%;
+  overflow: hidden;
 }
 
-.nr-lock__head {
+.nr-screen {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100%;
+  min-height: 0;
+}
+
+.nr-screen__head {
   display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.875rem 1.25rem;
+  border-bottom: 1px solid var(--color-ink-800);
+  background-color: var(--color-ink-900);
 }
 
-.nr-lock__title {
-  font-family: var(--font-mono);
-  font-size: 1.5rem;
+.nr-screen__title {
+  font-size: 1.0625rem;
   font-weight: 600;
   color: var(--color-ink-100);
   margin: 0;
   letter-spacing: -0.01em;
 }
 
-.nr-lock__version {
-  font-family: var(--font-mono);
+.nr-screen__subtitle {
   font-size: 0.8125rem;
   color: var(--color-ink-500);
+  margin: 0;
 }
 
-.nr-lock__attestation {
+.nr-screen__body {
+  overflow-y: auto;
+  padding: 1.125rem 1.25rem;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.875rem;
-  padding: 1.125rem 1.25rem;
+  gap: 1rem;
+}
+
+.nr-screen__actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.875rem 1.25rem;
+  border-top: 1px solid var(--color-ink-800);
+  background-color: var(--color-ink-900);
+}
+
+.nr-screen__actions--end {
+  justify-content: flex-end;
+}
+
+.nr-spacer {
+  flex: 1;
+}
+
+/* ==========================================================================
+   Buttons. 44px minimum: a finger on a 7 inch panel, not a mouse pointer.
+   ========================================================================== */
+
+.nr-button {
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  min-height: 2.75rem;
+  padding: 0 1.375rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.nr-button--primary {
+  background-color: var(--color-signal-500);
+  color: var(--color-ink-950);
+  font-weight: 600;
+}
+.nr-button--primary:hover:not(:disabled) {
+  background-color: var(--color-signal-400);
+}
+
+.nr-button--ghost {
+  background-color: transparent;
+  border-color: var(--color-ink-700);
+  color: var(--color-ink-200);
+}
+.nr-button--ghost:hover:not(:disabled) {
+  border-color: var(--color-ink-500);
+  color: var(--color-ink-100);
+}
+
+/* Irreversible. Never the default focus, and visually distinct from primary. */
+.nr-button--danger {
+  background-color: transparent;
+  border-color: var(--color-caution-600);
+  color: var(--color-caution-300);
+}
+.nr-button--danger:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-caution-600) 20%, transparent);
+}
+
+.nr-button:disabled {
+  background-color: var(--color-ink-850);
+  color: var(--color-ink-600);
+  border-color: var(--color-ink-800);
+  cursor: not-allowed;
+}
+
+.nr-button:focus-visible {
+  outline: 2px solid var(--color-signal-400);
+  outline-offset: 3px;
+}
+
+.nr-button--wide {
+  width: 100%;
+}
+
+/* ==========================================================================
+   Cards, rows, labels
+   ========================================================================== */
+
+.nr-card {
+  padding: 1rem 1.125rem;
   background-color: var(--color-ink-900);
   border: 1px solid var(--color-ink-800);
   border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
-.nr-lock__row {
+.nr-card--tight {
+  padding: 0.75rem 0.875rem;
+  gap: 0.5rem;
+}
+
+.nr-row {
   display: flex;
   align-items: baseline;
   gap: 1rem;
 }
 
-.nr-lock__label {
-  flex: 0 0 8.5rem;
-  font-size: 0.8125rem;
+.nr-label {
+  flex: 0 0 8rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--color-ink-500);
 }
 
-.nr-lock__value {
+.nr-value {
   font-size: 0.9375rem;
   color: var(--color-ink-200);
+  min-width: 0;
+  word-break: break-word;
 }
 
-/* --- The hash ------------------------------------------------------------- */
+.nr-hint {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--color-ink-500);
+  margin: 0;
+}
+
+.nr-note {
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--color-ink-300);
+  margin: 0;
+}
+
+/* ==========================================================================
+   Hash and address display. Chunked so a person can compare it.
+   ========================================================================== */
 
 .nr-hash {
   font-size: 0.9375rem;
   color: var(--color-ink-100);
   word-break: break-all;
-  line-height: 1.6;
+  line-height: 1.65;
   text-align: left;
 }
 
@@ -159,9 +289,7 @@ body {
   background: none;
   border: none;
   padding: 0.25rem 0;
-  margin: -0.25rem 0;
   cursor: pointer;
-  /* A touch target that a finger can actually hit. */
   min-height: 2.75rem;
   display: flex;
   align-items: center;
@@ -175,43 +303,41 @@ body {
   border-radius: 3px;
 }
 
-/* --- Status --------------------------------------------------------------- */
+/* An address is the single most consequential string on the device. */
+.nr-address {
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  font-feature-settings: 'zero' 1;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--color-ink-100);
+  word-break: break-all;
+}
+
+/* ==========================================================================
+   Status and banners
+   ========================================================================== */
 
 .nr-status {
   font-size: 0.9375rem;
   font-weight: 500;
 }
-
 .nr-status--ok {
   color: var(--color-verify-300);
 }
-
 .nr-status--fail {
   color: var(--color-caution-300);
   font-weight: 600;
 }
 
-/* --- Network banner ------------------------------------------------------- */
-
-/*
- * Persistent, and deliberately loud. The mistake it prevents is treating a test
- * wallet as real, which is made mid-session rather than at setup, so this is on
- * every screen rather than only at creation.
- */
 .nr-banner {
   display: flex;
   align-items: baseline;
   gap: 0.75rem;
   padding: 0.625rem 1rem;
   border-radius: 6px;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   line-height: 1.45;
-}
-
-.nr-banner--testnet {
-  background-color: color-mix(in srgb, var(--color-caution-600) 22%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-caution-500) 45%, transparent);
-  color: var(--color-caution-300);
 }
 
 .nr-banner strong {
@@ -220,75 +346,300 @@ body {
   white-space: nowrap;
 }
 
-/* --- Caveat and blocked message ------------------------------------------- */
-
-.nr-lock__caveat {
-  font-size: 0.8125rem;
-  line-height: 1.55;
-  color: var(--color-ink-500);
-  max-width: 46rem;
-  margin: 0;
-}
-
-.nr-lock__blocked {
-  margin: 0.75rem 0 0;
-  font-size: 0.9375rem;
-  line-height: 1.5;
+.nr-banner--testnet {
+  background-color: color-mix(in srgb, var(--color-caution-600) 20%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-caution-500) 42%, transparent);
   color: var(--color-caution-300);
-  font-weight: 500;
-  max-width: 42rem;
 }
 
-/* --- Actions -------------------------------------------------------------- */
-
-.nr-lock__actions {
-  margin-top: auto;
+.nr-banner--warn {
+  background-color: color-mix(in srgb, var(--color-signal-600) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-signal-500) 38%, transparent);
+  color: var(--color-signal-300);
 }
 
-.nr-button {
-  font: inherit;
-  font-size: 1rem;
-  font-weight: 500;
-  /* 3rem minimum: a finger on a 7 inch panel, not a mouse pointer. */
-  min-height: 3rem;
-  padding: 0 2rem;
-  border-radius: 6px;
-  border: 1px solid transparent;
+.nr-banner--info {
+  background-color: var(--color-ink-850);
+  border: 1px solid var(--color-ink-800);
+  color: var(--color-ink-300);
+}
+
+/* ==========================================================================
+   Dice entry. The flagship screen: this is the one that has to feel exact.
+   ========================================================================== */
+
+.nr-dice {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 1.125rem;
+  /* start, not stretch: without this the keypad grows to the row height and
+     the buttons become tall enough to collide with what follows. */
+  align-items: start;
+}
+
+.nr-dice__pad {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* A fixed row height. Auto rows stretch to fill, which is what made the pad
+     overlap the warnings below it. */
+  grid-auto-rows: 3.75rem;
+  align-content: start;
+  gap: 0.5rem;
+}
+
+.nr-dice__side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  min-width: 0;
+  /* Content height. Without this the last card absorbs the leftover row space
+     and its contents drift to the bottom of an otherwise empty box. */
+  align-self: start;
+}
+
+.nr-dice__side > .nr-card {
+  flex: 0 0 auto;
+}
+
+.nr-die {
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid var(--color-ink-700);
+  background-color: var(--color-ink-850);
+  color: var(--color-ink-100);
   cursor: pointer;
 }
-
-.nr-button--primary {
-  background-color: var(--color-signal-500);
+.nr-die:hover {
+  border-color: var(--color-signal-500);
+  background-color: var(--color-ink-800);
+}
+.nr-die:active {
+  background-color: var(--color-signal-600);
   color: var(--color-ink-950);
 }
-
-.nr-button--primary:hover:not(:disabled) {
-  background-color: var(--color-signal-400);
-}
-
-.nr-button:disabled {
-  background-color: var(--color-ink-800);
-  color: var(--color-ink-600);
-  border-color: var(--color-ink-700);
-  cursor: not-allowed;
-}
-
-.nr-button:focus-visible {
+.nr-die:focus-visible {
   outline: 2px solid var(--color-signal-400);
-  outline-offset: 3px;
+  outline-offset: 2px;
 }
 
-/*
- * Light mode exists for one reason: photographing an xpub QR code, where a dark
- * background defeats most phone cameras. It is not a general theme and is not
- * offered as a preference.
- */
-[data-theme='qr'] {
-  color-scheme: light;
+/* Entropy accounting. Truncated, never rounded: the display must not claim
+   more entropy than has been collected. */
+.nr-meter {
+  height: 0.5rem;
+  border-radius: 999px;
+  background-color: var(--color-ink-800);
+  overflow: hidden;
 }
-[data-theme='qr'] body {
-  background-color: #ffffff;
-  color: #101216;
+.nr-meter__fill {
+  height: 100%;
+  background-color: var(--color-signal-500);
+  border-radius: 999px;
+}
+.nr-meter__fill--done {
+  background-color: var(--color-verify-500);
+}
+
+.nr-rolls {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: var(--color-ink-400);
+  word-break: break-all;
+  max-height: 4.5rem;
+  overflow-y: auto;
+  padding: 0.625rem 0.75rem;
+  background-color: var(--color-ink-950);
+  border: 1px solid var(--color-ink-800);
+  border-radius: 6px;
+}
+
+/* ==========================================================================
+   The mnemonic. Shown once, so it has to be readable and unambiguous.
+   ========================================================================== */
+
+.nr-words {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.nr-word {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.5rem 0.625rem;
+  background-color: var(--color-ink-850);
+  border: 1px solid var(--color-ink-800);
+  border-radius: 5px;
+}
+
+.nr-word__index {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--color-ink-600);
+  min-width: 1.25rem;
+  text-align: right;
+}
+
+.nr-word__text {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: var(--color-ink-100);
+}
+
+/* ==========================================================================
+   Forms
+   ========================================================================== */
+
+.nr-input {
+  font: inherit;
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+  min-height: 2.75rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background-color: var(--color-ink-950);
+  border: 1px solid var(--color-ink-700);
+  border-radius: 6px;
+  color: var(--color-ink-100);
+  user-select: text;
+  -webkit-user-select: text;
+}
+.nr-input:focus-visible {
+  outline: 2px solid var(--color-signal-400);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+.nr-input--area {
+  min-height: 5.5rem;
+  line-height: 1.6;
+  resize: none;
+}
+
+.nr-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.nr-field__label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-ink-500);
+}
+
+/* ==========================================================================
+   Choice list, for mode and script type selection
+   ========================================================================== */
+
+.nr-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.875rem 1rem;
+  background-color: var(--color-ink-900);
+  border: 1px solid var(--color-ink-800);
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  width: 100%;
+}
+.nr-choice:hover {
+  border-color: var(--color-ink-600);
+}
+.nr-choice[aria-pressed='true'] {
+  border-color: var(--color-signal-500);
+  background-color: color-mix(in srgb, var(--color-signal-600) 12%, var(--color-ink-900));
+}
+.nr-choice:focus-visible {
+  outline: 2px solid var(--color-signal-400);
+  outline-offset: 2px;
+}
+
+.nr-choice__title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-ink-100);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nr-choice__desc {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--color-ink-400);
+}
+
+.nr-tag {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.125rem 0.4rem;
+  border-radius: 3px;
+  font-weight: 600;
+}
+.nr-tag--ok {
+  background-color: color-mix(in srgb, var(--color-verify-600) 30%, transparent);
+  color: var(--color-verify-300);
+}
+.nr-tag--warn {
+  background-color: color-mix(in srgb, var(--color-signal-600) 26%, transparent);
+  color: var(--color-signal-300);
+}
+
+/* ==========================================================================
+   Tables, for the address explorer
+   ========================================================================== */
+
+.nr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.nr-table th {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-ink-500);
+  border-bottom: 1px solid var(--color-ink-800);
+  font-weight: 600;
+}
+.nr-table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--color-ink-850);
+  vertical-align: top;
+}
+.nr-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.nr-tabs {
+  display: flex;
+  gap: 0.375rem;
+}
+.nr-tab {
+  font: inherit;
+  font-size: 0.8125rem;
+  padding: 0.375rem 0.75rem;
+  min-height: 2.25rem;
+  border-radius: 5px;
+  border: 1px solid var(--color-ink-800);
+  background-color: transparent;
+  color: var(--color-ink-400);
+  cursor: pointer;
+}
+.nr-tab[aria-pressed='true'] {
+  border-color: var(--color-signal-500);
+  color: var(--color-ink-100);
+  background-color: color-mix(in srgb, var(--color-signal-600) 14%, transparent);
 }
 
 /* Motion is for progress indicators. There is none on a security screen. */

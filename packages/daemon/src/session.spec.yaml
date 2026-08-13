@@ -1,0 +1,93 @@
+id: daemon.session
+version: 1
+title: Session state and the one sanctioned seed disclosure
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Hold the loaded seed, and govern the single narrow window in which a mnemonic
+  may be displayed. INV-KEY-1 says key material never leaves the daemon; a user
+  writing down a backup is the one unavoidable exception, and this module is
+  where that exception is made narrow, stateful and auditable rather than a flag
+  a caller can pass.
+
+covers:
+  - packages/daemon/src/session.ts::Session
+  - packages/daemon/src/session.ts::SessionError
+
+algorithm: >
+  A seed is loaded with a provenance of generated, imported or loaded.
+
+  revealMnemonic returns the words only when provenance is `generated` AND
+  backup has not been confirmed. It refuses for `loaded` outright, and refuses
+  permanently once confirmBackup has been called. There is no parameter that
+  overrides this and no way back into the window.
+
+  peekWordsForVerification is separate and is used only by seed.checkWord, which
+  compares one word and returns a boolean, so words do not cross the IPC
+  boundary through that path.
+
+  lock() zeroizes the seed AND resets the network to mainnet, so a subsequent
+  wallet cannot silently inherit the previous one's network.
+
+invariants:
+  - id: INV-SESS-1
+    statement: >
+      A generated seed is revealable exactly once, and never again after backup
+      is confirmed.
+    tests:
+      - packages/daemon/test/ipc.test.ts::reveals-a-generated-seed-once-then-never-again
+
+  - id: INV-SESS-2
+    statement: >
+      A seed that was imported or loaded from storage is never displayed.
+    tests:
+      - packages/daemon/test/ipc.test.ts::never-reveals-an-imported-seed
+
+  - id: INV-SESS-3
+    statement: >
+      The network is fixed once a wallet exists and cannot be changed
+      afterwards.
+    tests:
+      - packages/daemon/test/ipc.test.ts::locks-the-network-once-a-wallet-exists
+
+  - id: INV-SESS-4
+    statement: >
+      Locking disposes the seed and every seed-dependent operation then fails.
+    tests:
+      - packages/daemon/test/ipc.test.ts::locking-disposes-the-seed
+
+  - id: INV-SESS-5
+    statement: >
+      Checking a word of the mnemonic returns a verdict and never a word.
+    tests:
+      - packages/daemon/test/ipc.test.ts::checks-a-word-without-revealing-one
+
+threats:
+  - INV-KEY-1
+  - INV-KEY-2
+
+security_notes: >
+  The disclosure window is the weakest point of this design and is stated
+  plainly rather than minimised. While it is open, the mnemonic crosses the IPC
+  boundary in plain text and is rendered by a browser, which is the least
+  hardened component on the device. Nothing prevents a compromised frontend from
+  retaining it during that window.
+
+  What the design does achieve is that the window exists once per wallet, is
+  entered only by generating a seed, and closes irreversibly. A device that has
+  been through setup cannot be made to disclose its seed again by any sequence
+  of IPC calls.
+
+  Resetting the network on lock is a correctness defence rather than a hygiene
+  one: without it, someone locking a signet wallet and setting up what they
+  believe is a mainnet wallet would silently get signet, with correct-looking
+  addresses and no indication.
+
+  This module does not implement the encrypted store, PIN gating, or the fixed
+  cost unlock schedule. Those are phase 3 and their absence is why the device is
+  not yet suitable for funds.
+
+references:
+  - docs/THREAT-MODEL.md
+  - docs/ENTROPY.md

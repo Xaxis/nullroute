@@ -23,3 +23,7 @@ export {
 export type { IpcRequest, IpcResponse, IpcHandler, IpcServerOptions } from './ipc/socket.js'
 
 export { createHandler } from './handler.js'
+export type { DaemonState } from './handler.js'
+
+export { Session, SessionError } from './session.js'
+export type { WalletSession, SeedProvenance } from './session.js'

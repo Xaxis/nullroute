@@ -1,14 +1,39 @@
 /**
  * @nullroute/ui: the device frontend.
  *
- * Receives xpubs, addresses, descriptors and PSBTs. Never receives a seed, a
- * mnemonic or a private key (INV-KEY-1). Never generates entropy: the lint rule
- * bans crypto.getRandomValues here, because entropy collection happens in the
- * daemon or it does not happen. See docs/ENTROPY.md.
+ * Receives xpubs, addresses, descriptors and PSBTs. The one exception is the
+ * mnemonic during wallet creation, which a user has to see in order to write
+ * down; the daemon gates that on session state and refuses it once backup is
+ * confirmed. See packages/daemon/src/session.ts.
+ *
+ * Never generates entropy: a lint rule bans crypto.getRandomValues here,
+ * because entropy collection happens in the daemon or it does not happen.
  */
 
 export { LockScreen } from './screens/LockScreen.js'
 export type { LockScreenProps, AttestationView } from './screens/LockScreen.js'
+
+export { SetupScreen } from './screens/SetupScreen.js'
+export type { SetupScreenProps, EntropyMode, NetworkChoice } from './screens/SetupScreen.js'
+
+export { DiceScreen } from './screens/DiceScreen.js'
+export type { DiceScreenProps, Accounting, PatternWarning } from './screens/DiceScreen.js'
+
+export { SeedScreen } from './screens/SeedScreen.js'
+export type { SeedScreenProps } from './screens/SeedScreen.js'
+
+export { ImportScreen } from './screens/ImportScreen.js'
+export type { ImportScreenProps } from './screens/ImportScreen.js'
+
+export { WalletScreen } from './screens/WalletScreen.js'
+export type { WalletScreenProps, AddressRow, ScriptType } from './screens/WalletScreen.js'
+
+export { Screen } from './components/Screen.js'
+export type { ScreenProps } from './components/Screen.js'
+export { Button } from './components/Button.js'
+export type { ButtonProps } from './components/Button.js'
+export { Choice } from './components/Choice.js'
+export type { ChoiceProps } from './components/Choice.js'
 
 export { Hash, chunk, abbreviate } from './components/Hash.js'
 export type { HashProps } from './components/Hash.js'

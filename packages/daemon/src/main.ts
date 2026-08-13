@@ -18,10 +18,10 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
-import { MAINNET } from '@nullroute/core'
 import { requirePassingVerification, abbreviateHash } from './boot/attestation.js'
 import { startIpcServer } from './ipc/socket.js'
 import { createHandler } from './handler.js'
+import { Session } from './session.js'
 
 const REPO_ROOT = process.env['NULLROUTE_ROOT'] ?? fileURLToPath(new URL('../../..', import.meta.url))
 const SOCKET_PATH = process.env['NULLROUTE_SOCKET'] ?? '/run/nullroute/nullrouted.sock'
@@ -40,7 +40,7 @@ async function main(): Promise<void> {
   // rule out.
   const attestation = requirePassingVerification(REPO_ROOT, version())
 
-  const state = { attestation, network: MAINNET }
+  const state = { attestation, session: new Session() }
   const server = await startIpcServer({
     socketPath: SOCKET_PATH,
     handler: createHandler(state),

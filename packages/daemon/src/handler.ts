@@ -3,8 +3,12 @@
  *
  * INV-KEY-1 lives here in practice: this is the boundary the frontend talks to,
  * and every method returns public data by construction. There is no method that
- * returns a seed, a mnemonic or a private key, and there is no debug flag that
- * enables one.
+ * returns a private key, and no debug flag that enables one.
+ *
+ * The single exception is `seed.reveal`, which exists because a user has to
+ * write their mnemonic down and therefore has to see it. It is gated by session
+ * state rather than by a parameter, refused once backup is confirmed, and
+ * refused outright for a seed loaded from storage. See packages/daemon/src/session.ts.
  *
  * Methods are deliberately coarse. A fine-grained API ("give me the root key",
  * "now derive") would put the composition of sensitive steps in the untrusted
@@ -12,42 +16,80 @@
  */
 
 import {
-  type Network,
+  type ScriptType,
+  Secret,
+  accountPath,
+  accountEntropy,
+  combineEntropy,
+  descriptorChecksum,
   deriveAccountXpub,
-  masterFingerprint,
-  mnemonicToSeed,
+  deriveAddresses,
+  detectPatterns,
+  diceToEntropy,
+  entropyToWords,
   isValidMnemonic,
+  mnemonicToSeed,
   networkById,
   normalizePath,
-  accountEntropy,
-  detectPatterns,
+  parseDescriptor,
+  rootFromSeed,
   validateRolls,
+  withChecksum,
 } from '@nullroute/core'
+import { randomBytes } from 'node:crypto'
 import { type BootAttestation, abbreviateHash } from './boot/attestation.js'
 import { type IpcHandler, type IpcRequest } from './ipc/socket.js'
+import { Session } from './session.js'
 
 export interface DaemonState {
   readonly attestation: BootAttestation
-  /** Chosen at wallet creation and locked to the wallet. Never inferred. */
-  network: Network
+  readonly session: Session
 }
 
-function requireString(params: unknown, key: string): string {
-  const value = (params as Record<string, unknown> | null)?.[key]
+function params(request: IpcRequest): Record<string, unknown> {
+  const value = request.params
+  return value !== null && typeof value === 'object' ? (value as Record<string, unknown>) : {}
+}
+
+function requireString(request: IpcRequest, key: string): string {
+  const value = params(request)[key]
   if (typeof value !== 'string') {
     throw new Error(`Parameter "${key}" is required and must be a string.`)
   }
   return value
 }
 
+function optionalString(request: IpcRequest, key: string, fallback = ''): string {
+  const value = params(request)[key]
+  return typeof value === 'string' ? value : fallback
+}
+
+function requireNumber(request: IpcRequest, key: string, fallback?: number): number {
+  const value = params(request)[key]
+  if (typeof value === 'number' && Number.isSafeInteger(value)) return value
+  if (fallback !== undefined) return fallback
+  throw new Error(`Parameter "${key}" is required and must be an integer.`)
+}
+
+const SCRIPT_TYPES: readonly ScriptType[] = ['p2pkh', 'p2sh-p2wpkh', 'p2wpkh', 'p2tr']
+
+function requireScriptType(request: IpcRequest, key = 'scriptType'): ScriptType {
+  const value = requireString(request, key)
+  const found = SCRIPT_TYPES.find((s) => s === value)
+  if (found === undefined) {
+    throw new Error(`Unknown script type "${value}". Expected one of: ${SCRIPT_TYPES.join(', ')}.`)
+  }
+  return found
+}
+
 export function createHandler(state: DaemonState): IpcHandler {
+  const { session } = state
+
   return async (request: IpcRequest): Promise<unknown> => {
-    // Nothing here awaits, but the interface is async so that a future method
-    // touching hardware does not change the contract.
     await Promise.resolve()
 
     switch (request.method) {
-      /** What the lock screen renders before unlock. */
+      // --- Attestation and device state --------------------------------
       case 'attestation.get':
         return {
           rootHash: state.attestation.rootHash,
@@ -59,56 +101,288 @@ export function createHandler(state: DaemonState): IpcHandler {
           checks: state.attestation.checks,
         }
 
+      case 'device.status':
+        return {
+          hasWallet: session.hasWallet,
+          unlocked: session.unlocked,
+          backupConfirmed: session.backupConfirmed,
+          fingerprint: session.fingerprint ?? null,
+          network: {
+            id: session.network.id,
+            label: session.network.label,
+            isMainnet: session.network.isMainnet,
+          },
+        }
+
       case 'network.get':
-        return { id: state.network.id, label: state.network.label, isMainnet: state.network.isMainnet }
+        return {
+          id: session.network.id,
+          label: session.network.label,
+          isMainnet: session.network.isMainnet,
+        }
 
       case 'network.set': {
-        state.network = networkById(requireString(request.params, 'id'))
-        return { id: state.network.id, label: state.network.label, isMainnet: state.network.isMainnet }
+        session.setNetwork(networkById(requireString(request, 'id')))
+        return {
+          id: session.network.id,
+          label: session.network.label,
+          isMainnet: session.network.isMainnet,
+        }
       }
 
+      // --- Entropy collection -------------------------------------------
       /** Live accounting during dice entry. Takes rolls, returns counts only. */
       case 'entropy.account': {
-        const rolls = requireString(request.params, 'rolls')
-        validateRolls(rolls)
-        return {
-          accounting: accountEntropy(rolls),
-          warnings: detectPatterns(rolls),
+        const rolls = optionalString(request, 'rolls')
+        if (rolls.length > 0) validateRolls(rolls)
+        return { accounting: accountEntropy(rolls), warnings: detectPatterns(rolls) }
+      }
+
+      /**
+       * Turn dice rolls into a wallet.
+       *
+       * The mnemonic is NOT returned here. It is placed in the session and must
+       * be asked for separately, so that the act of revealing a seed is one
+       * explicit call rather than a side effect of creating a wallet.
+       */
+      case 'entropy.fromDice': {
+        const rolls = requireString(request, 'rolls')
+        const mixMachine = params(request)['mixMachine'] === true
+
+        using diceEntropy = diceToEntropy(rolls)
+
+        let entropy: Secret
+        if (mixMachine) {
+          // Mode B. The combiner's guarantee is that the result keeps full
+          // entropy if ANY single source has it, so a compromised machine RNG
+          // cannot weaken good dice. See docs/ENTROPY.md.
+          using machine = Secret.fromBytes(randomBytes(32), 'urandom')
+          entropy = combineEntropy([
+            { id: 'dice', material: diceEntropy },
+            { id: 'urandom', material: machine },
+          ])
+        } else {
+          entropy = Secret.copyOf(diceEntropy.bytes, 'dice-entropy')
+        }
+
+        try {
+          const mnemonic = entropyToWords(entropy)
+          const seed = mnemonicToSeed(mnemonic, optionalString(request, 'passphrase'))
+          session.load(seed, mnemonic, 'generated')
+          return {
+            fingerprint: session.fingerprint,
+            wordCount: mnemonic.split(' ').length,
+            mixedWithMachineEntropy: mixMachine,
+          }
+        } finally {
+          entropy.dispose()
         }
       }
 
       case 'mnemonic.validate':
-        return { valid: isValidMnemonic(requireString(request.params, 'mnemonic')) }
+        return { valid: isValidMnemonic(requireString(request, 'mnemonic')) }
 
-      /**
-       * The fingerprint of a mnemonic plus passphrase.
-       *
-       * This is the method the UI calls before anything involving funds. A
-       * wrong passphrase produces a valid, different, empty wallet with no
-       * error, and this number is the only signal the user gets.
-       */
-      case 'wallet.fingerprint': {
-        const mnemonic = requireString(request.params, 'mnemonic')
-        const passphrase = (request.params as { passphrase?: string }).passphrase ?? ''
-        using seed = mnemonicToSeed(mnemonic, passphrase)
-        return { fingerprint: masterFingerprint(seed, state.network) }
+      /** Import an existing mnemonic. */
+      case 'wallet.import': {
+        const mnemonic = requireString(request, 'mnemonic')
+        if (!isValidMnemonic(mnemonic)) {
+          throw new Error(
+            'That mnemonic is not valid: a word is not in the BIP-39 list, or the checksum does ' +
+              'not match. A single mistyped word usually fails here. A mistyped word that still ' +
+              'checksums produces a different wallet, so check the fingerprint.'
+          )
+        }
+        const seed = mnemonicToSeed(mnemonic, optionalString(request, 'passphrase'))
+        session.load(seed, mnemonic, 'imported')
+        return { fingerprint: session.fingerprint }
       }
 
-      /** Public material only. The returned object never held a private key. */
-      case 'wallet.xpub': {
-        const mnemonic = requireString(request.params, 'mnemonic')
-        const passphrase = (request.params as { passphrase?: string }).passphrase ?? ''
-        const path = normalizePath(requireString(request.params, 'path'))
-        using seed = mnemonicToSeed(mnemonic, passphrase)
-        const account = deriveAccountXpub(seed, state.network, path)
+      // --- The one exception to INV-KEY-1 --------------------------------
+      /**
+       * Show the mnemonic so it can be written down.
+       *
+       * Valid only between generating a seed and confirming the backup. See the
+       * note at the top of session.ts.
+       */
+      case 'seed.reveal': {
+        const mnemonic = session.revealMnemonic()
         return {
-          xpub: account.xpub,
-          path: account.path,
-          masterFingerprint: account.masterFingerprint,
-          fingerprint: account.fingerprint,
-          depth: account.depth,
-          network: account.network.id,
+          words: mnemonic.split(' '),
+          fingerprint: session.fingerprint,
         }
+      }
+
+      case 'seed.confirmBackup': {
+        session.confirmBackup()
+        return { backupConfirmed: true }
+      }
+
+      /**
+       * Check a word the user types back, without ever showing the rest.
+       *
+       * The verification step asks for a handful of words by position. This
+       * compares one and returns a boolean, so the untrusted side never learns
+       * a word it did not already have.
+       */
+      case 'seed.checkWord': {
+        const index = requireNumber(request, 'index')
+        const word = requireString(request, 'word').trim().toLowerCase()
+        const words = session.peekWordsForVerification()
+        const expected = words[index]
+        if (expected === undefined) throw new Error(`Word index ${String(index)} is out of range.`)
+        return { correct: expected === word }
+      }
+
+      // --- Wallet -------------------------------------------------------
+      case 'wallet.fingerprint':
+        return { fingerprint: session.fingerprint }
+
+      /** Account-level extended public key. Public material only. */
+      case 'wallet.xpub': {
+        const scriptType = requireScriptType(request)
+        const account = requireNumber(request, 'account', 0)
+        const path = normalizePath(accountPath(scriptType, session.network, account))
+        const derived = deriveAccountXpub(session.requireSeed(), session.network, path)
+        return {
+          xpub: derived.xpub,
+          path: derived.path,
+          masterFingerprint: derived.masterFingerprint,
+          fingerprint: derived.fingerprint,
+          scriptType,
+          network: derived.network.id,
+        }
+      }
+
+      /**
+       * The canonical output descriptor for an account, with its checksum.
+       *
+       * This is what a user exports to a coordinator, and what makes the wallet
+       * recoverable elsewhere (INV-INTEROP-1).
+       */
+      case 'wallet.descriptor': {
+        const scriptType = requireScriptType(request)
+        const account = requireNumber(request, 'account', 0)
+        const change = params(request)['change'] === true
+        const path = normalizePath(accountPath(scriptType, session.network, account))
+        const derived = deriveAccountXpub(session.requireSeed(), session.network, path)
+
+        // The origin records where this key sits under the master key, which is
+        // what lets another wallet re-derive and sign.
+        const origin = `[${derived.masterFingerprint}${path.slice(1)}]`
+        const branch = change ? '1' : '0'
+        const inner = `${origin}${derived.xpub}/${branch}/*`
+
+        const body =
+          scriptType === 'p2pkh'
+            ? `pkh(${inner})`
+            : scriptType === 'p2sh-p2wpkh'
+              ? `sh(wpkh(${inner}))`
+              : scriptType === 'p2wpkh'
+                ? `wpkh(${inner})`
+                : `tr(${inner})`
+
+        const descriptor = withChecksum(body)
+        return {
+          descriptor,
+          checksum: descriptorChecksum(body),
+          scriptType,
+          change,
+          network: derived.network.id,
+        }
+      }
+
+      /** A run of addresses, for the explorer and for verification. */
+      case 'wallet.addresses': {
+        const scriptType = requireScriptType(request)
+        const account = requireNumber(request, 'account', 0)
+        const change = params(request)['change'] === true
+        const start = requireNumber(request, 'start', 0)
+        const count = Math.min(requireNumber(request, 'count', 20), 200)
+
+        const path = normalizePath(accountPath(scriptType, session.network, account))
+        const root = rootFromSeed(session.requireSeed(), session.network)
+        try {
+          const accountKey = root.derive(path)
+          const addresses = deriveAddresses(accountKey, {
+            scriptType,
+            network: session.network,
+            change,
+            start,
+            count,
+          })
+          return {
+            addresses: addresses.map((a) => ({
+              address: a.address,
+              path: `${path}/${a.path}`,
+              index: Number(a.path.split('/')[1] ?? 0),
+            })),
+            scriptType,
+            change,
+          }
+        } finally {
+          root.wipePrivateData()
+        }
+      }
+
+      /**
+       * Confirm that an address belongs to this wallet, and say where.
+       *
+       * Answers the question a user actually has when a coordinator shows them
+       * an address: is this mine? Searching rather than trusting is the point.
+       */
+      case 'wallet.verifyAddress': {
+        const target = requireString(request, 'address').trim()
+        const gapLimit = Math.min(requireNumber(request, 'gapLimit', 100), 1000)
+        const account = requireNumber(request, 'account', 0)
+
+        const root = rootFromSeed(session.requireSeed(), session.network)
+        try {
+          for (const scriptType of SCRIPT_TYPES) {
+            const path = normalizePath(accountPath(scriptType, session.network, account))
+            const accountKey = root.derive(path)
+            for (const change of [false, true]) {
+              const candidates = deriveAddresses(accountKey, {
+                scriptType,
+                network: session.network,
+                change,
+                start: 0,
+                count: gapLimit,
+              })
+              const hit = candidates.find((c) => c.address === target)
+              if (hit !== undefined) {
+                return {
+                  found: true,
+                  address: target,
+                  path: `${path}/${hit.path}`,
+                  scriptType,
+                  change,
+                  network: session.network.id,
+                }
+              }
+            }
+          }
+          return { found: false, address: target, searchedTo: gapLimit }
+        } finally {
+          root.wipePrivateData()
+        }
+      }
+
+      // --- Descriptors ---------------------------------------------------
+      /** Parse a descriptor someone pasted in, and report what it says. */
+      case 'descriptor.parse': {
+        const parsed = parseDescriptor(requireString(request, 'descriptor'))
+        return {
+          body: parsed.body,
+          checksum: parsed.checksum,
+          checksumValid: parsed.checksumValid,
+          ranged: parsed.ranged,
+          scriptKind: parsed.script.kind,
+        }
+      }
+
+      case 'session.lock': {
+        session.lock()
+        return { unlocked: false }
       }
 
       default:
