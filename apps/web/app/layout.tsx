@@ -9,10 +9,10 @@ export const metadata: Metadata = {
     template: '%s | nullroute',
   },
   description:
-    'An air-gapped Bitcoin signing device you can actually verify. Dice entropy you can reproduce by hand, deterministic signatures, and a machine-checkable specification for every module.',
+    'An air-gapped Bitcoin signer built to be checked rather than trusted. Dice entropy you can reproduce by hand, byte-identical signatures, and a machine-checkable specification for every module. You should not use it; read it and build your own.',
   openGraph: {
     title: 'nullroute',
-    description: 'An air-gapped Bitcoin signing device you can actually verify.',
+    description: 'An air-gapped Bitcoin signer built to be checked, not trusted.',
     url: 'https://nullroute.diy',
     siteName: 'nullroute',
     type: 'website',
@@ -69,21 +69,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         <main className="flex-1">{children}</main>
 
-        <footer className="border-t border-ink-800 mt-20">
-          <div className="mx-auto max-w-5xl px-5 py-8 text-sm text-ink-500 flex flex-wrap gap-x-6 gap-y-2 items-center">
-            <span className="font-mono text-ink-400">nullroute</span>
-            <span>MIT licensed</span>
-            <a
-              href="https://github.com/Xaxis/nullroute"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-ink-200 transition-colors"
-            >
-              github.com/Xaxis/nullroute
-            </a>
-            <span className="ml-auto text-caution-300">
-              Pre-1.0 and unaudited. Do not put material funds on this.
-            </span>
+        <footer className="border-t border-ink-800 mt-24">
+          <div className="mx-auto max-w-5xl px-5 py-10">
+            <p className="text-sm text-caution-300 max-w-2xl leading-relaxed">
+              Pre-1.0, unaudited, and not a product. No releases, no support, no warranty. Do not
+              put money on this.
+            </p>
+            <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-ink-500">
+              <span className="font-mono text-ink-400">nullroute</span>
+              <span>MIT licensed</span>
+              <a
+                href="https://github.com/Xaxis/nullroute"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-ink-200 transition-colors"
+              >
+                github.com/Xaxis/nullroute
+              </a>
+            </div>
           </div>
         </footer>
       </body>

@@ -143,7 +143,7 @@ the release.
 
 ## 3. The verification report
 
-`make verify` performs six checks and writes `verification-report.json`.
+`make verify` performs five checks and writes `verification-report.json`.
 
 **The daemon refuses to start if that report is missing, stale, or failing**
 (INV-BUILD-1). This is the mechanism that makes the specs load-bearing rather
@@ -157,7 +157,15 @@ booting.
 | Vectors | All official BIP test vectors in `spec/vectors/` pass. |
 | Differential | The cross-implementation suite agrees with `bitcoinjs-lib` on derivation, addresses, and signatures. |
 | Integrity | Every tracked source file matches `MANIFEST.lock`, and the root hash recomputes. |
-| Report | Spec count, invariant count, test results, dependency tree hash, assurance tier, and root hash are emitted. |
+
+The run then writes the report itself: spec count, invariant count, per-check
+status, test results, dependency tree hash, assurance tier, and root hash. That
+is the output of the five checks, not a sixth check, and it is counted that way
+because a report that certified itself would be worth nothing.
+
+A check with nothing to do is recorded as `not-applicable`, never as `passed`.
+Reporting an empty check as a pass would claim assurance the project has not
+earned.
 
 The report records which assurance tier was built (signer only, or signer plus
 wallet layer), and the tier is part of what the root hash covers. A signer-only
@@ -249,10 +257,15 @@ To confirm it for your own wallet, against a Bitcoin Core node:
 Do this on a testnet or signet wallet first, with the same script type as your
 real one.
 
-CI runs exactly this drill against a regtest Bitcoin Core, for every supported
-wallet type, on every commit: create the wallet, receive funds, export the
-descriptor, import into Core, assert identical addresses and identical balance,
-and spend. Any mismatch fails the build.
+**This drill is not automated yet.** The intent is that CI runs exactly it
+against a regtest Bitcoin Core for every supported wallet type on every commit:
+create the wallet, receive funds, export the descriptor, import into Core,
+assert identical addresses and identical balance, and spend. The job exists in
+`.github/workflows/ci.yml` and is disabled with `if: false`, because phase 2
+does not yet persist a wallet and there is nothing to recover. Until it is
+enabled, the guarantee on this page is that the FORMAT permits recovery, which
+you can confirm by hand with the steps above, and not that recovery is
+continuously tested.
 
 If you ever cannot reproduce this by hand, that is a security report, not a
 support question. See [SECURITY.md](../SECURITY.md).

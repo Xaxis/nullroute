@@ -46,27 +46,31 @@ next to hardware from other vendors, and to be the one you can take apart.
 
 Good wallets already exist. This is not a better wallet.
 
-In 2024, a widely used hardware wallet turned out to have shipped a random
-number generator that did not behave as documented. The industry's response was
-to promise a better black box. That is the wrong response: **you should not have
-to take anyone's word for where your key came from.**
+A device that generates your seed inside a black box is asking you to trust the
+box. You cannot inspect it, and a correct generator and a backdoored one look
+identical from outside: both hand you 24 words. The usual answer is a better
+black box. That is the wrong response: **you should not have to take anyone's
+word for where your key came from.**
 
 So nullroute does something different. You roll the dice yourself, and the
 device shows you the arithmetic:
 
 ```console
-$ printf '%s' '1234561234...' | sha256sum
+$ printf '%s' '1234561234561234561234561234561234561234561234561234561234561234561234561234561234561234561234561234' | sha256sum
 e56403e8522ddeae1b44a1e8148b1ba4d3b4c626ccf20980056eedcc7e0c0f35  -
 ```
 
 That is the whole trick. If your device shows a different value for the same
 rolls, it is lying to you, and now you know. No special tooling, no trust in us,
-just `sha256sum` and a hundred dice rolls. The full procedure with a worked
-example is in [docs/ENTROPY.md](docs/ENTROPY.md).
+just `sha256sum` and a hundred dice rolls. That is 100 rolls exactly, not 99:
+99 rolls is 255.911 bits, which is short of 256. On macOS use `shasum -a 256`.
+The full procedure with a worked example is in
+[docs/ENTROPY.md](docs/ENTROPY.md).
 
 The same idea runs through everything else: the device publishes a hash of its
-own code, its signatures are byte-for-byte reproducible, and every wallet it
-creates can be recovered with Bitcoin Core alone.
+own code, its signatures are byte-for-byte reproducible and cross-checked against
+libsecp256k1, and every wallet it creates is a standard mnemonic plus a standard
+descriptor, so Bitcoin Core alone can restore it.
 
 ---
 
@@ -121,9 +125,9 @@ entering the same digit a hundred times and read what it says.
 Other things worth running:
 
 ```bash
-make verify      # the six checks, and the hash the lock screen shows
+make verify      # the five checks, and the hash the lock screen shows
 make check       # everything CI runs, about a minute
-make test        # 162 tests
+make test        # the whole suite
 make web         # the nullroute.diy website, at localhost:3000
 ```
 
@@ -158,8 +162,11 @@ identical bytes. Anyone with the seed can recompute them. There is no room in a
 deterministic signature to hide a leaked key.
 
 **5. Check you do not need us.** Take your mnemonic and descriptor to Bitcoin
-Core and confirm it sees the same addresses. CI does this on every commit, and
-so can you. If this ever fails, that is a security report.
+Core and confirm it sees the same addresses. Doing this by hand is the check
+that matters, and it is the one that makes walking away from this project
+harmless. The CI job that would automate it is written and disabled (`if:
+false`), because phase 2 does not yet persist a wallet to recover. If the hand
+procedure ever fails, that is a security report.
 
 Full procedure: [docs/VERIFICATION.md](docs/VERIFICATION.md), written for
 someone who does not trust this project and should not have to.

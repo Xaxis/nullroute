@@ -21,8 +21,16 @@
   --color-ink-850: #171a1f;
   --color-ink-800: #1e222a;
   --color-ink-700: #2b313b;
+  /* Borders and rules only. At 2.02:1 on ink-950 this is not a text colour,
+     and using it as one (which this site did) puts real prose below every
+     legibility threshold there is. */
   --color-ink-600: #3d4552;
-  --color-ink-500: #5a6472;
+  /* Lightened from #5a6472, which was 3.26:1 on ink-950 and 3.10:1 on ink-900
+     and therefore failed WCAG AA everywhere it was used. This is the quietest
+     colour on the site that still clears 4.5:1 on both surfaces (4.85 and
+     4.61), which matters because it carries the caveats and the qualifications,
+     and those are the sentences this project can least afford people to skip. */
+  --color-ink-500: #767f8f;
   --color-ink-400: #8b94a3;
   --color-ink-300: #b6bdc8;
   --color-ink-200: #d8dce3;
@@ -62,6 +70,24 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/*
+ * Keyboard focus.
+ *
+ * There was none. Tailwind's preflight removes the user agent's outline and
+ * this site never put one back, so every link, button and die on the page was
+ * invisible to anyone navigating by keyboard: focus moved, nothing changed on
+ * screen. On a dark theme the default ring is nearly invisible anyway, so it is
+ * drawn explicitly in the accent colour, which is 9.06:1 against the page.
+ *
+ * `:focus-visible` rather than `:focus`, so a mouse click on a die does not
+ * leave a ring behind it.
+ */
+:focus-visible {
+  outline: 2px solid var(--color-signal-400);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 /*

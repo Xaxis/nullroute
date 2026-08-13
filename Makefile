@@ -33,7 +33,7 @@ install: ## Install dependencies exactly as the lockfile pins them
 # --- verification ------------------------------------------------------------
 # Each of these is a claim the repository makes about itself.
 
-verify: build test-report ## The six checks from docs/VERIFICATION.md, emits verification-report.json
+verify: build test-report ## The five checks from docs/VERIFICATION.md, emits verification-report.json
 	@node packages/verify/dist/cli.js
 
 test-report: ## Run the suite and emit the machine-readable report verify consumes
@@ -144,10 +144,19 @@ clean: ## Remove build output
 # --- the website -------------------------------------------------------------
 # nullroute.diy. Never ships to the device, never enters MANIFEST.lock.
 
-web: ## Run the website locally
+web: verification-report.json ## Run the website locally
 	@npm run dev --workspace @nullroute/web
 
-web-build: ## Production build of the website
+# The home page renders the real figures from the last verification run, so the
+# site cannot build without a report. The report is generated, never committed
+# (committing it would let a stale pass ship), which means a clean checkout has
+# to produce one before the site will build at all. Declaring it as a file
+# prerequisite rather than calling `verify` unconditionally keeps `make web`
+# from re-running the whole suite on every save.
+verification-report.json:
+	@$(MAKE) --no-print-directory verify
+
+web-build: verification-report.json ## Production build of the website
 	# Always from clean. Turbopack's incremental cache in .next changes the
 	# emitted chunk filenames, which changes the inline RSC payload, which
 	# changes the sha256 hashes the CSP pins. A warm build and a cold build of

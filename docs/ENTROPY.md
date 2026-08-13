@@ -14,9 +14,11 @@ can check yourself.
 
 ## Why this document exists
 
-In 2024 a disclosure showed that a widely used hardware wallet had shipped a
-random number generator that did not behave as documented. The response from
-most of the industry was to promise a better black box.
+A device that generates your seed inside a black box is asking you to trust the
+box. You cannot inspect it, and a correct generator and a backdoored one look
+identical from the outside: both hand you 24 words, and nothing on the screen
+distinguishes them. The usual answer to this is a better black box, which is the
+same offer with more assurance attached.
 
 That is the wrong answer. The right answer is that you should not have to take
 anyone's word for where your key came from. If you roll the dice, and the device

@@ -75,16 +75,24 @@ export function DiceDemo() {
     setRolls((current) => (current.length >= 200 ? current : current + face))
   }, [])
 
-  const command = useMemo(
-    () => `printf '%s' '${rolls.length > 24 ? `${rolls.slice(0, 24)}...` : rolls}' | sha256sum`,
-    [rolls]
-  )
+  /**
+   * The command MUST contain the whole roll string.
+   *
+   * An earlier version elided it after 24 characters with a literal "...",
+   * which meant the command the reader was invited to run hashed different
+   * bytes and printed a different digest from the one shown above it. On a
+   * panel whose entire purpose is "run this yourself and get the same answer",
+   * that turned the one falsifiable thing on the site into a demonstration that
+   * the site was wrong. It is shortened visually by scrolling the element, never
+   * by editing the bytes.
+   */
+  const command = useMemo(() => `printf '%s' '${rolls}' | sha256sum`, [rolls])
 
   return (
     <div className="rounded-lg border border-ink-800 bg-ink-900 overflow-hidden">
       <div className="px-4 py-2.5 border-b border-ink-800 flex items-center gap-3">
         <span className="text-xs font-mono text-ink-500">Try it here</span>
-        <span className="text-xs text-ink-600">runs entirely in your browser</span>
+        <span className="text-xs text-ink-400">runs entirely in your browser</span>
         {rolls.length > 0 && (
           <button
             type="button"
@@ -108,7 +116,7 @@ export function DiceDemo() {
                 push(face)
               }}
               aria-label={`Roll ${face}`}
-              className="w-14 h-14 rounded-md border border-ink-700 bg-ink-850 text-xl font-mono font-semibold text-ink-100 hover:border-signal-500 hover:bg-ink-800 active:bg-signal-600 active:text-ink-950 transition-colors"
+              className="w-14 h-14 rounded-md border border-ink-700 bg-ink-850 text-xl font-mono font-semibold text-ink-100 hover:border-signal-500 hover:bg-ink-800 active:bg-signal-500 active:text-ink-950 transition-colors"
             >
               {face}
             </button>
@@ -145,7 +153,12 @@ export function DiceDemo() {
                 <div className="text-xs font-mono uppercase tracking-widest text-ink-500 mb-1">
                   Your rolls
                 </div>
-                <div className="hash text-xs text-ink-400 leading-relaxed max-h-16 overflow-y-auto">
+                <div
+                  className="hash text-xs text-ink-400 leading-relaxed max-h-16 overflow-y-auto"
+                  tabIndex={0}
+                  role="region"
+                  aria-label="Your rolls"
+                >
                   {rolls}
                 </div>
               </div>
@@ -161,7 +174,17 @@ export function DiceDemo() {
                 <div className="text-xs text-ink-500 mb-1.5">
                   Now run this in a terminal. You should get the same string.
                 </div>
-                <code className="hash text-xs text-ink-300 block">{command}</code>
+                <code
+                  className="block font-mono text-xs text-ink-300 whitespace-pre overflow-x-auto"
+                  tabIndex={0}
+                  role="region"
+                  aria-label="Command to reproduce this hash"
+                >
+                  {command}
+                </code>
+                <p className="mt-2 text-xs text-ink-500">
+                  On macOS the command is <code className="font-mono">shasum -a 256</code>.
+                </p>
               </div>
             </>
           )}

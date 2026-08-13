@@ -37,9 +37,30 @@ const MESH_LINK_DISTANCE = 1.35
 const PARCEL_INTERVAL_MS = 5200
 const PARCEL_TRAVEL_MS = 3400
 
-/** Matches --color-signal-500 and the ink ramp in styles/globals.css. */
-const COLOR_MESH = 0x515b6b
-const COLOR_LINK = 0x39414e
+const FOV = 38
+const CAMERA_DISTANCE = 10.5
+
+/**
+ * The diagram's own extent in world units, used to frame it against whatever
+ * viewport it lands in. Mesh nodes run from -3.4 to -0.8 on x, the device sits
+ * at 3.1 with a radius of 0.46, and the boundary dashes span -1.9 to 1.9 on y.
+ * Keep these in step with the geometry below.
+ */
+const DIAGRAM_WIDTH = 7.0
+const DIAGRAM_HEIGHT = 4.0
+const DIAGRAM_CENTRE_X = 0.08
+
+/**
+ * Matches --color-signal-500 and the ink ramp in styles/globals.css.
+ *
+ * These are brighter than the ink ramp values they correspond to, because the
+ * scene sits under a dark gradient that exists to keep the headline legible.
+ * Colours picked against the bare background disappeared once that overlay went
+ * on top, which is the usual way a backdrop ends up as an expensive black
+ * rectangle.
+ */
+const COLOR_MESH = 0x8892a3
+const COLOR_LINK = 0x5c6675
 const COLOR_DEVICE = 0xe8833a
 const COLOR_PARCEL = 0xf39c5c
 
@@ -58,9 +79,9 @@ export function AirGapScene() {
     let disposed = false
     const scene = new THREE.Scene()
 
-    const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100)
-    camera.position.set(0.9, 0.25, 10.5)
-    camera.lookAt(0.9, 0, 0)
+    const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 100)
+    camera.position.set(0, 0.25, CAMERA_DISTANCE)
+    camera.lookAt(0, 0, 0)
 
     // Probe for WebGL BEFORE constructing the renderer. Three logs an error to
     // the console on its way to throwing, so a try/catch around the constructor
@@ -179,13 +200,53 @@ export function AirGapScene() {
     const parcelEnd = device.position.clone()
     let parcelStartedAt = -Infinity
 
-    // --- Sizing ------------------------------------------------------------
+    // --- Sizing and framing -------------------------------------------------
+    //
+    // The diagram is positioned from the measured viewport rather than from
+    // hard-coded coordinates. An earlier version placed the mesh and the device
+    // at fixed world positions tuned against one window size, and at any other
+    // aspect ratio the composition slid sideways until the device drifted off
+    // the edge entirely, leaving a backdrop that showed half a diagram and made
+    // no argument at all.
+    //
+    // Two things are computed here. How wide the world is at the plane the
+    // diagram sits on, which follows from the field of view and the distance,
+    // and therefore where to put the diagram so its centre lands at a chosen
+    // fraction across the canvas. On a wide screen that fraction sits right of
+    // the headline; on a narrow one the text covers the full width, so the
+    // diagram centres and dims instead of hiding behind the words.
     const resize = () => {
       const { clientWidth, clientHeight } = mount
       if (clientWidth === 0 || clientHeight === 0) return
       renderer.setSize(clientWidth, clientHeight, false)
-      camera.aspect = clientWidth / clientHeight
+
+      const aspect = clientWidth / clientHeight
+      camera.aspect = aspect
       camera.updateProjectionMatrix()
+
+      const visibleHeight = 2 * CAMERA_DISTANCE * Math.tan((FOV * Math.PI) / 360)
+      const visibleWidth = visibleHeight * aspect
+
+      // On a wide screen the copy occupies a `max-w-2xl` column inside a
+      // `max-w-5xl` page, which ends around 62% of the way across. The diagram
+      // is fitted into the band to the right of that, because the gradient over
+      // the text has to stay opaque enough to read against and anything drawn
+      // under it is invisible however bright it is. An earlier version centred
+      // the mesh at 53% and it simply could not be seen.
+      const wide = clientWidth >= 900
+      const span = wide ? 0.34 : 0.86
+      const scale = Math.min(
+        1,
+        (visibleWidth * span) / DIAGRAM_WIDTH,
+        (visibleHeight * (wide ? 0.86 : 0.7)) / DIAGRAM_HEIGHT
+      )
+      world.scale.setScalar(scale)
+
+      // Clear of the copy when there is room beside it, centred when there is
+      // not and the text spans the full width anyway.
+      const centreFraction = wide ? 0.75 : 0.5
+      world.position.x = (centreFraction - 0.5) * visibleWidth - DIAGRAM_CENTRE_X * scale
+      world.position.y = wide ? 0 : -visibleHeight * 0.04
     }
     resize()
     const resizeObserver = new ResizeObserver(resize)

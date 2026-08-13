@@ -1,126 +1,248 @@
 import Link from 'next/link'
 import { DOCS } from '../lib/docs'
+import { readFacts } from '../lib/facts'
 import { Hero } from '../components/hero/Hero'
 import { DiceDemo } from '../components/DiceDemo'
+import { Row, Rows, Section } from '../components/Section'
+import { Terminal } from '../components/Terminal'
 
 /**
- * The home page makes one argument: you should not have to trust this project,
- * and here is how you check.
+ * This is a build record, not a product page.
  *
- * The order is deliberate. The interactive demo comes before the feature list,
- * because the demo IS the feature list's justification and everything else is a
- * claim until the reader has run it themselves. The device screenshots come
- * before the specifications, because someone deciding whether to build one
- * wants to see what they would be looking at.
+ * Nothing here is trying to convert a reader into a user. There is no
+ * quickstart, no feature grid, no roadmap promising future value, and the
+ * reasons not to use this come first rather than sitting in a footnote. The
+ * reader is treated as a peer who is going to build their own, and the useful
+ * thing to give them is the method and the honest limits.
  *
- * The honest limits sit high on the page rather than in a footnote, so a reader
- * who takes the claims at face value and skips the threat model still comes
- * away knowing the most important one.
+ * The one interactive element earns its place by being falsifiable: the reader
+ * hashes their own dice in their own browser and checks the answer against
+ * their own terminal. Everything else on the page is a claim, and that is the
+ * one thing that is not.
+ *
+ * A note on what is deliberately absent. An earlier draft opened by citing a
+ * hardware wallet vendor's RNG failure. It was vague about which vendor, which
+ * year and which failure, and a page whose whole argument is "verify things"
+ * has no business leaning on an anecdote its reader cannot check. The argument
+ * stands without it: a black box is unverifiable by construction.
  */
 
-const PHASES = [
-  {
-    n: 1,
-    scope: 'Spec system, entropy, BIP-39/32, daemon, lock screen, networks',
-    state: 'complete',
-  },
-  {
-    n: 2,
-    scope: 'Descriptors, addresses, PSBT review, signing',
-    provisioning: 'Tier 0: reproducible, signed image',
-    state: 'in progress',
-  },
-  {
-    n: 3,
-    scope: 'Multisig, cosigner registration, encrypted store, PIN',
-    provisioning: 'Tier 1: dm-verity, boot attestation',
-    state: 'not started',
-  },
-  { n: 4, scope: 'BIP-322 message signing, BIP-85, BIP-329 labels', state: 'not started' },
-  { n: 5, scope: 'Wallet layer, optional and lower assurance', state: 'not started' },
-  { n: 6, scope: 'Bridge companion, runs on a networked machine', state: 'not started' },
-  {
-    n: 7,
-    scope: 'Miniscript, taproot script paths, SeedXOR, silent payments',
-    provisioning: 'Tier 2: signed boot chain (irreversible)',
-    state: 'not started',
-  },
+/**
+ * What each check is actually for. Kept beside the terminal output rather than
+ * inside it: the output says what happened, and these say why anyone should
+ * care, and merging the two would make the transcript untrustworthy as a
+ * transcript.
+ */
+const CHECK_NOTES: readonly (readonly [string, string])[] = [
+  [
+    'coverage',
+    'Every runtime export must be claimed by some spec. Adding an exported function without specifying it fails the build, so the specification cannot quietly fall behind the code.',
+  ],
+  [
+    'invariants',
+    'Each invariant names the tests that hold it up, and the status of those individual tests is asserted. Trusting the exit code would let a skipped test certify an invariant that never ran.',
+  ],
+  [
+    'vectors',
+    'Official BIP test vectors, pinned by hash. Without the pin, the natural way to fix a failing test is to edit the vector until it agrees with the bug.',
+  ],
+  [
+    'differential',
+    'Addresses, derivations and signatures cross-checked against bitcoinjs-lib. The signature path is genuinely independent, ours through @noble/secp256k1 and theirs through libsecp256k1 compiled to WASM, so agreement there is real evidence. Both stacks do share @noble/hashes, so a defect inside SHA-256 itself would not be caught by this.',
+  ],
+  [
+    'integrity',
+    'Sources hashed into a manifest in plain sha256sum format, so a reviewer checks it with coreutils rather than with the tool whose honesty is in question.',
+  ],
 ]
 
 const SCREENS = [
   {
     src: '/device/dice.png',
-    title: 'Roll the dice',
-    caption:
-      'Live entropy accounting, truncated so it never claims more than you have. Warnings appear and never block: a fair die can look suspicious, and the device does not discard your rolls.',
+    title: 'Dice',
+    caption: 'Entropy accounting, truncated so it never claims more than you have.',
   },
   {
     src: '/device/wallet.png',
-    title: 'Your addresses',
-    caption:
-      'Every script type, receive and change, with the derivation path under each address. No balances, because the device has no network and will not pretend otherwise.',
+    title: 'Addresses',
+    caption: 'Derivation path under every address. No balances: there is no network to ask.',
   },
   {
     src: '/device/verify.png',
-    title: 'Is this address mine?',
-    caption:
-      'Paste an address a coordinator gave you. The device re-derives it from your seed and answers, rather than comparing against a list it was handed.',
+    title: 'Address check',
+    caption: 'Re-derives from your seed rather than comparing against a list it was handed.',
   },
   {
     src: '/device/lock.png',
-    title: 'Before you unlock',
-    caption:
-      'The hash of the running code, and a plain statement of what it does not prove. Compare it against what you built. If they differ, do not enter your PIN.',
+    title: 'Lock screen',
+    caption: 'The hash of the running code, and what that hash does not prove.',
   },
 ]
 
 export default function HomePage() {
+  const facts = readFacts()
+
   return (
     <div className="mx-auto max-w-5xl px-5">
-      <Hero />
+      <Hero facts={facts} />
 
-      {/* --- The argument, executable ------------------------------------ */}
-      <section className="py-14 border-b border-ink-800">
-        <h2 className="text-sm font-mono uppercase tracking-widest text-ink-500">
-          Do not take our word for it
-        </h2>
-        <p className="mt-3 text-lg text-ink-300 max-w-2xl leading-relaxed">
-          A hardware wallet that generates your seed inside a black box is asking you to trust the
-          box. In 2024 a widely used one turned out to ship a random number generator that did not
-          behave as documented, and the industry answered by promising a better black box.
-        </p>
-        <p className="mt-3 text-lg text-ink-100 max-w-2xl leading-relaxed">
-          Here is the alternative. Roll some dice below, then run the command it gives you in a
-          terminal.
+      {/* --- 01 Reasons not to ------------------------------------------- */}
+      <Section index="01" label="Do not use this">
+        <p className="text-xl text-ink-200 max-w-2xl leading-relaxed">
+          Not false modesty. Here is the specific list.
         </p>
 
-        <div className="mt-7">
+        <div className="mt-8">
+          <Rows>
+            <Row term="Nothing is encrypted at rest yet" tone="caution">
+              There is no secure element, and as of today there is also no encrypted store and no
+              PIN gate, so there is nowhere for a wallet to persist and nothing defending an SD
+              card that gets taken. Even once the PIN lands, a key derived from it is the entire
+              physical defence. A Coldcard or a BitBox02 is genuinely better on this axis and it is
+              not close.
+            </Row>
+            <Row term="It is unfinished and unaudited" tone="caution">
+              Pre-1.0, and no one outside this project has reviewed the cryptography. Phases 3
+              through 7 are not built. Read the phase ordering in the threat model before assuming
+              any particular thing works.
+            </Row>
+            <Row term="Nobody is on the other end" tone="caution">
+              No releases, no binaries, no support, no warranty, no roadmap anyone owes you. If it
+              loses your money that is entirely your problem, and the licence says so in capital
+              letters.
+            </Row>
+            <Row term="At most one signer in a quorum">
+              The shape this was designed for is 2-of-3 or 3-of-5 alongside hardware from other
+              vendors, where this is the one device you can read end to end. Sole custody of
+              meaningful funds is not a use it was designed for.
+            </Row>
+          </Rows>
+        </div>
+
+        <p className="mt-8 text-base text-ink-300 max-w-2xl leading-relaxed">
+          The useful thing here is not the device. It is the method: specifications a machine can
+          check, invariants bound to named tests, and a build that fails when a claim stops being
+          true. Take that and build your own. You will trust the result more, which is the entire
+          point.
+        </p>
+      </Section>
+
+      {/* --- 02 The executable argument ---------------------------------- */}
+      <Section index="02" label="Check the arithmetic">
+        <p className="text-xl text-ink-200 max-w-2xl leading-relaxed">
+          A device that generates your seed inside a black box is asking you to trust the box. You
+          cannot check it, and a correct one and a backdoored one look identical from outside.
+        </p>
+        <p className="mt-4 text-base text-ink-400 max-w-2xl leading-relaxed">
+          The alternative is arithmetic you can redo. Roll some dice below, then run the command it
+          gives you in a terminal.
+        </p>
+
+        <div className="mt-8">
           <DiceDemo />
         </div>
 
-        <p className="mt-5 text-sm text-ink-500 max-w-2xl leading-relaxed">
-          That is the whole idea. If a device shows you a different value for the same rolls, it is
-          lying to you and you can tell. No special tooling, no trust in us. The full procedure,
-          including why the answer is 100 rolls and not 99, is in{' '}
-          <Link href="/docs/entropy" className="text-signal-400 hover:text-signal-300">
+        <p className="mt-6 text-sm text-ink-500 max-w-2xl leading-relaxed">
+          That is the whole idea. A device showing a different value for the same rolls is lying and
+          you can tell, with no special tooling and no trust in anyone. The full procedure, the byte
+          encoding, and why the answer is 100 rolls rather than 99, are in{' '}
+          <Link
+            href="/docs/entropy"
+            className="text-signal-400 hover:text-signal-300 underline underline-offset-4 decoration-ink-700"
+          >
             Entropy
           </Link>
           .
         </p>
-      </section>
+      </Section>
 
-      {/* --- What it looks like ------------------------------------------- */}
-      <section className="py-14 border-b border-ink-800">
-        <h2 className="text-sm font-mono uppercase tracking-widest text-ink-500">The device</h2>
-        <p className="mt-3 text-sm text-ink-400 max-w-2xl leading-relaxed">
-          A 7 inch touchscreen on a Raspberry Pi. These are screenshots of the running software,
-          not mockups.
+      {/* --- 03 Method ---------------------------------------------------- */}
+      <Section index="03" label="Method">
+        <Rows>
+          <Row term="Signatures are byte-identical">
+            RFC 6979 deterministic ECDSA and BIP-340 Schnorr with{' '}
+            <code className="font-mono text-ink-300">aux_rand</code> fixed to zero. A signer free to
+            pick its nonce can grind it until the signature encodes bits of your key, and every
+            signature still verifies. Determinism removes the space that would hide in. The ECDSA
+            path is checked byte for byte against libsecp256k1 through bitcoinjs-lib, because
+            self-consistency is exactly what a backdoored nonce also has. The Schnorr path is not
+            cross-checked against a second implementation yet.
+          </Row>
+          <Row term="Change is re-derived, never asserted">
+            An output is labelled change only when its address re-derives from a registered
+            descriptor at a valid change path. Anything else is shown as a payment regardless of
+            what the transaction claims about it.
+          </Row>
+          <Row term="No network, and not by convention">
+            Not for updates, not for fee estimation, not for fonts. Enforced by a lint rule with its
+            own regression suite and a runtime assertion that the daemon is listening on a Unix
+            socket and nothing else, because a rule that only exists in a style guide is not a
+            control. A systemd sandbox is specified to back this at the kernel level, and that unit
+            is not written yet.
+          </Row>
+          <Row term="Recoverable without any of this code">
+            Wallets are a BIP-39 mnemonic plus a canonical BIP-380 descriptor with a checksum, so
+            Bitcoin Core can restore one with no nullroute code involved. Verification has the
+            procedure to do it by hand against your own node. The automated drill that would run
+            it against regtest on every commit is not built yet: the CI job is present but
+            disabled, which is why this says the format permits recovery rather than that recovery
+            is continuously tested.
+          </Row>
+        </Rows>
+      </Section>
+
+      {/* --- 04 What gets checked ---------------------------------------- */}
+      <Section index="04" label="What the build checks">
+        <p className="text-xl text-ink-200 max-w-2xl leading-relaxed">
+          Every module ships a <code className="font-mono text-[0.9em] text-ink-100">.spec.yaml</code>{' '}
+          beside its source naming the invariants it claims and the exact tests holding them up.
+        </p>
+        <p className="mt-4 text-base text-ink-400 max-w-2xl leading-relaxed">
+          Five checks run on every commit and any one of them failing fails the build. This is the
+          real output, generated from the report the last run wrote, because a hand-drawn terminal
+          full of invented passes would be precisely the kind of decoration this project exists to
+          argue against.
         </p>
 
-        <div className="mt-7 grid gap-8 sm:grid-cols-2">
+        <Terminal command="make verify" facts={facts} />
+
+        <div className="mt-9 grid gap-x-10 gap-y-6 sm:grid-cols-2 text-sm">
+          {CHECK_NOTES.map(([term, body], i) => (
+            // An odd count leaves a hole in a two-column grid. The last one
+            // spans rather than sitting next to an empty cell.
+            <div key={term} className={i === CHECK_NOTES.length - 1 ? 'sm:col-span-2' : undefined}>
+              <div className="font-mono text-xs uppercase tracking-[0.14em] text-ink-500">
+                {term}
+              </div>
+              <p className="mt-1.5 text-ink-400 leading-relaxed">{body}</p>
+            </div>
+          ))}
+        </div>
+
+        <p className="mt-9 text-sm text-ink-500 max-w-2xl leading-relaxed">
+          The lock screen prints that manifest root. If it differs from what you get by building the
+          source yourself, do not enter your PIN.{' '}
+          <Link
+            href="/docs/verification"
+            className="text-signal-400 hover:text-signal-300 underline underline-offset-4 decoration-ink-700"
+          >
+            How to reproduce it
+          </Link>
+          .
+        </p>
+      </Section>
+
+      {/* --- 05 The device ------------------------------------------------ */}
+      <Section index="05" label="The device">
+        <p className="text-base text-ink-400 max-w-2xl leading-relaxed">
+          A 7 inch touchscreen on a Raspberry Pi, around $100 in parts. Screenshots of the running
+          software, not mockups.
+        </p>
+
+        <div className="mt-8 grid gap-7 sm:grid-cols-2">
           {SCREENS.map((screen) => (
             <figure key={screen.src} className="min-w-0">
-              <div className="rounded-lg border border-ink-800 overflow-hidden bg-ink-950">
+              <div className="rounded-md border border-ink-800 overflow-hidden bg-ink-950">
                 {/* A plain img, not next/image. Static export has no optimiser
                     to gain from, and next/image emits style="color:transparent",
                     which would force style-src 'unsafe-inline' site-wide. */}
@@ -134,202 +256,70 @@ export default function HomePage() {
                   className="w-full h-auto block"
                 />
               </div>
-              <figcaption className="mt-3">
-                <span className="text-ink-100 font-medium text-sm">{screen.title}</span>
-                <p className="mt-1 text-sm text-ink-400 leading-relaxed">{screen.caption}</p>
+              <figcaption className="mt-3 text-sm">
+                <span className="font-mono text-xs uppercase tracking-[0.16em] text-ink-500">
+                  {screen.title}
+                </span>
+                <p className="mt-1.5 text-ink-400 leading-relaxed">{screen.caption}</p>
               </figcaption>
             </figure>
           ))}
         </div>
-      </section>
+      </Section>
 
-      {/* --- Honest limits ----------------------------------------------- */}
-      <section className="py-14 border-b border-ink-800">
-        <h2 className="text-sm font-mono uppercase tracking-widest text-caution-500">
-          Before you trust this with anything
-        </h2>
-
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-lg border border-caution-500/30 bg-caution-500/5 p-5">
-            <h3 className="text-ink-100 font-medium mb-2">There is no secure element</h3>
-            <p className="text-sm text-ink-400 leading-relaxed">
-              Keys are encrypted under a key derived from your PIN, and that is the entire physical
-              defence. Someone holding your SD card is limited only by your PIN strength. A
-              Coldcard or BitBox02 is genuinely better on this specific axis.
-            </p>
-          </div>
-          <div className="rounded-lg border border-caution-500/30 bg-caution-500/5 p-5">
-            <h3 className="text-ink-100 font-medium mb-2">One signer in a quorum</h3>
-            <p className="text-sm text-ink-400 leading-relaxed">
-              Designed for 2-of-3 or 3-of-5 alongside hardware from other vendors, where nullroute
-              is the one you can fully audit. Sole custody of meaningful funds is a use we have not
-              designed for.
-            </p>
-          </div>
-          <div className="rounded-lg border border-caution-500/30 bg-caution-500/5 p-5">
-            <h3 className="text-ink-100 font-medium mb-2">Not finished</h3>
-            <p className="text-sm text-ink-400 leading-relaxed">
-              Pre-1.0 and unaudited. There is no encrypted store and no PIN gate yet, so there is
-              nowhere to persist a wallet. Do not put money on this.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* --- What it does ------------------------------------------------ */}
-      <section className="py-14 border-b border-ink-800">
-        <h2 className="text-sm font-mono uppercase tracking-widest text-ink-500">What it does</h2>
-        <dl className="mt-6 grid gap-x-10 gap-y-7 sm:grid-cols-2">
-          <div>
-            <dt className="text-ink-100 font-medium">Signs without leaking</dt>
-            <dd className="mt-1.5 text-sm text-ink-400 leading-relaxed">
-              RFC 6979 deterministic ECDSA and BIP-340 Schnorr with{' '}
-              <code className="font-mono text-ink-300">aux_rand</code> fixed to zero. Signatures are
-              byte-identical every time, so there is no free space to hide key material in. A
-              randomised signature can leak your key a few bits per transaction and nothing on
-              screen looks wrong.
-            </dd>
-          </div>
-          <div>
-            <dt className="text-ink-100 font-medium">Verifies change by re-deriving it</dt>
-            <dd className="mt-1.5 text-sm text-ink-400 leading-relaxed">
-              An output is labelled change only if the address re-derives from a registered
-              descriptor at a valid change path. Anything else is shown as a payment, whatever the
-              transaction claims.
-            </dd>
-          </div>
-          <div>
-            <dt className="text-ink-100 font-medium">No network, at all</dt>
-            <dd className="mt-1.5 text-sm text-ink-400 leading-relaxed">
-              Not for updates, not for fee estimation, not for fonts. Enforced by a lint rule with
-              its own regression suite, a runtime assertion, and a kernel-level restriction on the
-              daemon, rather than by convention.
-            </dd>
-          </div>
-          <div>
-            <dt className="text-ink-100 font-medium">No lock-in, proved in CI</dt>
-            <dd className="mt-1.5 text-sm text-ink-400 leading-relaxed">
-              Every wallet is recoverable from the BIP-39 mnemonic plus a standard descriptor,
-              using Bitcoin Core and no nullroute code. There is a test that does exactly that
-              against regtest, and it is the most important test in the suite.
-            </dd>
-          </div>
-        </dl>
-      </section>
-
-      {/* --- Run it ------------------------------------------------------ */}
-      <section className="py-14 border-b border-ink-800">
-        <h2 className="text-sm font-mono uppercase tracking-widest text-ink-500">
-          Run it yourself
-        </h2>
-        <p className="mt-3 text-sm text-ink-400 max-w-2xl leading-relaxed">
-          You do not need a Raspberry Pi to look at this. The whole device runs on a Mac or Linux
-          machine, and the lock screen will show the hash of the code you just built.
+      {/* --- 06 Documents ------------------------------------------------- */}
+      <Section index="06" label="Documents">
+        <p className="text-base text-ink-400 max-w-2xl leading-relaxed">
+          Rendered from <code className="font-mono text-ink-300">docs/</code> in the repository. The
+          page here and the file that ships with the code are the same bytes, so the published
+          version cannot drift from the one a reviewer reads.
         </p>
 
-        <div className="mt-6 rounded-lg border border-ink-800 bg-ink-900 overflow-hidden">
-          <div className="px-4 py-2 border-b border-ink-800 text-xs font-mono text-ink-500">
-            requires Node 24
-          </div>
-          <pre className="p-4 text-[0.8125rem] leading-relaxed overflow-x-auto font-mono text-ink-200">
-            <code>{`git clone git@github.com:Xaxis/nullroute.git
-cd nullroute
-make install
-make dev          # the device, at 127.0.0.1:5180`}</code>
-          </pre>
-        </div>
-
-        <p className="mt-4 text-sm text-ink-500 max-w-2xl leading-relaxed">
-          Hardware for a real one runs about $100 to $120: a Raspberry Pi, a small touchscreen, an
-          SD card and one die. The{' '}
-          <a
-            href="https://github.com/Xaxis/nullroute#what-you-need"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-signal-400 hover:text-signal-300"
-          >
-            bill of materials
-          </a>{' '}
-          is in the README.
-        </p>
-      </section>
-
-      {/* --- Documentation ---------------------------------------------- */}
-      <section className="py-14 border-b border-ink-800">
-        <h2 className="text-sm font-mono uppercase tracking-widest text-ink-500">Documentation</h2>
-        <p className="mt-3 text-sm text-ink-500">
-          Rendered directly from <code className="font-mono">docs/</code> in the repository. The
-          page you read here and the file that ships with the code are the same bytes.
-        </p>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        <div className="mt-8 divide-y divide-ink-850 border-y border-ink-850">
           {DOCS.map((doc) => (
             <Link
               key={doc.slug}
               href={`/docs/${doc.slug}`}
-              className="block rounded-lg border border-ink-800 p-5 hover:border-ink-600 hover:bg-ink-900/50 transition-colors group"
+              className="group block py-6 sm:grid sm:grid-cols-[13rem_minmax(0,1fr)] sm:gap-8"
             >
-              <h3 className="text-ink-100 font-medium group-hover:text-signal-400 transition-colors">
+              <div className="text-sm font-medium text-ink-100 group-hover:text-signal-400 transition-colors">
                 {doc.title}
-              </h3>
-              <p className="mt-1 text-sm text-signal-400/80">{doc.question}</p>
-              <p className="mt-1.5 text-sm text-ink-400 leading-relaxed">{doc.summary}</p>
+              </div>
+              <div className="mt-1.5 sm:mt-0 min-w-0">
+                <p className="text-sm text-ink-300">{doc.question}</p>
+                <p className="mt-1 text-sm text-ink-500 leading-relaxed">{doc.summary}</p>
+              </div>
             </Link>
           ))}
         </div>
-      </section>
+      </Section>
 
-      {/* --- Status ------------------------------------------------------ */}
-      <section className="py-14">
-        <h2 className="text-sm font-mono uppercase tracking-widest text-ink-500">Status</h2>
-        <p className="mt-3 text-sm text-ink-400 max-w-2xl leading-relaxed">
-          The signer is being built before the wallet, and the verification system was built before
-          the signer. Nothing later is pulled forward: that ordering, and the irreversible work
-          staying last, is what keeps a large feature list from eroding the small part that holds
-          keys.
+      {/* --- 07 Figure it out --------------------------------------------- */}
+      <Section index="07" label="Figure it out yourself">
+        <p className="text-xl text-ink-200 max-w-2xl leading-relaxed">
+          There is no download. The source is the deliverable.
+        </p>
+        <p className="mt-4 text-base text-ink-400 max-w-2xl leading-relaxed">
+          It runs on a Mac or a Linux box without any hardware, and the lock screen will show the
+          hash of whatever you just built. Getting it running is not documented as a funnel with
+          four copy-paste steps, because someone who is not willing to read a{' '}
+          <code className="font-mono text-ink-300">Makefile</code> before running software that
+          holds keys should not be running this one. Everything needed is in the repository.
+        </p>
+        <p className="mt-6 text-sm text-ink-500 max-w-2xl leading-relaxed">
+          The most valuable thing you can do with it is find where it is wrong.
         </p>
 
-        <div className="mt-6 rounded-lg border border-ink-800 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-ink-900 text-ink-300">
-                  <th className="text-left font-medium px-4 py-2.5 w-16">Phase</th>
-                  <th className="text-left font-medium px-4 py-2.5">Scope</th>
-                  <th className="text-left font-medium px-4 py-2.5 w-32">State</th>
-                </tr>
-              </thead>
-              <tbody>
-                {PHASES.map((phase) => (
-                  <tr key={phase.n} className="border-t border-ink-850">
-                    <td className="px-4 py-2.5 font-mono text-ink-400">{phase.n}</td>
-                    <td className="px-4 py-2.5 text-ink-300">
-                      {phase.scope}
-                      {phase.provisioning !== undefined && (
-                        <span className="block mt-1 text-xs text-signal-400/80">
-                          {phase.provisioning}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span
-                        className={
-                          phase.state === 'complete'
-                            ? 'text-verify-300 font-medium'
-                            : phase.state === 'in progress'
-                              ? 'text-signal-400 font-medium'
-                              : 'text-ink-600'
-                        }
-                      >
-                        {phase.state}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
+        <a
+          href="https://github.com/Xaxis/nullroute"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-8 inline-flex items-center gap-2.5 font-mono text-sm text-ink-200 border-b border-ink-700 pb-1 hover:text-signal-400 hover:border-signal-500 transition-colors"
+        >
+          github.com/Xaxis/nullroute
+          <span aria-hidden="true">&rarr;</span>
+        </a>
+      </Section>
     </div>
   )
 }

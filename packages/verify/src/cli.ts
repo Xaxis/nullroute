@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * `make verify`: the six checks from docs/VERIFICATION.md section 3.
+ * `make verify`: the five checks from docs/VERIFICATION.md section 3.
  *
  * The daemon refuses to start if verification-report.json is missing, stale, or
  * failing (INV-BUILD-1). That is what makes the specs load-bearing rather than
