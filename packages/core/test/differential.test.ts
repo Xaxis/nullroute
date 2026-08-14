@@ -193,7 +193,7 @@ describe('differential: nullroute against bitcoinjs-lib', () => {
  */
 describe('core.psbt.sign differential', () => {
   const SIGNING_PATH = "m/84'/0'/0'/0/0"
-  const RECIPIENT = 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'
+  const RECIPIENT = 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4'
   // Palindromic under byte reversal, so the two libraries' differing txid
   // conventions cannot silently make this a comparison of two different
   // transactions.

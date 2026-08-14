@@ -1,0 +1,234 @@
+/**
+ * Tests for the signing screen.
+ *
+ * This is the screen where a user commits money, so these are written as
+ * questions about what the user can see and what the user can do, not about
+ * what the component stores. The rule under test throughout is that nothing is
+ * approved that is not shown, and that a reassuring label is never applied to
+ * something the device did not verify.
+ */
+
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { PsbtScreen, type PsbtReviewView } from '../src/screens/PsbtScreen.js'
+
+afterEach(cleanup)
+
+/**
+ * fireEvent rather than user-event, deliberately. user-event models a real
+ * pointer and keyboard more faithfully, and it is not a dependency of this
+ * project: every package added here is attack surface and goes into the
+ * reproducible build manifest, so a nicer test API is not a good enough reason
+ * to take one on. The existing screen tests use fireEvent for the same reason.
+ */
+function type(el: HTMLElement, value: string): void {
+  fireEvent.change(el, { target: { value } })
+}
+
+const CHANGE_PATH = "m/84'/0'/0'/1/0"
+
+function review(overrides: Partial<PsbtReviewView> = {}): PsbtReviewView {
+  return {
+    signable: true,
+    replaceable: true,
+    locktime: 0,
+    ownedInputs: 1,
+    sighash: {
+      name: 'SIGHASH_ALL',
+      meaning: 'Commits to every input and every output.',
+      acceptable: true,
+    },
+    fee: {
+      feeBtc: '0.00005000',
+      feeSats: '5000',
+      vsize: 141,
+      satsPerVbyte: 35.46,
+      percentOfSpend: 4.1,
+    },
+    inputs: [
+      {
+        index: 0,
+        txid: 'a'.repeat(64),
+        vout: 0,
+        amountBtc: '0.00200000',
+        derivationPath: "m/84'/0'/0'/0/0",
+      },
+    ],
+    outputs: [
+      {
+        index: 0,
+        address: 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4',
+        amountBtc: '0.00120000',
+        amountSats: '120000',
+        kind: 'payment',
+        changePath: null,
+      },
+      {
+        index: 1,
+        address: 'bc1qchange00000000000000000000000000000000',
+        amountBtc: '0.00075000',
+        amountSats: '75000',
+        kind: 'change',
+        changePath: CHANGE_PATH,
+      },
+    ],
+    warnings: [],
+    ...overrides,
+  }
+}
+
+function setup(overrides: Partial<PsbtReviewView> = {}) {
+  const onReview = vi.fn().mockResolvedValue(review(overrides))
+  const onSign = vi
+    .fn()
+    .mockResolvedValue({ psbt: 'cHNidP8BSIGNED', inputsSigned: 1, signedWith: ["m/84'/0'/0'/0/0"] })
+  const onBack = vi.fn()
+  render(<PsbtScreen onReview={onReview} onSign={onSign} onBack={onBack} />)
+  return { onReview, onSign, onBack }
+}
+
+async function reachReview(): Promise<void> {
+  type(screen.getByTestId('psbt-input'), 'cHNidP8B')
+  fireEvent.click(screen.getByTestId('psbt-review'))
+  await waitFor(() => {
+    expect(screen.getByTestId('psbt-outputs')).toBeTruthy()
+  })
+}
+
+describe('ui.screens.psbt', () => {
+  // INV-UI-11: reviewing and signing are separate acts. Looking at a
+  // transaction must never be the thing that signs it.
+  it('does-not-sign-when-reviewing', async () => {
+    const { onSign } = setup()
+    await reachReview()
+    expect(onSign).not.toHaveBeenCalled()
+    // The sign button exists only after a review has been read.
+    expect(screen.getByTestId('psbt-sign')).toBeTruthy()
+  })
+
+  it('will-not-review-an-empty-field', () => {
+    setup()
+    expect(screen.getByTestId<HTMLButtonElement>('psbt-review').disabled).toBe(true)
+  })
+
+  // INV-UI-12: change is shown as change only with the path it re-derived at,
+  // and a payment is never dressed up as change.
+  it('shows-the-change-path-it-verified', async () => {
+    setup()
+    await reachReview()
+
+    const change = screen.getByTestId('psbt-output-1')
+    expect(change.textContent).toContain(CHANGE_PATH)
+    expect(change.textContent).toContain('re-derived')
+
+    const payment = screen.getByTestId('psbt-output-0')
+    expect(payment.textContent).toContain('Leaves this wallet')
+    expect(payment.textContent).not.toContain('re-derived')
+  })
+
+  // The fee in four units. Fee-stuffing hides in whichever one is missing.
+  it('shows-the-fee-in-several-units', async () => {
+    setup()
+    await reachReview()
+    const body = document.body.textContent
+    expect(body).toContain('0.00005000 BTC')
+    expect(body).toContain('5000')
+    expect(body).toContain('35.46 sat/vB')
+    expect(body).toContain('4.1%')
+  })
+
+  // INV-UI-13: a blocking warning stops signing outright.
+  it('refuses-to-sign-when-a-warning-is-blocking', async () => {
+    const { onSign } = setup({
+      signable: false,
+      warnings: [
+        {
+          kind: 'sighash',
+          message: 'SIGHASH_NONE does not commit to the outputs.',
+          blocking: true,
+        },
+      ],
+    })
+    await reachReview()
+
+    expect(screen.getByTestId<HTMLButtonElement>('psbt-sign').disabled).toBe(true)
+    fireEvent.click(screen.getByTestId('psbt-sign'))
+    expect(onSign).not.toHaveBeenCalled()
+  })
+
+  // The override exists, is explicit, and applies to one signature.
+  it('allows-an-explicit-override-of-a-blocking-warning', async () => {
+    const { onSign } = setup({
+      signable: false,
+      warnings: [{ kind: 'sighash', message: 'SIGHASH_NONE.', blocking: true }],
+    })
+    await reachReview()
+
+    fireEvent.click(screen.getByTestId('psbt-override'))
+    expect(screen.getByTestId<HTMLButtonElement>('psbt-sign').disabled).toBe(false)
+    fireEvent.click(screen.getByTestId('psbt-sign'))
+    await waitFor(() => {
+      expect(onSign).toHaveBeenCalledWith('cHNidP8B', true)
+    })
+  })
+
+  // INV-UI-14: a transaction with nothing of ours in it cannot be signed, and
+  // says why rather than failing silently.
+  it('will-not-sign-a-transaction-it-does-not-own', async () => {
+    const { onSign } = setup({ ownedInputs: 0 })
+    await reachReview()
+
+    expect(screen.getByTestId<HTMLButtonElement>('psbt-sign').disabled).toBe(true)
+    expect(document.body.textContent).toContain('None of these inputs belong to this wallet')
+    fireEvent.click(screen.getByTestId('psbt-sign'))
+    expect(onSign).not.toHaveBeenCalled()
+  })
+
+  it('shows-the-signed-psbt-and-the-paths-used', async () => {
+    setup()
+    await reachReview()
+    fireEvent.click(screen.getByTestId('psbt-sign'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('psbt-signed')).toBeTruthy()
+    })
+    expect(screen.getByTestId<HTMLTextAreaElement>('psbt-output').value).toBe('cHNidP8BSIGNED')
+    expect(document.body.textContent).toContain("m/84'/0'/0'/0/0")
+  })
+
+  // A failure is shown, never swallowed, and must not leave a stale review from
+  // a previous transaction on screen for the user to act on.
+  it('shows-an-error-and-clears-the-stale-review', async () => {
+    const onReview = vi.fn().mockRejectedValue(new Error('That PSBT could not be decoded.'))
+    const onSign = vi.fn()
+    render(<PsbtScreen onReview={onReview} onSign={onSign} onBack={vi.fn()} />)
+
+    type(screen.getByTestId('psbt-input'), 'garbage')
+    fireEvent.click(screen.getByTestId('psbt-review'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('psbt-error').textContent).toContain('could not be decoded')
+    })
+    expect(screen.queryByTestId('psbt-outputs')).toBeNull()
+    expect(screen.queryByTestId('psbt-sign')).toBeNull()
+  })
+
+  it('reports-a-signing-failure-rather-than-appearing-to-succeed', async () => {
+    const onReview = vi.fn().mockResolvedValue(review())
+    const onSign = vi.fn().mockRejectedValue(new Error('Refusing to sign.'))
+    render(<PsbtScreen onReview={onReview} onSign={onSign} onBack={vi.fn()} />)
+
+    type(screen.getByTestId('psbt-input'), 'cHNidP8B')
+    fireEvent.click(screen.getByTestId('psbt-review'))
+    await waitFor(() => {
+      expect(screen.getByTestId('psbt-sign')).toBeTruthy()
+    })
+    fireEvent.click(screen.getByTestId('psbt-sign'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('psbt-error').textContent).toContain('Refusing to sign')
+    })
+    // Still on the review screen, with nothing presented as signed.
+    expect(screen.queryByTestId('psbt-signed')).toBeNull()
+  })
+})

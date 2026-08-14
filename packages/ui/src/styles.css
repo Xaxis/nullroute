@@ -649,3 +649,64 @@ body {
     animation-duration: 0.01ms !important;
   }
 }
+
+/* --- Transaction review -------------------------------------------------
+ *
+ * The signing screen. Colour carries meaning here rather than decoration:
+ * anything that moves money out of the wallet is drawn in the caution ramp and
+ * anything the device re-derived and confirmed is drawn in the verify ramp.
+ * A user scanning quickly should be able to tell those apart without reading,
+ * and should never see a reassuring colour on an address that was merely
+ * asserted by the transaction.
+ */
+
+/* Blocking. The device will not sign, as opposed to merely disliking it. */
+.nr-banner--danger {
+  background-color: color-mix(in srgb, var(--color-caution-700) 26%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-caution-500) 55%, transparent);
+  color: var(--color-caution-300);
+}
+
+/* Re-derived from the seed and confirmed. Never applied to a claim. */
+.nr-ok {
+  color: var(--color-verify-300);
+}
+
+/* Money leaving the wallet. */
+.nr-warn {
+  color: var(--color-caution-300);
+}
+
+/* Addresses and base64 have no spaces, so they must be told to wrap or they
+   push the layout sideways on a 7 inch screen. */
+.nr-break {
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+.nr-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  cursor: pointer;
+}
+
+.nr-check input[type='checkbox'] {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+/* A heading for a whole card, as opposed to the label of one row.
+ *
+ * .nr-label is `flex: 0 0 8rem`, which sets a WIDTH inside .nr-row (a flex
+ * row) and a HEIGHT inside .nr-card (a flex column). Used as a card heading it
+ * silently reserved 8rem of vertical space and left a large hole above the
+ * content. Same declaration, opposite axis, no warning. */
+.nr-card__label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-ink-500);
+}

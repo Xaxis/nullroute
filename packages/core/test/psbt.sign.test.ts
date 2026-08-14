@@ -24,7 +24,17 @@ const MNEMONIC =
   'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
 const ACCOUNT = "m/84'/0'/0'"
 const SIGNING_PATH = `${ACCOUNT}/0/0`
-const STRANGER = 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'
+/**
+ * NOT ours. Verified: this is the BIP-173 test vector address, and it does not
+ * re-derive from the test mnemonic at any path.
+ *
+ * This constant used to be bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu, which is
+ * the BIP-84 vector address FOR THIS EXACT MNEMONIC and therefore belongs to the
+ * wallet under test. Tests that meant "a payment to someone else" were quietly
+ * asserting things about a self-send, and the change-substitution test was
+ * passing for the wrong reason. See the fixture guard at the end of this file.
+ */
+const STRANGER = 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4'
 
 /** A transaction spending our own first receive address. */
 function fundedTransaction(sighashType?: number): btc.Transaction {

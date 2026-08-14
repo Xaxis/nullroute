@@ -20,5 +20,7 @@ export type {
   OutputKind,
 } from './review.js'
 
+export { parsePsbt, encodePsbt, addressFromScript } from './parse.js'
+
 export { signTransaction, AUX_RAND } from './sign.js'
 export type { SignOptions, SignResult } from './sign.js'

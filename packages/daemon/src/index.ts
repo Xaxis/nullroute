@@ -25,5 +25,8 @@ export type { IpcRequest, IpcResponse, IpcHandler, IpcServerOptions } from './ip
 export { createHandler } from './handler.js'
 export type { DaemonState } from './handler.js'
 
+export { SCRIPT_TYPES, buildOwnedIndex, changeLookup, signingPathsFor } from './psbt.js'
+export type { OwnedAddress } from './psbt.js'
+
 export { Session, SessionError } from './session.js'
 export type { WalletSession, SeedProvenance } from './session.js'

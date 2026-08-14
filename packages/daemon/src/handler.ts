@@ -24,6 +24,9 @@ import {
   descriptorChecksum,
   deriveAccountXpub,
   deriveAddresses,
+  encodePsbt,
+  formatBtc,
+  parsePsbt,
   detectPatterns,
   diceToEntropy,
   entropyToWords,
@@ -32,7 +35,9 @@ import {
   networkById,
   normalizePath,
   parseDescriptor,
+  reviewTransaction,
   rootFromSeed,
+  signTransaction,
   validateRolls,
   withChecksum,
 } from '@nullroute/core'
@@ -40,6 +45,7 @@ import { randomBytes } from 'node:crypto'
 import { type BootAttestation, abbreviateHash } from './boot/attestation.js'
 import { type IpcHandler, type IpcRequest } from './ipc/socket.js'
 import { Session } from './session.js'
+import { buildOwnedIndex, changeLookup, signingPathsFor } from './psbt.js'
 
 export interface DaemonState {
   readonly attestation: BootAttestation
@@ -380,6 +386,134 @@ export function createHandler(state: DaemonState): IpcHandler {
         }
       }
 
+      // --- PSBT review and signing ---------------------------------------
+      /**
+       * Review a transaction. Reads nothing, signs nothing, changes nothing.
+       *
+       * Kept separate from signing on purpose. The user has to be able to look
+       * at a transaction and walk away, and a combined method would mean the
+       * act of looking carried the risk of signing.
+       *
+       * Every amount crosses this boundary as a decimal STRING. Satoshi amounts
+       * are bigint in core because 21 million BTC in satoshis exceeds what a
+       * double holds exactly, and `JSON.stringify` cannot serialise a bigint at
+       * all. Converting to Number here would silently reintroduce the very
+       * rounding the bigint exists to prevent, on the screen the user checks
+       * before approving a payment.
+       */
+      case 'psbt.review': {
+        const tx = parsePsbt(requireString(request, 'psbt'))
+        const index = buildOwnedIndex(session.requireSeed(), session.network, {
+          gapLimit: requireNumber(request, 'gapLimit', 100),
+        })
+        const review = reviewTransaction(tx, {
+          network: session.network,
+          isChange: changeLookup(index),
+        })
+
+        return {
+          signable: review.signable,
+          replaceable: review.replaceable,
+          locktime: review.locktime,
+          network: {
+            id: review.network.id,
+            label: review.network.label,
+            isMainnet: review.network.isMainnet,
+          },
+          sighash: {
+            type: review.sighash.type,
+            name: review.sighash.name,
+            meaning: review.sighash.meaning,
+            acceptable: review.sighash.acceptable,
+          },
+          fee: {
+            feeSats: review.fee.feeSats.toString(),
+            feeBtc: formatBtc(review.fee.feeSats),
+            totalInSats: review.fee.totalInSats.toString(),
+            totalOutSats: review.fee.totalOutSats.toString(),
+            vsize: review.fee.vsize,
+            satsPerVbyte: review.fee.satsPerVbyte,
+            percentOfSpend: review.fee.percentOfSpend,
+          },
+          inputs: review.inputs.map((i) => ({
+            index: i.index,
+            txid: i.txid,
+            vout: i.vout,
+            amountSats: i.amountSats.toString(),
+            amountBtc: formatBtc(i.amountSats),
+            sighashType: i.sighashType ?? null,
+            derivationPath: i.derivationPath ?? null,
+          })),
+          outputs: review.outputs.map((o) => ({
+            index: o.index,
+            address: o.address ?? null,
+            amountSats: o.amountSats.toString(),
+            amountBtc: formatBtc(o.amountSats),
+            kind: o.kind,
+            changePath: o.changePath ?? null,
+            changeRejectedBecause: o.changeRejectedBecause ?? null,
+          })),
+          warnings: review.warnings.map((w) => ({
+            kind: w.kind,
+            message: w.message,
+            blocking: w.blocking,
+          })),
+          /** Which inputs this device can actually sign. Zero is not an error. */
+          ownedInputs: signingPathsFor(
+            Array.from({ length: tx.inputsLength }, (_, i) => inputScript(tx, i)),
+            index,
+            session.network
+          ).length,
+        }
+      }
+
+      /**
+       * Sign. The irreversible one.
+       *
+       * The transaction is reviewed again here, from the same bytes, rather
+       * than trusting a verdict the caller passed back. A caller that could
+       * hand in its own review could sign anything, which would make every
+       * check in review.ts advisory.
+       */
+      case 'psbt.sign': {
+        const tx = parsePsbt(requireString(request, 'psbt'))
+        const seed = session.requireSeed()
+        const index = buildOwnedIndex(seed, session.network, {
+          gapLimit: requireNumber(request, 'gapLimit', 100),
+        })
+        const review = reviewTransaction(tx, {
+          network: session.network,
+          isChange: changeLookup(index),
+        })
+
+        const paths = signingPathsFor(
+          Array.from({ length: tx.inputsLength }, (_, i) => inputScript(tx, i)),
+          index,
+          session.network
+        )
+        if (paths.length === 0) {
+          throw new Error(
+            'None of this transaction’s inputs belong to this wallet, so there is ' +
+              'nothing here for this device to sign.'
+          )
+        }
+
+        const result = signTransaction(tx, seed, {
+          network: session.network,
+          paths,
+          review,
+          // Requires an explicit, per-call flag from the caller. It is never
+          // persisted and there is no setting that turns it on.
+          overrideBlockingWarnings: params(request)['overrideBlockingWarnings'] === true,
+        })
+
+        return {
+          psbt: encodePsbt(result.psbt),
+          inputsSigned: result.inputsSigned,
+          signedWith: result.signedWith,
+        }
+      }
+
       case 'session.lock': {
         session.lock()
         return { unlocked: false }
@@ -389,4 +523,33 @@ export function createHandler(state: DaemonState): IpcHandler {
         throw new Error(`Unknown method "${request.method}".`)
     }
   }
+}
+
+/**
+ * An input's locking script, from whichever UTXO field the PSBT carries it in.
+ *
+ * A segwit input states its own script in `witnessUtxo`. A legacy input instead
+ * carries the whole previous transaction, and the script is the one on the
+ * output being spent. Undefined means the PSBT did not say, in which case the
+ * device cannot tell whose input it is and treats it as not ours. That is the
+ * safe direction: refusing to sign something unidentifiable beats guessing.
+ */
+function inputScript(tx: import('@scure/btc-signer').Transaction, i: number): Uint8Array | undefined {
+  const input = tx.getInput(i)
+  const witnessUtxo: unknown = input.witnessUtxo
+  if (witnessUtxo !== undefined && witnessUtxo !== null) {
+    const script: unknown = (witnessUtxo as { script?: unknown }).script
+    if (script instanceof Uint8Array) return script
+  }
+  const nonWitness: unknown = input.nonWitnessUtxo
+  if (nonWitness !== undefined && nonWitness !== null) {
+    const outputs: unknown = (nonWitness as { outputs?: unknown }).outputs
+    const vout: unknown = input.index
+    if (Array.isArray(outputs) && typeof vout === 'number') {
+      const out: unknown = outputs[vout]
+      const script: unknown = (out as { script?: unknown } | undefined)?.script
+      if (script instanceof Uint8Array) return script
+    }
+  }
+  return undefined
 }

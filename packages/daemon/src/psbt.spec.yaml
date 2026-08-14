@@ -1,0 +1,90 @@
+id: daemon.psbt
+version: 1
+title: Wallet ownership index for transaction review and signing
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Answer one question, correctly, as many times as a transaction requires it: is
+  this address mine, and at what derivation path? Every guarantee the review
+  screen makes rests on that answer coming from re-derivation rather than from
+  anything the transaction asserts about itself.
+
+covers:
+  - packages/daemon/src/psbt.ts::SCRIPT_TYPES
+  - packages/daemon/src/psbt.ts::buildOwnedIndex
+  - packages/daemon/src/psbt.ts::changeLookup
+  - packages/daemon/src/psbt.ts::signingPathsFor
+
+algorithm: >
+  The index is built by deriving every address this wallet can produce within a
+  gap limit, across all four script types and both the receive and change
+  branches, and keying them by exact address string. Lookup is exact match.
+
+  Change detection returns a path only for an address that both re-derives and
+  sits on the change branch. A receive address of ours appearing as an output is
+  a self-send, and is deliberately NOT labelled change.
+
+  Signing paths are found by mapping each input's locking script back to an
+  address and looking it up. An input the wallet does not own contributes no
+  path, which is normal rather than an error, because this device may hold one
+  key of a quorum.
+
+invariants:
+  - id: INV-PSBT-12
+    statement: >
+      Change is identified by re-derivation from the seed. A derivation hint
+      carried inside the PSBT cannot cause an address to be labelled change,
+      because no field of the PSBT is consulted.
+    tests:
+      - packages/daemon/test/psbt.test.ts::labels-change-only-from-re-derivation
+      - packages/daemon/test/psbt.test.ts::ignores-a-derivation-hint-in-the-psbt
+
+  - id: INV-PSBT-13
+    statement: >
+      A receive address of this wallet appearing as an output is reported as a
+      payment, not as change.
+    tests:
+      - packages/daemon/test/psbt.test.ts::does-not-call-a-self-send-change
+
+  - id: INV-PSBT-14
+    statement: >
+      Signing paths are derived from the inputs' own locking scripts. A
+      transaction whose inputs this wallet does not own yields no paths, and the
+      daemon refuses to sign it rather than producing an unsigned result.
+    tests:
+      - packages/daemon/test/psbt.test.ts::finds-the-path-that-owns-an-input
+      - packages/daemon/test/psbt.test.ts::finds-nothing-for-a-foreign-input
+
+threats:
+  - INV-PSBT-2
+  - INV-PSBT-12
+
+security_notes: >
+  The gap limit is a real bound on what this can detect, and it is the one place
+  this module can be wrong in a way that matters. An output paying a change
+  address beyond the limit is reported as a payment to a stranger. That is the
+  safe direction: the user sees a warning about money leaving rather than a
+  reassuring "change" label on an address the device never actually verified.
+  Being wrong the other way, labelling something change without deriving it,
+  would be the exact attack INV-PSBT-2 exists to stop.
+
+  Building the index derives up to 800 addresses (four script types, two
+  branches, one hundred each), which takes long enough to notice on a Pi. It is
+  rebuilt per request rather than cached, because a cache keyed on anything
+  mutable would be a way to make the device answer questions about the wrong
+  wallet after a lock and unlock. Correctness beats latency here.
+
+  This module holds the seed only for the duration of the derivation and wipes
+  the root key in a `finally`. That is best effort in a garbage-collected
+  runtime, and the real mitigations are architectural: no swap and a short-lived
+  process. See docs/PROVISIONING.md.
+
+  Nothing here validates the transaction. Amounts, fees and sighash policy are
+  review's job, and keeping ownership separate from policy means neither can
+  quietly weaken the other.
+
+references:
+  - BIP-32, Hierarchical Deterministic Wallets
+  - BIP-174, Partially Signed Bitcoin Transaction Format
+  - docs/THREAT-MODEL.md

@@ -93,7 +93,17 @@ function build(options: BuildOptions): btc.Transaction {
   return tx
 }
 
-const STRANGER = 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'
+/**
+ * NOT ours. Verified: this is the BIP-173 test vector address, and it does not
+ * re-derive from the test mnemonic at any path.
+ *
+ * This constant used to be bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu, which is
+ * the BIP-84 vector address FOR THIS EXACT MNEMONIC and therefore belongs to the
+ * wallet under test. Tests that meant "a payment to someone else" were quietly
+ * asserting things about a self-send, and the change-substitution test was
+ * passing for the wrong reason. See the fixture guard at the end of this file.
+ */
+const STRANGER = 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4'
 
 describe('core.psbt.review', () => {
   // INV-PSBT-2: THE attack this module exists to stop.
@@ -130,7 +140,7 @@ describe('core.psbt.review', () => {
       outputs: [
         { address: STRANGER, amount: 60_000n },
         // Positioned exactly where change would sit, and it is not ours.
-        { address: 'bc1qnjg0jd8228aq7egyzacy8cys3knf9xvrerkf9g', amount: 35_000n },
+        { address: '1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2', amount: 35_000n },
       ],
     })
 

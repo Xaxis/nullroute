@@ -115,8 +115,8 @@ export function SetupScreen(props: SetupScreenProps): ReactElement {
         <strong>Note</strong>
         <span>
           A machine-only mode exists in the design and is deliberately not offered here yet. It is
-          the mode every other device uses by default, and it is the one whose failure prompted
-          this project: not broken, but unverifiable.
+          the mode every other device uses by default, and it is the one this project exists to
+          avoid: not broken, but unverifiable. You cannot check a number a black box handed you.
         </span>
       </div>
     </Screen>

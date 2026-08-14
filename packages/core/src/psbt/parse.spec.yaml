@@ -1,0 +1,93 @@
+id: core.psbt.parse
+version: 1
+title: PSBT decoding and script-to-address mapping
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Turn bytes that arrived from the networked world into something reviewable, or
+  refuse them. This is the widest attack surface on the device, because a PSBT
+  is the only large, structured, attacker-controlled input it ever accepts.
+
+covers:
+  - packages/core/src/psbt/parse.ts::parsePsbt
+  - packages/core/src/psbt/parse.ts::encodePsbt
+  - packages/core/src/psbt/parse.ts::addressFromScript
+
+algorithm: >
+  Input is accepted as base64 text or as raw bytes, because the two transports
+  differ: a QR code carries text and an SD card carries a file. Whitespace is
+  stripped from text, since every realistic path introduces newlines.
+
+  Size is bounded before anything is decoded. The magic prefix is checked
+  explicitly so that the common mistakes, a raw transaction or a descriptor
+  pasted into the wrong field, produce a message that names the mistake rather
+  than a generic parse failure. Only then is the library asked to decode, and
+  its own error is surfaced rather than replaced, because it names the field
+  that failed.
+
+  A locking script is mapped back to an address by decoding the script and
+  re-encoding it for the given network. A script with no standard address form
+  returns undefined rather than throwing.
+
+invariants:
+  - id: INV-PSBT-9
+    statement: >
+      Input that is not a well-formed PSBT is refused. Empty input, non-base64
+      text, a raw transaction, a descriptor and a truncated PSBT all throw
+      rather than being interpreted.
+    tests:
+      - packages/core/test/psbt.parse.test.ts::refuses-input-that-is-not-a-psbt
+      - packages/core/test/psbt.parse.test.ts::refuses-a-truncated-psbt
+      - packages/core/test/psbt.parse.test.ts::refuses-an-absurdly-large-input
+
+  - id: INV-PSBT-10
+    statement: >
+      A PSBT survives a decode and re-encode unchanged, and decodes identically
+      from base64 text or from raw bytes.
+    tests:
+      - packages/core/test/psbt.parse.test.ts::round-trips-a-psbt-through-base64
+      - packages/core/test/psbt.parse.test.ts::accepts-raw-bytes-as-well-as-base64
+      - packages/core/test/psbt.parse.test.ts::tolerates-whitespace-and-newlines
+
+  - id: INV-PSBT-11
+    statement: >
+      A script maps to the address it actually pays to, for every supported
+      script type, encoded for the network in use. A script with no standard
+      address form returns undefined rather than throwing.
+    tests:
+      - packages/core/test/psbt.parse.test.ts::maps-a-script-back-to-its-address
+      - packages/core/test/psbt.parse.test.ts::encodes-the-address-for-the-network-it-was-given
+      - packages/core/test/psbt.parse.test.ts::returns-undefined-for-a-script-with-no-address
+
+threats:
+  - INV-PSBT-1
+  - INV-PSBT-9
+
+security_notes: >
+  The network argument to `addressFromScript` is load-bearing and is not
+  defaulted anywhere. The same script encodes to a different string on mainnet
+  and on testnet, so a caller that passed the wrong network would render an
+  address the user could not match against anything, or worse, one that looked
+  plausible. The daemon passes the session network, which is fixed for the
+  lifetime of a wallet.
+
+  Returning undefined for an unrecognised script is a deliberate trade. Throwing
+  would make one exotic output render the entire transaction unreviewable, which
+  is worse than showing that output as a raw script: the user still needs to see
+  where the other outputs go. The review module is what decides how to present
+  an output with no address, and it does not treat undefined as safe.
+
+  The size bound is a denial-of-service stop, not a correctness check. It is far
+  above any real transaction, so it never rejects legitimate input, and it stops
+  a multi-gigabyte blob from exhausting memory on a Raspberry Pi before the
+  structure is examined at all.
+
+  This module does not validate that the PSBT makes economic sense, that its
+  inputs exist, or that its amounts are consistent. Those are review's job, and
+  splitting them keeps decoding free of policy.
+
+references:
+  - BIP-174, Partially Signed Bitcoin Transaction Format
+  - BIP-370, PSBT Version 2
+  - docs/THREAT-MODEL.md

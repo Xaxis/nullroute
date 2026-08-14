@@ -22,6 +22,7 @@ import { DiceScreen } from './screens/DiceScreen.js'
 import { SeedScreen } from './screens/SeedScreen.js'
 import { ImportScreen } from './screens/ImportScreen.js'
 import { WalletScreen, type ScriptType } from './screens/WalletScreen.js'
+import { PsbtScreen, type PsbtReviewView } from './screens/PsbtScreen.js'
 import { NetworkBanner } from './components/NetworkBanner.js'
 import { Screen } from './components/Screen.js'
 import { Button } from './components/Button.js'
@@ -51,6 +52,7 @@ type Stage =
   | { readonly at: 'import' }
   | { readonly at: 'seed'; readonly words: readonly string[]; readonly fingerprint: string }
   | { readonly at: 'wallet' }
+  | { readonly at: 'psbt' }
 
 const transport = httpTransport()
 
@@ -123,6 +125,21 @@ export function App() {
         scriptType,
         change,
       }),
+    []
+  )
+
+  const reviewPsbt = useCallback(
+    async (psbt: string) => call<PsbtReviewView>(transport, 'psbt.review', { psbt }),
+    []
+  )
+
+  const signPsbt = useCallback(
+    async (psbt: string, overrideBlockingWarnings: boolean) =>
+      call<{ psbt: string; inputsSigned: number; signedWith: readonly string[] }>(
+        transport,
+        'psbt.sign',
+        { psbt, overrideBlockingWarnings }
+      ),
     []
   )
 
@@ -262,6 +279,9 @@ export function App() {
           onAddresses={addresses}
           onDescriptor={descriptor}
           onVerifyAddress={verifyAddress}
+          onSignTransaction={() => {
+            setStage({ at: 'psbt' })
+          }}
           onLock={() => {
             const go = async (): Promise<void> => {
               await call(transport, 'session.lock')
@@ -285,6 +305,19 @@ export function App() {
           </div>
         )}
       </>
+    )
+  }
+
+  if (stage.at === 'psbt') {
+    return (
+      <PsbtScreen
+        banner={banner}
+        onReview={reviewPsbt}
+        onSign={signPsbt}
+        onBack={() => {
+          setStage({ at: 'wallet' })
+        }}
+      />
     )
   }
 

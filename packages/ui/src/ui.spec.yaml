@@ -17,6 +17,7 @@ covers:
   - packages/ui/src/screens/SeedScreen.tsx::SeedScreen
   - packages/ui/src/screens/ImportScreen.tsx::ImportScreen
   - packages/ui/src/screens/WalletScreen.tsx::WalletScreen
+  - packages/ui/src/screens/PsbtScreen.tsx::PsbtScreen
   - packages/ui/src/components/Screen.tsx::Screen
   - packages/ui/src/components/Button.tsx::Button
   - packages/ui/src/components/Choice.tsx::Choice
@@ -111,6 +112,45 @@ invariants:
     tests:
       - packages/ui/test/seed-screen.test.tsx::requires-acknowledgement
       - packages/ui/test/seed-screen.test.tsx::warns-that-this-is-the-only-showing
+
+  # --- The signing screen -------------------------------------------------
+  # Until this screen existed the device could derive addresses and nothing
+  # else: a signing device that could not sign.
+  - id: INV-UI-11
+    statement: >
+      Reviewing a transaction never signs it. Signing is a separate action that
+      only becomes available after a review has been rendered.
+    tests:
+      - packages/ui/test/psbt-screen.test.tsx::does-not-sign-when-reviewing
+      - packages/ui/test/psbt-screen.test.tsx::will-not-review-an-empty-field
+
+  - id: INV-UI-12
+    statement: >
+      An output is presented as change only together with the derivation path
+      the device re-derived it at. Every other output is presented as money
+      leaving the wallet.
+    tests:
+      - packages/ui/test/psbt-screen.test.tsx::shows-the-change-path-it-verified
+      - packages/ui/test/psbt-screen.test.tsx::shows-the-fee-in-several-units
+
+  - id: INV-UI-13
+    statement: >
+      A blocking warning disables signing. It can only be lifted by an explicit
+      per-signature override that is not remembered.
+    tests:
+      - packages/ui/test/psbt-screen.test.tsx::refuses-to-sign-when-a-warning-is-blocking
+      - packages/ui/test/psbt-screen.test.tsx::allows-an-explicit-override-of-a-blocking-warning
+
+  - id: INV-UI-14
+    statement: >
+      A transaction with no inputs belonging to this wallet cannot be signed,
+      and the screen says so. A failure to review or to sign is displayed and
+      never leaves a stale result on screen.
+    tests:
+      - packages/ui/test/psbt-screen.test.tsx::will-not-sign-a-transaction-it-does-not-own
+      - packages/ui/test/psbt-screen.test.tsx::shows-an-error-and-clears-the-stale-review
+      - packages/ui/test/psbt-screen.test.tsx::reports-a-signing-failure-rather-than-appearing-to-succeed
+      - packages/ui/test/psbt-screen.test.tsx::shows-the-signed-psbt-and-the-paths-used
 
 threats:
   - INV-KEY-1

@@ -28,6 +28,15 @@ export type { ImportScreenProps } from './screens/ImportScreen.js'
 export { WalletScreen } from './screens/WalletScreen.js'
 export type { WalletScreenProps, AddressRow, ScriptType } from './screens/WalletScreen.js'
 
+export { PsbtScreen } from './screens/PsbtScreen.js'
+export type {
+  PsbtScreenProps,
+  PsbtReviewView,
+  PsbtInputView,
+  PsbtOutputView,
+  PsbtWarningView,
+} from './screens/PsbtScreen.js'
+
 export { Screen } from './components/Screen.js'
 export type { ScreenProps } from './components/Screen.js'
 export { Button } from './components/Button.js'
