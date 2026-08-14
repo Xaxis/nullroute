@@ -264,4 +264,111 @@ describe('core.psbt.review', () => {
     // A value beyond 2^53 satoshis still renders exactly.
     expect(formatBtc(9_007_199_254_740_993n)).toBe('90071992.54740993')
   })
+
+  /**
+   * Splice an unknown key-value pair into the first input's map.
+   *
+   * Done at the byte level because that is the only way such a pair reaches the
+   * device: it arrives inside a file that some other software wrote. The signer
+   * will not let one be attached through its own API, which is correct of it
+   * and useless for this test.
+   *
+   * Type 0x60 is unassigned. Picking an arbitrary low number does not work:
+   * 0x0f is `output_index` in PSBT v2, so the parser tries to decode it as one
+   * and fails on the buffer rather than filing it under unknown.
+   */
+  function withUnknownInputField(tx: btc.Transaction, type = 0x60): btc.Transaction {
+    const bytes = tx.toPSBT()
+    let i = 5 // past the "psbt\xff" magic
+
+    const readCompactSize = (): number => {
+      const first = bytes[i]
+      if (first === undefined) throw new Error('truncated PSBT in test fixture')
+      if (first < 0xfd) {
+        i += 1
+        return first
+      }
+      if (first === 0xfd) {
+        const lo = bytes[i + 1] ?? 0
+        const hi = bytes[i + 2] ?? 0
+        i += 3
+        return lo | (hi << 8)
+      }
+      throw new Error('test fixture does not handle large varints')
+    }
+
+    // Walk the global map to its terminating zero. The next byte begins the
+    // first input's map, which is where the pair goes.
+    for (;;) {
+      const keyLength = readCompactSize()
+      if (keyLength === 0) break
+      i += keyLength
+      // Read into a variable first. `i += readCompactSize()` evaluates `i`
+      // BEFORE the call advances it, so the reader's own advance past the
+      // length prefix is discarded and the walk drifts one byte per entry.
+      const valueLength = readCompactSize()
+      i += valueLength
+    }
+
+    const spliced = [...bytes]
+    spliced.splice(i, 0, 0x01, type, 0x02, 0xde, 0xad)
+    const parsed = btc.Transaction.fromPSBT(Uint8Array.from(spliced))
+
+    // The fixture checks itself. Byte surgery that lands one position early
+    // puts the pair in the global map instead, where it parses cleanly and is
+    // invisible to the input, so the test under it would pass or fail for
+    // reasons having nothing to do with the code being tested.
+    const attached: unknown = parsed.getInput(0).unknown
+    const count = Array.isArray(attached) ? attached.length : 0
+    if (count !== 1) {
+      throw new Error(
+        `fixture did not attach an unknown field to input 0 (found ${String(count)}). ` +
+          `The splice offset ${String(i)} is probably not the start of the input map.`
+      )
+    }
+    return parsed
+  }
+
+  /**
+   * INV-PSBT-15. A PSBT can carry key-value pairs this device does not model.
+   *
+   * BIP-174 requires them to be preserved rather than dropped, and they are.
+   * The reason to say so on screen is not that they are dangerous: PSBT
+   * metadata is not covered by the signature, so an unknown field cannot move
+   * money. It is that the file was produced by something the device does not
+   * fully understand, and a user comparing against their coordinator should
+   * know the device is not showing them everything the file contains.
+   */
+  it('reports-fields-it-does-not-understand', () => {
+    const { changePathOf } = ourAddresses()
+    const tx = withUnknownInputField(
+      build({ outputs: [{ address: STRANGER, amount: 90_000n }] })
+    )
+
+    const review = reviewTransaction(tx, { network: MAINNET, isChange: changePathOf })
+    const warning = review.warnings.find((w) => w.kind === 'unknown-fields')
+
+    expect(warning).toBeDefined()
+    expect(warning?.message).toContain('1 field')
+    // Informative, never a refusal. Treating an unmodelled field as an attack
+    // would make the device reject ordinary transactions from newer software.
+    expect(warning?.blocking).toBe(false)
+    expect(review.signable).toBe(true)
+  })
+
+  // The pair must survive the device, or nullroute would silently strip data
+  // its coordinator put there and BIP-174 asks it to preserve.
+  it('preserves-fields-it-does-not-understand', () => {
+    const tx = withUnknownInputField(build({ outputs: [{ address: STRANGER, amount: 90_000n }] }))
+    const roundTripped = btc.Transaction.fromPSBT(tx.toPSBT())
+    const unknown: unknown = roundTripped.getInput(0).unknown
+    expect(Array.isArray(unknown) ? unknown.length : 0).toBe(1)
+  })
+
+  it('says-nothing-when-every-field-is-understood', () => {
+    const { changePathOf } = ourAddresses()
+    const tx = build({ outputs: [{ address: STRANGER, amount: 90_000n }] })
+    const review = reviewTransaction(tx, { network: MAINNET, isChange: changePathOf })
+    expect(review.warnings.some((w) => w.kind === 'unknown-fields')).toBe(false)
+  })
 })

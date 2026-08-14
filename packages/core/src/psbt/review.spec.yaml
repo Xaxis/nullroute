@@ -86,6 +86,15 @@ invariants:
     tests:
       - packages/core/test/psbt.review.test.ts::reports-replaceability-and-locktime
 
+  - id: INV-PSBT-15
+    statement: >
+      Key-value pairs the device does not model are reported to the user and
+      preserved in the signed output, and their presence never blocks signing.
+    tests:
+      - packages/core/test/psbt.review.test.ts::reports-fields-it-does-not-understand
+      - packages/core/test/psbt.review.test.ts::preserves-fields-it-does-not-understand
+      - packages/core/test/psbt.review.test.ts::says-nothing-when-every-field-is-understood
+
   - id: INV-PSBT-8
     statement: >
       Amounts are handled as integers throughout and render exactly beyond the
@@ -118,8 +127,21 @@ security_notes: >
   unsigned PSBT has no witnesses. The fee RATE is therefore approximate and is a
   sanity check rather than a consensus value. The absolute fee is exact.
 
-  Unknown PSBT key-value pairs are not yet surfaced. That is a gap against the
-  brief and is tracked for phase 2 completion.
+  Unknown PSBT key-value pairs are reported, and the report is deliberately
+  calibrated down rather than up. They are preserved rather than dropped, as
+  BIP-174 requires, and they are metadata: a signature does not commit to PSBT
+  fields, so an unknown pair cannot change where money goes. The warning exists
+  because the file was produced by software this device does not fully model,
+  and a user reconciling against their coordinator should know the screen is not
+  showing them everything the file contains. It never blocks, because refusing
+  an unmodelled field would mean refusing ordinary transactions from newer
+  coordinators.
+
+  The count covers input-level and output-level pairs only. Global-level pairs
+  are not counted, because the signing library keeps the global map private and
+  reading it would mean depending on an internal that can change under a patch
+  release. Undercounting is the safe direction for a note that never blocks, and
+  it is recorded here rather than left for someone to discover.
 
 references:
   - BIP-174, Partially Signed Bitcoin Transaction Format

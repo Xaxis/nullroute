@@ -364,6 +364,31 @@ export function reviewTransaction(tx: btc.Transaction, options: ReviewOptions): 
     })
   }
 
+  // Fields this device does not model.
+  //
+  // BIP-174 requires unknown key-value pairs to be preserved rather than
+  // dropped, and the signer does preserve them. The point of saying so is not
+  // that they are dangerous in themselves: PSBT metadata is not covered by the
+  // signature, so an unknown field cannot change where money goes or what is
+  // committed to. The point is that the transaction was produced by something
+  // this device does not fully understand, and a user comparing against their
+  // coordinator deserves to know the device is not showing them everything the
+  // file contains. Non-blocking, because treating an unmodelled field as an
+  // attack would make the device refuse ordinary transactions from newer
+  // coordinators.
+  const unknownFields = countUnknownFields(tx)
+  if (unknownFields > 0) {
+    warnings.push({
+      kind: 'unknown-fields',
+      message:
+        `This transaction carries ${String(unknownFields)} field${unknownFields === 1 ? '' : 's'} ` +
+        `this device does not understand. They are preserved and passed through, and they are ` +
+        `metadata: your signature does not cover them, so they cannot change where the money ` +
+        `goes. Everything shown above is computed from the parts that are understood.`,
+      blocking: false,
+    })
+  }
+
   // An output that could not be checked at all is worth saying out loud.
   if (outputs.some((o) => o.address === undefined)) {
     warnings.push({
@@ -449,4 +474,34 @@ export function formatBtc(sats: bigint): string {
   const whole = value / 100000000n
   const fraction = (value % 100000000n).toString().padStart(8, '0')
   return `${negative ? '-' : ''}${String(whole)}.${fraction}`
+}
+
+/**
+ * How many key-value pairs the PSBT carries that this device does not model.
+ *
+ * Counted across every input and every output. The signer keeps them under
+ * `unknown`, as an array of entries, so the count is the sum of those lengths.
+ *
+ * Global-level unknown pairs are NOT counted, and that is a real limit rather
+ * than an oversight: the library keeps the global map private, and reaching
+ * into it would mean depending on an internal that can change under a patch
+ * release. Undercounting is the safe direction here, because the count drives a
+ * non-blocking note and never a refusal. The limit is stated in the spec.
+ *
+ * Read defensively rather than cast. This walks attacker-supplied structure,
+ * and a shape that is not what we expect must produce a count rather than an
+ * exception: throwing here would turn an odd but harmless PSBT into one that
+ * cannot be reviewed at all, which is a worse failure than a missed note.
+ */
+function countUnknownFields(tx: btc.Transaction): number {
+  const bag = (owner: unknown): number => {
+    if (owner === null || typeof owner !== 'object') return 0
+    const entries: unknown = (owner as { unknown?: unknown }).unknown
+    return Array.isArray(entries) ? entries.length : 0
+  }
+
+  let total = 0
+  for (let i = 0; i < tx.inputsLength; i += 1) total += bag(tx.getInput(i))
+  for (let i = 0; i < tx.outputsLength; i += 1) total += bag(tx.getOutput(i))
+  return total
 }
