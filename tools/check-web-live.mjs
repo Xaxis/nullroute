@@ -25,10 +25,10 @@
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 
-const ORIGIN = process.argv[2] ?? process.env['NULLROUTE_SITE'] ?? 'https://nullroute-space.vercel.app'
+const ORIGIN = process.argv[2] ?? process.env['NULLROUTE_SITE'] ?? 'https://nullroute.diy'
 
 const PAGES = [
-  { path: '/', expect: 'air-gapped Bitcoin signing device' },
+  { path: '/', expect: 'Built to be checked' },
   { path: '/docs/threat-model', expect: 'Threat model' },
   { path: '/docs/verification', expect: 'Verifying nullroute' },
   { path: '/docs/entropy', expect: 'Entropy and seed generation' },
