@@ -202,17 +202,17 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
 
       {tab === 'addresses' && (
         <div className="nr-card nr-card--tight">
-          <table className="nr-table">
+          <table className="nr-table nr-table--dense">
             <thead>
               <tr>
-                <th style={{ width: '3.5rem' }}>Index</th>
+                <th className="nr-table__index">Index</th>
                 <th>Address</th>
               </tr>
             </thead>
             <tbody data-testid="address-rows">
               {rows.map((row) => (
                 <tr key={row.path}>
-                  <td className="nr-mono" style={{ color: 'var(--color-ink-500)' }}>
+                  <td className="nr-mono nr-table__index">
                     {row.index}
                   </td>
                   <td>

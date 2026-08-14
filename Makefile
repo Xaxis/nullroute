@@ -16,7 +16,7 @@ SHELL := /bin/bash
 MANIFEST_ROOTS := packages spec provisioning
 
 .PHONY: help install dev build check check-fast verify manifest manifest-check \
-        lint type-check test test-report test-vectors test-differential test-repro \
+        lint ui-classes type-check test test-report test-vectors test-differential test-repro \
         prose links profiles sbom sbom-check repro-check clean dev-daemon build-app web web-build web-lint web-type-check \
         web-isolation web-csp web-responsive web-check web-live-check deploy image
 
@@ -104,6 +104,14 @@ test-repro: ## Sign the same PSBT 100 times and cross-check the bytes against li
 
 lint: ## ESLint, including the no-network rule that enforces INV-NET-2
 	@npx eslint .
+
+ui-classes: ## Every nr- class the device UI uses has a rule in styles.css
+	# The lock screen once shipped entirely unstyled: it used an nr-lock__*
+	# naming scheme that was never written into the stylesheet. Types, lint and
+	# every unit test passed, because a className is just a string and the tests
+	# assert on data-testid. Nothing else in the toolchain checks that a class
+	# name refers to something.
+	@node tools/check-ui-classes.mjs
 
 type-check: ## TypeScript, no emit, across the whole monorepo
 	@npx tsc --build tsconfig.build.json --force
@@ -201,6 +209,6 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 
 # --- aggregates --------------------------------------------------------------
 
-check-fast: lint type-check prose links profiles test manifest-check ## Everything except the slow suites
+check-fast: lint ui-classes type-check prose links profiles test manifest-check ## Everything except the slow suites
 
 check: check-fast build verify test-vectors test-differential repro-check sbom web-check ## Everything CI runs

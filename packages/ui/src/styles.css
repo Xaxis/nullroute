@@ -244,12 +244,26 @@ body {
   gap: 1rem;
 }
 
+/*
+ * A label.
+ *
+ * The fixed 8rem basis is scoped to `.nr-row` deliberately. As a bare rule it
+ * applied wherever `.nr-label` appeared, and inside a column-direction flex
+ * container (which `.nr-card` is) `flex-basis` sets HEIGHT rather than width.
+ * Every card that used a label as its heading therefore reserved 8rem of empty
+ * space above its content. Same declaration, different axis, no warning from
+ * anything. It happened on the dice screen and the signing screen before this
+ * was scoped.
+ */
 .nr-label {
-  flex: 0 0 8rem;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--color-ink-500);
+}
+
+.nr-row > .nr-label {
+  flex: 0 0 8rem;
 }
 
 .nr-value {
@@ -381,8 +395,11 @@ body {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   /* A fixed row height. Auto rows stretch to fill, which is what made the pad
-     overlap the warnings below it. */
-  grid-auto-rows: 3.75rem;
+     overlap the warnings below it.
+     Sized up from 3.75rem: these six buttons are pressed a hundred times in a
+     row, by a finger, and they are the single most-used control on the device.
+     The left column had the space going spare. */
+  grid-auto-rows: 5rem;
   align-content: start;
   gap: 0.5rem;
 }
@@ -403,7 +420,7 @@ body {
 
 .nr-die {
   font-family: var(--font-mono);
-  font-size: 1.5rem;
+  font-size: 1.875rem;
   font-weight: 600;
   border-radius: 8px;
   border: 1px solid var(--color-ink-700);
@@ -628,8 +645,12 @@ body {
 .nr-tab {
   font: inherit;
   font-size: 0.8125rem;
-  padding: 0.375rem 0.75rem;
-  min-height: 2.25rem;
+  padding: 0.5rem 0.875rem;
+  /* 44px, same as every other control. These were 36px, which is under the
+     minimum this stylesheet states two sections up and is genuinely hard to
+     hit on a 7 inch panel with a finger. Tabs and network pills are the most
+     tapped controls on the device. */
+  min-height: 2.75rem;
   border-radius: 5px;
   border: 1px solid var(--color-ink-800);
   background-color: transparent;
@@ -686,27 +707,162 @@ body {
 
 .nr-check {
   display: flex;
-  align-items: flex-start;
-  gap: 0.625rem;
+  align-items: center;
+  gap: 0.75rem;
   cursor: pointer;
+  /* The label is the target, not the box. 44px so a finger finds it. */
+  min-height: 2.75rem;
+  padding: 0.25rem 0;
 }
 
 .nr-check input[type='checkbox'] {
-  width: 1.125rem;
-  height: 1.125rem;
+  width: 1.5rem;
+  height: 1.5rem;
   flex-shrink: 0;
-  margin-top: 0.125rem;
+  accent-color: var(--color-signal-500);
 }
 
-/* A heading for a whole card, as opposed to the label of one row.
- *
- * .nr-label is `flex: 0 0 8rem`, which sets a WIDTH inside .nr-row (a flex
- * row) and a HEIGHT inside .nr-card (a flex column). Used as a card heading it
- * silently reserved 8rem of vertical space and left a large hole above the
- * content. Same declaration, opposite axis, no warning. */
+/* A heading for a whole card. Identical to a bare `.nr-label` now that the
+ * fixed basis is scoped to `.nr-row`; kept as a distinct name because reading
+ * `nr-card__label` at a call site tells you which of the two things it is. */
 .nr-card__label {
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--color-ink-500);
+}
+
+/* ==========================================================================
+   Attestation block, the hero of the lock screen.
+
+   The manifest root is the one value on this device a person is asked to carry
+   to another screen and compare character by character. It gets the size and
+   the space that implies, and it sits above everything else on the screen.
+   ========================================================================== */
+
+.nr-attest {
+  padding: 1rem 1.125rem;
+  background-color: var(--color-ink-900);
+  border: 1px solid var(--color-ink-700);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.nr-attest__label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--color-ink-400);
+}
+
+/* Larger than body copy on purpose. A hash set at paragraph size gets skimmed,
+   and a skimmed hash is worse than no hash: it feels like it was checked. */
+.nr-attest .nr-hash {
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: var(--color-ink-100);
+}
+
+.nr-attest__hint {
+  font-size: 0.75rem;
+  color: var(--color-ink-500);
+}
+
+/* A row of short facts. Wraps rather than scrolls: on a 480px panel a value
+   that needs scrolling to reach is a value nobody reads. */
+.nr-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 2rem;
+}
+
+.nr-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 5rem;
+}
+
+.nr-fact__key {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--color-ink-500);
+}
+
+.nr-fact__val {
+  font-size: 1rem;
+  color: var(--color-ink-100);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The tier is a sentence, not a number, so it is allowed to take a whole row
+   rather than being squeezed into a column beside the counts. */
+.nr-fact--wide {
+  flex-basis: 100%;
+}
+
+/* The address index column: narrow, and quieter than the address beside it. */
+.nr-table__index {
+  width: 3.5rem;
+  color: var(--color-ink-500);
+}
+
+/* ==========================================================================
+   Scroll affordance.
+
+   The panel is 480px tall, there is no mouse and no scrollbar, and several
+   screens have more content than fits. Without this a user sees text that
+   appears to end at the bottom edge and has no reason to swipe: on the wallet
+   screen that was 819px of content in a 314px window, silently.
+
+   Pure CSS, using background-attachment. The two `local` layers scroll with the
+   content and cover the shadows when the content is at an edge; the two
+   `scroll` layers stay put. The result is a shadow that appears only when there
+   is genuinely more to see in that direction, with no scroll listener.
+   ========================================================================== */
+.nr-screen__body {
+  background:
+    linear-gradient(var(--color-ink-950) 30%, transparent) top / 100% 1.5rem no-repeat local,
+    linear-gradient(transparent, var(--color-ink-950) 70%) bottom / 100% 1.5rem no-repeat local,
+    radial-gradient(farthest-side at 50% 0, rgb(0 0 0 / 45%), transparent) top / 100% 0.75rem
+      no-repeat scroll,
+    radial-gradient(farthest-side at 50% 100%, rgb(0 0 0 / 45%), transparent) bottom / 100% 0.75rem
+      no-repeat scroll;
+}
+
+/* The persistent network indicator. One line, always visible, never scrolls
+   away, because signet, testnet3 and testnet4 are indistinguishable by address
+   and this label is the only thing that tells them apart. */
+.nr-netchip {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 999px;
+  background-color: color-mix(in srgb, var(--color-caution-600) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-caution-500) 45%, transparent);
+  white-space: nowrap;
+}
+
+.nr-netchip__name {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-caution-300);
+  letter-spacing: 0.02em;
+}
+
+.nr-netchip__note {
+  font-size: 0.75rem;
+  color: var(--color-caution-300);
+  opacity: 0.85;
+}
+
+/* Address rows: the wallet screen exists to show these, so more than two
+   should fit on a 480px panel. */
+.nr-table--dense td {
+  padding: 0.4375rem 0.75rem;
 }

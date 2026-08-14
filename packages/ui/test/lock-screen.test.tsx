@@ -64,7 +64,9 @@ describe('ui.screens.lock', () => {
   it('shows-verification-status-and-tier', () => {
     render(<LockScreen attestation={passing} network={mainnet} onUnlock={() => undefined} />)
     expect(screen.getByTestId('verification-status').textContent).toContain('passed')
-    expect(screen.getByTestId('verification-status').textContent).toContain('38 invariants')
+    // The counts are shown as facts beside the hash rather than repeated in the
+    // status line, which spends its one line on the verdict.
+    expect(screen.getByTestId('attestation-facts').textContent).toContain('38')
     // A user can tell from this screen whether wallet code is present.
     expect(screen.getByTestId('tier').textContent).toContain('signer only')
   })
@@ -100,10 +102,21 @@ describe('ui.screens.lock', () => {
   it('shows-a-persistent-banner-off-mainnet', () => {
     render(<LockScreen attestation={passing} network={signet} onUnlock={() => undefined} />)
     const banner = screen.getByTestId('network-banner')
+
+    // The invariant is that the banner NAMES the network. That is the whole
+    // job: signet, testnet3 and testnet4 produce identical addresses, so
+    // nothing about an address, an xpub or a path can recover which was meant,
+    // and this label is the only carrier of that fact.
     expect(banner.textContent).toContain('Signet')
-    // Naming the sibling networks matters: they are address-identical, so this
-    // label is the only thing distinguishing them.
-    expect(banner.textContent).toContain('testnet3')
+
+    // And names this one specifically. A banner that listed every test network
+    // would satisfy a substring check while telling the user nothing.
+    expect(banner.textContent).not.toContain('Testnet3')
+    expect(banner.textContent).not.toContain('Testnet4')
+
+    // It also has to say the coins are not real, or naming the network is
+    // trivia rather than a warning.
+    expect(banner.textContent.toLowerCase()).toContain('worth nothing')
   })
 
   it('shows-no-banner-on-mainnet', () => {

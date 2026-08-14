@@ -35,9 +35,10 @@ export function SeedScreen(props: SeedScreenProps): ReactElement {
       testId="seed-screen"
       actions={
         <>
-          <label
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
-          >
+          {/* The whole label is the tap target, not just the box. An 18px
+              checkbox on a 7 inch touch panel is a control that gets missed,
+              and this one gates an irreversible action. */}
+          <label className="nr-check">
             <input
               type="checkbox"
               checked={acknowledged}
@@ -45,7 +46,6 @@ export function SeedScreen(props: SeedScreenProps): ReactElement {
                 setAcknowledged(e.target.checked)
               }}
               data-testid="seed-ack"
-              style={{ width: '1.125rem', height: '1.125rem' }}
             />
             <span className="nr-hint">I have written all {words.length} words down, in order.</span>
           </label>

@@ -11,6 +11,14 @@
  * testnet3, testnet4 and signet produce identical addresses, so the tag on this
  * banner is the ONLY thing distinguishing them. Nothing about an address, an
  * xpub or a derivation path can recover which one was intended.
+ *
+ * It is a compact chip rather than a paragraph, and that is a device constraint
+ * rather than a style preference. The panel is 480px tall and this sits on every
+ * screen; as a three-line block it consumed about a fifth of the display
+ * permanently, which on the wallet screen left room for two addresses. The name
+ * is the part that has to persist, because the name is the part that cannot be
+ * recovered from anything else. The full explanation is on the setup screen,
+ * next to the choice it is explaining.
  */
 
 import { type ReactElement } from 'react'
@@ -28,12 +36,9 @@ export function NetworkBanner({ network }: NetworkBannerProps): ReactElement | n
   if (network.isMainnet) return null
 
   return (
-    <div className="nr-banner nr-banner--testnet" role="status" data-testid="network-banner">
-      <strong>{network.label}</strong>
-      <span>
-        Not mainnet. Coins here are worthless. Signet, testnet3 and testnet4 share every address
-        format, so this label is the only thing telling them apart.
-      </span>
+    <div className="nr-netchip" role="status" data-testid="network-banner">
+      <strong className="nr-netchip__name">{network.label}</strong>
+      <span className="nr-netchip__note">test coins, worth nothing</span>
     </div>
   )
 }
