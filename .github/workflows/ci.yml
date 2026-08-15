@@ -146,16 +146,6 @@ jobs:
   recovery-drill:
     name: every wallet recovers in Bitcoin Core alone
     runs-on: ubuntu-latest
-    # Enabled once phase 2 lands wallet types to drill. Until then there is
-    # nothing to recover, and a job that vacuously passes is worse than no job.
-    if: false
-    services:
-      bitcoind:
-        image: ruimarinho/bitcoin-core:latest
-        options: >-
-          --entrypoint bitcoind
-        ports:
-          - 18443:18443
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -164,6 +154,45 @@ jobs:
           cache: npm
       - run: npm ci
       - run: make build
+
+      # Core comes from bitcoincore.org, pinned by version and checksum, rather
+      # than from a third-party image. The whole point of this job is that
+      # recovery does not depend on trusting us, and it would be an odd way to
+      # make that argument while pulling the recovery tool from an unpinned
+      # container someone else maintains.
+      #
+      # The hash is pinned here rather than fetched alongside the tarball,
+      # because a checksum downloaded from the same host at the same moment
+      # only proves the download was not corrupted in transit. Pinned, it is a
+      # reviewable constant that changes visibly in a diff. Re-check it with:
+      #   curl -s https://bitcoincore.org/bin/bitcoin-core-28.0/SHA256SUMS \
+      #     | grep x86_64-linux-gnu.tar.gz
+      # Verified against that file on 2026-08-15.
+      - name: Fetch Bitcoin Core
+        env:
+          CORE_VERSION: '28.0'
+          CORE_SHA256: '7fe294b02b25b51acb8e8e0a0eb5af6bbafa7cd0c5b0e5fcbb61263104a82fbc'
+        run: |
+          set -euo pipefail
+          FILE="bitcoin-${CORE_VERSION}-x86_64-linux-gnu.tar.gz"
+          curl -fsSLO "https://bitcoincore.org/bin/bitcoin-core-${CORE_VERSION}/${FILE}"
+          echo "${CORE_SHA256}  ${FILE}" | sha256sum -c -
+          tar -xzf "${FILE}"
+          echo "$PWD/bitcoin-${CORE_VERSION}/bin" >> "$GITHUB_PATH"
+
+      - name: Start regtest
+        run: |
+          set -euo pipefail
+          bitcoind -regtest -daemon -fallbackfee=0.0002 \
+            -rpcuser=nullroute -rpcpassword=drill -rpcport=18443 -rpcbind=127.0.0.1 \
+            -rpcallowip=127.0.0.1
+          for _ in $(seq 1 60); do
+            if bitcoin-cli -regtest -rpcuser=nullroute -rpcpassword=drill \
+              -rpcport=18443 getblockchaininfo >/dev/null 2>&1; then exit 0; fi
+            sleep 1
+          done
+          echo "bitcoind did not become ready" >&2
+          exit 1
 
       # For every supported wallet type: create in nullroute, export the
       # descriptor, import into a regtest Core, assert identical addresses and

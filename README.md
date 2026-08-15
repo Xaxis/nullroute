@@ -164,9 +164,9 @@ deterministic signature to hide a leaked key.
 **5. Check you do not need us.** Take your mnemonic and descriptor to Bitcoin
 Core and confirm it sees the same addresses. Doing this by hand is the check
 that matters, and it is the one that makes walking away from this project
-harmless. The CI job that would automate it is written and disabled (`if:
-false`), because phase 2 does not yet persist a wallet to recover. If the hand
-procedure ever fails, that is a security report.
+harmless. CI runs the same drill on every commit against a real regtest Core,
+for p2wpkh, sh(wpkh) and p2pkh; taproot is not drilled yet. Run it yourself with
+`make test-recovery-drill`. If it ever fails, that is a security report.
 
 Full procedure: [docs/VERIFICATION.md](docs/VERIFICATION.md), written for
 someone who does not trust this project and should not have to.
@@ -263,9 +263,8 @@ against libsecp256k1, an encrypted store so a wallet survives a reboot, and
 multisig with cosigner registration that refuses a quorum this device is not
 part of.
 
-Not working yet, and needed before this is safe for funds: the automated
-recovery drill against Bitcoin Core, and the dm-verity boot attestation of
-tier 1. The seed is encrypted at rest under a passphrase, and that passphrase
+Not working yet, and needed before this is safe for funds: the dm-verity boot
+attestation of tier 1, and a taproot recovery drill. The seed is encrypted at rest under a passphrase, and that passphrase
 is the only thing protecting a stolen card: there is no secure element, and the
 retry counter does not survive someone copying the card.
 

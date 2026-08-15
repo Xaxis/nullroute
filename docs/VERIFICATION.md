@@ -257,15 +257,22 @@ To confirm it for your own wallet, against a Bitcoin Core node:
 Do this on a testnet or signet wallet first, with the same script type as your
 real one.
 
-**This drill is not automated yet.** The intent is that CI runs exactly it
-against a regtest Bitcoin Core for every supported wallet type on every commit:
-create the wallet, receive funds, export the descriptor, import into Core,
-assert identical addresses and identical balance, and spend. The job exists in
-`.github/workflows/ci.yml` and is disabled with `if: false`, because phase 2
-does not yet persist a wallet and there is nothing to recover. Until it is
-enabled, the guarantee on this page is that the FORMAT permits recovery, which
-you can confirm by hand with the steps above, and not that recovery is
-continuously tested.
+CI runs exactly this drill on every commit, against a Bitcoin Core downloaded
+from bitcoincore.org and checked against a pinned SHA-256. For each of p2wpkh,
+sh(wpkh) and p2pkh it creates the wallet in nullroute, exports the descriptor,
+asks Core to derive the addresses and asserts they are identical, funds one,
+has Core build the spend, signs it with nullroute, and has Core finalise and
+broadcast it. The only thing nullroute contributes to the recovery path is a
+signature.
+
+Two limits, stated rather than implied. Taproot is not drilled: Core imports a
+`tr()` descriptor happily, and signing one through this path needs taproot PSBT
+fields the drill does not build yet, so `p2tr` is listed in the drill's own
+output as not covered. And the drill exits non-zero rather than skipping when no
+regtest node is reachable, because a vacuous pass on this particular claim would
+put a green tick beside the statement that somebody's funds are recoverable.
+
+Run it yourself with `make test-recovery-drill` against a local regtest node.
 
 If you ever cannot reproduce this by hand, that is a security report, not a
 support question. See [SECURITY.md](../SECURITY.md).

@@ -17,6 +17,7 @@ MANIFEST_ROOTS := packages spec provisioning
 
 .PHONY: help install dev build check check-fast verify manifest manifest-check \
         lint ui-classes type-check test test-report test-vectors test-differential test-repro \
+        test-recovery-drill \
         prose links profiles sbom sbom-check repro-check clean dev-daemon build-app web web-build web-lint web-type-check \
         web-isolation web-csp web-responsive web-check web-live-check deploy image
 
@@ -101,6 +102,16 @@ test-repro: ## Sign the same PSBT 100 times and cross-check the bytes against li
 	# that means something.
 	@npx vitest run --project core \
 	  -t "produces-byte-identical-signatures|agrees-byte-for-byte-on-a-p2wpkh-signature"
+
+test-recovery-drill: build ## INV-INTEROP-1. Recover a wallet in Bitcoin Core alone. Needs regtest bitcoind.
+	# The most important test here, and the only one that proves this project
+	# is ABANDONABLE: Core derives the addresses, Core builds the spend, Core
+	# finalises and broadcasts. nullroute contributes a signature and nothing
+	# else. Not part of `make check`, because it needs a bitcoind that most
+	# machines do not have, and it exits non-zero rather than skipping when
+	# there is none: a vacuous pass on this claim means somebody's funds are
+	# unrecoverable and nothing said so.
+	@node tools/recovery-drill.mjs
 
 lint: ## ESLint, including the no-network rule that enforces INV-NET-2
 	@npx eslint .
