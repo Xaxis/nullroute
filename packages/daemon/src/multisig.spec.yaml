@@ -1,0 +1,119 @@
+id: daemon.multisig
+version: 1
+title: Cosigner registration and quorum review
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Decide whether a descriptor handed over by a coordinator is a wallet this
+  device is genuinely part of, and describe what agreeing to it would mean. This
+  is the boundary at which a descriptor stops being a suggestion and becomes the
+  wallet, so it is the only place the check can be made.
+
+covers:
+  - packages/daemon/src/multisig.ts::reviewRegistration
+  - packages/daemon/src/multisig.ts::multisigAccountPath
+  - packages/daemon/src/multisig.ts::MultisigError
+
+algorithm: >
+  The descriptor is parsed with its checksum required, because it arrived from
+  outside and a single mistyped character otherwise yields a valid descriptor
+  for a different wallet.
+
+  This device derives its own BIP-48 account key and looks for it among the
+  descriptor's keys, comparing key material rather than the fingerprint written
+  in the origin. A descriptor that does not contain this device's key is
+  refused outright, and the error names the key the coordinator should have
+  used.
+
+  The quorum is then described: threshold, total, ordering, script kind, and one
+  entry per cosigner with its position and abbreviated key. Shapes that are
+  legal but probably not what the user believes they agreed to produce warnings
+  rather than refusals: a threshold of one, a threshold equal to the total, an
+  unsorted multi() where key order is significant, and legacy P2SH.
+
+  Finally one address is derived as a smoke test, so a descriptor that parses
+  and names this device but cannot produce an address fails now rather than
+  after being recorded as the wallet.
+
+invariants:
+  - id: INV-MULTI-6
+    statement: >
+      A descriptor in which this device holds no key is refused. Registering one
+      would produce a wallet that can receive funds and can never spend them.
+    tests:
+      - packages/daemon/test/multisig.test.ts::refuses-a-quorum-this-device-is-not-in
+      - packages/daemon/test/multisig.test.ts::refuses-a-mainnet-quorum-on-signet
+      - packages/daemon/test/multisig.test.ts::registers-a-quorum-this-device-is-part-of
+      - packages/daemon/test/multisig.test.ts::finds-our-key-wherever-it-sits-in-the-quorum
+
+  - id: INV-MULTI-7
+    statement: >
+      Membership is decided by key material. A key origin claiming this device's
+      master fingerprint and derivation path does not make a stranger's key
+      ours, and a descriptor with no valid checksum is refused.
+    tests:
+      - packages/daemon/test/multisig.test.ts::ignores-a-fingerprint-that-claims-to-be-ours
+      - packages/daemon/test/multisig.test.ts::requires-a-valid-checksum
+
+  - id: INV-MULTI-8
+    statement: >
+      Quorum shapes that are legal but surprising are reported before the user
+      agrees: a threshold of one, a threshold equal to the total, significant
+      key ordering, and legacy P2SH.
+    tests:
+      - packages/daemon/test/multisig.test.ts::warns-about-a-threshold-of-one
+      - packages/daemon/test/multisig.test.ts::warns-when-every-cosigner-is-required
+      - packages/daemon/test/multisig.test.ts::warns-when-key-order-is-significant
+      - packages/daemon/test/multisig.test.ts::warns-about-legacy-p2sh
+
+  - id: INV-MULTI-9
+    statement: >
+      The multisig key is derived under a BIP-48 account, distinct from the
+      single-signature branch and from other networks, and each cosigner is
+      presented so a user can compare them with the rest of the group.
+    tests:
+      - packages/daemon/test/multisig.test.ts::uses-a-bip48-account-distinct-from-single-signature
+      - packages/daemon/test/multisig.test.ts::reports-each-cosigner-so-a-user-can-compare-them-aloud
+      - packages/daemon/test/multisig.test.ts::refuses-something-that-is-not-multisig-at-all
+
+threats:
+  - INV-PSBT-2
+  - INV-MULTI-6
+  - INV-MULTI-7
+
+security_notes: >
+  The failure this module exists to prevent is quiet. A descriptor with the
+  user's key swapped out is perfectly well formed: its addresses are valid,
+  deposits confirm, and every screen looks normal. The problem only appears when
+  someone tries to spend and finds the quorum cannot be met, by which point the
+  funds are in it. Refusing at registration is the only moment the device can
+  act.
+
+  The fingerprint in a key origin is four bytes that whoever wrote the
+  descriptor chose, and nothing authenticates them. Matching on a fingerprint
+  would let a coordinator label a stranger's key with the user's own, and the
+  registration screen would confirm it back to them. There is a test that mounts
+  exactly that attack.
+
+  This module reports the quorum, it does not police it. A 1-of-3 registration
+  succeeds with a warning, because a user may have deliberately built one, and a
+  device that refused would simply be worked around. What it must never do is
+  let someone agree to a 1-of-3 while believing it is a 2-of-3, which is why the
+  threshold is stated in words rather than left in the descriptor text.
+
+  Comparing xpubs aloud is the intended verification and it is weaker than it
+  sounds. The keys are abbreviated for legibility, so this catches an accident
+  or a swapped cosigner and would not catch an adversary who ground out a key
+  matching the visible characters. Registering against a descriptor received
+  over a channel the cosigners already trust is what the abbreviation assumes.
+
+  Nothing here is persisted. Recording a registration is the store's job, and
+  keeping them apart means a review can be shown and refused without side
+  effects.
+
+references:
+  - BIP-48, Multi-Script Hierarchy for Multi-Sig Wallets
+  - BIP-67, Deterministic Pay-to-script-hash multi-signature addresses
+  - BIP-380, Output Script Descriptors
+  - docs/THREAT-MODEL.md

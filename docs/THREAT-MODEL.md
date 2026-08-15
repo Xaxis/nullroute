@@ -66,6 +66,7 @@ loudly if the defence regresses. Invariant identifiers are listed in the
 | Key material reaching the frontend | Frontend receives only xpubs, addresses, descriptors, and PSBTs. Asserted against serialized responses. | INV-KEY-1 |
 | Data remanence in memory | Typed `Secret` wrapper with explicit `dispose()`, raw `Buffer` for secrets banned by lint, heap snapshot test | INV-KEY-2 |
 | Data remanence on disk | No swap, tmpfs for scratch, seed encrypted at rest under Argon2id and AES-256-GCM | INV-KEY-2, INV-STORE-1 |
+| A coordinator substituting a cosigner key | Registration re-derives this device's key and refuses a quorum it is not in; fingerprints are displayed, never trusted | INV-MULTI-6, INV-MULTI-7 |
 | Offline guessing of a stolen card | Argon2id at 64 MiB, parameters authenticated so they cannot be weakened in the file | INV-STORE-3 |
 | Supply chain tampering | Exact version pins, committed lockfile, `ignore-scripts=true`, SBOM, dependency review on every lockfile change | INV-BUILD-1 |
 | Build tampering | Reproducible builds, manifest root hash displayed at boot and comparable against the published release | INV-BUILD-1 |
@@ -300,6 +301,8 @@ security-critical ones:
 | INV-WALLET-1 | `packages/wallet` may import `packages/core`, never the reverse. Removing it leaves a functional signer. |
 | INV-WALLET-2 | The wallet layer proposes but never signs. |
 | INV-INTEROP-1 | Every wallet is fully recoverable from the BIP-39 mnemonic plus a standard descriptor, with third-party software and no nullroute code. Proved in CI against Bitcoin Core. |
+| INV-MULTI-6 | A multisig descriptor in which this device holds no key is refused at registration, rather than producing a wallet that can receive and never spend. |
+| INV-MULTI-7 | Quorum membership is decided by key material. A key origin claiming this device's fingerprint does not make a stranger's key ours. |
 | INV-STORE-1 | A seed is never written to disk in a form readable without the passphrase. |
 | INV-STORE-2 | A wrong passphrase fails authentication and returns nothing. It never produces plaintext. |
 | INV-STORE-3 | The key derivation parameters are authenticated, so editing them in the file breaks the open rather than weakening the next guess. |

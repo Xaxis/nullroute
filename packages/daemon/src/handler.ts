@@ -24,6 +24,7 @@ import {
   descriptorChecksum,
   deriveAccountXpub,
   deriveAddresses,
+  deriveMultisigAddresses,
   encodePsbt,
   formatBtc,
   parsePsbt,
@@ -47,6 +48,7 @@ import { type IpcHandler, type IpcRequest } from './ipc/socket.js'
 import { Session } from './session.js'
 import { buildOwnedIndex, changeLookup, signingPathsFor } from './psbt.js'
 import { type WalletStore } from './store/store.js'
+import { multisigAccountPath, reviewRegistration } from './multisig.js'
 
 export interface DaemonState {
   readonly attestation: BootAttestation
@@ -525,6 +527,60 @@ export function createHandler(state: DaemonState): IpcHandler {
           psbt: encodePsbt(result.psbt),
           inputsSigned: result.inputsSigned,
           signedWith: result.signedWith,
+        }
+      }
+
+      // --- Multisig -------------------------------------------------------
+      /**
+       * This device's own multisig key, to hand to a coordinator.
+       *
+       * BIP-48 account, distinct from the single-signature branch so that using
+       * one seed both alone and in a quorum does not link the two on chain.
+       */
+      case 'multisig.ourKey': {
+        const account = requireNumber(request, 'account', 0)
+        const path = multisigAccountPath(session.network, account)
+        const derived = deriveAccountXpub(session.requireSeed(), session.network, path)
+        return {
+          xpub: derived.xpub,
+          path: derived.path,
+          masterFingerprint: derived.masterFingerprint,
+          // The form a coordinator actually wants to paste.
+          keyExpression: `[${derived.masterFingerprint}/${derived.path.replace(/^m\//, '')}]${derived.xpub}`,
+        }
+      }
+
+      /**
+       * Review a quorum before agreeing to it. Registers nothing.
+       *
+       * Throws when this device holds no key in the descriptor, because there
+       * is nothing useful to agree to in a quorum that does not contain you: it
+       * would receive funds forever and never be able to spend them.
+       */
+      case 'multisig.review': {
+        return reviewRegistration(
+          requireString(request, 'descriptor'),
+          session.requireSeed(),
+          session.network,
+          requireNumber(request, 'account', 0)
+        )
+      }
+
+      /** Addresses for a registered quorum. */
+      case 'multisig.addresses': {
+        const descriptor = parseDescriptor(requireString(request, 'descriptor'))
+        const change = params(request)['change'] === true
+        const start = requireNumber(request, 'start', 0)
+        const count = Math.min(requireNumber(request, 'count', 20), 200)
+        const derived = deriveMultisigAddresses(descriptor, {
+          network: session.network,
+          change,
+          start,
+          count,
+        })
+        return {
+          addresses: derived.map((a) => ({ address: a.address, index: a.index })),
+          change,
         }
       }
 

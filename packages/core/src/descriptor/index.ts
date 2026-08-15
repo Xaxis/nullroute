@@ -22,3 +22,11 @@ export type {
   KeyOrigin,
   ParseOptions,
 } from './parse.js'
+
+export { deriveMultisigAddresses, multisigShape, findOwnKey } from './multisig.js'
+export type {
+  MultisigAddress,
+  MultisigKind,
+  MultisigShape,
+  DeriveMultisigOptions,
+} from './multisig.js'

@@ -250,7 +250,7 @@ and anything involving a cloud.
 | --- | --- | --- |
 | 1 | Spec system, entropy, BIP-39/32, daemon, lock screen, networks | **Complete** |
 | 2 | Descriptors, addresses, PSBT review, signing. **Provisioning tier 0.** | **Complete** |
-| 3 | Encrypted store and passphrase done. Multisig and cosigner registration, **tier 1**, outstanding. | In progress |
+| 3 | Encrypted store, passphrase, multisig and cosigner registration done. **Tier 1** outstanding. | In progress |
 | 4 | BIP-322 message signing, BIP-85, BIP-329 labels | Not started |
 | 5 | Wallet layer, optional and lower assurance | Not started |
 | 6 | Bridge companion, runs on a networked machine | Not started |
@@ -259,14 +259,15 @@ and anything involving a cloud.
 Working today: dice entropy end to end, BIP-39 and BIP-32 against the official
 vectors, all four address types, descriptor parsing with BIP-380 checksums,
 address verification, PSBT review and deterministic signing cross-checked
-against libsecp256k1, and an encrypted store so a wallet survives a reboot.
+against libsecp256k1, an encrypted store so a wallet survives a reboot, and
+multisig with cosigner registration that refuses a quorum this device is not
+part of.
 
-Not working yet, and needed before this is safe for funds: multisig and
-cosigner registration, the automated recovery drill against Bitcoin Core, and
-the dm-verity boot attestation of tier 1. The seed is encrypted at rest under a
-passphrase, and that passphrase is the only thing protecting a stolen card:
-there is no secure element, and the retry counter does not survive someone
-copying the card.
+Not working yet, and needed before this is safe for funds: the automated
+recovery drill against Bitcoin Core, and the dm-verity boot attestation of
+tier 1. The seed is encrypted at rest under a passphrase, and that passphrase
+is the only thing protecting a stolen card: there is no secure element, and the
+retry counter does not survive someone copying the card.
 
 Nothing later is pulled forward. That ordering, and the irreversible work
 staying last, is what keeps a large feature list from eroding the small part

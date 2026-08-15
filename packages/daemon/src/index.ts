@@ -25,6 +25,9 @@ export type { IpcRequest, IpcResponse, IpcHandler, IpcServerOptions } from './ip
 export { createHandler } from './handler.js'
 export type { DaemonState } from './handler.js'
 
+export { MultisigError, multisigAccountPath, reviewRegistration } from './multisig.js'
+export type { CosignerView, Registration } from './multisig.js'
+
 export { SCRIPT_TYPES, buildOwnedIndex, changeLookup, signingPathsFor } from './psbt.js'
 export type { OwnedAddress } from './psbt.js'
 

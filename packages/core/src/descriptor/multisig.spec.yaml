@@ -1,0 +1,122 @@
+id: core.descriptor.multisig
+version: 1
+title: Multisig address derivation from a descriptor
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Turn a registered multisig descriptor into the addresses it describes, so the
+  device can recognise its own change without believing anything a coordinator
+  tells it. This is what makes a multisig wallet safe to use here rather than
+  merely possible.
+
+covers:
+  - packages/core/src/descriptor/multisig.ts::deriveMultisigAddresses
+  - packages/core/src/descriptor/multisig.ts::multisigShape
+  - packages/core/src/descriptor/multisig.ts::findOwnKey
+
+algorithm: >
+  The descriptor's outer shape is matched to one of wsh, sh(wsh) or bare sh, and
+  anything else is refused rather than approximated. The inner node must be
+  multi or sortedmulti; multi_a is refused because taproot multisig is not
+  supported yet.
+
+  At each index every key expression is derived independently. The parser stores
+  a canonical path with the wildcard removed and a `ranged` flag, so the index is
+  APPENDED rather than substituted. A BIP-389 multipath key carries its branches
+  separately and the final path segment is replaced by the chosen one, which is
+  the only case where the change flag means anything: a descriptor written as
+  `/1/*` already names its branch and applying change again would derive
+  `1/change/index`.
+
+  For sortedmulti the derived keys are sorted lexicographically per BIP-67 AT
+  EVERY INDEX, not once on the parent xpubs. Ordering is not preserved through
+  derivation, and with three ordinary cosigners all six permutations occur
+  within forty indexes.
+
+  Ownership is decided by comparing the 74 bytes of key material, with the
+  version bytes stripped, so a key written as xpub, ypub or Zpub matches itself.
+
+invariants:
+  - id: INV-MULTI-1
+    statement: >
+      Addresses derived for wsh, sh(wsh) and bare sh multisig, sorted and
+      unsorted, match an independent implementation across a range of indexes
+      and on every supported network.
+    tests:
+      - packages/core/test/descriptor.multisig.test.ts::agrees-with-bitcoinjs-on-every-supported-shape
+      - packages/core/test/descriptor.multisig.test.ts::encodes-for-the-network-it-is-given
+      - packages/core/test/descriptor.multisig.test.ts::reports-the-quorum-it-parsed
+
+  - id: INV-MULTI-2
+    statement: >
+      sortedmulti sorts the derived keys at every index, and multi preserves the
+      order written in the descriptor. The two produce different addresses.
+    tests:
+      - packages/core/test/descriptor.multisig.test.ts::sorts-at-every-index-because-the-order-changes
+      - packages/core/test/descriptor.multisig.test.ts::gives-different-addresses-for-multi-and-sortedmulti
+
+  - id: INV-MULTI-3
+    statement: >
+      A multipath descriptor derives receive and change from its two declared
+      branches. A descriptor that names a single branch ignores the change flag
+      rather than deriving one level deeper.
+    tests:
+      - packages/core/test/descriptor.multisig.test.ts::selects-the-branch-of-a-multipath-descriptor
+      - packages/core/test/descriptor.multisig.test.ts::ignores-the-change-flag-on-a-single-branch-descriptor
+
+  - id: INV-MULTI-4
+    statement: >
+      Whether this device holds a key in a quorum is decided by the key material
+      itself, never by the fingerprint written in the descriptor, and matches
+      across serialisation prefixes.
+    tests:
+      - packages/core/test/descriptor.multisig.test.ts::finds-our-own-key-and-refuses-to-find-one-that-is-absent
+      - packages/core/test/descriptor.multisig.test.ts::matches-our-key-across-different-serialisation-prefixes
+
+  - id: INV-MULTI-5
+    statement: >
+      Shapes this device does not fully understand are refused, as is a
+      derivation count large enough to hang the device.
+    tests:
+      - packages/core/test/descriptor.multisig.test.ts::refuses-shapes-it-does-not-understand
+      - packages/core/test/descriptor.multisig.test.ts::refuses-an-absurd-derivation-count
+
+threats:
+  - INV-PSBT-2
+  - INV-MULTI-2
+  - INV-MULTI-4
+
+security_notes: >
+  Key order is the failure mode worth losing sleep over, and it is silent. A
+  wallet derived with the wrong ordering produces valid, well-formed addresses
+  that no other member of the quorum recognises. Nothing throws, nothing looks
+  wrong on screen, and the discovery happens when funds arrive somewhere the
+  device cannot see them. That is why every address in the tests is compared
+  against bitcoinjs-lib rather than against a constant this project generated:
+  a vector file we wrote ourselves would agree with our own mistake.
+
+  `findOwnKey` deliberately ignores the fingerprint in a key's origin. A
+  fingerprint is four unauthenticated bytes that whoever wrote the descriptor
+  chose, so matching on it would let a coordinator hand over a quorum
+  containing none of the user's keys while every fingerprint on screen looked
+  correct. The resulting wallet would accept deposits and never be spendable.
+  Comparing the extended key itself is the only version of this check worth
+  having, and it is why registration must display what was matched.
+
+  This module derives addresses and nothing else. It does not decide whether a
+  descriptor should be trusted, does not persist anything, and has no opinion
+  about quorum policy. A caller that registers a 1-of-3 descriptor gets a
+  working 1-of-3 wallet, and warning about that is the registration layer's job.
+
+  Taproot multisig (multi_a, and the key aggregation schemes above it) is
+  refused rather than half-supported. Its script path rules and signing flow
+  differ enough that pretending otherwise would be the same class of silent
+  wrongness this file exists to prevent.
+
+references:
+  - BIP-67, Deterministic Pay-to-script-hash multi-signature addresses
+  - BIP-48, Multi-Script Hierarchy for Multi-Sig Wallets
+  - BIP-380, Output Script Descriptors
+  - BIP-389, Multipath Descriptor Key Expressions
+  - docs/THREAT-MODEL.md

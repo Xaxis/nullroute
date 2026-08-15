@@ -113,9 +113,10 @@ export default function HomePage() {
               </Row>
             )}
             <Row term="It is unfinished and unaudited" tone="caution">
-              Pre-1.0, and no one outside this project has reviewed the cryptography. Multisig,
-              cosigner registration and the signed boot chain are not built. Read the phase
-              ordering in the threat model before assuming any particular thing works.
+              Pre-1.0, and no one outside this project has reviewed the cryptography. The signed
+              boot chain and the dm-verity attestation are not built, and neither is the automated
+              recovery drill. Read the phase ordering in the threat model before assuming any
+              particular thing works.
             </Row>
             <Row term="Nobody is on the other end" tone="caution">
               No releases, no binaries, no support, no warranty, no roadmap anyone owes you. If it
@@ -191,6 +192,18 @@ export default function HomePage() {
             control. A systemd sandbox is specified to back this at the kernel level, and that unit
             is not written yet.
           </Row>
+          {facts.has('daemon.multisig') && (
+            <Row term="A quorum you are actually in">
+              Registering a multisig descriptor checks that this device holds one of its keys, by
+              re-deriving that key and comparing the key material. The fingerprint written beside a
+              key is four unauthenticated bytes chosen by whoever wrote the descriptor, so it is
+              shown and never believed. A quorum this device is not part of is refused outright,
+              because it would receive funds forever and never be able to spend them. sortedmulti
+              keys are ordered per BIP-67 at every index, not once, and the addresses are
+              cross-checked against bitcoinjs-lib.
+            </Row>
+          )}
+
           {facts.has('daemon.store') && (
             <Row term="At rest, the card is the whole exposure">
               The seed is sealed with AES-256-GCM under a key stretched from your passphrase by
