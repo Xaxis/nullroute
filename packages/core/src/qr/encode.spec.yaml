@@ -1,0 +1,115 @@
+id: core.qr.encode
+version: 1
+title: QR encoding, byte mode, versions 1 to 40
+assurance_tier: standard
+status: implemented
+
+purpose: >
+  Draw the squares this device uses to hand data back across the air gap: an
+  xpub, a descriptor bundle, a signed transaction. In the tree rather than as a
+  dependency, so the code that produces the bytes a user photographs is covered
+  by the manifest hash they checked before entering their PIN.
+
+covers:
+  - packages/core/src/qr/encode.ts::encodeQr
+  - packages/core/src/qr/encode.ts::encodeQrText
+  - packages/core/src/qr/encode.ts::qrToSvgPath
+  - packages/core/src/qr/encode.ts::QrError
+  - packages/core/src/qr/tables.ts::dataCapacity
+  - packages/core/src/qr/tables.ts::moduleCount
+  - packages/core/src/qr/tables.ts::EC_LEVELS
+
+algorithm: >
+  Byte mode only. Everything this device emits is base64, hex or a descriptor,
+  and alphanumeric mode would save a little room on the descriptor case at the
+  price of a second encoder path and a second set of bugs.
+
+  Data is a four bit mode indicator, a character count (eight bits below version
+  10, sixteen above), the bytes, a terminator of up to four bits, then the
+  standard's alternating pad bytes to fill the version.
+
+  Those codewords are split into blocks per the layout table, each block gets its
+  Reed-Solomon remainder over GF(256) with primitive polynomial 0x11D, and the
+  blocks are interleaved so consecutive codewords in the final stream come from
+  different blocks. Interleaving is what makes a scratch across the code
+  survivable: damage spreads over many blocks rather than destroying one.
+
+  The matrix is finders, separators, timing, alignment, the dark module, format
+  info as BCH(15,5) masked with 0x5412, and version info as BCH(18,6) from
+  version 7. Data is laid out bottom-right to top-left in column pairs, skipping
+  the vertical timing column, and the column index steps past it rather than
+  around it: a local copy would leave the sequence visiting one column twice and
+  never reaching column zero.
+
+  All eight masks are built and scored by the standard's four penalty rules, and
+  the lowest wins. The mask can be pinned, but only tests do that.
+
+  None of this is cryptography. Nothing here is secret and nothing here is
+  constant time. The failure mode is a code that will not scan.
+
+invariants:
+  - id: INV-QR-1
+    statement: >
+      Every version and every error correction level encodes to something an
+      independent decoder reads back byte for byte, at a payload that fills the
+      version, and the format and version blocks agree with what was asked for.
+    tests:
+      - packages/core/test/qr.encode.test.ts::round-trips-every-version-and-level-through-an-independent-decoder
+      - packages/core/test/qr.encode.test.ts::encodes-text-as-utf8
+      - packages/core/test/qr.encode.test.ts::places-the-three-finder-patterns-and-the-dark-module
+
+  - id: INV-QR-6
+    statement: >
+      Capacity is honest. The smallest version that fits is chosen, a payload
+      that does not fit is refused rather than truncated, and a higher correction
+      level always leaves less room.
+    tests:
+      - packages/core/test/qr.encode.test.ts::picks-the-smallest-version-that-fits
+      - packages/core/test/qr.encode.test.ts::refuses-a-payload-that-does-not-fit
+      - packages/core/test/qr.encode.test.ts::gives-less-room-as-correction-rises
+
+  - id: INV-QR-7
+    statement: >
+      Encoding is deterministic, and the mask is chosen by score rather than
+      fixed, so the same payload always draws the same square and different
+      payloads get the mask that suits them.
+    tests:
+      - packages/core/test/qr.encode.test.ts::is-deterministic
+      - packages/core/test/qr.encode.test.ts::chooses-a-mask-by-score-rather-than-always-the-same-one
+      - packages/core/test/qr.encode.test.ts::renders-an-svg-path-with-one-rect-per-dark-module
+
+threats:
+  - INV-QR-1
+
+security_notes: >
+  A hand-written encoder cannot check itself. Comparing its output against its
+  own expectations proves the code does what it does, which is not the question
+  worth asking. So INV-QR-1 decodes with zxing, a C++ implementation with two
+  decades of scanners behind it, at all 160 version and level combinations. That
+  test found three real defects during development that no self-consistent test
+  would have surfaced: a reservation loop that overwrote the dark module, a
+  column walk that visited one column twice and never reached column zero, and a
+  generator polynomial built in reverse, which is not monic and made every error
+  correction byte wrong while leaving the data intact.
+
+  The last of those is the instructive one. The code carried its payload
+  perfectly and no decoder on earth would accept it, which is exactly the shape
+  of bug that ships when the only oracle is the author.
+
+  zxing is a devDependency and a test oracle. It is not on the device, and the
+  encoder has no dependency at all beyond the tables beside it.
+
+  This module is standard tier rather than critical. It moves public data:
+  xpubs, addresses, descriptors and signed transactions, none of which is secret
+  and all of which the recipient verifies independently. A corrupt QR code is
+  caught by its own error correction or fails to scan. What it must never do is
+  silently truncate, which is why a payload that does not fit is an error rather
+  than a shorter code.
+
+  The density cap belongs to the caller, not here. A version 40 code is 177
+  modules across, which on a 7 inch panel leaves under two physical pixels per
+  module. See core.qr.bbqr for why the split exists.
+
+references:
+  - ISO/IEC 18004, Information technology, QR Code bar code symbology
+  - docs/AIR-GAP.md

@@ -1,0 +1,116 @@
+id: core.qr.bbqr
+version: 1
+title: BBQr, one payload across a sequence of QR codes
+assurance_tier: standard
+status: implemented
+
+purpose: >
+  Carry a payload too large for one QR code across an animated sequence, in the
+  framing the Bitcoin air-gap ecosystem already uses, so this device interoperates
+  with software written by people who have never heard of it.
+
+covers:
+  - packages/core/src/qr/bbqr.ts::splitBbqr
+  - packages/core/src/qr/bbqr.ts::splitBbqrToQr
+  - packages/core/src/qr/bbqr.ts::parseBbqrPart
+  - packages/core/src/qr/bbqr.ts::joinBbqr
+  - packages/core/src/qr/bbqr.ts::BbqrCollector
+  - packages/core/src/qr/bbqr.ts::BbqrError
+  - packages/core/src/qr/bbqr.ts::FILE_TYPES
+  - packages/core/src/qr/bbqr.ts::MAX_PARTS
+
+algorithm: >
+  Every part is an eight character header then a payload. `B$`, one character of
+  encoding, one of file type, two of base36 for the total and two for this part's
+  index. Two base36 characters cap a transfer at 1295 parts, which is the
+  format's limit rather than this implementation's.
+
+  The split is on decoded bytes, not encoded characters. Base32 turns five bytes
+  into eight characters, so every part except the last carries a whole number of
+  those groups and decodes on its own. A receiver that had to hold every frame
+  before it could check any of them could not tell a user which frame to rescan.
+
+  Part sizes are rebalanced so frames are near equal rather than several full
+  ones and a sliver, which animates evenly and makes a dropped frame cost less.
+
+  Written parts are always `2`, base32. Writing `Z` would put a compressor in the
+  signing path and a few extra frames is the cheaper price. Read parts may be
+  `2`, `H` or `Z`, because Coldcard writes `Z` by default and refusing it would
+  mean refusing the counterpart most users own. `Z` is a raw deflate stream over
+  the whole payload, inflated once after joining, using the platform's
+  DecompressionStream so the reader stays free of a dependency too.
+
+  The collector holds parts by index. It refuses a part whose header disagrees
+  with the ones already held, and refuses the same index arriving twice with
+  different contents.
+
+invariants:
+  - id: INV-QR-2
+    statement: >
+      A payload split into parts and rejoined is the payload, at sizes needing
+      one frame and many, and parts may arrive in any order or repeatedly.
+    tests:
+      - packages/core/test/qr.bbqr.test.ts::round-trips-payloads-of-every-size
+      - packages/core/test/qr.bbqr.test.ts::accepts-parts-in-any-order-and-tolerates-repeats
+      - packages/core/test/qr.bbqr.test.ts::writes-the-header-the-format-specifies
+
+  - id: INV-QR-3
+    statement: >
+      Every part decodes standalone, so a receiver can name the frame that
+      failed rather than restarting the transfer.
+    tests:
+      - packages/core/test/qr.bbqr.test.ts::makes-every-part-independently-decodable
+      - packages/core/test/qr.bbqr.test.ts::reports-an-undecodable-payload-against-the-part-that-carried-it
+      - packages/core/test/qr.bbqr.test.ts::reports-what-it-is-still-waiting-for
+
+  - id: INV-QR-4
+    statement: >
+      Parts belonging to different transfers are never assembled together, and a
+      malformed header is refused rather than half read.
+    tests:
+      - packages/core/test/qr.bbqr.test.ts::refuses-parts-that-belong-to-a-different-transfer
+      - packages/core/test/qr.bbqr.test.ts::refuses-the-same-index-arriving-with-different-contents
+      - packages/core/test/qr.bbqr.test.ts::refuses-anything-that-is-not-a-bbqr-part
+      - packages/core/test/qr.bbqr.test.ts::refuses-a-payload-that-needs-more-parts-than-the-format-allows
+
+  - id: INV-QR-5
+    statement: >
+      The frames a screen shows are frames a camera reads: every emitted part
+      fits inside the density cap and survives an independent decoder.
+    tests:
+      - packages/core/test/qr.bbqr.test.ts::emits-frames-an-independent-decoder-reads-back
+      - packages/core/test/qr.bbqr.test.ts::honours-a-lower-density-cap-by-using-more-frames
+      - packages/core/test/qr.bbqr.test.ts::reads-compressed-parts-it-does-not-write
+
+threats:
+  - INV-QR-4
+
+security_notes: >
+  The dangerous failure here is not a corrupt payload, which the QR error
+  correction and the PSBT parser both catch. It is a payload assembled from two
+  different transfers: two devices animating side by side, or a user restarting
+  an export while a scan is running. Both produce structurally valid parts that
+  belong to different documents, and a naive collector keyed only on index would
+  join them into a PSBT that parses, describes a plausible transaction, and is
+  not the one anybody meant to sign. INV-QR-4 is the whole reason the collector
+  is a class rather than an array.
+
+  Nothing arriving over this path is trusted. A joined payload is a candidate
+  that goes to the ordinary parser and the ordinary review screen, and the file
+  type character in the header is a hint about what to try, never a permission.
+
+  The default density cap is version 12, well below the format's maximum. A
+  version 40 code is 177 modules across, which on an 800x480 panel leaves under
+  two physical pixels per module and will not resolve on a phone camera at arm's
+  length. More sparse frames beat one dense frame nobody can read, and the extra
+  seconds cost the user nothing.
+
+  Compression is read but not written. Deflating output would mean a compressor
+  in the path that produces signed transactions, and the only thing bought is
+  fewer frames.
+
+references:
+  - BBQr, Better Bitcoin QR, as implemented by Coldcard
+  - RFC 4648, base32 and base16 encodings
+  - docs/AIR-GAP.md
+  - docs/INTEROP.md

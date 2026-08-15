@@ -21,7 +21,8 @@
   },
   "dependencies": {
     "@nullroute/core": "*",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "zxing-wasm": "3.1.3"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.3.3",
