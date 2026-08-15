@@ -33,8 +33,20 @@ interface VerificationReport {
     readonly status: CheckStatus
   }[]
   readonly coverage: { readonly runtimeExports: number; readonly covered: number }
-  readonly invariants: readonly unknown[]
+  readonly invariants: readonly {
+    readonly id: string
+    readonly test: string
+    readonly status: CheckStatus
+  }[]
   readonly specs: readonly { readonly id: string; readonly status: string }[]
+}
+
+/** One invariant and the named test that holds it up. */
+export interface BoundTest {
+  readonly id: string
+  /** The test name, without its file path. */
+  readonly test: string
+  readonly status: CheckStatus
 }
 
 export interface Check {
@@ -73,6 +85,13 @@ export interface Facts {
    * repository on every build, the same way the counts are.
    */
   readonly has: (specId: string) => boolean
+  /**
+   * The invariants bound to tests in one file.
+   *
+   * The page shows these as evidence that invariants bind to named tests
+   * rather than merely claiming it, so the rows have to be the real ones.
+   */
+  readonly invariantsFor: (testFile: string) => readonly BoundTest[]
 }
 
 /** Pull an integer out of a check's human-readable detail line. */
@@ -169,6 +188,29 @@ export function readFacts(): Facts {
     files: digit(detail('integrity'), /(\d+) files/),
     passed: report.passed,
     has: (specId: string) => implemented.has(specId),
+    invariantsFor: (testFile: string) => {
+      const prefix = `${testFile}::`
+      const bound = report.invariants
+        .filter((entry) => entry.test.startsWith(prefix))
+        .map((entry) => {
+          if (!VALID_STATUS.includes(entry.status)) {
+            throw new Error(
+              `nullroute.diy: invariant ${entry.id} has unknown status "${entry.status}".`
+            )
+          }
+          return { id: entry.id, test: entry.test.slice(prefix.length), status: entry.status }
+        })
+      // An empty table under a claim that invariants bind to named tests would
+      // be worse than no table. The usual cause is the test file being renamed.
+      if (bound.length === 0) {
+        throw new Error(
+          `nullroute.diy: no invariants are bound to tests in ${testFile}. The home page ` +
+            `renders those rows as evidence that invariants bind to named tests, and an ` +
+            `empty table under that claim would be worse than no table.`
+        )
+      }
+      return bound
+    },
     checks: report.checks.map((c) => {
       // An unrecognised status must not quietly render as anything. The whole
       // point of carrying this field is that the page stops being able to show

@@ -89,10 +89,10 @@ export function DiceDemo() {
   const command = useMemo(() => `printf '%s' '${rolls}' | sha256sum`, [rolls])
 
   return (
-    <div className="rounded-lg border border-ink-800 bg-ink-900 overflow-hidden">
+    <div className="rounded-md border border-ink-800 bg-ink-900 overflow-hidden">
       <div className="px-4 py-2.5 border-b border-ink-800 flex items-center gap-3">
-        <span className="text-xs font-mono text-ink-500">Try it here</span>
-        <span className="text-xs text-ink-400">runs entirely in your browser</span>
+        <span className="text-xs font-mono text-ink-500">SHA-256 in your browser</span>
+        <span className="text-xs text-ink-400">nothing is sent anywhere</span>
         {rolls.length > 0 && (
           <button
             type="button"

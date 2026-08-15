@@ -1,49 +1,37 @@
-import dynamic from 'next/dynamic'
 import type { Facts } from '../../lib/facts'
-
-// Dynamically imported so three.js never blocks first paint. The page is
-// complete and correct without it: the scene is a diagram of something the
-// prose already says, not a carrier of information found nowhere else.
-const AirGapScene = dynamic(() =>
-  import('./AirGapScene').then((m) => ({ default: m.AirGapScene }))
-)
+import { DiceDemo } from '../DiceDemo'
 
 /**
- * There are no buttons here on purpose.
+ * The first screen, and the argument in miniature.
  *
- * A pair of accented calls to action is the grammar of a page trying to convert
- * a visitor, and this page is not. Someone who wants the source will find the
- * link in the header. What the top of the page owes a reader is a plain
- * statement of what the thing is and an equally plain statement that it is not
- * being recommended to them.
+ * The dice demo is HERE rather than in a section further down, and that is the
+ * single most important decision on this page. It is the only object on the
+ * site that is not a claim: the reader rolls, the browser hashes, and they
+ * check the answer in their own terminal. Sitting below several hundred words
+ * of caveats, as it used to, meant a reader with twenty seconds of patience
+ * never reached it and left having read only assertions.
+ *
+ * There are no buttons here on purpose. A pair of accented calls to action is
+ * the grammar of a page trying to convert a visitor, and this page is not.
+ * Someone who wants the source will find the link in the header.
+ *
+ * A three.js scene used to occupy the right half. Its own comment conceded it
+ * was a diagram of something the prose already said, and it cost a dependency,
+ * a WebGL context and about 350 lines to say it. The demo says something the
+ * prose cannot say at all, so it got the space.
  */
 export function Hero({ facts }: { facts: Facts }) {
   return (
-    <section className="relative pt-20 pb-16 sm:pt-28 sm:pb-24">
-      {/* Full bleed: the section sits inside a max-w-5xl column, and a backdrop
-          clipped to that column reads as a panel rather than as a backdrop. The
-          scene's own composition is built for a wide box. */}
-      <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-screen -z-10 overflow-hidden">
-        {/* Sits under the canvas and shows through when there is no canvas.
-            Three audiences never see the scene: browsers without WebGL, people
-            who have asked their system for reduced motion, and anyone whose GPU
-            process has died. Without this the right half of the hero is a plain
-            black rectangle for all of them. It is a wash of colour rather than a
-            still of the diagram, because a static picture of an animation is
-            usually worse than neither. */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 bg-[radial-gradient(60%_75%_at_78%_50%,color-mix(in_srgb,var(--color-signal-500)_7%,transparent)_0%,transparent_70%)]"
-        />
-        <AirGapScene />
-        {/* Keeps the copy legible without erasing the scene. The stop positions
-            are explicit rather than the default even split: the text column
-            ends around 62% across, so the cover stays solid to just past that
-            and then falls away quickly. A symmetric gradient put the halfway
-            point in the middle of the diagram and dimmed the half of it that
-            was supposed to be visible. */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--color-ink-950)_0%,var(--color-ink-950)_54%,color-mix(in_srgb,var(--color-ink-950)_55%,transparent)_74%,transparent_92%)]" />
-        {/* Softens the join with the section below. */}
+    <section className="relative pt-16 pb-14 sm:pt-24 sm:pb-20">
+      {/* A wash rather than a picture. Full bleed because the section sits in a
+          max-w-5xl column and a backdrop clipped to that column reads as a
+          panel. An arbitrary Tailwind value, compiled into the stylesheet, so
+          no inline style reaches the CSP. */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-screen -z-10 overflow-hidden"
+      >
+        <div className="absolute inset-0 bg-[radial-gradient(70%_60%_at_50%_0%,color-mix(in_srgb,var(--color-signal-500)_6%,transparent)_0%,transparent_70%)]" />
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-ink-950 to-transparent" />
       </div>
 
@@ -52,46 +40,65 @@ export function Hero({ facts }: { facts: Facts }) {
           Air-gapped Bitcoin signer
         </p>
 
-        <h1 className="mt-5 text-[2.5rem] leading-[1.05] sm:text-6xl sm:leading-[1.03] font-semibold tracking-[-0.03em] text-ink-100">
+        {/* Both lines at full contrast. Dimming the second half would fade the
+            half that carries the stance; the line break does that work. */}
+        <h1 className="mt-5 text-[2.5rem] leading-[1.05] sm:text-6xl sm:leading-[1.03] font-semibold tracking-[-0.03em] text-ink-100 max-w-3xl">
           Built to be checked,
-          <span className="block text-ink-500">not to be trusted.</span>
+          <span className="block">not to be trusted.</span>
         </h1>
 
-        <p className="mt-7 text-lg sm:text-xl text-ink-300 max-w-2xl leading-relaxed">
-          A Raspberry Pi that turns dice into a seed and signs transactions without ever touching
-          a network. Every module carries a machine-checkable specification, and the device
-          refuses to boot when the code, the specs and the tests disagree.
-        </p>
+        <div className="mt-9 lg:mt-12 grid gap-10 lg:grid-cols-[minmax(0,1fr)_28rem] lg:gap-14 lg:items-start">
+          <div className="min-w-0">
+            <p className="text-lg sm:text-xl text-ink-300 leading-relaxed">
+              A Raspberry Pi that turns dice into a seed and signs transactions with no network of
+              any kind: not for updates, not for fee estimation, not for fonts. Signatures are
+              deterministic, so there is nothing random inside one for a key to leak through. Every
+              module ships a machine-checkable specification, and the build fails when the code,
+              the specs and the tests stop agreeing.
+            </p>
 
-        <p className="mt-5 text-lg text-ink-400 max-w-2xl leading-relaxed">
-          It is one person&rsquo;s build, published because the method is worth arguing with.{' '}
-          <span className="text-ink-200">You should not use it.</span> Read it, disagree with it,
-          and go build your own.
-        </p>
+            <p className="mt-5 text-lg text-ink-400 leading-relaxed">
+              It is one person&rsquo;s build, published because the method is worth arguing with.{' '}
+              <span className="text-ink-200">You should not use it.</span> Read it, disagree with
+              it, and go build your own.
+            </p>
 
-        {/* A specimen strip rather than a stat block. These are read out of the
-            verification report at build time, so they are the current numbers
-            or the build fails. */}
-        <dl className="mt-12 flex flex-wrap gap-x-10 gap-y-5 font-mono text-xs">
-          {[
-            { k: 'specs', v: String(facts.specs) },
-            { k: 'invariants', v: String(facts.invariants) },
-            { k: 'tests', v: String(facts.tests) },
-            // Two distinct fields. An earlier version put `exports` on both
-            // sides of the slash, which renders a perfect ratio by construction
-            // and can never show anything else, on a page that is otherwise
-            // about not doing that.
-            { k: 'exports covered', v: `${String(facts.covered)}/${String(facts.exports)}` },
-          ].map((item) => (
-            <div key={item.k}>
-              {/* ink-400, not ink-600. ink-600 is a border colour and sits at
-                  2.02:1 against the page, which is unreadable rather than
-                  understated. */}
-              <dt className="uppercase tracking-[0.16em] text-ink-400">{item.k}</dt>
-              <dd className="mt-1.5 text-xl text-ink-200 tabular-nums">{item.v}</dd>
-            </div>
-          ))}
-        </dl>
+            {/*
+              Read out of the verification report at build time, so these are the
+              current numbers or the build fails.
+
+              `tests bound to invariants` rather than `exports covered`: the
+              coverage check fails the build on any uncovered export, so
+              covered/exports is pinned at parity for as long as this site is
+              buildable at all. It reads as a measurement and cannot render
+              anything but perfection, which is the defect this strip exists to
+              avoid. boundTests/tests is gated by nothing and can go down.
+            */}
+            <dl className="mt-10 flex flex-wrap gap-x-10 gap-y-5 font-mono text-xs">
+              {[
+                { k: 'specs', v: String(facts.specs) },
+                { k: 'invariants', v: String(facts.invariants) },
+                {
+                  k: 'tests bound to invariants',
+                  v: `${String(facts.boundTests)} of ${String(facts.tests)}`,
+                },
+              ].map((item) => (
+                <div key={item.k}>
+                  <dt className="uppercase tracking-[0.16em] text-ink-400">{item.k}</dt>
+                  <dd className="mt-1.5 text-xl text-ink-200 tabular-nums">{item.v}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+
+          <div className="min-w-0">
+            <p className="mb-4 text-sm text-ink-400 leading-relaxed">
+              Start with the smallest claim here. Roll some dice, then run the command it hands you
+              and check that your own terminal agrees.
+            </p>
+            <DiceDemo />
+          </div>
+        </div>
       </div>
     </section>
   )

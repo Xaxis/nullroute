@@ -21,7 +21,7 @@ import type { Check, CheckStatus, Facts } from '../lib/facts'
  * distinction and so does this.
  */
 
-const MARK: Record<CheckStatus, { glyph: string; className: string }> = {
+export const MARK: Record<CheckStatus, { glyph: string; className: string }> = {
   passed: { glyph: 'ok', className: 'text-verify-500' },
   failed: { glyph: 'FAIL', className: 'text-caution-500' },
   'not-applicable': { glyph: 'n/a', className: 'text-ink-500' },
