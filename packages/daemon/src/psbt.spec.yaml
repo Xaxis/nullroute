@@ -47,6 +47,19 @@ invariants:
     tests:
       - packages/daemon/test/psbt.test.ts::does-not-call-a-self-send-change
 
+  - id: INV-PSBT-16
+    statement: >
+      Addresses of a registered multisig quorum are part of the wallet's own
+      view, so its change is recognised as change and its inputs are signable.
+      A registration this device is not in, or one that no longer reads,
+      contributes nothing rather than throwing.
+    tests:
+      - packages/daemon/test/psbt.test.ts::recognises-change-from-a-registered-quorum
+      - packages/daemon/test/psbt.test.ts::signs-a-multisig-input-with-our-own-derivation
+      - packages/daemon/test/psbt.test.ts::does-not-call-a-multisig-receive-address-change
+      - packages/daemon/test/psbt.test.ts::ignores-a-registration-this-device-is-not-in
+      - packages/daemon/test/psbt.test.ts::skips-an-unreadable-registration-rather-than-throwing
+
   - id: INV-PSBT-14
     statement: >
       Signing paths are derived from the inputs' own locking scripts. A
@@ -83,6 +96,18 @@ security_notes: >
   Nothing here validates the transaction. Amounts, fees and sighash policy are
   review's job, and keeping ownership separate from policy means neither can
   quietly weaken the other.
+
+  A registered quorum contributes its addresses to the same index, mapped to the
+  path THIS device signs with rather than the descriptor's own. Every cosigner
+  reaches the same address by a different derivation, and the signing path is
+  the only one that is any use afterwards.
+
+  A registration that no longer parses, or that no longer contains this device's
+  key, is skipped rather than raised. It was verified when it was registered, so
+  reaching that state means something changed underneath, and refusing to review
+  any transaction at all would be a worse failure than reviewing this one with a
+  quorum's outputs shown as payments. The bias stays in the safe direction: an
+  unrecognised output is a payment, never a reassuring change label.
 
 references:
   - BIP-32, Hierarchical Deterministic Wallets

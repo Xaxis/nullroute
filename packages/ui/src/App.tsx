@@ -24,6 +24,11 @@ import { ImportScreen } from './screens/ImportScreen.js'
 import { WalletScreen, type ScriptType } from './screens/WalletScreen.js'
 import { PsbtScreen, type PsbtReviewView } from './screens/PsbtScreen.js'
 import { PassphraseScreen } from './screens/PassphraseScreen.js'
+import {
+  MultisigScreen,
+  type OurKeyView,
+  type RegistrationView,
+} from './screens/MultisigScreen.js'
 import { NetworkBanner } from './components/NetworkBanner.js'
 import { Screen } from './components/Screen.js'
 import { Button } from './components/Button.js'
@@ -65,6 +70,7 @@ type Stage =
   | { readonly at: 'unlock' }
   /** A wallet has just been created and can be saved to this device. */
   | { readonly at: 'protect' }
+  | { readonly at: 'multisig' }
 
 const transport = httpTransport()
 
@@ -160,6 +166,21 @@ export function App() {
       ),
     []
   )
+
+  const ourMultisigKey = useCallback(
+    async () => call<OurKeyView>(transport, 'multisig.ourKey'),
+    []
+  )
+
+  const reviewQuorum = useCallback(
+    async (descriptor: string) =>
+      call<RegistrationView>(transport, 'multisig.review', { descriptor }),
+    []
+  )
+
+  const registerQuorum = useCallback(async (descriptor: string) => {
+    await call(transport, 'multisig.register', { descriptor })
+  }, [])
 
   const verifyAddress = useCallback(
     async (address: string) =>
@@ -314,6 +335,9 @@ export function App() {
           onSignTransaction={() => {
             setStage({ at: 'psbt' })
           }}
+          onMultisig={() => {
+            setStage({ at: 'multisig' })
+          }}
           onLock={() => {
             const go = async (): Promise<void> => {
               await call(transport, 'session.lock')
@@ -379,6 +403,20 @@ export function App() {
           // Skipping is allowed and says what it costs. A wallet held only in
           // memory is gone at the next reboot, which is a legitimate choice for
           // a one-off signing session and a bad surprise otherwise.
+          setStage({ at: 'wallet' })
+        }}
+      />
+    )
+  }
+
+  if (stage.at === 'multisig') {
+    return (
+      <MultisigScreen
+        banner={banner}
+        onOurKey={ourMultisigKey}
+        onReview={reviewQuorum}
+        onRegister={registerQuorum}
+        onBack={() => {
           setStage({ at: 'wallet' })
         }}
       />

@@ -38,6 +38,8 @@ export interface WalletSession {
    * mnemonic with no words in it.
    */
   readonly mnemonic: string | undefined
+  /** Registered multisig descriptors. Empty for a single-signature wallet. */
+  registrations: string[]
   readonly provenance: SeedProvenance
   readonly fingerprint: string
   /** True until the user confirms they have written the mnemonic down. */
@@ -103,6 +105,7 @@ export class Session {
       seed,
       mnemonic,
       provenance,
+      registrations: [],
       fingerprint: masterFingerprint(seed, this.#network),
       // A generated seed has not been written down yet. An imported one, by
       // definition, already exists on paper somewhere.
@@ -127,12 +130,40 @@ export class Session {
       seed,
       mnemonic: undefined,
       provenance: 'loaded',
+      registrations: [],
       fingerprint: masterFingerprint(seed, this.#network),
       // It came off disk, so it existed before this session and its backup is
       // not this session's business to assert either way.
       confirmedBackup: true,
     }
     this.#unlocked = true
+  }
+
+  /** Registered quorums, in registration order. */
+  get registrations(): readonly string[] {
+    return this.#wallet?.registrations ?? []
+  }
+
+  /**
+   * Record a quorum, or replace an existing registration of the same one.
+   *
+   * Matching on the descriptor text is correct here because every descriptor
+   * stored has passed through `withChecksum`, so the same quorum always
+   * produces the same string. Two textually different descriptors describing
+   * the same wallet register twice, which is harmless: the index they produce
+   * is identical and duplicate addresses are recorded once.
+   */
+  addRegistration(descriptor: string): void {
+    const wallet = this.#wallet
+    if (wallet === undefined) throw new SessionError('No wallet is loaded.')
+    if (!wallet.registrations.includes(descriptor)) wallet.registrations.push(descriptor)
+  }
+
+  /** Replace the whole list, as when loading one out of the store. */
+  setRegistrations(descriptors: readonly string[]): void {
+    const wallet = this.#wallet
+    if (wallet === undefined) throw new SessionError('No wallet is loaded.')
+    wallet.registrations = [...descriptors]
   }
 
   /** The seed, for operations that need it. Never serialised. */

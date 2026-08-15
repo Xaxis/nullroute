@@ -21,7 +21,14 @@ import {
   normalizePath,
   rootFromSeed,
 } from '@nullroute/core'
+import {
+  deriveAccountXpub,
+  deriveMultisigAddresses,
+  parseDescriptor,
+  withChecksum,
+} from '@nullroute/core'
 import { buildOwnedIndex, changeLookup, signingPathsFor } from '../src/psbt.js'
+import { multisigAccountPath } from '../src/multisig.js'
 
 const MNEMONIC =
   'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
@@ -228,5 +235,124 @@ describe('daemon.psbt', () => {
     expect(wide.has(STRANGER)).toBe(false)
     expect(changeLookup(wide)(STRANGER)).toBeUndefined()
     expect(signingPathsFor([scriptFor(STRANGER)], wide, MAINNET)).toEqual([])
+  })
+
+  // --- Registered quorums -------------------------------------------------
+
+  /** The multisig account xpub for a mnemonic, on MAINNET. */
+  function msXpub(mnemonic: string): string {
+    using seed = mnemonicToSeed(mnemonic, '')
+    return deriveAccountXpub(seed, MAINNET, multisigAccountPath(MAINNET)).xpub
+  }
+
+  const COSIGNER_B =
+    'legal winner thank year wave sausage worth useful legal winner thank yellow'
+  const COSIGNER_C =
+    'letter advice cage absurd amount doctor acoustic avoid letter advice cage above'
+
+  function quorum(): string {
+    const keys = [msXpub(MNEMONIC), msXpub(COSIGNER_B), msXpub(COSIGNER_C)]
+    return withChecksum(`wsh(sortedmulti(2,${keys.map((k) => `${k}/<0;1>/*`).join(',')}))`)
+  }
+
+  /**
+   * INV-PSBT-16. Without this the device shows a multisig wallet's own change
+   * as a payment to a stranger, on every transaction that wallet builds. That
+   * is the safe direction to be wrong in and it is still wrong: it trains a
+   * user to dismiss the warning that matters.
+   */
+  it('recognises-change-from-a-registered-quorum', () => {
+    using seed = mnemonicToSeed(MNEMONIC, '')
+    const descriptor = quorum()
+
+    const without = buildOwnedIndex(seed, MAINNET, { gapLimit: 5 })
+    const with_ = buildOwnedIndex(seed, MAINNET, { gapLimit: 5, registrations: [descriptor] })
+
+    const parsed = parseDescriptor(descriptor)
+    const change = deriveMultisigAddresses(parsed, {
+      network: MAINNET,
+      change: true,
+      start: 0,
+      count: 1,
+    })[0]
+    if (change === undefined) throw new Error('no change address')
+
+    expect(without.has(change.address)).toBe(false)
+    expect(changeLookup(without)(change.address)).toBeUndefined()
+
+    expect(with_.has(change.address)).toBe(true)
+    // The path recorded is the one THIS device signs with, not the
+    // descriptor's: every cosigner reaches the same address differently.
+    expect(changeLookup(with_)(change.address)).toBe("m/48'/0'/0'/2'/1/0")
+  })
+
+  it('signs-a-multisig-input-with-our-own-derivation', () => {
+    using seed = mnemonicToSeed(MNEMONIC, '')
+    const descriptor = quorum()
+    const index = buildOwnedIndex(seed, MAINNET, { gapLimit: 5, registrations: [descriptor] })
+
+    const receive = deriveMultisigAddresses(parseDescriptor(descriptor), {
+      network: MAINNET,
+      start: 0,
+      count: 1,
+    })[0]
+    if (receive === undefined) throw new Error('no receive address')
+
+    expect(signingPathsFor([scriptFor(receive.address)], index, MAINNET)).toEqual([
+      "m/48'/0'/0'/2'/0/0",
+    ])
+  })
+
+  // A receive address of the quorum is a self-send, not change, exactly as for
+  // a single-signature wallet.
+  it('does-not-call-a-multisig-receive-address-change', () => {
+    using seed = mnemonicToSeed(MNEMONIC, '')
+    const descriptor = quorum()
+    const index = buildOwnedIndex(seed, MAINNET, { gapLimit: 5, registrations: [descriptor] })
+
+    const receive = deriveMultisigAddresses(parseDescriptor(descriptor), {
+      network: MAINNET,
+      start: 0,
+      count: 1,
+    })[0]
+    if (receive === undefined) throw new Error('no receive address')
+
+    expect(index.get(receive.address)?.change).toBe(false)
+    expect(changeLookup(index)(receive.address)).toBeUndefined()
+  })
+
+  /**
+   * A registration this device is not in contributes nothing.
+   *
+   * It cannot arrive through `multisig.register`, which refuses one. It could
+   * arrive from a store written by another device, and the safe reading is to
+   * ignore it rather than to derive addresses nobody here can sign for and
+   * label them change.
+   */
+  it('ignores-a-registration-this-device-is-not-in', () => {
+    using seed = mnemonicToSeed(MNEMONIC, '')
+    const strangers = [msXpub(COSIGNER_B), msXpub(COSIGNER_C)]
+    const foreign = withChecksum(
+      `wsh(sortedmulti(2,${strangers.map((k) => `${k}/<0;1>/*`).join(',')}))`
+    )
+
+    const base = buildOwnedIndex(seed, MAINNET, { gapLimit: 5 })
+    const withForeign = buildOwnedIndex(seed, MAINNET, {
+      gapLimit: 5,
+      registrations: [foreign],
+    })
+    expect(withForeign.size).toBe(base.size)
+  })
+
+  // A descriptor that no longer parses must not stop the device reviewing a
+  // transaction at all. Refusing everything would be a worse failure.
+  it('skips-an-unreadable-registration-rather-than-throwing', () => {
+    using seed = mnemonicToSeed(MNEMONIC, '')
+    const base = buildOwnedIndex(seed, MAINNET, { gapLimit: 5 })
+    const withJunk = buildOwnedIndex(seed, MAINNET, {
+      gapLimit: 5,
+      registrations: ['not a descriptor at all', 'wsh(sortedmulti(2,#bad'],
+    })
+    expect(withJunk.size).toBe(base.size)
   })
 })

@@ -421,6 +421,7 @@ export function createHandler(state: DaemonState): IpcHandler {
         const tx = parsePsbt(requireString(request, 'psbt'))
         const index = buildOwnedIndex(session.requireSeed(), session.network, {
           gapLimit: requireNumber(request, 'gapLimit', 100),
+          registrations: session.registrations,
         })
         const review = reviewTransaction(tx, {
           network: session.network,
@@ -496,6 +497,7 @@ export function createHandler(state: DaemonState): IpcHandler {
         const seed = session.requireSeed()
         const index = buildOwnedIndex(seed, session.network, {
           gapLimit: requireNumber(request, 'gapLimit', 100),
+          registrations: session.registrations,
         })
         const review = reviewTransaction(tx, {
           network: session.network,
@@ -566,6 +568,46 @@ export function createHandler(state: DaemonState): IpcHandler {
         )
       }
 
+      /**
+       * Agree to a quorum: verify it, hold it, and persist it if there is a
+       * store open.
+       *
+       * Reviewed again here rather than trusting a verdict the caller passed
+       * back. A caller that could register without review could register a
+       * quorum this device is not in, which is the exact thing review exists to
+       * prevent.
+       */
+      case 'multisig.register': {
+        const registration = reviewRegistration(
+          requireString(request, 'descriptor'),
+          session.requireSeed(),
+          session.network,
+          requireNumber(request, 'account', 0)
+        )
+        session.addRegistration(registration.descriptor)
+
+        // Persisted only when a passphrase is supplied, because re-sealing the
+        // store needs one. A registration made without it lives for this
+        // session, which is a legitimate choice and is reported back so the UI
+        // can say so rather than implying it was saved.
+        const passphrase = optionalString(request, 'passphrase')
+        let persisted = false
+        if (passphrase.length > 0 && state.store !== undefined) {
+          state.store.reseal(
+            session.requireSeed(),
+            session.network,
+            passphrase,
+            session.registrations
+          )
+          persisted = true
+        }
+        return { ...registration, persisted }
+      }
+
+      /** Quorums this device has agreed to. */
+      case 'multisig.registrations':
+        return { descriptors: session.registrations }
+
       /** Addresses for a registered quorum. */
       case 'multisig.addresses': {
         const descriptor = parseDescriptor(requireString(request, 'descriptor'))
@@ -624,7 +666,8 @@ export function createHandler(state: DaemonState): IpcHandler {
         requireStore().create(
           session.requireSeed(),
           session.network,
-          requireString(request, 'passphrase')
+          requireString(request, 'passphrase'),
+          session.registrations
         )
         return { stored: true, network: session.network.id }
       }
@@ -644,8 +687,10 @@ export function createHandler(state: DaemonState): IpcHandler {
         // network afterwards would produce a fingerprint for the wrong chain.
         session.setNetwork(wallet.network)
         session.loadFromStore(wallet.seed)
+        session.setRegistrations(wallet.registrations)
         return {
           unlocked: true,
+          registrations: wallet.registrations.length,
           fingerprint: session.fingerprint,
           network: {
             id: session.network.id,

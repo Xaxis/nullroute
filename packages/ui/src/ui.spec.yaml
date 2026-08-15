@@ -19,6 +19,7 @@ covers:
   - packages/ui/src/screens/WalletScreen.tsx::WalletScreen
   - packages/ui/src/screens/PsbtScreen.tsx::PsbtScreen
   - packages/ui/src/screens/PassphraseScreen.tsx::PassphraseScreen
+  - packages/ui/src/screens/MultisigScreen.tsx::MultisigScreen
   - packages/ui/src/components/Screen.tsx::Screen
   - packages/ui/src/components/Button.tsx::Button
   - packages/ui/src/components/Choice.tsx::Choice
@@ -184,6 +185,35 @@ invariants:
       - packages/ui/test/passphrase-screen.test.tsx::does-not-overstate-what-the-counter-protects
       - packages/ui/test/passphrase-screen.test.tsx::reports-a-failure-and-stays-put
       - packages/ui/test/passphrase-screen.test.tsx::allows-skipping-when-setting-and-not-when-unlocking
+
+  # --- Cosigner registration ----------------------------------------------
+  - id: INV-UI-18
+    statement: >
+      This device's own multisig key is shown before a descriptor is asked for,
+      with its path and fingerprint, and stated to be unable to spend.
+    tests:
+      - packages/ui/test/multisig-screen.test.tsx::shows-this-devices-key-to-hand-over
+      - packages/ui/test/multisig-screen.test.tsx::will-not-check-an-empty-descriptor
+
+  - id: INV-UI-19
+    statement: >
+      Checking a quorum never registers it. The review states the threshold and
+      this device's position in words, and registration submits exactly the
+      descriptor that was reviewed.
+    tests:
+      - packages/ui/test/multisig-screen.test.tsx::does-not-register-when-checking
+      - packages/ui/test/multisig-screen.test.tsx::registers-only-what-was-reviewed
+      - packages/ui/test/multisig-screen.test.tsx::shows-warnings-about-the-quorum-shape
+
+  - id: INV-UI-20
+    statement: >
+      Only this device's own cosigner entry is marked verified. Every other key
+      is labelled unverified, because the fingerprint beside it is chosen by
+      whoever wrote the descriptor. A refusal is displayed and leaves no stale
+      review on screen.
+    tests:
+      - packages/ui/test/multisig-screen.test.tsx::marks-every-cosigner-except-ours-as-unverified
+      - packages/ui/test/multisig-screen.test.tsx::shows-a-refusal-and-keeps-nothing-stale
 
 threats:
   - INV-KEY-1

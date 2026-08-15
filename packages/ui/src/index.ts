@@ -40,6 +40,14 @@ export type {
 export { PassphraseScreen } from './screens/PassphraseScreen.js'
 export type { PassphraseScreenProps, PassphraseMode } from './screens/PassphraseScreen.js'
 
+export { MultisigScreen } from './screens/MultisigScreen.js'
+export type {
+  MultisigScreenProps,
+  RegistrationView,
+  OurKeyView,
+  CosignerView,
+} from './screens/MultisigScreen.js'
+
 export { Screen } from './components/Screen.js'
 export type { ScreenProps } from './components/Screen.js'
 export { Button } from './components/Button.js'

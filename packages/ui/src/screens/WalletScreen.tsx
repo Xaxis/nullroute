@@ -45,6 +45,8 @@ export interface WalletScreenProps {
   }>
   /** Leaves for the signing screen. The reason this device exists. */
   readonly onSignTransaction: () => void
+  /** Leaves for cosigner registration. */
+  readonly onMultisig: () => void
   readonly onLock: () => void
   readonly banner?: ReactElement | null
 }
@@ -59,8 +61,16 @@ const SCRIPT_TYPES: { id: ScriptType; label: string; note: string }[] = [
 type Tab = 'addresses' | 'export' | 'verify'
 
 export function WalletScreen(props: WalletScreenProps): ReactElement {
-  const { fingerprint, onAddresses, onDescriptor, onVerifyAddress, onSignTransaction, onLock, banner } =
-    props
+  const {
+    fingerprint,
+    onAddresses,
+    onDescriptor,
+    onVerifyAddress,
+    onSignTransaction,
+    onMultisig,
+    onLock,
+    banner,
+  } = props
 
   const [tab, setTab] = useState<Tab>('addresses')
   const [scriptType, setScriptType] = useState<ScriptType>('p2wpkh')
@@ -126,6 +136,9 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
               is preparation for it, so it is not buried in a tab. */}
           <Button variant="primary" onClick={onSignTransaction} testId="wallet-sign">
             Sign a transaction
+          </Button>
+          <Button onClick={onMultisig} testId="wallet-multisig">
+            Multisig
           </Button>
           <div className="nr-spacer" />
           {tab === 'addresses' && (

@@ -75,11 +75,22 @@ interface SealedPayload {
   readonly network: string
   /** Hex, because JSON has no bytes. */
   readonly seed: string
+  /**
+   * Registered multisig descriptors, sealed alongside the seed.
+   *
+   * Inside the ciphertext rather than beside it, for the same reason the
+   * network is: a registration decides which outputs the device calls change,
+   * so an attacker who could edit one on the card could make their own address
+   * look like money coming back to the user. Optional because a store written
+   * before multisig existed simply has none, which is the correct reading.
+   */
+  readonly registrations?: readonly string[]
 }
 
 export interface StoredWallet {
   readonly seed: Secret
   readonly network: Network
+  readonly registrations: readonly string[]
 }
 
 export interface StoreStatus {
@@ -137,7 +148,12 @@ export class WalletStore {
    * existing store would be one mis-click away from erasing a wallet whose
    * mnemonic the user believes is backed up.
    */
-  create(seed: Secret, network: Network, passphrase: string): void {
+  create(
+    seed: Secret,
+    network: Network,
+    passphrase: string,
+    registrations: readonly string[] = []
+  ): void {
     if (this.exists()) {
       throw new StoreError(
         'A wallet already exists on this device. Erase it explicitly before creating another.'
@@ -148,6 +164,7 @@ export class WalletStore {
       v: 1,
       network: network.id,
       seed: Buffer.from(seed.bytes).toString('hex'),
+      registrations,
     }
     using plaintext = Secret.fromBytes(
       new TextEncoder().encode(JSON.stringify(payload)),
@@ -193,6 +210,40 @@ export class WalletStore {
   }
 
   /**
+   * Re-seal an existing store with a changed registration list.
+   *
+   * Separate from `create`, which refuses to overwrite. Registering a quorum
+   * has to rewrite the file, and doing that through `create` would mean
+   * relaxing the guard that stops a mis-tap erasing a wallet.
+   */
+  reseal(
+    seed: Secret,
+    network: Network,
+    passphrase: string,
+    registrations: readonly string[]
+  ): void {
+    if (!this.exists()) {
+      throw new StoreError('There is no wallet on this device to update.')
+    }
+    // Verified before the old blob is replaced. Re-sealing under a passphrase
+    // that does not open the current store would silently change the
+    // passphrase, and the user would discover it at the next unlock.
+    this.unlock(passphrase).seed.dispose()
+
+    const payload: SealedPayload = {
+      v: 1,
+      network: network.id,
+      seed: Buffer.from(seed.bytes).toString('hex'),
+      registrations,
+    }
+    using plaintext = Secret.fromBytes(
+      new TextEncoder().encode(JSON.stringify(payload)),
+      'store-payload'
+    )
+    this.#writeAtomic(this.#blob, JSON.stringify(seal(plaintext, passphrase, this.#kdf), null, 2))
+  }
+
+  /**
    * Erase the wallet from this device.
    *
    * The overwrite before unlinking is best effort and is not the property being
@@ -234,12 +285,26 @@ export class WalletStore {
     if (payload.v !== 1 || typeof payload.seed !== 'string' || typeof payload.network !== 'string') {
       throw new StoreError('The store contents are not in a layout this build understands.')
     }
+    // Absent is normal for a store written before multisig, and is not the
+    // same as a corrupt field. Anything present that is not an array of strings
+    // is refused rather than partially read: a half-understood registration
+    // decides which outputs count as change.
+    const raw: unknown = payload.registrations
+    let registrations: readonly string[] = []
+    if (raw !== undefined) {
+      if (!Array.isArray(raw) || raw.some((entry) => typeof entry !== 'string')) {
+        throw new StoreError('The store contains a registration list this build cannot read.')
+      }
+      registrations = raw as readonly string[]
+    }
+
     return {
       seed: Secret.fromBytes(
         Uint8Array.from(Buffer.from(payload.seed, 'hex')),
         'stored-seed'
       ),
       network: networkById(payload.network),
+      registrations,
     }
   }
 
