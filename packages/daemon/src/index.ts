@@ -42,6 +42,9 @@ export {
 } from './store/envelope.js'
 export type { Envelope, KdfCost, KdfParams } from './store/envelope.js'
 
+export { createBackup, restoreBackup, describeBackup } from './store/backup.js'
+export type { BackupContents, RestoredBackup } from './store/backup.js'
+
 export { MAX_ATTEMPTS, WalletStore } from './store/store.js'
 export type { StoreStatus } from './store/store.js'
 

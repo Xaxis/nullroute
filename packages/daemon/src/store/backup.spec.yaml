@@ -1,0 +1,110 @@
+id: daemon.store.backup
+version: 1
+title: Encrypted backup and restore of a wallet
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Survive the device. A backup has to restore onto hardware that has never seen
+  the original, from a file alone, so it is a versioned self-describing document
+  rather than a dump of internal state.
+
+covers:
+  - packages/daemon/src/store/backup.ts::createBackup
+  - packages/daemon/src/store/backup.ts::restoreBackup
+  - packages/daemon/src/store/backup.ts::describeBackup
+
+algorithm: >
+  The document is JSON. Outside the ciphertext sit a label, a network, a
+  hasSeed flag and the version that wrote it, so a person holding a card of
+  files can tell them apart before typing anything. Inside sits the sealed
+  payload: the network again, the registrations, and optionally the seed.
+
+  Sealing reuses daemon.store.envelope rather than defining a second format,
+  because the threat is identical: a file at rest that an attacker may hold
+  indefinitely. Argon2id stretches the passphrase and AES-256-GCM seals the
+  payload with the parameters authenticated as additional data.
+
+  Restore takes every value it acts on from inside the ciphertext. The outer
+  copies are explanatory only.
+
+invariants:
+  - id: INV-BACKUP-1
+    statement: >
+      A backup round-trips its registrations, network and label, with or without
+      a seed, onto a device that has never seen the original.
+    tests:
+      - packages/daemon/test/backup.test.ts::round-trips-a-watch-only-backup
+      - packages/daemon/test/backup.test.ts::round-trips-a-seed-backup
+      - packages/daemon/test/backup.test.ts::restores-registrations-a-replacement-device-has-never-seen
+
+  - id: INV-BACKUP-2
+    statement: >
+      Neither the seed nor any registration is readable in a backup file
+      without the passphrase, a wrong passphrase is refused, and a tampered
+      envelope fails authentication.
+    tests:
+      - packages/daemon/test/backup.test.ts::never-writes-the-seed-in-the-clear
+      - packages/daemon/test/backup.test.ts::refuses-a-wrong-passphrase-and-an-empty-one
+      - packages/daemon/test/backup.test.ts::refuses-a-tampered-envelope
+      - packages/daemon/test/backup.test.ts::uses-a-fresh-salt-every-time
+
+  - id: INV-BACKUP-3
+    statement: >
+      The network and whether a seed is present are taken from inside the
+      ciphertext. Editing the plaintext copies in the outer document changes
+      nothing about what is restored.
+    tests:
+      - packages/daemon/test/backup.test.ts::takes-the-network-from-inside-the-ciphertext
+      - packages/daemon/test/backup.test.ts::takes-whether-there-is-a-seed-from-inside-the-ciphertext
+
+  - id: INV-BACKUP-4
+    statement: >
+      A backup can be described before it is opened, and a file that is not a
+      backup, is the wrong version, or has no envelope is refused.
+    tests:
+      - packages/daemon/test/backup.test.ts::describes-a-backup-without-opening-it
+      - packages/daemon/test/backup.test.ts::refuses-a-file-that-is-not-a-backup
+
+threats:
+  - INV-STORE-1
+  - INV-STORE-2
+  - INV-BACKUP-3
+
+security_notes: >
+  A SEED BACKUP IS A SECOND COPY OF THE MONEY. Seedless is the default and it is
+  the safer one: it restores a device that can derive addresses, verify change
+  and recognise its quorums, and it is worth nothing to whoever finds it. A
+  backup carrying a seed is protected by one passphrase and by Argon2id, exactly
+  as the on-device store is, and every screen that offers one says so in those
+  words rather than describing it as a convenience.
+
+  The split between the outer document and the sealed payload is the part worth
+  reviewing. A label, a network and a hasSeed flag sit in plaintext because a
+  person with several encrypted files and several passphrases needs to tell them
+  apart, and the alternative is trying each passphrase against each file. Those
+  fields are editable by anyone holding the file, so nothing acts on them:
+  restore reads the network and the seed from inside the ciphertext, and there is
+  a test that flips both outer copies and asserts the restore ignores them.
+  Flipping a signet backup to mainnet with a text editor would otherwise be a way
+  to get a user treating real addresses as worthless test ones.
+
+  The label leaks. It says a nullroute backup exists and what its owner called
+  it, to anyone who finds the file. That is a deliberate trade for the
+  disambiguation above, and it is smaller than it looks: a file sitting on an SD
+  card in a drawer leaks its own existence, and a filename usually leaks more.
+
+  The format is versioned and documented here so a third party can write a
+  restore tool without reading this code. That matters more than it sounds: a
+  backup only readable by the software that wrote it is a backup that depends on
+  this project continuing to exist, which is the failure INV-INTEROP-1 exists to
+  rule out for wallets and which applies here for the same reason.
+
+  Nothing here writes to disk or reads from it. The caller decides whether a
+  backup goes to an SD card or through a sequence of QR codes, and keeping this
+  module pure means the same document is produced either way.
+
+references:
+  - RFC 9106, Argon2 Memory-Hard Function for Password Hashing
+  - NIST SP 800-38D, Galois/Counter Mode
+  - docs/THREAT-MODEL.md

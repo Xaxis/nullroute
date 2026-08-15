@@ -51,6 +51,7 @@ import { Session } from './session.js'
 import { buildOwnedIndex, changeLookup, signingPathsFor } from './psbt.js'
 import { type WalletStore } from './store/store.js'
 import { multisigAccountPath, reviewRegistration } from './multisig.js'
+import { createBackup, describeBackup, restoreBackup } from './store/backup.js'
 
 export interface DaemonState {
   readonly attestation: BootAttestation
@@ -755,6 +756,62 @@ export function createHandler(state: DaemonState): IpcHandler {
         requireStore().destroy()
         session.lock()
         return { destroyed: true }
+      }
+
+      // --- Backup and restore ---------------------------------------------
+      /**
+       * Write a backup of this wallet.
+       *
+       * Seedless unless asked otherwise, and the caller has to ask in so many
+       * words. A backup carrying a seed is a second copy of the money under one
+       * passphrase, which is a decision rather than a default.
+       */
+      case 'backup.create': {
+        const includeSeed = params(request)['includeSeed'] === true
+        const passphrase = requireString(request, 'passphrase')
+        return {
+          backup: createBackup(
+            {
+              network: session.network,
+              registrations: session.registrations,
+              label: optionalString(request, 'label', 'nullroute wallet'),
+              ...(includeSeed ? { seed: session.requireSeed() } : {}),
+            },
+            passphrase,
+            state.attestation.version
+          ),
+          includesSeed: includeSeed,
+        }
+      }
+
+      /** What a backup says about itself, before anyone types a passphrase. */
+      case 'backup.describe':
+        return describeBackup(requireString(request, 'backup'))
+
+      /**
+       * Restore a backup into this session.
+       *
+       * A seedless backup restores a device that can derive and verify and
+       * cannot sign, which is a legitimate thing to want and is reported back
+       * so the UI can say which one happened.
+       */
+      case 'backup.restore': {
+        const restored = restoreBackup(
+          requireString(request, 'backup'),
+          requireString(request, 'passphrase')
+        )
+        session.setNetwork(restored.network)
+        if (restored.seed !== undefined) {
+          session.loadFromStore(restored.seed)
+          session.setRegistrations(restored.registrations)
+        }
+        return {
+          hasSeed: restored.hasSeed,
+          label: restored.label,
+          network: restored.network.id,
+          registrations: restored.registrations.length,
+          createdWith: restored.createdWith,
+        }
       }
 
       case 'session.lock': {
