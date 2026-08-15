@@ -26,6 +26,8 @@ import {
   deriveAddresses,
   deriveMultisigAddresses,
   encodePsbt,
+  exportBundle,
+  importCoordinatorFile,
   formatBtc,
   parsePsbt,
   detectPatterns,
@@ -602,6 +604,54 @@ export function createHandler(state: DaemonState): IpcHandler {
           persisted = true
         }
         return { ...registration, persisted }
+      }
+
+      /**
+       * Read a coordinator's export and offer what it holds for registration.
+       *
+       * Reads only. Nothing is registered here, because importing a file and
+       * agreeing to a quorum are different acts and the membership check
+       * belongs to the second one.
+       */
+      case 'multisig.importFile': {
+        const imported = importCoordinatorFile(requireString(request, 'contents'))
+        return {
+          format: imported.format,
+          name: imported.name ?? null,
+          unverifiedClaims: imported.unverifiedClaims,
+          descriptors: imported.descriptors.map((entry) => ({
+            descriptor: entry.descriptor,
+            change: entry.change ?? null,
+          })),
+        }
+      }
+
+      /** A bundle for the coordinator, in the shape Core's importdescriptors takes. */
+      case 'multisig.exportBundle': {
+        const account = requireNumber(request, 'account', 0)
+        const derived = deriveAccountXpub(
+          session.requireSeed(),
+          session.network,
+          multisigAccountPath(session.network, account)
+        )
+        return {
+          bundle: exportBundle({
+            name: optionalString(request, 'name', 'nullroute'),
+            network: session.network.id,
+            descriptors: session.registrations.map((descriptor) => ({
+              descriptor,
+              // A registration covers both branches through its multipath, so
+              // it is exported once rather than split into a claim about which
+              // side it is.
+              change: false,
+            })),
+            ourKey: {
+              fingerprint: derived.masterFingerprint,
+              path: derived.path,
+              xpub: derived.xpub,
+            },
+          }),
+        }
       }
 
       /** Quorums this device has agreed to. */

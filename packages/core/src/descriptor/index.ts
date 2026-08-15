@@ -36,3 +36,11 @@ export type {
 
 export { deriveTaprootAddresses, taprootQuorum } from './taproot.js'
 export type { TaprootAddress, TaprootQuorum, DeriveTaprootOptions } from './taproot.js'
+
+export { importCoordinatorFile, exportBundle, CoordinatorFormatError } from './coordinator.js'
+export type {
+  CoordinatorImport,
+  CoordinatorFormat,
+  ImportedDescriptor,
+  BundleOptions,
+} from './coordinator.js'

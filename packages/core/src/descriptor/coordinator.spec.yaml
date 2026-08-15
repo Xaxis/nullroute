@@ -1,0 +1,125 @@
+id: core.descriptor.coordinator
+version: 1
+title: Reading other wallets' exports, and writing one they can read
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Accept a multisig setup as the coordinator actually exported it, so a user is
+  never asked to hand-edit a descriptor out of a file. Hand transcription of a
+  hundred-character key is exactly where a wallet acquires a character it did
+  not have.
+
+covers:
+  - packages/core/src/descriptor/coordinator.ts::importCoordinatorFile
+  - packages/core/src/descriptor/coordinator.ts::exportBundle
+  - packages/core/src/descriptor/coordinator.ts::CoordinatorFormatError
+
+algorithm: >
+  The format is detected from the content, not from a filename, because the file
+  arrives by camera or on a card and may have no name.
+
+  A bare descriptor passes through. JSON is walked for descriptor-shaped strings
+  rather than matched against each vendor's schema, which covers Sparrow,
+  Specter and Bitcoin Core between them and survives a vendor changing its
+  wrapper. Bitcoin Core's `internal` flag, where present, is the only reliable
+  statement of which branch a descriptor covers. BIP-129 BSMS expands its `/**`
+  shorthand into the explicit paths the file names.
+
+  A Coldcard setup file carries no descriptor at all, so one is ASSEMBLED from
+  Policy, Derivation and Format. All three are required and none is defaulted.
+
+  Every path ends in the project's own strict parser and re-emits a recomputed
+  checksum, so no format reader can produce something the parser would reject.
+
+invariants:
+  - id: INV-COORD-1
+    statement: >
+      A Coldcard setup file, Sparrow or Specter JSON, a Bitcoin Core
+      importdescriptors array, a BIP-129 BSMS file and a bare descriptor are all
+      read, and each yields descriptors that parse under this project's own
+      rules.
+    tests:
+      - packages/core/test/descriptor.coordinator.test.ts::reads-a-coldcard-setup-file
+      - packages/core/test/descriptor.coordinator.test.ts::reads-json-from-sparrow-or-specter
+      - packages/core/test/descriptor.coordinator.test.ts::reads-a-bitcoin-core-importdescriptors-array
+      - packages/core/test/descriptor.coordinator.test.ts::reads-a-bsms-file-and-expands-both-branches
+      - packages/core/test/descriptor.coordinator.test.ts::still-reads-a-bare-descriptor
+      - packages/core/test/descriptor.coordinator.test.ts::produces-descriptors-that-parse-under-our-own-rules
+
+  - id: INV-COORD-2
+    statement: >
+      Assembling a descriptor from a Coldcard file requires Policy, Derivation
+      and Format. A missing line, a policy disagreeing with the cosigner count,
+      an unsatisfiable quorum or an unknown script format is refused rather than
+      defaulted.
+    tests:
+      - packages/core/test/descriptor.coordinator.test.ts::refuses-a-coldcard-file-missing-any-header-it-builds-from
+      - packages/core/test/descriptor.coordinator.test.ts::refuses-a-policy-that-disagrees-with-the-cosigner-count
+      - packages/core/test/descriptor.coordinator.test.ts::refuses-a-script-format-it-does-not-know
+      - packages/core/test/descriptor.coordinator.test.ts::builds-the-script-wrapper-the-format-line-names
+
+  - id: INV-COORD-3
+    statement: >
+      A descriptor arriving with a checksum that does not match its contents is
+      refused, and malformed or oversized input fails cleanly.
+    tests:
+      - packages/core/test/descriptor.coordinator.test.ts::refuses-a-descriptor-whose-checksum-does-not-match
+      - packages/core/test/descriptor.coordinator.test.ts::re-parses-everything-with-the-strict-parser
+      - packages/core/test/descriptor.coordinator.test.ts::refuses-a-bsms-version-it-does-not-read
+
+  - id: INV-COORD-4
+    statement: >
+      What a file asserts about itself is surfaced as an unverified claim and
+      never used to decide anything. An exported bundle carries the canonical
+      descriptor and reads back identically.
+    tests:
+      - packages/core/test/descriptor.coordinator.test.ts::surfaces-what-it-did-not-verify
+      - packages/core/test/descriptor.coordinator.test.ts::exports-a-bundle-a-coordinator-can-read
+
+threats:
+  - INV-PSBT-2
+  - INV-MULTI-6
+  - INV-COORD-2
+
+security_notes: >
+  IMPORTING IS NOT REGISTERING, and the split is what makes a permissive reader
+  safe. This module turns a vendor's file into a canonical descriptor string and
+  has no opinion about whether that descriptor should be trusted. The membership
+  check that proves this device holds a key in the quorum runs afterwards, on the
+  result, in daemon.multisig. Nothing downstream believes anything this module
+  produces.
+
+  The Coldcard path is the one that assembles rather than extracts, and it is
+  the most dangerous code here. The file states a policy, a derivation and a
+  script format in prose, and the descriptor is built from those three lines.
+  Defaulting any of them would be a silent wallet change: a file that meant P2SH
+  read as P2WSH derives entirely different addresses, and the registration screen
+  would show the same cosigners either way. So all three are required, the policy
+  must agree with the number of cosigner lines, and an unrecognised format is
+  refused rather than guessed.
+
+  A file's own claims about itself are reported and never consumed. BIP-129 has
+  the coordinator state the first address specifically so a signer can disagree
+  with it, and a device that accepted that address as truth would defeat the
+  round it belongs to. The same applies to a Coldcard Policy line: the descriptor
+  determines the addresses, and the prose is a hint about what the writer
+  intended.
+
+  JSON is walked structurally rather than matched against each vendor's schema.
+  That is a deliberate trade: it keeps working when a vendor renames its wrapper,
+  and it means a file containing several descriptors yields all of them, which a
+  caller has to be ready for. It is safe because every candidate is re-parsed
+  strictly, so the worst outcome of an over-eager match is a descriptor the user
+  did not expect being offered for registration, where the membership check
+  applies.
+
+  Taproot cannot be expressed in the Coldcard format and P2TR is therefore
+  refused there rather than mapped to something. There is no way to write a
+  script tree in a file of fingerprint and xpub lines, so any mapping would be an
+  invention.
+
+references:
+  - BIP-129, Bitcoin Secure Multisig Setup
+  - BIP-380, Output Script Descriptors
+  - docs/THREAT-MODEL.md
