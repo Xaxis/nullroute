@@ -34,6 +34,7 @@ interface VerificationReport {
   }[]
   readonly coverage: { readonly runtimeExports: number; readonly covered: number }
   readonly invariants: readonly unknown[]
+  readonly specs: readonly { readonly id: string; readonly status: string }[]
 }
 
 export interface Check {
@@ -62,6 +63,16 @@ export interface Facts {
    * exact species of decorative lie this project is arguing against.
    */
   readonly checks: readonly Check[]
+  /**
+   * Which modules exist, by spec id.
+   *
+   * This is how the page avoids lying about what is built. Sentences like
+   * "there is no encrypted store yet" are true until the moment they are not,
+   * and a hand-written one goes stale silently on the day the feature lands.
+   * Asking the report which specs exist means the claim is checked against the
+   * repository on every build, the same way the counts are.
+   */
+  readonly has: (specId: string) => boolean
 }
 
 /** Pull an integer out of a check's human-readable detail line. */
@@ -120,6 +131,30 @@ export function readFacts(): Facts {
 
   const invariants = detail('invariants')
 
+  // `Array.isArray` on a typed field widens the elements to `any`, so the
+  // entries are read back out as `unknown` and checked. This is build-time data
+  // from our own tool, but a field that silently became `any` is how a typo in
+  // a spec id would turn into a capability claim that is quietly always false.
+  const rawSpecs: unknown = report.specs
+  if (!Array.isArray(rawSpecs)) {
+    throw new Error(
+      'nullroute.diy: the verification report has no `specs` array. The home page derives ' +
+        'what the device can do from which specs exist, so it cannot be rendered without it.'
+    )
+  }
+  const implemented = new Set<string>()
+  for (const entry of rawSpecs as readonly unknown[]) {
+    if (typeof entry !== 'object' || entry === null) continue
+    const { id, status } = entry as { id?: unknown; status?: unknown }
+    if (status === 'implemented' && typeof id === 'string') implemented.add(id)
+  }
+  if (implemented.size === 0) {
+    throw new Error(
+      'nullroute.diy: the verification report lists no implemented specs. Every capability ' +
+        'claim on the home page would render as "not built", which is certainly wrong.'
+    )
+  }
+
   return {
     rootHash: report.rootHash,
     specs: report.specCount,
@@ -133,6 +168,7 @@ export function readFacts(): Facts {
     exports: report.coverage.runtimeExports,
     files: digit(detail('integrity'), /(\d+) files/),
     passed: report.passed,
+    has: (specId: string) => implemented.has(specId),
     checks: report.checks.map((c) => {
       // An unrecognised status must not quietly render as anything. The whole
       // point of carrying this field is that the page stops being able to show

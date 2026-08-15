@@ -37,6 +37,9 @@ export type {
   PsbtWarningView,
 } from './screens/PsbtScreen.js'
 
+export { PassphraseScreen } from './screens/PassphraseScreen.js'
+export type { PassphraseScreenProps, PassphraseMode } from './screens/PassphraseScreen.js'
+
 export { Screen } from './components/Screen.js'
 export type { ScreenProps } from './components/Screen.js'
 export { Button } from './components/Button.js'

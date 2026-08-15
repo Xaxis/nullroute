@@ -94,17 +94,28 @@ export default function HomePage() {
 
         <div className="mt-8">
           <Rows>
-            <Row term="Nothing is encrypted at rest yet" tone="caution">
-              There is no secure element, and as of today there is also no encrypted store and no
-              PIN gate, so there is nowhere for a wallet to persist and nothing defending an SD
-              card that gets taken. Even once the PIN lands, a key derived from it is the entire
-              physical defence. A Coldcard or a BitBox02 is genuinely better on this axis and it is
-              not close.
-            </Row>
+            {/* Derived from whether the store module exists, not asserted.
+                A hand-written "there is no encrypted store yet" is true right
+                up until it isn't, and then it is a lie nobody notices. */}
+            {facts.has('daemon.store') ? (
+              <Row term="There is no secure element" tone="caution">
+                The wallet is encrypted at rest with Argon2id and AES-256-GCM, and a passphrase is
+                the entire physical defence. There is no dedicated chip holding the key and no
+                tamper mesh, so someone with your SD card is limited only by how long your
+                passphrase takes to guess. A Coldcard or a BitBox02 is genuinely better on this
+                axis and it is not close.
+              </Row>
+            ) : (
+              <Row term="Nothing is encrypted at rest yet" tone="caution">
+                There is no secure element, and as of today there is also no encrypted store, so
+                there is nowhere for a wallet to persist and nothing defending an SD card that gets
+                taken.
+              </Row>
+            )}
             <Row term="It is unfinished and unaudited" tone="caution">
-              Pre-1.0, and no one outside this project has reviewed the cryptography. Phases 3
-              through 7 are not built. Read the phase ordering in the threat model before assuming
-              any particular thing works.
+              Pre-1.0, and no one outside this project has reviewed the cryptography. Multisig,
+              cosigner registration and the signed boot chain are not built. Read the phase
+              ordering in the threat model before assuming any particular thing works.
             </Row>
             <Row term="Nobody is on the other end" tone="caution">
               No releases, no binaries, no support, no warranty, no roadmap anyone owes you. If it
@@ -180,6 +191,18 @@ export default function HomePage() {
             control. A systemd sandbox is specified to back this at the kernel level, and that unit
             is not written yet.
           </Row>
+          {facts.has('daemon.store') && (
+            <Row term="At rest, the card is the whole exposure">
+              The seed is sealed with AES-256-GCM under a key stretched from your passphrase by
+              Argon2id at 64 MiB, so each guess costs an attacker real work rather than a hash.
+              The parameters are written into the file in plain JSON, readable with{' '}
+              <code className="font-mono text-ink-300">cat</code>, and authenticated, so nobody can
+              quietly turn the cost down. Ten wrong attempts at the device erases it. That counter
+              stops someone guessing at the screen and nothing more: anyone who takes the card can
+              copy it first and guess forever, which is why the passphrase is the real protection.
+            </Row>
+          )}
+
           <Row term="Recoverable without any of this code">
             Wallets are a BIP-39 mnemonic plus a canonical BIP-380 descriptor with a checksum, so
             Bitcoin Core can restore one with no nullroute code involved. Verification has the

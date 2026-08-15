@@ -65,7 +65,8 @@ loudly if the defence regresses. Invariant identifiers are listed in the
 | Network exfiltration | No network code paths at all, enforced by a lint rule and a runtime listener assertion, not by convention | INV-NET-1, INV-NET-2, INV-NET-3 |
 | Key material reaching the frontend | Frontend receives only xpubs, addresses, descriptors, and PSBTs. Asserted against serialized responses. | INV-KEY-1 |
 | Data remanence in memory | Typed `Secret` wrapper with explicit `dispose()`, raw `Buffer` for secrets banned by lint, heap snapshot test | INV-KEY-2 |
-| Data remanence on disk | No swap, tmpfs for scratch, seed encrypted at rest | INV-KEY-2 |
+| Data remanence on disk | No swap, tmpfs for scratch, seed encrypted at rest under Argon2id and AES-256-GCM | INV-KEY-2, INV-STORE-1 |
+| Offline guessing of a stolen card | Argon2id at 64 MiB, parameters authenticated so they cannot be weakened in the file | INV-STORE-3 |
 | Supply chain tampering | Exact version pins, committed lockfile, `ignore-scripts=true`, SBOM, dependency review on every lockfile change | INV-BUILD-1 |
 | Build tampering | Reproducible builds, manifest root hash displayed at boot and comparable against the published release | INV-BUILD-1 |
 | Casual physical access | Seed encrypted under an Argon2id-derived key, PIN gate, failed-attempt counter with a configurable wipe threshold | INV-DURESS-1 |
@@ -147,14 +148,29 @@ written and fuzzed", not "cannot be exploited".
 nullroute does **not** defend against any of the following. If your threat model
 includes one of them, this is the wrong device.
 
-**No secure element.** This is the most important line in this document. Keys
-are encrypted at rest with a key derived from your PIN, and that is all. An
-attacker with physical possession of the SD card and the ability to attack the
-encryption offline is limited only by your PIN strength and Argon2id's cost
-parameters. There is no tamper-resistant chip that rate-limits them, no
-key that never leaves hardware, and no self-destruct. A Coldcard or a BitBox02
-is genuinely better than nullroute on this specific axis, and that is exactly
-why the recommended deployment is a multisig quorum that includes one of them.
+**No secure element.** This is the most important line in this document. The
+seed is encrypted at rest with AES-256-GCM under a key stretched from your
+passphrase by Argon2id at 64 MiB and three passes, and that is all. An attacker
+holding the SD card is limited only by your passphrase strength and that cost,
+which is roughly half a second per guess on this class of hardware. There is no
+tamper-resistant chip rate-limiting them, no key that never leaves hardware, and
+no self-destruct. A Coldcard or a BitBox02 is genuinely better than nullroute on
+this specific axis, and that is exactly why the recommended deployment is a
+multisig quorum that includes one of them.
+
+**The retry counter is not a defence against a stolen card.** The device erases
+its wallet after ten consecutive failed unlocks. That stops a person who picks
+up a running device and starts guessing, and nothing else. The counter has to be
+readable before the passphrase is known, so it cannot be authenticated: anyone
+holding the card can reset it, or copy the sealed blob first and guess against
+the copy indefinitely, with no counter involved at all. Treat the ten attempts
+as protection against a passer-by, and the passphrase as protection against
+everyone else.
+
+**Erasure is not secure erasure.** The sealed blob is overwritten before it is
+unlinked, and on flash storage with wear levelling the old blocks survive that.
+The property being relied on is that what was written was encrypted before it
+reached the card, not that it was destroyed afterwards.
 
 **Sophisticated physical attack on the SD card or the SoC.** Chip decapping,
 glitching, cold boot attacks, and direct flash reads are all out of scope.
@@ -284,6 +300,11 @@ security-critical ones:
 | INV-WALLET-1 | `packages/wallet` may import `packages/core`, never the reverse. Removing it leaves a functional signer. |
 | INV-WALLET-2 | The wallet layer proposes but never signs. |
 | INV-INTEROP-1 | Every wallet is fully recoverable from the BIP-39 mnemonic plus a standard descriptor, with third-party software and no nullroute code. Proved in CI against Bitcoin Core. |
+| INV-STORE-1 | A seed is never written to disk in a form readable without the passphrase. |
+| INV-STORE-2 | A wrong passphrase fails authentication and returns nothing. It never produces plaintext. |
+| INV-STORE-3 | The key derivation parameters are authenticated, so editing them in the file breaks the open rather than weakening the next guess. |
+| INV-STORE-4 | Consecutive failed unlocks are counted, and passing the limit erases the sealed blob before the error is raised. |
+| INV-STORE-5 | A store is never left half written and an existing wallet is never silently overwritten. |
 | INV-DURESS-1 | The encrypted store does not reveal how many profiles exist or which slots are in use. |
 | INV-DURESS-2 | Unlock latency is independent of which PIN was entered and whether it was correct. |
 

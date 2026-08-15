@@ -31,7 +31,13 @@ export type SeedProvenance = 'generated' | 'imported' | 'loaded'
 
 export interface WalletSession {
   readonly seed: Secret
-  readonly mnemonic: string
+  /**
+   * Absent for a wallet loaded from the encrypted store, because only the seed
+   * was ever sealed. Optional rather than an empty string so that every reader
+   * has to decide what to do about it instead of silently handling '' as a
+   * mnemonic with no words in it.
+   */
+  readonly mnemonic: string | undefined
   readonly provenance: SeedProvenance
   readonly fingerprint: string
   /** True until the user confirms they have written the mnemonic down. */
@@ -105,6 +111,30 @@ export class Session {
     this.#unlocked = true
   }
 
+  /**
+   * Load a seed that came out of the encrypted store.
+   *
+   * Separate from `load` because there is no mnemonic to pass. Only the seed
+   * was ever sealed, so a stored wallet can sign and can never be persuaded to
+   * display its words again. That is the point rather than a limitation: it
+   * means the one screen in this device that shows key material is reachable
+   * exactly once in a wallet's life, at creation, and the `loaded` provenance
+   * is what `revealMnemonic` refuses on.
+   */
+  loadFromStore(seed: Secret): void {
+    this.#wallet?.seed.dispose()
+    this.#wallet = {
+      seed,
+      mnemonic: undefined,
+      provenance: 'loaded',
+      fingerprint: masterFingerprint(seed, this.#network),
+      // It came off disk, so it existed before this session and its backup is
+      // not this session's business to assert either way.
+      confirmedBackup: true,
+    }
+    this.#unlocked = true
+  }
+
   /** The seed, for operations that need it. Never serialised. */
   requireSeed(): Secret {
     const wallet = this.#wallet
@@ -135,6 +165,9 @@ export class Session {
         'You have already confirmed this seed was written down, so it will not be shown again.'
       )
     }
+    if (wallet.mnemonic === undefined) {
+      throw new SessionError('There is no mnemonic held for this wallet.')
+    }
     return wallet.mnemonic
   }
 
@@ -149,6 +182,12 @@ export class Session {
   peekWordsForVerification(): readonly string[] {
     const wallet = this.#wallet
     if (wallet === undefined) throw new SessionError('No wallet is loaded.')
+    if (wallet.mnemonic === undefined) {
+      throw new SessionError(
+        'This seed was loaded from storage, so there are no words held in this session to ' +
+          'check against. Word checking is part of creating a wallet.'
+      )
+    }
     return wallet.mnemonic.split(' ')
   }
 

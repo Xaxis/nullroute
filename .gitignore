@@ -28,3 +28,8 @@ test-report.json
 sbom.cdx.json
 *.tsbuildinfo
 packages/ui/dist-app/
+
+# The encrypted wallet written by a local `make dev`. It is sealed, but a
+# committed wallet is still a wallet in a public repository, and the manifest
+# covers packages/ and spec/ rather than this.
+.nullroute-store/

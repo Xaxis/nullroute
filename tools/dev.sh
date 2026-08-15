@@ -74,10 +74,21 @@ if [[ -S "$SOCKET" ]]; then
   rm -f "$SOCKET"
 fi
 
-# --jitless, matching the production systemd unit, which sets
-# MemoryDenyWriteExecute=true and crashes V8's baseline compiler otherwise.
-# Running it the same way locally means that crash surfaces here.
-NULLROUTE_SOCKET="$SOCKET" node --jitless "$ROOT/packages/daemon/dist/main.js" &
+# NOT --jitless, and the reason is measured rather than assumed.
+#
+# This used to pass --jitless "matching the production systemd unit". There is
+# no such unit, and docs/PROVISIONING.md says plainly that
+# MemoryDenyWriteExecute is absent because it crashes Node. So the flag was
+# matching a thing that does not exist.
+#
+# It also stopped being free. Argon2id from @noble/hashes is pure JavaScript,
+# and the wallet store derives its key at 64 MiB with three passes. Measured on
+# this machine: 643 ms with the JIT, 34424 ms without it. That is 53x, and on a
+# Raspberry Pi it would be minutes per unlock attempt. The claim in
+# PROVISIONING.md that jitless is "an acceptable trade for a workload that is
+# not throughput bound" was true before there was a memory-hard KDF in the
+# daemon and is not true now.
+NULLROUTE_SOCKET="$SOCKET" node "$ROOT/packages/daemon/dist/main.js" &
 DAEMON_PID=$!
 
 for _ in $(seq 1 50); do

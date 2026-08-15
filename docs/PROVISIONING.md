@@ -130,11 +130,20 @@ confinement is decorative and is not counted.
 **`MemoryDenyWriteExecute` is not set on the daemon.** It is the single most
 effective directive in the list and it crashes Node: V8's baseline compiler
 needs writable-then-executable pages, and the process dies during startup. It
-works under `node --jitless`, which is an acceptable trade for a workload that
-is not throughput bound, but it changes the interpreter's code paths and any
-constant-time assumption in the crypto layer has to be re-validated under it
-first. Until that work is done and tested, the directive is absent rather than
-present-and-broken.
+works under `node --jitless`, and that was previously described here as an
+acceptable trade for a workload that is not throughput bound. **That is no
+longer true.** The wallet store stretches its passphrase with Argon2id from
+`@noble/hashes`, which is pure JavaScript, and an interpreter with no JIT runs
+it roughly fifty times slower. Measured at the shipped parameters of 64 MiB and
+three passes: 643 ms with the JIT and 34.4 seconds without it, on a development
+machine considerably faster than a Pi.
+
+Adopting the directive therefore now costs one of three things: minutes per
+unlock attempt, a much weaker key derivation, or a native or WASM Argon2
+implementation and the supply-chain review that comes with it. None of those is
+obviously right, so the directive stays absent and this paragraph records why
+rather than leaving a future reader to rediscover it with a stopwatch. The
+constant-time re-validation problem also still applies.
 
 The Chromium kiosk cannot be hardened anywhere near the daemon, and averaging
 the two would hide that. Chromium's own sandbox requires unprivileged user

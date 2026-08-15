@@ -1,0 +1,137 @@
+id: daemon.store
+version: 1
+title: Encrypted wallet storage at rest
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Keep a seed on the device between sessions without keeping it readable. The
+  only thing standing between a stolen SD card and the wallet on it is the
+  passphrase and the cost of guessing one, and this module exists to make that
+  statement true rather than aspirational.
+
+covers:
+  - packages/daemon/src/store/envelope.ts::seal
+  - packages/daemon/src/store/envelope.ts::open
+  - packages/daemon/src/store/envelope.ts::assertEnvelope
+  - packages/daemon/src/store/envelope.ts::equalBytes
+  - packages/daemon/src/store/envelope.ts::StoreError
+  - packages/daemon/src/store/envelope.ts::BadPassphraseError
+  - packages/daemon/src/store/envelope.ts::KDF_DEFAULTS
+  - packages/daemon/src/store/store.ts::WalletStore
+  - packages/daemon/src/store/store.ts::MAX_ATTEMPTS
+
+algorithm: >
+  A passphrase is stretched with Argon2id to a 32 byte key. The seed is sealed
+  under that key with AES-256-GCM using a fresh 32 byte salt and 96 bit nonce
+  per write, so sealing the same wallet twice produces different bytes.
+
+  The envelope is JSON, so a user can read which algorithm and which parameters
+  were used with `cat` and no nullroute code. The header naming those parameters
+  is passed to GCM as additional authenticated data, which is what stops an
+  attacker rewriting the memory cost down to nothing: the parameters sit outside
+  the ciphertext and would otherwise be freely editable.
+
+  Reading validates the shape and the parameter ranges before doing any work. A
+  wrong passphrase and a tampered file produce the same error with the same
+  message.
+
+  Writes go to a temporary file which is chmod 0600 and then renamed, because
+  rename within a directory is atomic and a half-written store is an erased
+  wallet.
+
+invariants:
+  - id: INV-STORE-1
+    statement: >
+      A seed is never written to disk in a form that can be read without the
+      passphrase. Neither the seed nor the passphrase appears in the file.
+    tests:
+      - packages/daemon/test/store.test.ts::never-writes-the-seed-in-the-clear
+      - packages/daemon/test/store.test.ts::round-trips-a-seed
+
+  - id: INV-STORE-2
+    statement: >
+      A wrong passphrase fails authentication and returns nothing. It never
+      produces plaintext, which for a seed would mean a valid-looking wallet the
+      user has never seen.
+    tests:
+      - packages/daemon/test/store.test.ts::refuses-a-wrong-passphrase
+      - packages/daemon/test/store.test.ts::refuses-a-tampered-ciphertext-or-tag
+      - packages/daemon/test/store.test.ts::refuses-an-empty-passphrase-when-sealing
+
+  - id: INV-STORE-3
+    statement: >
+      The key derivation parameters are authenticated. Editing them in the file
+      breaks the open rather than weakening the next guess, and parameters
+      outside the accepted range are refused before any work is done.
+    tests:
+      - packages/daemon/test/store.test.ts::refuses-a-file-whose-parameters-were-rewritten
+      - packages/daemon/test/store.test.ts::refuses-parameters-outside-the-accepted-range
+      - packages/daemon/test/store.test.ts::ships-a-real-work-factor
+
+  - id: INV-STORE-4
+    statement: >
+      Consecutive failed unlocks are counted, and passing the limit erases the
+      sealed blob before the error is raised.
+    tests:
+      - packages/daemon/test/store.test.ts::counts-failures-and-resets-on-success
+      - packages/daemon/test/store.test.ts::destroys-the-wallet-after-the-last-attempt
+      - packages/daemon/test/store.test.ts::erases-on-request
+
+  - id: INV-STORE-5
+    statement: >
+      A store is never left half written, an existing wallet is never silently
+      overwritten, and a corrupt attempt counter does not prevent unlocking a
+      good wallet.
+    tests:
+      - packages/daemon/test/store.test.ts::leaves-no-temporary-files-behind
+      - packages/daemon/test/store.test.ts::refuses-to-overwrite-an-existing-wallet
+      - packages/daemon/test/store.test.ts::treats-a-corrupt-counter-as-zero
+      - packages/daemon/test/store.test.ts::refuses-a-truncated-store-file
+      - packages/daemon/test/store.test.ts::uses-a-fresh-salt-and-nonce-every-time
+
+threats:
+  - INV-STORE-1
+  - INV-STORE-2
+  - INV-STORE-3
+
+security_notes: >
+  THE RETRY COUNTER IS NOT A DEFENCE AGAINST A STOLEN CARD, and there is a test
+  named for that fact rather than a comment hoping someone reads it. The counter
+  has to be legible before the passphrase is known, so it cannot be
+  authenticated. Anyone holding the card can delete it, or copy the sealed blob
+  first and guess against the copy indefinitely. What it defends against is a
+  person who picks up a running device and starts trying numbers. Any wording on
+  screen or in the docs that suggests more than that is an overclaim.
+
+  A stolen card is therefore protected by the passphrase and by Argon2id, and by
+  nothing else. That makes passphrase strength the whole game. Argon2id at 64
+  MiB and three passes costs roughly half a second per guess on a Pi 4, so a six
+  digit PIN is about a week of one machine's time and rather less of several.
+  The device does not enforce a passphrase policy, because a policy that pushed
+  users toward a memorable-but-short string would make this worse, and the honest
+  answer is that this device is designed to be one signer of several.
+
+  Erasure is not secure erasure. The blob is overwritten before it is unlinked,
+  and on flash storage with wear levelling the old blocks survive that. The
+  property being relied upon is that what was written was already encrypted, not
+  that it was destroyed.
+
+  The limit is generous at ten attempts on purpose. A tight limit buys almost no
+  security given the above and makes it easy for a legitimate user to destroy
+  their own wallet, whose only recovery path is the mnemonic on paper.
+
+  AES-256-GCM comes from node:crypto rather than from a noble package, because
+  @noble/ciphers is not a dependency of this project and adding one is not a
+  decision a single module should make. Argon2id is from @noble/hashes as the
+  project rule requires. Both are platform or vetted-library implementations and
+  neither is written here.
+
+  This module is Node-only by design. It lives in the daemon because that is
+  where all I/O lives, and because packages/core has to run unchanged in a
+  browser so a reviewer can reproduce its results standalone.
+
+references:
+  - RFC 9106, Argon2 Memory-Hard Function for Password Hashing
+  - NIST SP 800-38D, Galois/Counter Mode
+  - docs/THREAT-MODEL.md

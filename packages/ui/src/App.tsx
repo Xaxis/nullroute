@@ -23,6 +23,7 @@ import { SeedScreen } from './screens/SeedScreen.js'
 import { ImportScreen } from './screens/ImportScreen.js'
 import { WalletScreen, type ScriptType } from './screens/WalletScreen.js'
 import { PsbtScreen, type PsbtReviewView } from './screens/PsbtScreen.js'
+import { PassphraseScreen } from './screens/PassphraseScreen.js'
 import { NetworkBanner } from './components/NetworkBanner.js'
 import { Screen } from './components/Screen.js'
 import { Button } from './components/Button.js'
@@ -33,6 +34,13 @@ interface NetworkView {
   readonly id: 'mainnet' | 'testnet3' | 'testnet4' | 'signet' | 'regtest'
   readonly label: string
   readonly isMainnet: boolean
+}
+
+interface StoreStatus {
+  readonly exists: boolean
+  readonly attemptsRemaining: number
+  readonly maxAttempts: number
+  readonly destroyed: boolean
 }
 
 interface DeviceStatus {
@@ -53,6 +61,10 @@ type Stage =
   | { readonly at: 'seed'; readonly words: readonly string[]; readonly fingerprint: string }
   | { readonly at: 'wallet' }
   | { readonly at: 'psbt' }
+  /** A wallet exists on disk and the passphrase has not been given yet. */
+  | { readonly at: 'unlock' }
+  /** A wallet has just been created and can be saved to this device. */
+  | { readonly at: 'protect' }
 
 const transport = httpTransport()
 
@@ -60,6 +72,7 @@ export function App() {
   const [stage, setStage] = useState<Stage>({ at: 'loading' })
   const [attestation, setAttestation] = useState<AttestationView | null>(null)
   const [status, setStatus] = useState<DeviceStatus | null>(null)
+  const [store, setStore] = useState<StoreStatus | null>(null)
   const [expanded, setExpanded] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -75,9 +88,14 @@ export function App() {
       try {
         const att = await call<AttestationView>(transport, 'attestation.get')
         const st = await call<DeviceStatus>(transport, 'device.status')
+        // Asked before unlocking on purpose: the lock screen has to know
+        // whether this device holds a wallet at all, and if it does, how close
+        // it is to erasing itself.
+        const store = await call<StoreStatus>(transport, 'store.status')
         if (cancelled) return
         setAttestation(att)
         setStatus(st)
+        setStore(store)
         setStage({ at: 'lock' })
       } catch (err) {
         if (!cancelled) setStage({ at: 'unreachable', message: (err as Error).message })
@@ -191,7 +209,12 @@ export function App() {
           setExpanded((v) => !v)
         }}
         onUnlock={() => {
-          setStage(status.hasWallet ? { at: 'wallet' } : { at: 'setup' })
+          // Three ways past this screen. A wallet already in memory goes
+          // straight through; a wallet sealed on disk needs its passphrase;
+          // nothing at all means setup.
+          if (status.hasWallet) setStage({ at: 'wallet' })
+          else if (store?.exists === true) setStage({ at: 'unlock' })
+          else setStage({ at: 'setup' })
         }}
       />
     )
@@ -246,7 +269,11 @@ export function App() {
         onImport={async (mnemonic, passphrase) => {
           await call(transport, 'wallet.import', { mnemonic, passphrase })
           await refresh()
-          setStage({ at: 'wallet' })
+          // An imported wallet skips the seed screen, because its words are by
+          // definition already written down somewhere. It still has to be
+          // offered the chance to persist, or importing would be the one route
+          // into the device that cannot produce a wallet surviving a reboot.
+          setStage({ at: 'protect' })
         }}
       />
     )
@@ -262,7 +289,12 @@ export function App() {
           const go = async (): Promise<void> => {
             await call(transport, 'seed.confirmBackup')
             await refresh()
-            setStage({ at: 'wallet' })
+            // Offering to persist comes immediately after confirming the words
+            // are on paper, and in that order. The daemon refuses to store a
+            // wallet whose mnemonic has not been confirmed, because a device
+            // holding the only copy of a seed is one dead SD card away from a
+            // total loss.
+            setStage({ at: 'protect' })
           }
           void go()
         }}
@@ -305,6 +337,51 @@ export function App() {
           </div>
         )}
       </>
+    )
+  }
+
+  if (stage.at === 'unlock' && store !== null) {
+    return (
+      <PassphraseScreen
+        mode="enter"
+        banner={banner}
+        attemptsRemaining={store.attemptsRemaining}
+        maxAttempts={store.maxAttempts}
+        onSubmit={async (passphrase) => {
+          try {
+            await call(transport, 'store.unlock', { passphrase })
+          } finally {
+            // Refreshed whether or not it worked: a failure has consumed an
+            // attempt, and the screen has to show the new count. On the last
+            // one the wallet is gone and the device is back to setup.
+            const next = await call<StoreStatus>(transport, 'store.status')
+            setStore(next)
+            if (!next.exists) setStage({ at: 'setup' })
+          }
+          await refresh()
+          setStage({ at: 'wallet' })
+        }}
+      />
+    )
+  }
+
+  if (stage.at === 'protect') {
+    return (
+      <PassphraseScreen
+        mode="set"
+        banner={banner}
+        onSubmit={async (passphrase) => {
+          await call(transport, 'store.create', { passphrase })
+          setStore(await call<StoreStatus>(transport, 'store.status'))
+          setStage({ at: 'wallet' })
+        }}
+        onCancel={() => {
+          // Skipping is allowed and says what it costs. A wallet held only in
+          // memory is gone at the next reboot, which is a legitimate choice for
+          // a one-off signing session and a bad surprise otherwise.
+          setStage({ at: 'wallet' })
+        }}
+      />
     )
   }
 

@@ -1,0 +1,304 @@
+/**
+ * The wallet store: the sealed envelope, on disk, with a retry counter.
+ *
+ * Spec: daemon.store
+ *
+ * Everything here is file handling and policy. The cryptography is in
+ * envelope.ts and this module does not reach into it.
+ *
+ * WHAT THE RETRY COUNTER IS AND IS NOT. It counts consecutive failed unlock
+ * attempts and, past a limit, destroys the sealed blob. That defends against
+ * one thing: a person who picks up a running device and starts guessing. It
+ * does NOT defend against anyone who has the card, because the counter lives
+ * beside the ciphertext and they can simply restore it, or copy the blob first
+ * and guess against the copy forever. Anything written here or on screen that
+ * implies otherwise is a lie, and the threat model says so in the same words.
+ *
+ * The honest summary is that a stolen card is protected by the passphrase and
+ * by Argon2id, and by nothing else.
+ *
+ * DESTRUCTION IS REAL. Passing the limit erases the wallet from this device.
+ * The mnemonic on paper is the recovery path, which is why the seed screen
+ * gates on confirming it was written down. Overwriting the file before
+ * unlinking is best effort and nothing more: on flash storage with wear
+ * levelling the old blocks are still there, so the property being relied on is
+ * that the blob was encrypted in the first place, not that it was erased.
+ */
+
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { randomBytes } from 'node:crypto'
+import { Secret, networkById, type Network } from '@nullroute/core'
+import {
+  BadPassphraseError,
+  type KdfCost,
+  KDF_DEFAULTS,
+  StoreError,
+  assertEnvelope,
+  open,
+  seal,
+  type Envelope,
+} from './envelope.js'
+
+/**
+ * Consecutive failures before the blob is destroyed.
+ *
+ * Generous on purpose. The counter cannot stop an offline attack, so a tight
+ * limit buys almost no security while making it easy for a legitimate user to
+ * destroy their own wallet with a sticky keypad. Ten wrong attempts in a row is
+ * a person who does not know the passphrase.
+ */
+export const MAX_ATTEMPTS = 10
+
+interface Sidecar {
+  /** Consecutive failures. Reset to zero by any successful unlock. */
+  readonly failedAttempts: number
+}
+
+/**
+ * What is actually sealed.
+ *
+ * The network is in here rather than beside the ciphertext because it is part
+ * of the wallet's identity, not metadata about the file. The same seed derives
+ * completely different addresses on mainnet and on signet, so a stored wallet
+ * that came back on the wrong network would show a user addresses that are not
+ * theirs, under a label saying they are. An early version did exactly that:
+ * `lock()` resets the session network to mainnet, nothing restored it, and a
+ * signet wallet unlocked into bc1 addresses.
+ *
+ * Sealing it also means it cannot be edited on the card, which matters more
+ * than it first looks: flipping a stored wallet from signet to mainnet would be
+ * a way to get a user to treat real addresses as worthless test ones.
+ */
+interface SealedPayload {
+  readonly v: 1
+  readonly network: string
+  /** Hex, because JSON has no bytes. */
+  readonly seed: string
+}
+
+export interface StoredWallet {
+  readonly seed: Secret
+  readonly network: Network
+}
+
+export interface StoreStatus {
+  readonly exists: boolean
+  readonly failedAttempts: number
+  readonly attemptsRemaining: number
+  /** True once the blob has been destroyed by exhausted attempts. */
+  readonly destroyed: boolean
+}
+
+export class WalletStore {
+  readonly #blob: string
+  readonly #sidecar: string
+  readonly #kdf: KdfCost
+
+  /**
+   * The KDF parameters are a constructor argument because they have to rise
+   * over time: today's cost on a Pi 4 is not what it should be on hardware in
+   * five years, and every sealed file records the parameters it was written
+   * with so raising them never orphans an old store.
+   *
+   * Callers that leave them alone get the shipped defaults, and a separate test
+   * pins those, so lowering the real work factor cannot slip through by way of
+   * this argument.
+   */
+  constructor(directory: string, kdf: KdfCost = KDF_DEFAULTS) {
+    this.#blob = join(directory, 'wallet.store')
+    this.#sidecar = join(directory, 'wallet.attempts')
+    this.#kdf = kdf
+  }
+
+  get path(): string {
+    return this.#blob
+  }
+
+  exists(): boolean {
+    return existsSync(this.#blob)
+  }
+
+  status(): StoreStatus {
+    const failed = this.#readSidecar().failedAttempts
+    return {
+      exists: this.exists(),
+      failedAttempts: failed,
+      attemptsRemaining: Math.max(0, MAX_ATTEMPTS - failed),
+      destroyed: !this.exists() && failed >= MAX_ATTEMPTS,
+    }
+  }
+
+  /**
+   * Seal a seed under a passphrase and write it.
+   *
+   * Refuses to overwrite. Replacing a wallet is a separate, explicit act
+   * (`destroy` then `create`), because a create that silently clobbered an
+   * existing store would be one mis-click away from erasing a wallet whose
+   * mnemonic the user believes is backed up.
+   */
+  create(seed: Secret, network: Network, passphrase: string): void {
+    if (this.exists()) {
+      throw new StoreError(
+        'A wallet already exists on this device. Erase it explicitly before creating another.'
+      )
+    }
+
+    const payload: SealedPayload = {
+      v: 1,
+      network: network.id,
+      seed: Buffer.from(seed.bytes).toString('hex'),
+    }
+    using plaintext = Secret.fromBytes(
+      new TextEncoder().encode(JSON.stringify(payload)),
+      'store-payload'
+    )
+    this.#writeAtomic(this.#blob, JSON.stringify(seal(plaintext, passphrase, this.#kdf), null, 2))
+    this.#writeSidecar({ failedAttempts: 0 })
+  }
+
+  /**
+   * Open the store, or count the failure.
+   *
+   * A successful unlock resets the counter. The last attempt before the limit
+   * destroys the blob, and that happens BEFORE this returns, so a caller that
+   * crashes on the way out cannot leave a device with an exhausted counter and
+   * an intact wallet.
+   */
+  unlock(passphrase: string): StoredWallet {
+    if (!this.exists()) {
+      throw new StoreError('There is no wallet on this device.')
+    }
+
+    const envelope = this.#readEnvelope()
+    try {
+      using plaintext = open(envelope, passphrase)
+      const wallet = this.#decodePayload(plaintext)
+      this.#writeSidecar({ failedAttempts: 0 })
+      return wallet
+    } catch (err) {
+      if (!(err instanceof BadPassphraseError)) throw err
+
+      const failed = this.#readSidecar().failedAttempts + 1
+      this.#writeSidecar({ failedAttempts: failed })
+      if (failed >= MAX_ATTEMPTS) {
+        this.destroy()
+        throw new StoreError(
+          `That was attempt ${String(failed)} of ${String(MAX_ATTEMPTS)}. The wallet on this ` +
+            `device has been erased. Restore it from your mnemonic.`
+        )
+      }
+      throw new BadPassphraseError()
+    }
+  }
+
+  /**
+   * Erase the wallet from this device.
+   *
+   * The overwrite before unlinking is best effort and is not the property being
+   * relied on: flash storage with wear levelling keeps the old blocks. What
+   * makes this safe is that the blob was encrypted before it was ever written.
+   */
+  destroy(): void {
+    if (existsSync(this.#blob)) {
+      try {
+        const size = readFileSync(this.#blob).length
+        writeFileSync(this.#blob, randomBytes(size))
+      } catch {
+        // An unreadable or unwritable file still gets unlinked below. Failing
+        // to scribble on it must not prevent removing it.
+      }
+      rmSync(this.#blob, { force: true })
+    }
+  }
+
+  /**
+   * Turn the decrypted bytes back into a wallet.
+   *
+   * This runs on authenticated plaintext, so it is not parsing hostile input,
+   * but it still validates: a payload written by a future version, or one whose
+   * network no longer exists, has to fail loudly rather than derive addresses
+   * on a network nobody chose.
+   */
+  #decodePayload(plaintext: Secret): StoredWallet {
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(new TextDecoder().decode(plaintext.bytes))
+    } catch {
+      throw new StoreError('The store opened but its contents are not readable.')
+    }
+    if (typeof parsed !== 'object' || parsed === null) {
+      throw new StoreError('The store opened but its contents are not an object.')
+    }
+    const payload = parsed as Partial<SealedPayload>
+    if (payload.v !== 1 || typeof payload.seed !== 'string' || typeof payload.network !== 'string') {
+      throw new StoreError('The store contents are not in a layout this build understands.')
+    }
+    return {
+      seed: Secret.fromBytes(
+        Uint8Array.from(Buffer.from(payload.seed, 'hex')),
+        'stored-seed'
+      ),
+      network: networkById(payload.network),
+    }
+  }
+
+  #readEnvelope(): Envelope {
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(readFileSync(this.#blob, 'utf8'))
+    } catch (err) {
+      throw new StoreError(`The store file could not be read. ${(err as Error).message}`)
+    }
+    assertEnvelope(parsed)
+    return parsed
+  }
+
+  /**
+   * The counter, read defensively.
+   *
+   * A missing, unreadable or nonsensical sidecar reads as zero rather than
+   * throwing. It is not authenticated and cannot be: it has to be legible
+   * before the passphrase is known. Treating a corrupt one as fatal would turn
+   * a scribbled byte into a device that refuses to unlock a perfectly good
+   * wallet, which is a worse outcome than resetting a counter that was never
+   * load-bearing against an attacker holding the card.
+   */
+  #readSidecar(): Sidecar {
+    try {
+      const raw: unknown = JSON.parse(readFileSync(this.#sidecar, 'utf8'))
+      if (typeof raw === 'object' && raw !== null) {
+        const value: unknown = (raw as { failedAttempts?: unknown }).failedAttempts
+        if (typeof value === 'number' && Number.isInteger(value) && value >= 0) {
+          return { failedAttempts: value }
+        }
+      }
+    } catch {
+      // Absent or unparseable. Zero.
+    }
+    return { failedAttempts: 0 }
+  }
+
+  #writeSidecar(value: Sidecar): void {
+    this.#writeAtomic(this.#sidecar, JSON.stringify(value))
+  }
+
+  /**
+   * Write via a temporary file and rename.
+   *
+   * `rename` within a directory is atomic, so a reader sees either the old
+   * contents or the new ones and never a half-written file. Writing in place
+   * would mean a power cut during the write leaves a truncated store, and a
+   * truncated store is an erased wallet.
+   *
+   * Permissions are set to 0600 before the rename rather than after, so the
+   * file is never briefly world-readable at its final name.
+   */
+  #writeAtomic(target: string, contents: string): void {
+    mkdirSync(dirname(target), { recursive: true, mode: 0o700 })
+    const temporary = `${target}.${randomBytes(6).toString('hex')}.tmp`
+    writeFileSync(temporary, contents, { mode: 0o600 })
+    chmodSync(temporary, 0o600)
+    renameSync(temporary, target)
+  }
+}

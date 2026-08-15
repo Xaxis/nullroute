@@ -28,5 +28,19 @@ export type { DaemonState } from './handler.js'
 export { SCRIPT_TYPES, buildOwnedIndex, changeLookup, signingPathsFor } from './psbt.js'
 export type { OwnedAddress } from './psbt.js'
 
+export {
+  BadPassphraseError,
+  KDF_DEFAULTS,
+  StoreError,
+  assertEnvelope,
+  equalBytes,
+  open,
+  seal,
+} from './store/envelope.js'
+export type { Envelope, KdfCost, KdfParams } from './store/envelope.js'
+
+export { MAX_ATTEMPTS, WalletStore } from './store/store.js'
+export type { StoreStatus } from './store/store.js'
+
 export { Session, SessionError } from './session.js'
 export type { WalletSession, SeedProvenance } from './session.js'
