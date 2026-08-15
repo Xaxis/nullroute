@@ -138,6 +138,24 @@ describe('core.descriptor.parse script expressions', () => {
     expect(() => parseDescriptor(body, { allowBadChecksum: true })).not.toThrow()
   })
 
+  // Script trees ARE supported now. Their derivation lives in
+  // core.descriptor.taproot; this only asserts the parser keeps the shape.
+  it('parses-a-taproot-script-tree', () => {
+    const one = parseDescriptor(`tr(${PUBKEY},pk(${PUBKEY}))`, { allowBadChecksum: true })
+    expect(one.script.kind).toBe('tr')
+
+    const nested = parseDescriptor(
+      `tr(${PUBKEY},{{pk(${PUBKEY}),pk(${PUBKEY})},pk(${PUBKEY})})`,
+      { allowBadChecksum: true }
+    )
+    expect(nested.script.kind).toBe('tr')
+    if (nested.script.kind !== 'tr' || nested.script.tree === undefined) {
+      throw new Error('expected a script tree')
+    }
+    // Shape preserved: a branch on the left, a leaf on the right.
+    expect(Array.isArray(nested.script.tree)).toBe(true)
+  })
+
   it('refuses-malformed-or-unknown-scripts', () => {
     const bad: [string, RegExp][] = [
       ['wpkh', /not a script expression/],
@@ -148,10 +166,12 @@ describe('core.descriptor.parse script expressions', () => {
       [`multi(0,${PUBKEY})`, /out of range/],
       [`multi(2,${PUBKEY})`, /out of range/],
       [`multi(${PUBKEY})`, /needs a threshold/],
-      // A taproot script tree is not supported, and is refused rather than
-      // ignored, because ignoring it would derive the key-path address for a
-      // descriptor whose funds may only be spendable by script.
-      [`tr(${PUBKEY},{pk(${PUBKEY})})`, /takes exactly one key/],
+      // A taproot branch is binary. `{A}` and `{A,B,C}` have no defined
+      // merkle commitment, so they are refused rather than re-associated into
+      // a shape the writer did not choose.
+      [`tr(${PUBKEY},{pk(${PUBKEY})})`, /exactly two subtrees/],
+      [`tr(${PUBKEY},{pk(${PUBKEY}),pk(${PUBKEY}),pk(${PUBKEY})})`, /exactly two subtrees/],
+      [`tr(${PUBKEY},pk(${PUBKEY}),pk(${PUBKEY}))`, /internal key and an optional script tree/],
     ]
     for (const [input, pattern] of bad) {
       expect(() => parseDescriptor(input, { allowBadChecksum: true }), input.slice(0, 30)).toThrow(

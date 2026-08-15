@@ -32,9 +32,11 @@ import {
   type Secret,
   deriveAccountXpub,
   deriveMultisigAddresses,
+  deriveTaprootAddresses,
   findOwnKey,
   multisigShape,
   parseDescriptor,
+  taprootQuorum,
   withChecksum,
 } from '@nullroute/core'
 
@@ -106,7 +108,11 @@ export function reviewRegistration(
     throw new MultisigError((err as Error).message)
   }
 
-  const shape = multisigShape(descriptor)
+  // Taproot and the older script kinds describe a quorum differently, so the
+  // shape is read from whichever one this descriptor is. Everything after this
+  // point treats them the same.
+  const taproot = descriptor.script.kind === 'tr'
+  const shape = taproot ? taprootShape(descriptor) : multisigShape(descriptor)
 
   const ours = deriveAccountXpub(seed, network, multisigAccountPath(network, account))
   const found = findOwnKey(descriptor, ours.xpub)
@@ -166,7 +172,9 @@ export function reviewRegistration(
   // Derive one address as a smoke test. A descriptor that parses, names this
   // device and then cannot produce an address is one worth failing on now
   // rather than after it has been recorded as the wallet.
-  const first = deriveMultisigAddresses(descriptor, { network, start: 0, count: 1 })
+  const first = taproot
+    ? deriveTaprootAddresses(descriptor, { network, start: 0, count: 1 })
+    : deriveMultisigAddresses(descriptor, { network, start: 0, count: 1 })
   if (first.length !== 1) {
     throw new MultisigError('That descriptor produced no addresses.')
   }
@@ -181,6 +189,36 @@ export function reviewRegistration(
     cosigners,
     ourPosition: found.position,
     warnings,
+  }
+}
+
+/**
+ * The quorum inside a tr() script path, in the same shape the older kinds use.
+ *
+ * A taproot descriptor with no multisig leaf is refused for registration: this
+ * screen exists to agree to a quorum, and tr(key) alone is a single-signature
+ * wallet that belongs in the ordinary address flow.
+ */
+function taprootShape(descriptor: Descriptor): {
+  kind: string
+  threshold: number
+  total: number
+  sorted: boolean
+  keys: readonly import('@nullroute/core').KeyExpression[]
+} {
+  const quorum = taprootQuorum(descriptor)
+  if (quorum === undefined) {
+    throw new MultisigError(
+      'That taproot descriptor has no multisig leaf, so there is no quorum to register. ' +
+        'A tr() descriptor with only a key path is a single-signature wallet.'
+    )
+  }
+  return {
+    kind: 'tr',
+    threshold: quorum.threshold,
+    total: quorum.total,
+    sorted: quorum.sorted,
+    keys: quorum.keys,
   }
 }
 

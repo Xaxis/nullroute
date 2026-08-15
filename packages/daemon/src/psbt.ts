@@ -23,10 +23,12 @@ import {
   addressFromScript,
   deriveAddresses,
   deriveMultisigAddresses,
+  deriveTaprootAddresses,
   findOwnKey,
   deriveAccountXpub,
   multisigShape,
   normalizePath,
+  taprootQuorum,
   parseDescriptor,
   rootFromSeed,
 } from '@nullroute/core'
@@ -150,14 +152,23 @@ function addRegistration(
     return
   }
 
-  let shape
+  // Taproot quorums live in a script tree rather than in a wsh, so the key list
+  // comes from a different place. Everything after this is identical.
+  const taproot = descriptor.script.kind === 'tr'
+  let keys: readonly import('@nullroute/core').KeyExpression[]
   try {
-    shape = multisigShape(descriptor)
+    if (taproot) {
+      const quorum = taprootQuorum(descriptor)
+      if (quorum === undefined) return
+      keys = quorum.keys
+    } else {
+      keys = multisigShape(descriptor).keys
+    }
   } catch {
     return
   }
 
-  const ourKey = shape.keys[ourPosition]
+  const ourKey = keys[ourPosition]
   if (ourKey?.kind !== 'extended') return
 
   const base = normalizePath(multisigAccountPath(network, account))
@@ -171,12 +182,9 @@ function addRegistration(
 
     let derived
     try {
-      derived = deriveMultisigAddresses(descriptor, {
-        network,
-        change,
-        start: 0,
-        count: gapLimit,
-      })
+      derived = taproot
+        ? deriveTaprootAddresses(descriptor, { network, change, start: 0, count: gapLimit })
+        : deriveMultisigAddresses(descriptor, { network, change, start: 0, count: gapLimit })
     } catch {
       return
     }

@@ -73,6 +73,14 @@ export interface ExtendedKey {
 
 export type KeyExpression = RawKey | ExtendedKey
 
+/**
+ * A taproot script tree: a leaf, or a branch of exactly two subtrees.
+ *
+ * BIP-386 writes a branch as `{A,B}` and allows arbitrary nesting. The shape is
+ * part of the commitment, so it is preserved rather than normalised.
+ */
+export type TapTree = { readonly leaf: ScriptNode } | readonly [TapTree, TapTree]
+
 export type ScriptNode =
   | { readonly kind: 'pk'; readonly key: KeyExpression }
   | { readonly kind: 'pkh'; readonly key: KeyExpression }
@@ -80,7 +88,19 @@ export type ScriptNode =
   | { readonly kind: 'combo'; readonly key: KeyExpression }
   | { readonly kind: 'sh'; readonly inner: ScriptNode }
   | { readonly kind: 'wsh'; readonly inner: ScriptNode }
-  | { readonly kind: 'tr'; readonly key: KeyExpression }
+  | {
+      readonly kind: 'tr'
+      /** The internal key, spent by the key path. */
+      readonly key: KeyExpression
+      /**
+       * The script path, when the descriptor has one.
+       *
+       * A binary tree exactly as written. Shape matters: two descriptors with
+       * the same leaves in a different tree shape commit to different merkle
+       * roots and therefore different addresses, so this is never flattened.
+       */
+      readonly tree?: TapTree
+    }
   | {
       readonly kind: 'multi' | 'sortedmulti' | 'multi_a' | 'sortedmulti_a'
       readonly threshold: number
@@ -131,6 +151,7 @@ function splitArguments(input: string): string[] {
   const parts: string[] = []
   let depth = 0
   let bracket = 0
+  let brace = 0
   let current = ''
 
   for (const character of input) {
@@ -138,8 +159,13 @@ function splitArguments(input: string): string[] {
     else if (character === ')') depth -= 1
     else if (character === '[') bracket += 1
     else if (character === ']') bracket -= 1
+    // Braces delimit a taproot script tree, whose branches are separated by
+    // the same comma that separates arguments. Without this, tr(K,{a,b})
+    // splits into three arguments and the tree is lost.
+    else if (character === '{') brace += 1
+    else if (character === '}') brace -= 1
 
-    if (character === ',' && depth === 0 && bracket === 0) {
+    if (character === ',' && depth === 0 && bracket === 0 && brace === 0) {
       parts.push(current)
       current = ''
       continue
@@ -370,19 +396,31 @@ function parseScript(input: string): ScriptNode {
     case 'pk':
     case 'pkh':
     case 'wpkh':
-    case 'combo':
-    case 'tr': {
+    case 'combo': {
       if (parts.length !== 1) {
         throw new DescriptorParseError(
-          `${fn}() takes exactly one key, got ${String(parts.length)} arguments. ` +
-            (fn === 'tr'
-              ? 'Taproot script trees are not supported yet and are refused rather than ignored.'
-              : '')
+          `${fn}() takes exactly one key, got ${String(parts.length)} arguments.`
         )
       }
       const only = parts[0]
       if (only === undefined) throw new DescriptorParseError(`${fn}() has no argument.`)
       return { kind: fn, key: parseKeyExpression(only) }
+    }
+
+    case 'tr': {
+      // BIP-386: tr(KEY) is key path only, tr(KEY, TREE) adds a script path.
+      if (parts.length < 1 || parts.length > 2) {
+        throw new DescriptorParseError(
+          `tr() takes an internal key and an optional script tree, got ` +
+            `${String(parts.length)} arguments.`
+        )
+      }
+      const internal = parts[0]
+      if (internal === undefined) throw new DescriptorParseError('tr() has no internal key.')
+      const key = parseKeyExpression(internal)
+      const treeArgument = parts[1]
+      if (treeArgument === undefined) return { kind: 'tr', key }
+      return { kind: 'tr', key, tree: parseTapTree(treeArgument) }
     }
 
     case 'sh':
@@ -436,8 +474,15 @@ function isRanged(node: ScriptNode): boolean {
     case 'pkh':
     case 'wpkh':
     case 'combo':
-    case 'tr':
       return node.key.kind === 'extended' && node.key.ranged
+    case 'tr': {
+      if (node.key.kind === 'extended' && node.key.ranged) return true
+      // The script path counts. A tr() whose internal key is fixed but whose
+      // leaves are ranged is a ranged descriptor, and treating it as fixed
+      // would derive one address for a whole wallet.
+      if (node.tree === undefined) return false
+      return tapTreeLeaves(node.tree).some((leaf) => isRanged(leaf))
+    }
     case 'sh':
     case 'wsh':
       return isRanged(node.inner)
@@ -499,14 +544,58 @@ export function parseDescriptor(input: string, options: ParseOptions = {}): Desc
 }
 
 /** Every key expression in a descriptor, in order. */
+/**
+ * Parse a taproot script tree.
+ *
+ * `{A,B}` is a branch; anything else is a leaf script. A branch has exactly two
+ * children, which is not a stylistic rule: the merkle construction in BIP-341
+ * is binary, and `{A,B,C}` has no defined commitment, so it is refused rather
+ * than silently re-associated into a shape the writer did not choose.
+ */
+function parseTapTree(input: string): TapTree {
+  const trimmed = input.trim()
+
+  if (!trimmed.startsWith('{')) {
+    return { leaf: parseScript(trimmed) }
+  }
+  if (!trimmed.endsWith('}')) {
+    throw new DescriptorParseError('A taproot script tree branch is missing its closing brace.')
+  }
+
+  const children = splitArguments(trimmed.slice(1, -1))
+  if (children.length !== 2) {
+    throw new DescriptorParseError(
+      `A taproot tree branch takes exactly two subtrees, got ${String(children.length)}. ` +
+        `The merkle construction is binary, so {A,B,C} has no defined commitment.`
+    )
+  }
+  const [left, right] = children
+  if (left === undefined || right === undefined) {
+    throw new DescriptorParseError('A taproot tree branch has an empty subtree.')
+  }
+  return [parseTapTree(left), parseTapTree(right)] as const
+}
+
+/** Every leaf of a taproot script tree, left to right. */
+export function tapTreeLeaves(tree: TapTree): ScriptNode[] {
+  if (Array.isArray(tree)) {
+    const [left, right] = tree as readonly [TapTree, TapTree]
+    return [...tapTreeLeaves(left), ...tapTreeLeaves(right)]
+  }
+  return [(tree as { readonly leaf: ScriptNode }).leaf]
+}
+
 export function descriptorKeys(node: ScriptNode): KeyExpression[] {
   switch (node.kind) {
     case 'pk':
     case 'pkh':
     case 'wpkh':
     case 'combo':
-    case 'tr':
       return [node.key]
+    case 'tr':
+      return node.tree === undefined
+        ? [node.key]
+        : [node.key, ...tapTreeLeaves(node.tree).flatMap((leaf) => descriptorKeys(leaf))]
     case 'sh':
     case 'wsh':
       return descriptorKeys(node.inner)

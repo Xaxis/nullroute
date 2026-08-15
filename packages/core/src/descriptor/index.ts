@@ -23,6 +23,9 @@ export type {
   ParseOptions,
 } from './parse.js'
 
+export { tapTreeLeaves } from './parse.js'
+export type { TapTree } from './parse.js'
+
 export { deriveMultisigAddresses, multisigShape, findOwnKey } from './multisig.js'
 export type {
   MultisigAddress,
@@ -30,3 +33,6 @@ export type {
   MultisigShape,
   DeriveMultisigOptions,
 } from './multisig.js'
+
+export { deriveTaprootAddresses, taprootQuorum } from './taproot.js'
+export type { TaprootAddress, TaprootQuorum, DeriveTaprootOptions } from './taproot.js'

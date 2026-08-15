@@ -1,0 +1,125 @@
+id: core.descriptor.taproot
+version: 1
+title: Taproot addresses, including script paths and multi_a
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Derive addresses for BIP-386 tr() descriptors, with or without a script tree,
+  so that taproot multisig is a wallet this device can recognise its own change
+  in rather than a descriptor it refuses.
+
+covers:
+  - packages/core/src/descriptor/taproot.ts::deriveTaprootAddresses
+  - packages/core/src/descriptor/taproot.ts::taprootQuorum
+  - packages/core/src/descriptor/parse.ts::tapTreeLeaves
+
+algorithm: >
+  tr(KEY) is a key path only. tr(KEY, TREE) tweaks the internal key by the
+  merkle root of the script tree, so the same internal key yields a different
+  address depending on what hangs off it.
+
+  The tree is parsed as written and preserved as written. A branch is `{A,B}`
+  with exactly two children, because the BIP-341 construction is binary and
+  `{A,B,C}` has no defined commitment; re-associating it would silently choose a
+  shape the writer did not.
+
+  Each leaf is compiled at each index. pk() becomes a single-key tapscript.
+  multi_a keeps the written key order and sortedmulti_a sorts the x-only keys
+  lexicographically at that index, per BIP-387, for the same reason sortedmulti
+  sorts its compressed keys per index rather than sorting parents once.
+
+  A leaf this device cannot sign for is refused before any address is produced,
+  because an unrecognised leaf still changes the merkle root.
+
+  None of the tweak arithmetic is implemented here. p2tr and p2tr_ms come from
+  @scure/btc-signer.
+
+  Key derivation is shared with the other script kinds, in
+  packages/core/src/descriptor/derive-key.ts. It is internal rather than public
+  API, so it carries no `covers` entry of its own: the rules for turning a key
+  expression into a pubkey at an index are the same whatever script surrounds
+  it, and two copies would be two chances to disagree about what `/<0;1>/*`
+  means.
+
+invariants:
+  - id: INV-TR-1
+    statement: >
+      Taproot addresses, with and without a script path, match an independent
+      construction of the same tree, on every supported network.
+    tests:
+      - packages/core/test/descriptor.taproot.test.ts::agrees-with-the-library-on-a-key-path-descriptor
+      - packages/core/test/descriptor.taproot.test.ts::agrees-with-the-library-on-a-script-path-descriptor
+      - packages/core/test/descriptor.taproot.test.ts::encodes-for-the-network-it-is-given
+
+  - id: INV-TR-2
+    statement: >
+      Tree shape is part of the address. Two descriptors with identical leaves
+      arranged differently derive different addresses, and a non-binary branch
+      is refused rather than re-associated.
+    tests:
+      - packages/core/test/descriptor.taproot.test.ts::treats-tree-shape-as-part-of-the-address
+      - packages/core/test/descriptor.taproot.test.ts::refuses-a-branch-that-is-not-binary
+
+  - id: INV-TR-3
+    statement: >
+      sortedmulti_a sorts its keys at each index and multi_a preserves the
+      written order, so the two are different wallets.
+    tests:
+      - packages/core/test/descriptor.taproot.test.ts::sorts-only-when-the-descriptor-says-to
+
+  - id: INV-TR-4
+    statement: >
+      A leaf this device cannot sign for is refused before any address is
+      derived, as is a descriptor that is not taproot at all.
+    tests:
+      - packages/core/test/descriptor.taproot.test.ts::refuses-a-leaf-it-cannot-sign-for
+      - packages/core/test/descriptor.taproot.test.ts::refuses-a-descriptor-that-is-not-taproot
+
+  - id: INV-TR-5
+    statement: >
+      A script path is summarised as a quorum only when it holds exactly one
+      multisig leaf, and a ranged leaf makes the whole descriptor ranged.
+    tests:
+      - packages/core/test/descriptor.taproot.test.ts::reports-a-single-multisig-leaf-and-refuses-to-guess-between-two
+      - packages/core/test/descriptor.taproot.test.ts::counts-a-ranged-leaf-as-a-ranged-descriptor
+      - packages/core/test/descriptor.taproot.test.ts::derives-a-range-of-addresses-that-all-differ
+
+threats:
+  - INV-PSBT-2
+  - INV-TR-2
+  - INV-TR-3
+
+security_notes: >
+  The failure mode is silent, and it is the same one that makes sortedmulti
+  dangerous. A wrong tweak, a flattened tree or a mis-sorted multi_a produces a
+  perfectly valid address that no other member of the quorum recognises. Nothing
+  throws and nothing looks wrong until funds arrive somewhere the device cannot
+  see them. That is why every address in the tests is compared against an
+  independent construction rather than a constant this project generated.
+
+  Tree shape deserves specific attention because it is the part people assume is
+  cosmetic. `{{A,B},C}` and `{A,{B,C}}` hold the same three leaves and commit to
+  different merkle roots. Coordinators do not always write the tree the same way,
+  so a descriptor that round-trips through one and comes back re-associated is a
+  different wallet, and the registration screen showing the same three cosigners
+  would not reveal it.
+
+  MuSig2 key aggregation is out of scope, deliberately and not merely for now.
+  It requires interactive nonce exchange between signers, which is hostile to an
+  air gap: every round trip is a QR code or a card walk. If a non-interactive
+  deterministic scheme is standardised this is worth revisiting, and until then
+  a device claiming MuSig2 support would be claiming something it cannot do
+  safely across the gap.
+
+  Leaves are restricted to pk, multi_a and sortedmulti_a. Miniscript in a
+  tapleaf is legal and this device refuses it, because deriving an address for a
+  policy it cannot evaluate would produce a wallet it can receive into and never
+  spend from.
+
+references:
+  - BIP-341, Taproot SegWit version 1 spending rules
+  - BIP-342, Validation of Taproot Scripts
+  - BIP-386, tr() Output Script Descriptors
+  - BIP-387, Tapscript Multisig Output Script Descriptors
+  - docs/THREAT-MODEL.md
