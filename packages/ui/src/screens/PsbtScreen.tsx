@@ -1,6 +1,7 @@
 import { type ReactElement, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
+import { QrDisplay } from '../components/QrDisplay.js'
 
 /**
  * The screen the whole device exists for.
@@ -74,6 +75,10 @@ export interface PsbtReviewView {
 }
 
 export interface PsbtScreenProps {
+  /** Prefilled when a transaction arrived by camera rather than by hand. */
+  readonly initialPsbt?: string
+  /** Opens the scanner. Absent on a build with no camera. */
+  readonly onScan?: () => void
   readonly onReview: (psbt: string) => Promise<PsbtReviewView>
   readonly onSign: (
     psbt: string,
@@ -84,9 +89,9 @@ export interface PsbtScreenProps {
 }
 
 export function PsbtScreen(props: PsbtScreenProps): ReactElement {
-  const { onReview, onSign, onBack, banner } = props
+  const { initialPsbt, onScan, onReview, onSign, onBack, banner } = props
 
-  const [psbt, setPsbt] = useState('')
+  const [psbt, setPsbt] = useState(initialPsbt ?? '')
   const [review, setReview] = useState<PsbtReviewView | null>(null)
   const [signed, setSigned] = useState<string | null>(null)
   const [signedWith, setSignedWith] = useState<readonly string[]>([])
@@ -166,16 +171,23 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
           </p>
         </div>
 
-        <div className="nr-field">
-          <span className="nr-field__label">Signed PSBT</span>
-          <textarea
-            className="nr-input nr-input--area nr-break"
-            readOnly
-            rows={6}
-            value={signed}
-            data-testid="psbt-output"
-          />
-        </div>
+        {/* The QR comes before the text, because it is how this actually leaves
+            the device. The textarea below it is the fallback for a machine with
+            no camera, and for anyone who would rather read the bytes. */}
+        <QrDisplay text={signed} fileType="psbt" testId="psbt-qr" />
+
+        <details className="nr-details">
+          <summary className="nr-details__summary">Show the signed PSBT as text</summary>
+          <div className="nr-field">
+            <textarea
+              className="nr-input nr-input--area nr-break"
+              readOnly
+              rows={6}
+              value={signed}
+              data-testid="psbt-output"
+            />
+          </div>
+        </details>
       </Screen>
     )
   }
@@ -230,10 +242,15 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
             }}
             data-testid="psbt-input"
           />
+          {onScan !== undefined && (
+            <Button onClick={onScan} testId="psbt-scan">
+              Scan a QR code instead
+            </Button>
+          )}
           <p className="nr-hint">
-            Base64, as exported by your coordinator. On a real device this arrives by camera or on
-            an SD card. This device has no network and never fetches anything about this
-            transaction, so everything below is computed from these bytes and your seed alone.
+            Base64, as exported by your coordinator, by camera or on an SD card. This device has no
+            network and never fetches anything about this transaction, so everything below is
+            computed from these bytes and your seed alone.
           </p>
         </div>
       )}

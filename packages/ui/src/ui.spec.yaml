@@ -29,6 +29,13 @@ covers:
   - packages/ui/src/components/NetworkBanner.tsx::NetworkBanner
   - packages/ui/src/lib/client.ts::call
   - packages/ui/src/lib/client.ts::IpcCallError
+  - packages/ui/src/screens/ScanScreen.tsx::ScanScreen
+  - packages/ui/src/components/QrDisplay.tsx::QrDisplay
+  - packages/ui/src/lib/scanner.ts::assertSameOrigin
+  - packages/ui/src/lib/scanner.ts::wasmLocation
+  - packages/ui/src/lib/scanner.ts::prepareScanner
+  - packages/ui/src/lib/scanner.ts::decodeFrame
+  - packages/ui/src/lib/scanner.ts::ScannerError
 
 algorithm: >
   Renders the manifest root hash, the verification status with spec and
@@ -215,6 +222,58 @@ invariants:
       - packages/ui/test/multisig-screen.test.tsx::marks-every-cosigner-except-ours-as-unverified
       - packages/ui/test/multisig-screen.test.tsx::shows-a-refusal-and-keeps-nothing-stale
 
+  # --- QR, both directions -------------------------------------------------
+  # The air gap in practice. Everything that leaves the device leaves through a
+  # code on the screen, and everything that arrives arrives through the camera.
+  - id: INV-UI-21
+    statement: >
+      A payload too large for one code becomes a navigable sequence rather than
+      an error or a truncation, the sequence reassembles into the payload, and a
+      new payload restarts at the first frame.
+    tests:
+      - packages/ui/test/qr-display.test.tsx::splits-a-large-payload-into-a-navigable-sequence
+      - packages/ui/test/qr-display.test.tsx::shows-frames-that-reassemble-into-the-payload
+      - packages/ui/test/qr-display.test.tsx::resets-to-the-first-frame-when-the-payload-changes
+      - packages/ui/test/qr-display.test.tsx::advances-on-its-own-and-stops-when-paused
+
+  - id: INV-UI-22
+    statement: >
+      A code that fits in one frame is shown bare, not wrapped, so an ordinary
+      scanner reads it, and every code is drawn dark on white with a quiet zone
+      inside its own viewBox.
+    tests:
+      - packages/ui/test/qr-display.test.tsx::renders-a-single-frame-for-a-small-payload
+      - packages/ui/test/qr-display.test.tsx::does-not-wrap-a-single-frame-in-a-bbqr-header
+      - packages/ui/test/qr-display.test.tsx::keeps-the-code-dark-on-white-whatever-the-theme-is
+
+  - id: INV-UI-23
+    statement: >
+      The QR decoder is loaded from this device and never from a network, and a
+      location on any other origin is refused rather than fetched.
+    tests:
+      - packages/ui/test/scan-screen.test.tsx::refuses-a-decoder-location-that-is-not-on-this-origin
+      - packages/ui/test/scan-screen.test.tsx::points-at-a-decoder-on-our-own-origin
+      - packages/ui/test/scan-screen.test.tsx::accepts-a-bundled-asset-path
+
+  - id: INV-UI-24
+    statement: >
+      Scanned frames from a second transfer are refused and reported rather than
+      assembled, a payload that is not a sequence is returned directly, and
+      progress names the frames still outstanding.
+    tests:
+      - packages/ui/test/scan-screen.test.tsx::refuses-frames-from-a-second-transfer-and-says-so
+      - packages/ui/test/scan-screen.test.tsx::returns-a-plain-payload-without-waiting-for-a-sequence
+      - packages/ui/test/scan-screen.test.tsx::assembles-a-sequence-arriving-out-of-order
+      - packages/ui/test/scan-screen.test.tsx::shows-which-frames-it-is-still-waiting-for
+
+  - id: INV-UI-25
+    statement: >
+      The camera is released when the scanner goes away, and a camera that will
+      not open is reported rather than left as a blank screen.
+    tests:
+      - packages/ui/test/scan-screen.test.tsx::releases-the-camera-when-it-goes-away
+      - packages/ui/test/scan-screen.test.tsx::reports-a-camera-that-will-not-open
+
 threats:
   - INV-KEY-1
   - INV-BUILD-1
@@ -240,6 +299,32 @@ security_notes: >
   The fingerprint shown here cannot detect a wrong passphrase. Nothing can. It
   only lets a user who recorded the correct value notice a mismatch, which
   depends on them having recorded it.
+
+  THE QR DECODER IS THE ONE DEPENDENCY THAT COULD REACH THE NETWORK. zxing-wasm
+  ships a default that resolves its WebAssembly to a CDN. On this device that is
+  both a capability that must not exist and a screen that hangs in the field
+  while working perfectly on a developer's machine, because the developer's
+  machine can answer the request. The binary is therefore imported through the
+  bundler and served from the same loopback origin as the rest of the
+  application, and INV-UI-23 checks that rather than trusting anyone to remember
+  it.
+
+  Decoding is the one job here worth a dependency. Reading a code from a camera
+  means binarisation under uneven light, perspective correction, and error
+  correction over a partly misread matrix; the failure mode of getting it wrong
+  is accepting a payload that is not what was on the other screen. The encoder
+  is in the tree because drawing is tractable and lands in the manifest. The
+  decoder is not, and that asymmetry is deliberate rather than inconsistent.
+
+  Nothing scanned is trusted. A completed payload is a candidate that goes to
+  the ordinary parser and the ordinary review screen. The BBQr file type says
+  what to try first and is never a permission: a payload announcing itself as a
+  PSBT still has to survive the parser and still has to be read by a human.
+
+  The code is drawn dark on white with a quiet zone even though the rest of the
+  interface is dark, which is the one place the palette is deliberately ignored.
+  Scanners look for a light margin, and an inverted code without one is a code
+  most phones refuse.
 
 references:
   - docs/VERIFICATION.md

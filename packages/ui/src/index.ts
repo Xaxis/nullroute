@@ -48,6 +48,12 @@ export type {
   CosignerView,
 } from './screens/MultisigScreen.js'
 
+export { ScanScreen } from './screens/ScanScreen.js'
+export type { ScanScreenProps, ScanResult } from './screens/ScanScreen.js'
+
+export { QrDisplay } from './components/QrDisplay.js'
+export type { QrDisplayProps } from './components/QrDisplay.js'
+
 export { Screen } from './components/Screen.js'
 export type { ScreenProps } from './components/Screen.js'
 export { Button } from './components/Button.js'
@@ -60,6 +66,8 @@ export type { HashProps } from './components/Hash.js'
 
 export { NetworkBanner } from './components/NetworkBanner.js'
 export type { NetworkBannerProps } from './components/NetworkBanner.js'
+
+export { prepareScanner, decodeFrame, assertSameOrigin, wasmLocation, ScannerError } from './lib/scanner.js'
 
 export { call, IpcCallError } from './lib/client.js'
 export type { IpcTransport, IpcFailure } from './lib/client.js'

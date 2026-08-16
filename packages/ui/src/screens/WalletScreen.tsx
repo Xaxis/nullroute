@@ -1,6 +1,7 @@
 import { type ReactElement, useCallback, useEffect, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
+import { QrDisplay } from '../components/QrDisplay.js'
 
 /**
  * The wallet: accounts, addresses, and export.
@@ -247,6 +248,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
               {descriptor.descriptor}
             </div>
           </div>
+          <QrDisplay text={descriptor.descriptor} fileType="unicode" testId="descriptor-qr" />
           <p className="nr-note">
             This is what a coordinator needs, and it is what makes this wallet recoverable without
             nullroute. The eight characters after the <span className="nr-mono">#</span> are a

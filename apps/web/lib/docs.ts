@@ -44,6 +44,14 @@ export const DOCS: readonly DocMeta[] = [
     question: 'How do dice become a seed, and how do I check it?',
   },
   {
+    slug: 'air-gap',
+    file: 'docs/AIR-GAP.md',
+    title: 'The air gap',
+    summary:
+      'How data crosses to a device with no network, what each direction is trusted to do, and the list of attacks an air gap does not stop.',
+    question: 'How does anything get on and off this thing?',
+  },
+  {
     slug: 'provisioning',
     file: 'docs/PROVISIONING.md',
     title: 'Provisioning a device',

@@ -866,3 +866,132 @@ body {
 .nr-table--dense td {
   padding: 0.4375rem 0.75rem;
 }
+
+/* ---------------------------------------------------------------------------
+   QR display.
+
+   The code is always dark-on-white with a quiet zone, even though the rest of
+   the interface is dark. Scanners look for a light margin, and an inverted code
+   without one is a code most phones will not read. This is the one place the
+   palette is deliberately ignored.
+   --------------------------------------------------------------------------- */
+
+.nr-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.nr-qr__code {
+  /* Bounded by height rather than width: 480px of panel is the scarce axis, and
+     a code that overflows it is one the user has to scroll to photograph. */
+  width: auto;
+  height: min(17.5rem, 46vh);
+  max-width: 100%;
+  border-radius: 0.375rem;
+  background-color: #ffffff;
+  /* Rendered crisply rather than smoothed. A blurred module edge is a module a
+     camera has to guess at. */
+  image-rendering: pixelated;
+  shape-rendering: crispEdges;
+}
+
+.nr-qr--error {
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--color-danger-500) 45%, transparent);
+  border-radius: 0.5rem;
+}
+
+.nr-qr__controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nr-qr__step,
+.nr-qr__play {
+  min-height: 2.25rem;
+  min-width: 2.75rem;
+  padding: 0 0.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--color-line);
+  background-color: var(--color-surface-2);
+  color: var(--color-text);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.nr-qr__step:active,
+.nr-qr__play:active {
+  background-color: var(--color-surface-3);
+}
+
+.nr-qr__count {
+  font-size: 0.875rem;
+  color: var(--color-text-dim);
+  min-width: 4rem;
+  text-align: center;
+}
+
+/* ---------------------------------------------------------------------------
+   Camera scanning.
+   --------------------------------------------------------------------------- */
+
+.nr-scan {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.nr-scan__viewport {
+  position: relative;
+  width: 100%;
+  max-width: 26rem;
+  aspect-ratio: 4 / 3;
+  max-height: 44vh;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  background-color: #000000;
+}
+
+.nr-scan__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* A frame to aim with. Nothing is cropped to it: the whole image is decoded,
+   because a user who lines a code up outside a drawn box should still succeed. */
+.nr-scan__reticle {
+  position: absolute;
+  inset: 12%;
+  border: 2px solid color-mix(in srgb, var(--color-accent-400) 70%, transparent);
+  border-radius: 0.5rem;
+  pointer-events: none;
+}
+
+/* Offscreen. It exists to pull pixels out of the video, not to be looked at. */
+.nr-scan__canvas {
+  display: none;
+}
+
+/* A disclosure for the text form of something already shown another way. Never
+   for anything a user must read: a security screen does not hide its warnings
+   behind a click. */
+.nr-details {
+  width: 100%;
+  border: 1px solid var(--color-line);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.nr-details__summary {
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--color-text-dim);
+  /* 44px of target, because this is a finger on a 7 inch panel. */
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+}

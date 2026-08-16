@@ -235,7 +235,11 @@ describe('daemon.psbt', () => {
     expect(wide.has(STRANGER)).toBe(false)
     expect(changeLookup(wide)(STRANGER)).toBeUndefined()
     expect(signingPathsFor([scriptFor(STRANGER)], wide, MAINNET)).toEqual([])
-  })
+    // Four script types across receive and change at 500 indices is four
+    // thousand derivations, each a BIP-32 step and a hash. That is slow on
+    // purpose, and slower still when the rest of the suite is competing for
+    // cores, so the budget is stated rather than left at the default.
+  }, 30_000)
 
   // --- Registered quorums -------------------------------------------------
 

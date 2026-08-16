@@ -23,6 +23,7 @@ import { SeedScreen } from './screens/SeedScreen.js'
 import { ImportScreen } from './screens/ImportScreen.js'
 import { WalletScreen, type ScriptType } from './screens/WalletScreen.js'
 import { PsbtScreen, type PsbtReviewView } from './screens/PsbtScreen.js'
+import { ScanScreen, type ScanResult } from './screens/ScanScreen.js'
 import { PassphraseScreen } from './screens/PassphraseScreen.js'
 import {
   MultisigScreen,
@@ -65,7 +66,14 @@ type Stage =
   | { readonly at: 'import' }
   | { readonly at: 'seed'; readonly words: readonly string[]; readonly fingerprint: string }
   | { readonly at: 'wallet' }
-  | { readonly at: 'psbt' }
+  | { readonly at: 'psbt'; readonly prefill?: string }
+  /**
+   * The camera, on its way somewhere.
+   *
+   * A scan is never a destination: it always belongs to a screen that asked for
+   * it, and the payload goes back there rather than being acted on here.
+   */
+  | { readonly at: 'scan'; readonly forStage: 'psbt' }
   /** A wallet exists on disk and the passphrase has not been given yet. */
   | { readonly at: 'unlock' }
   /** A wallet has just been created and can be saved to this device. */
@@ -73,6 +81,23 @@ type Stage =
   | { readonly at: 'multisig' }
 
 const transport = httpTransport()
+
+/**
+ * Bytes to base64, without a dependency and without Node's Buffer.
+ *
+ * This runs in the browser, where `btoa` takes a binary string rather than
+ * bytes, so the conversion is explicit. Chunked because spreading a large array
+ * into `String.fromCharCode` overflows the argument limit on a transaction of
+ * any size, which is exactly the case this exists for.
+ */
+function toBase64(bytes: Uint8Array): string {
+  let binary = ''
+  const CHUNK = 0x8000
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK))
+  }
+  return btoa(binary)
+}
 
 export function App() {
   const [stage, setStage] = useState<Stage>({ at: 'loading' })
@@ -427,10 +452,34 @@ export function App() {
     return (
       <PsbtScreen
         banner={banner}
+        initialPsbt={stage.prefill ?? ''}
+        onScan={() => {
+          setStage({ at: 'scan', forStage: 'psbt' })
+        }}
         onReview={reviewPsbt}
         onSign={signPsbt}
         onBack={() => {
           setStage({ at: 'wallet' })
+        }}
+      />
+    )
+  }
+
+  if (stage.at === 'scan') {
+    return (
+      <ScanScreen
+        banner={banner}
+        title="Scan a transaction"
+        hint="Point the camera at the QR code your coordinator is showing."
+        onCancel={() => {
+          setStage({ at: stage.forStage })
+        }}
+        onResult={(result: ScanResult) => {
+          // A PSBT is carried as raw bytes in a BBQr sequence and as base64
+          // when it fits in one code. Both end up as base64 here, because that
+          // is what the review path takes and what a user can read back.
+          const text = result.kind === 'text' ? result.text.trim() : toBase64(result.data)
+          setStage({ at: stage.forStage, prefill: text })
         }}
       />
     )
