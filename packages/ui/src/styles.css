@@ -1130,3 +1130,120 @@ body {
   letter-spacing: 0.2em;
   color: var(--color-text-dim);
 }
+
+/* ---------------------------------------------------------------------------
+   Several wallets.
+
+   Colour is never the only difference between two rows: the label is always
+   beside it, because a user who cannot distinguish these hues must lose speed
+   and not safety.
+   --------------------------------------------------------------------------- */
+
+.nr-wchip {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 999px;
+  background-color: var(--color-surface-3);
+  border: 1px solid var(--color-line);
+  white-space: nowrap;
+  /* Allowed to shrink, so it can never push the network label off an 800px
+     header. The label truncates; the network does not. */
+  min-width: 0;
+  overflow: hidden;
+}
+
+.nr-wchip__dot,
+.nr-wrow__dot {
+  flex: 0 0 auto;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 999px;
+  background-color: var(--wallet-colour, var(--color-text-dim));
+  align-self: center;
+}
+
+[data-colour='slate'] { --wallet-colour: #94a3b8; }
+[data-colour='amber'] { --wallet-colour: #f59e0b; }
+[data-colour='teal'] { --wallet-colour: #14b8a6; }
+[data-colour='violet'] { --wallet-colour: #a78bfa; }
+[data-colour='rose'] { --wallet-colour: #fb7185; }
+[data-colour='lime'] { --wallet-colour: #a3e635; }
+[data-colour='cyan'] { --wallet-colour: #22d3ee; }
+[data-colour='orange'] { --wallet-colour: #fb923c; }
+
+.nr-wchip__label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nr-wchip__net {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--color-text-dim);
+  flex: 0 0 auto;
+}
+
+.nr-wchip__net--test {
+  color: var(--color-caution-300);
+}
+
+.nr-wlist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.nr-wrow {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  /* 48px of target. A mis-tap here opens the wrong wallet. */
+  min-height: 3rem;
+  padding: 0 0.875rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-line);
+  background-color: var(--color-surface-2);
+  color: var(--color-text);
+  font-size: 0.9375rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nr-wrow:active:not(:disabled) {
+  background-color: var(--color-surface-3);
+}
+
+.nr-wrow:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.nr-wrow__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nr-wrow__net {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
+}
+
+.nr-wrow__net--test {
+  color: var(--color-caution-300);
+}
+
+.nr-wrow__open,
+.nr-wrow__gone {
+  font-size: 0.6875rem;
+  padding: 0.125rem 0.4375rem;
+  border-radius: 0.25rem;
+  background-color: var(--color-surface-3);
+  color: var(--color-text-dim);
+}

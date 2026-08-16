@@ -50,3 +50,19 @@ export type { StoreStatus } from './store/store.js'
 
 export { Session, SessionError } from './session.js'
 export type { WalletSession, SeedProvenance } from './session.js'
+
+export {
+  WalletRegistry,
+  MAX_WALLETS,
+  MAX_LABEL,
+  WALLET_COLOURS,
+  DEFAULT_COLOUR,
+  normaliseLabel,
+  hintNetwork,
+} from './store/registry.js'
+export type {
+  WalletEntry,
+  WalletHint,
+  WalletColour,
+  OpenedWallet,
+} from './store/registry.js'

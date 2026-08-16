@@ -50,6 +50,12 @@ import { type IpcHandler, type IpcRequest } from './ipc/socket.js'
 import { Session } from './session.js'
 import { buildOwnedIndex, changeLookup, signingPathsFor } from './psbt.js'
 import { type WalletStore } from './store/store.js'
+import {
+  MAX_WALLETS,
+  WALLET_COLOURS,
+  WalletRegistry,
+  type WalletColour,
+} from './store/registry.js'
 import { multisigAccountPath, reviewRegistration } from './multisig.js'
 import { createBackup, describeBackup, restoreBackup } from './store/backup.js'
 
@@ -62,6 +68,14 @@ export interface DaemonState {
    * throwaway signing session both want.
    */
   readonly store?: WalletStore
+  /**
+   * Several wallets, each in its own directory.
+   *
+   * Optional alongside `store` so a daemon can still be run with a single
+   * store, which is what the unit tests and a throwaway signing session want.
+   * When present it is the only thing that touches persistence.
+   */
+  readonly registry?: WalletRegistry
 }
 
 function params(request: IpcRequest): Record<string, unknown> {
@@ -108,6 +122,43 @@ export function createHandler(state: DaemonState): IpcHandler {
       throw new Error('This daemon was started without storage, so nothing can be persisted.')
     }
     return state.store
+  }
+
+  const requireRegistry = (): WalletRegistry => {
+    if (state.registry === undefined) {
+      throw new Error('This daemon was started without storage, so nothing can be persisted.')
+    }
+    return state.registry
+  }
+
+  /** A wallet id from a request, validated before it reaches any path. */
+  const requireWalletId = (request: IpcRequest): string => {
+    const value = params(request)['id']
+    if (!WalletRegistry.isId(value)) {
+      throw new Error('That is not a wallet id.')
+    }
+    return value
+  }
+
+  const requireColour = (request: IpcRequest): WalletColour => {
+    const value = params(request)['colour']
+    const found = WALLET_COLOURS.find((colour) => colour === value)
+    if (found === undefined) {
+      throw new Error(`Unknown colour. Expected one of: ${WALLET_COLOURS.join(', ')}.`)
+    }
+    return found
+  }
+
+  /**
+   * What every response naming a wallet says.
+   *
+   * Read off the session rather than off a request or a hint, so it is the
+   * authenticated identity of the seed that is actually loaded.
+   */
+  const activeWallet = (): Record<string, unknown> | null => {
+    const active = session.active
+    if (active === undefined) return null
+    return { id: active.id, label: active.label, colour: active.colour }
   }
 
   return async (request: IpcRequest): Promise<unknown> => {
@@ -756,6 +807,162 @@ export function createHandler(state: DaemonState): IpcHandler {
         requireStore().destroy()
         session.lock()
         return { destroyed: true }
+      }
+
+      // --- Several wallets --------------------------------------------------
+      /**
+       * Every wallet this device holds.
+       *
+       * Safe before unlocking, and that is the whole difficulty: everything
+       * here comes from the unsealed hint beside each blob, which anyone
+       * holding the card can edit. The response says so in a field rather than
+       * leaving a screen to remember, and no fingerprint is returned, because a
+       * fingerprint nobody has verified displayed next to a name is the exact
+       * shape of the mistake INV-UI-20 exists to prevent.
+       */
+      case 'wallets.list': {
+        const registry = requireRegistry()
+        return {
+          // Migration happens here rather than at boot so a device that has
+          // never been opened is not rewritten by a status poll.
+          migrated: registry.hasLegacy() ? registry.migrateLegacy() : null,
+          max: MAX_WALLETS,
+          active: activeWallet(),
+          wallets: registry.list().map((entry) => ({
+            id: entry.id,
+            label: entry.hint.label,
+            colour: entry.hint.colour,
+            network: entry.hint.network,
+            exists: entry.exists,
+            attemptsRemaining: entry.attemptsRemaining,
+            destroyed: entry.destroyed,
+          })),
+          // Stated in the payload so a screen cannot forget to say it.
+          verified: false,
+          note:
+            'Names, colours and networks here are read from files beside each wallet and are ' +
+            'not verified until that wallet is unlocked.',
+        }
+      }
+
+      /**
+       * Save the wallet currently in the session as a new named wallet.
+       *
+       * Refused before the mnemonic is confirmed written down, for the same
+       * reason `store.create` is: a device holding a wallet whose owner cannot
+       * recover it is worse than a device holding nothing.
+       */
+      case 'wallets.create': {
+        if (!session.backupConfirmed) {
+          throw new Error(
+            'Confirm you have written the mnemonic down before saving this wallet. It is the ' +
+              'only thing that recovers it.'
+          )
+        }
+        const registry = requireRegistry()
+        const id = registry.create({
+          seed: session.requireSeed(),
+          network: session.network,
+          passphrase: requireString(request, 'passphrase'),
+          label: requireString(request, 'label'),
+          colour: requireColour(request),
+          registrations: session.registrations,
+        })
+        session.attachTo({
+          id,
+          label: requireString(request, 'label'),
+          colour: requireColour(request),
+        })
+        return { id, active: activeWallet() }
+      }
+
+      /**
+       * Open one wallet, replacing whatever was open before.
+       *
+       * Locks first, unconditionally. Two seeds resident at once is the state
+       * from which a device signs with the wrong one, and locking first also
+       * means a failed unlock leaves nothing loaded rather than leaving the
+       * previous wallet open under a header naming the one that failed.
+       */
+      case 'wallets.unlock': {
+        const registry = requireRegistry()
+        const id = requireWalletId(request)
+
+        session.lock()
+
+        const opened = registry.unlock(id, requireString(request, 'passphrase'))
+        // Network first. Every derivation and the fingerprint depend on it.
+        session.setNetwork(opened.network)
+        session.loadFromStore(opened.seed, {
+          id: opened.id,
+          label: opened.label,
+          colour: opened.colour,
+        })
+        session.setRegistrations(opened.registrations)
+
+        return {
+          unlocked: true,
+          active: activeWallet(),
+          fingerprint: session.fingerprint,
+          registrations: opened.registrations.length,
+          // True when the picker was showing something the ciphertext
+          // disagreed with. A screen must tell the user rather than quietly
+          // fixing it, because the picker just got caught being wrong.
+          hintCorrected: opened.hintCorrected,
+          network: {
+            id: session.network.id,
+            label: session.network.label,
+            isMainnet: session.network.isMainnet,
+          },
+        }
+      }
+
+      /**
+       * Change the open wallet's name or colour.
+       *
+       * Requires the passphrase, and deliberately does NOT count a wrong one
+       * against the attempt budget. See WalletRegistry.rename: routing a
+       * cosmetic change through the counting path would make choosing a
+       * different colour a way to erase a wallet.
+       */
+      case 'wallets.rename': {
+        const registry = requireRegistry()
+        const active = session.active
+        if (active === undefined) {
+          throw new Error('No stored wallet is open, so there is nothing to rename.')
+        }
+        const label = requireString(request, 'label')
+        const colour = requireColour(request)
+
+        registry.rename(active.id, {
+          seed: session.requireSeed(),
+          network: session.network,
+          passphrase: requireString(request, 'passphrase'),
+          label,
+          colour,
+          registrations: session.registrations,
+        })
+        session.relabel(label, colour)
+        return { active: activeWallet() }
+      }
+
+      /**
+       * Erase the open wallet from this device.
+       *
+       * Only the open one. Erasing a wallet the user has not just proved they
+       * can open is a way to destroy something they still needed, and requiring
+       * it to be unlocked means the confirmation screen can name it from the
+       * ciphertext rather than from a hint.
+       */
+      case 'wallets.destroy': {
+        const registry = requireRegistry()
+        const active = session.active
+        if (active === undefined) {
+          throw new Error('No stored wallet is open, so there is nothing to erase.')
+        }
+        registry.destroy(active.id)
+        session.lock()
+        return { destroyed: true, id: active.id }
       }
 
       // --- Backup and restore ---------------------------------------------

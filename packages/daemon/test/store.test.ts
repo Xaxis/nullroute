@@ -16,7 +16,7 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'n
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { base64 } from '@scure/base'
-import { MAINNET, SIGNET, Secret } from '@nullroute/core'
+import { MAINNET, SIGNET, Secret, masterFingerprint } from '@nullroute/core'
 import {
   BadPassphraseError,
   KDF_DEFAULTS,
@@ -367,6 +367,38 @@ describe('daemon.store', () => {
     } finally {
       made.mockRestore()
     }
+  })
+
+  /**
+   * INV-STORE-7. What was sealed is what comes back, byte for byte.
+   *
+   * This looks tautological and is not. Adding a sealed identity introduced a
+   * check that wrapped the decoded seed in a `Secret` to derive a fingerprint
+   * from it, and `Secret.fromBytes` takes ownership: disposing the check
+   * zeroized the buffer the real seed was about to be built from. Every stored
+   * wallet unlocked into 32 zero bytes, which is a valid wallet, with a
+   * consistent fingerprint, that nobody has the keys to.
+   *
+   * Nothing else caught it. The store opened, the identity matched, the label
+   * was right, and the addresses were wrong.
+   */
+  it('returns-exactly-the-seed-that-was-sealed', () => {
+    const store = new WalletStore(dir, FAST)
+    using seed = seedBytes()
+    const before = Buffer.from(seed.bytes).toString('hex')
+
+    store.create(seed, SIGNET, PASSPHRASE, [], {
+      label: 'Cold storage',
+      colour: 'teal',
+      fingerprint: masterFingerprint(seed, SIGNET),
+    })
+
+    const opened = store.unlock(PASSPHRASE)
+    expect(Buffer.from(opened.seed.bytes).toString('hex')).toBe(before)
+    expect(Buffer.from(opened.seed.bytes).toString('hex')).not.toBe('00'.repeat(32))
+    expect(opened.label).toBe('Cold storage')
+    expect(opened.colour).toBe('teal')
+    opened.seed.dispose()
   })
 
   it('erases-on-request', () => {

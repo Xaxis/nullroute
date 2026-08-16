@@ -1,0 +1,205 @@
+import { type ReactElement, useState } from 'react'
+import { Screen } from '../components/Screen.js'
+import { Button } from '../components/Button.js'
+import { TextKeyboard } from '../components/TextKeyboard.js'
+
+/**
+ * Choosing which wallet to open.
+ *
+ * Spec: ui.screens.wallets
+ *
+ * Every word on this screen before a passphrase is entered is unverified. The
+ * names, colours and networks are read from a file beside each sealed blob, and
+ * anyone who has held the card could have edited them. That is not a flaw to be
+ * hidden: the device cannot know what a wallet is called until it opens it, and
+ * a screen that presented these as facts would be lying with a straight face.
+ *
+ * So the honesty note is not dismissible and does not scroll away. It costs a
+ * line of a 480px panel and it is the difference between a picker and a claim.
+ *
+ * WHAT IS NOT SHOWN. No fingerprint. It is the one value on this device with a
+ * cryptographic ground truth, and INV-UI-20 already establishes the rule that a
+ * fingerprint nobody verified must not be displayed as though it were checked.
+ * A picker is precisely where that mistake would be made, because a user
+ * comparing eight hex characters believes they have proved something.
+ */
+
+export interface WalletRow {
+  readonly id: string
+  readonly label: string
+  readonly colour: string
+  readonly network: string
+  readonly exists: boolean
+  readonly attemptsRemaining: number
+  readonly destroyed: boolean
+}
+
+export interface WalletsScreenProps {
+  readonly wallets: readonly WalletRow[]
+  readonly max: number
+  /** The open wallet, if one is open. Authenticated, unlike the rows. */
+  readonly active?: { readonly id: string; readonly label: string } | null
+  readonly onUnlock: (id: string, passphrase: string) => Promise<void>
+  readonly onCreate: () => void
+  readonly onCancel?: () => void
+  readonly banner?: ReactElement | null
+}
+
+export function WalletsScreen(props: WalletsScreenProps): ReactElement {
+  const { wallets, max, active, onUnlock, onCreate, onCancel, banner } = props
+
+  const [selected, setSelected] = useState<WalletRow | null>(null)
+  const [passphrase, setPassphrase] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const unlock = async (): Promise<void> => {
+    if (selected === null) return
+    setBusy(true)
+    setError(null)
+    try {
+      await onUnlock(selected.id, passphrase)
+    } catch (err) {
+      setError((err as Error).message)
+      // Cleared on failure so a second attempt starts from nothing. A field
+      // still holding a wrong passphrase is one a user retries unchanged.
+      setPassphrase('')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // --- Entering a passphrase for one wallet ---------------------------------
+  if (selected !== null) {
+    return (
+      <Screen
+        title={selected.label}
+        subtitle="This name is not confirmed until the wallet opens."
+        banner={banner}
+        testId="wallet-unlock-screen"
+        actions={
+          <>
+            <Button
+              onClick={() => {
+                setSelected(null)
+                setPassphrase('')
+                setError(null)
+              }}
+              testId="wallet-unlock-back"
+            >
+              Back
+            </Button>
+            <div className="nr-spacer" />
+            <span className="nr-hint" data-testid="wallet-unlock-attempts">
+              {selected.attemptsRemaining} attempts left
+            </span>
+            <Button
+              variant="primary"
+              disabled={passphrase.length === 0 || busy}
+              onClick={() => {
+                void unlock()
+              }}
+              testId="wallet-unlock-submit"
+            >
+              {busy ? 'Opening' : 'Unlock'}
+            </Button>
+          </>
+        }
+      >
+        <TextKeyboard
+          value={passphrase}
+          onChange={setPassphrase}
+          onSubmit={() => {
+            if (passphrase.length > 0 && !busy) void unlock()
+          }}
+          testId="wallet-unlock-keyboard"
+        />
+
+        {error !== null && (
+          <div className="nr-banner nr-banner--danger" data-testid="wallet-unlock-error">
+            <strong>Not opened</strong>
+            <span>{error}</span>
+          </div>
+        )}
+
+        <p className="nr-note">
+          Ten wrong attempts in a row erase this wallet from the device. That counter stops
+          somebody guessing at a device they picked up. It does not stop anyone who copied the
+          card first, so the passphrase is what is really protecting this.
+        </p>
+      </Screen>
+    )
+  }
+
+  // --- The picker -----------------------------------------------------------
+  return (
+    <Screen
+      title="Wallets"
+      subtitle={`${String(wallets.length)} of ${String(max)} on this device`}
+      banner={banner}
+      testId="wallets-screen"
+      actions={
+        <>
+          {onCancel !== undefined && (
+            <Button onClick={onCancel} testId="wallets-cancel">
+              Back
+            </Button>
+          )}
+          <div className="nr-spacer" />
+          <Button
+            variant="primary"
+            disabled={wallets.length >= max}
+            onClick={onCreate}
+            testId="wallets-add"
+          >
+            {wallets.length >= max ? 'Device is full' : 'Add a wallet'}
+          </Button>
+        </>
+      }
+    >
+      {/* Not dismissible, and first, because everything below it is a claim
+          made by a file rather than by the device. */}
+      <p className="nr-note" data-testid="wallets-unverified">
+        These names, colours and networks are read from files on this device and are not confirmed
+        until you open a wallet. If one opens with a different name to the one you tapped, the
+        device will say so.
+      </p>
+
+      <div className="nr-wlist" data-testid="wallet-rows">
+        {wallets.map((wallet) => (
+          <button
+            key={wallet.id}
+            type="button"
+            className="nr-wrow"
+            disabled={!wallet.exists}
+            onClick={() => {
+              setSelected(wallet)
+              setPassphrase('')
+              setError(null)
+            }}
+            data-testid={`wallet-row-${wallet.id}`}
+          >
+            <span className="nr-wrow__dot" data-colour={wallet.colour} />
+            <span className="nr-wrow__label">{wallet.label}</span>
+            <span className="nr-spacer" />
+            {/* Always, not only off mainnet. With several wallets the absence
+                of a warning is not a signal a user can rely on. */}
+            <span
+              className={`nr-wrow__net${wallet.network === 'mainnet' ? '' : ' nr-wrow__net--test'}`}
+            >
+              {wallet.network}
+            </span>
+            {active?.id === wallet.id && <span className="nr-wrow__open">open</span>}
+            {wallet.destroyed && <span className="nr-wrow__gone">erased</span>}
+          </button>
+        ))}
+
+        {wallets.length === 0 && (
+          <p className="nr-hint" data-testid="wallets-empty">
+            No wallets on this device yet.
+          </p>
+        )}
+      </div>
+    </Screen>
+  )
+}

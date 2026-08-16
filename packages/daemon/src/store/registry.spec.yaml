@@ -1,0 +1,197 @@
+id: daemon.store.registry
+version: 1
+title: Several independent wallets on one device
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Let one device hold several wallets, named and colour-tagged so a user can
+  tell them apart, without ever letting the device sign with a wallet the user
+  did not choose.
+
+covers:
+  - packages/daemon/src/store/registry.ts::WalletRegistry
+  - packages/daemon/src/store/registry.ts::normaliseLabel
+  - packages/daemon/src/store/registry.ts::hintNetwork
+  - packages/daemon/src/store/registry.ts::MAX_WALLETS
+  - packages/daemon/src/store/registry.ts::MAX_LABEL
+  - packages/daemon/src/store/registry.ts::WALLET_COLOURS
+  - packages/daemon/src/store/registry.ts::DEFAULT_COLOUR
+
+algorithm: >
+  Each wallet is a WalletStore of its own, in a directory named by 64 bits of
+  random hex, under its own passphrase. Nothing is shared between them: opening
+  one reveals nothing about another and cannot weaken another.
+
+  A wallet's identity is sealed with its seed. Beside the blob sits an unsealed
+  hint carrying the same label, colour and network, so the picker can show
+  something before a passphrase is typed. On every successful unlock the hint is
+  compared with what was sealed, rewritten if it disagreed, and the caller is
+  told it disagreed.
+
+  Creating refuses a seed the device already holds on the same network, refuses
+  a label another wallet already uses, and refuses past MAX_WALLETS.
+
+  Renaming re-seals through a path that verifies the passphrase WITHOUT counting
+  a failure, because the counting path erases the wallet at its limit.
+
+  A pre-multi-wallet store at the root is moved into a directory of its own by
+  copying, verifying, then unlinking the original.
+
+  THIS IS NOT THE DURESS FEATURE. docs/THREAT-MODEL.md uses "profile" for a set
+  of indistinguishable wallets selected by which PIN is typed, where the device
+  must never reveal how many exist. That is phase 7 and is the opposite of this.
+  The vocabulary is kept apart deliberately.
+
+# MW is multi-wallet. Deliberately not INV-WALLET-n, which docs/THREAT-MODEL.md
+# already uses for the phase 5 wallet layer in packages/wallet: a different
+# feature, a different assurance tier, and one that does not exist yet.
+invariants:
+  - id: INV-MW-1
+    statement: >
+      Wallets are independent. Each has its own file, its own passphrase and its
+      own attempt counter, and erasing or exhausting one leaves the others
+      untouched.
+    tests:
+      - packages/daemon/test/registry.test.ts::holds-several-independent-wallets
+      - packages/daemon/test/registry.test.ts::still-counts-and-erases-on-repeated-wrong-unlocks
+      - packages/daemon/test/registry.test.ts::erases-one-wallet-and-leaves-the-others
+      - packages/daemon/test/registry.test.ts::caps-how-many-wallets-one-device-holds
+
+  - id: INV-MW-2
+    statement: >
+      Nothing a user typed ever reaches a filesystem path. Directory names are
+      random ids, and an id that did not come from the registry is refused.
+    tests:
+      - packages/daemon/test/registry.test.ts::never-lets-a-name-influence-a-path
+      - packages/daemon/test/wallets.ipc.test.ts::refuses-an-id-that-is-not-an-id
+
+  - id: INV-MW-3
+    statement: >
+      A wallet's identity comes from inside its ciphertext. A hint outside that
+      disagrees is overwritten on unlock and the disagreement is reported, and a
+      corrupt hint never makes a good wallet unreachable.
+    tests:
+      - packages/daemon/test/registry.test.ts::takes-identity-from-inside-the-ciphertext-and-repairs-the-hint
+      - packages/daemon/test/registry.test.ts::reads-a-corrupt-hint-as-a-placeholder-rather-than-hiding-the-wallet
+      - packages/daemon/test/registry.test.ts::ignores-directories-that-are-not-wallets
+      - packages/daemon/test/wallets.ipc.test.ts::reports-when-the-picker-was-showing-the-wrong-name
+
+  - id: INV-MW-4
+    statement: >
+      One seed is one wallet. A seed already stored on a network cannot be
+      stored again on that network under a second passphrase, and two wallets
+      cannot share a name, including names that differ only by Unicode form.
+    tests:
+      - packages/daemon/test/registry.test.ts::refuses-a-second-wallet-holding-a-seed-it-already-has
+      - packages/daemon/test/registry.test.ts::refuses-two-wallets-with-the-same-name
+      - packages/daemon/test/registry.test.ts::normalises-so-two-identical-looking-names-collide
+
+  - id: INV-MW-5
+    statement: >
+      Renaming cannot destroy a wallet. A wrong passphrase on a cosmetic change
+      spends none of the attempt budget, while a wrong passphrase at the picker
+      still counts and still erases at the limit.
+    tests:
+      - packages/daemon/test/registry.test.ts::renames-without-spending-the-attempt-budget
+      - packages/daemon/test/wallets.ipc.test.ts::renames-the-open-wallet-without-risking-it
+
+  - id: INV-MW-6
+    statement: >
+      A device that already holds a single wallet keeps it. Migration copies,
+      verifies, then removes, and never runs twice.
+    tests:
+      - packages/daemon/test/registry.test.ts::migrates-a-pre-multi-wallet-store-without-losing-it
+      - packages/daemon/test/registry.test.ts::opens-a-v1-store-that-sealed-no-identity
+      - packages/daemon/test/wallets.ipc.test.ts::migrates-a-legacy-store-the-first-time-it-lists
+
+  - id: INV-MW-7
+    statement: >
+      A label that cannot be read, or that can be made to look like another
+      wallet's, is refused rather than stored. The sealed identity must describe
+      the sealed seed.
+    tests:
+      - packages/daemon/test/registry.test.ts::refuses-a-name-that-does-not-display
+      - packages/daemon/test/registry.test.ts::strips-characters-that-can-forge-another-wallets-name
+      - packages/daemon/test/registry.test.ts::refuses-a-store-whose-sealed-identity-does-not-match-its-seed
+
+  - id: INV-MW-8
+    statement: >
+      Only one wallet is open at a time. Switching replaces the loaded seed, and
+      a failed switch leaves nothing open rather than the previous wallet under
+      the new one's name.
+    tests:
+      - packages/daemon/test/wallets.ipc.test.ts::switches-wallets-and-never-holds-two-seeds
+      - packages/daemon/test/wallets.ipc.test.ts::leaves-nothing-open-when-a-switch-fails
+      - packages/daemon/test/wallets.ipc.test.ts::erases-only-the-open-wallet-and-locks-afterwards
+
+  - id: INV-MW-9
+    statement: >
+      Listing wallets returns no key material and no fingerprint, states that
+      its contents are unverified, and a wallet cannot be saved before its
+      mnemonic is confirmed written down.
+    tests:
+      - packages/daemon/test/wallets.ipc.test.ts::never-returns-key-material-for-any-wallet
+      - packages/daemon/test/wallets.ipc.test.ts::lists-what-the-device-holds-and-says-it-is-unverified
+      - packages/daemon/test/wallets.ipc.test.ts::will-not-save-a-wallet-before-the-mnemonic-is-confirmed
+      - packages/daemon/test/wallets.ipc.test.ts::refuses-a-colour-it-does-not-know
+      - packages/daemon/test/wallets.ipc.test.ts::refuses-to-rename-or-erase-with-nothing-open
+
+threats:
+  - INV-KEY-1
+  - INV-PSBT-2
+
+security_notes: >
+  THE FAILURE THIS MODULE EXISTS TO PREVENT is a user reviewing a transaction
+  under one wallet's name and signing with another's keys. Everything else here
+  is in service of that.
+
+  The mechanism is that identity travels with the seed. A label is sealed in the
+  same ciphertext as the bytes it describes, so the only way to see a name is to
+  have opened the wallet it belongs to, and the answer the signing screen quotes
+  comes from the session rather than from anything the picker rendered.
+
+  WHAT THE UNSEALED HINT CAN DO. Anyone holding the card can edit it, so the
+  picker can be made to lie about which wallet is which. This is worth less than
+  it first appears: the same access allows deleting the blob outright, so
+  relabelling grants no capability the attacker lacked. What matters is that the
+  lie cannot survive an unlock, and INV-MW-3 is that.
+
+  The one place the lie has teeth is the attempt counter. A relabelled picker
+  can steer a user's failed attempts at the wrong wallet, and ten of them erase
+  it. That is a real loss and it is bounded by the same observation: an attacker
+  with write access to the card could simply delete the file. It is stated here
+  rather than mitigated, because the mitigations available (dropping the
+  counter, or requiring a confirmation before the last attempt) cost more than
+  the attack does.
+
+  NO FINGERPRINT IS SHOWN IN THE PICKER, and the hint's copy exists only to
+  refuse a duplicate seed. INV-UI-20 already establishes that a fingerprint
+  chosen by whoever wrote the data must not be presented as verified, and a
+  picker is exactly where a user would treat eight hex characters as proof.
+
+  RENAMING IS NOT A DESTRUCTIVE OPERATION and had to be made so deliberately.
+  WalletStore.reseal verifies a passphrase by calling unlock, which counts
+  failures and erases at ten. Renaming through it would mean changing a colour
+  swatch could destroy a wallet, on a screen showing no counter. resealVerified
+  exists for exactly this, and it is sound because it requires the wallet to be
+  open already: a caller holding the decrypted seed has passed the gate the
+  counter guards.
+
+  MIGRATION IS THE MOST DANGEROUS PATH IN THIS MODULE. It runs once, on a device
+  with real money on it, and there is no second chance. It copies, verifies the
+  copy is readable, and only then unlinks. A crash at any point leaves either
+  the original or both copies, never neither.
+
+  WHAT THIS DOES NOT SOLVE. A user who cannot remember which passphrase belongs
+  to which wallet is not helped by any of this. Nor is a user who names two
+  wallets similarly enough to confuse themselves, beyond the exact-match refusal.
+  And nothing here is a coercion defence. The device lists what it holds, by
+  name, on purpose, which is the exact opposite of what the planned duress
+  design in docs/THREAT-MODEL.md requires of it. That is not naming the duress
+  invariant, because doing so would make this file look like something that
+  enforces it.
+
+references:
+  - docs/THREAT-MODEL.md
+  - docs/AIR-GAP.md

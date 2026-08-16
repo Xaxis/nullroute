@@ -29,6 +29,20 @@ import { type Network, type Secret, MAINNET, masterFingerprint } from '@nullrout
 /** Where the current seed came from, which decides whether it may be shown. */
 export type SeedProvenance = 'generated' | 'imported' | 'loaded'
 
+/**
+ * Which stored wallet the session is using, when it came from one.
+ *
+ * Absent for a wallet that has been generated or imported and not yet saved.
+ * Every field here came from inside the ciphertext, so this is the authenticated
+ * answer to "which wallet is about to sign", and it is what the signing screen
+ * is told rather than anything the picker displayed.
+ */
+export interface ActiveWallet {
+  readonly id: string
+  readonly label: string
+  readonly colour: string
+}
+
 export interface WalletSession {
   readonly seed: Secret
   /**
@@ -44,6 +58,8 @@ export interface WalletSession {
   readonly fingerprint: string
   /** True until the user confirms they have written the mnemonic down. */
   confirmedBackup: boolean
+  /** Absent until this wallet is saved to, or loaded from, the store. */
+  active: ActiveWallet | undefined
 }
 
 export class SessionError extends Error {
@@ -110,6 +126,9 @@ export class Session {
       // A generated seed has not been written down yet. An imported one, by
       // definition, already exists on paper somewhere.
       confirmedBackup: provenance !== 'generated',
+      // Not yet saved anywhere, so it belongs to no stored wallet. Set by
+      // `attachTo` once it has been sealed.
+      active: undefined,
     }
     this.#unlocked = true
   }
@@ -124,7 +143,7 @@ export class Session {
    * exactly once in a wallet's life, at creation, and the `loaded` provenance
    * is what `revealMnemonic` refuses on.
    */
-  loadFromStore(seed: Secret): void {
+  loadFromStore(seed: Secret, active?: ActiveWallet): void {
     this.#wallet?.seed.dispose()
     this.#wallet = {
       seed,
@@ -135,8 +154,47 @@ export class Session {
       // It came off disk, so it existed before this session and its backup is
       // not this session's business to assert either way.
       confirmedBackup: true,
+      active,
     }
     this.#unlocked = true
+  }
+
+  /**
+   * Which stored wallet this session is using.
+   *
+   * The answer every screen showing money should be quoting. It is authenticated
+   * because it came out of the ciphertext, unlike anything the picker rendered
+   * before a passphrase was typed.
+   */
+  get active(): ActiveWallet | undefined {
+    return this.#wallet?.active
+  }
+
+  /**
+   * Bind the session's wallet to a stored one, after it has been sealed.
+   *
+   * Refuses to rebind. A session whose seed already belongs to one stored wallet
+   * cannot be pointed at another without going through `lock`, because a device
+   * that could would be one where the header names a wallet and the seed in
+   * memory is a different one.
+   */
+  attachTo(active: ActiveWallet): void {
+    const wallet = this.#wallet
+    if (wallet === undefined) throw new SessionError('No wallet is loaded.')
+    if (wallet.active !== undefined && wallet.active.id !== active.id) {
+      throw new SessionError(
+        `This session is using ${wallet.active.label}. Lock before switching wallets, so the ` +
+          `seed in memory is always the one the screen names.`
+      )
+    }
+    wallet.active = active
+  }
+
+  /** Update the name and colour after a rename, without rebinding. */
+  relabel(label: string, colour: string): void {
+    const wallet = this.#wallet
+    if (wallet?.active === undefined) throw new SessionError('No stored wallet is loaded.')
+    wallet.active = { id: wallet.active.id, label, colour }
   }
 
   /** Registered quorums, in registration order. */

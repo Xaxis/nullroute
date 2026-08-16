@@ -24,6 +24,8 @@ import { ImportScreen } from './screens/ImportScreen.js'
 import { WalletScreen, type ScriptType } from './screens/WalletScreen.js'
 import { PsbtScreen, type PsbtReviewView } from './screens/PsbtScreen.js'
 import { ScanScreen, type ScanResult } from './screens/ScanScreen.js'
+import { WalletsScreen, type WalletRow } from './screens/WalletsScreen.js'
+import { WalletChip } from './components/WalletChip.js'
 import { PassphraseScreen } from './screens/PassphraseScreen.js'
 import {
   MultisigScreen,
@@ -79,6 +81,8 @@ type Stage =
   /** A wallet has just been created and can be saved to this device. */
   | { readonly at: 'protect' }
   | { readonly at: 'multisig' }
+  /** Choosing which of several wallets to open. */
+  | { readonly at: 'wallets' }
 
 const transport = httpTransport()
 
@@ -106,6 +110,20 @@ export function App() {
   const [store, setStore] = useState<StoreStatus | null>(null)
   const [expanded, setExpanded] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [wallets, setWallets] = useState<readonly WalletRow[]>([])
+  const [maxWallets, setMaxWallets] = useState(8)
+  /**
+   * The open wallet, as the daemon reports it.
+   *
+   * From the response to unlocking, which is derived from the seed actually
+   * loaded, and never from the row the user tapped. Those differ exactly when
+   * something has gone wrong, which is when it matters.
+   */
+  const [activeWallet, setActiveWallet] = useState<{
+    id: string
+    label: string
+    colour: string
+  } | null>(null)
 
   const refresh = useCallback(async (): Promise<DeviceStatus> => {
     const next = await call<DeviceStatus>(transport, 'device.status')
@@ -138,8 +156,72 @@ export function App() {
     }
   }, [])
 
+  /**
+   * The header, on every screen.
+   *
+   * The wallet chip comes AFTER the network banner in the DOM, so when the 800px
+   * header runs out of room it is the wallet label that truncates and never the
+   * network warning. INV-UI-3 requires that warning to stay visible, and a
+   * decoration must not be able to push it off the panel.
+   */
   const banner =
-    status !== null && !status.network.isMainnet ? <NetworkBanner network={status.network} /> : null
+    status === null ? null : (
+      <>
+        {!status.network.isMainnet && <NetworkBanner network={status.network} />}
+        {activeWallet !== null && (
+          <WalletChip
+            label={activeWallet.label}
+            colour={activeWallet.colour}
+            networkLabel={status.network.label}
+            isMainnet={status.network.isMainnet}
+          />
+        )}
+      </>
+    )
+
+  const loadWallets = useCallback(async (): Promise<void> => {
+    const listed = await call<{
+      wallets: readonly WalletRow[]
+      max: number
+      active: { id: string; label: string; colour: string } | null
+    }>(transport, 'wallets.list', {})
+    setWallets(listed.wallets)
+    setMaxWallets(listed.max)
+    setActiveWallet(listed.active)
+  }, [])
+
+  /**
+   * Refresh the list whenever the picker is entered.
+   *
+   * Fetched on entry rather than held in sync, so a device whose wallets
+   * changed in another session shows what is there rather than a cached list.
+   * In an effect rather than in render, because listing migrates a legacy
+   * store on first sight and that must happen once, not on every paint.
+   */
+  useEffect(() => {
+    if (stage.at !== 'wallets') return
+    void loadWallets()
+  }, [stage.at, loadWallets])
+
+  const unlockWallet = useCallback(
+    async (id: string, passphrase: string): Promise<void> => {
+      const opened = await call<{
+        active: { id: string; label: string; colour: string }
+        hintCorrected: boolean
+      }>(transport, 'wallets.unlock', { id, passphrase })
+      setActiveWallet(opened.active)
+      // The picker was showing something the ciphertext disagreed with. Say so
+      // rather than quietly correcting it: the row the user tapped was wrong.
+      setError(
+        opened.hintCorrected
+          ? `This wallet is called "${opened.active.label}". The picker was showing something ` +
+              `else, which has now been corrected.`
+          : null
+      )
+      setStage({ at: 'wallet' })
+    },
+    []
+  )
 
   // --- IPC-backed callbacks ------------------------------------------------
 
@@ -460,6 +542,24 @@ export function App() {
         onSign={signPsbt}
         onBack={() => {
           setStage({ at: 'wallet' })
+        }}
+      />
+    )
+  }
+
+  if (stage.at === 'wallets') {
+    return (
+      <WalletsScreen
+        banner={banner}
+        wallets={wallets}
+        max={maxWallets}
+        active={activeWallet}
+        onUnlock={unlockWallet}
+        onCreate={() => {
+          setStage({ at: 'setup' })
+        }}
+        onCancel={() => {
+          setStage({ at: 'lock' })
         }}
       />
     )

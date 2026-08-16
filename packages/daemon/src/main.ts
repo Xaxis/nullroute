@@ -27,6 +27,7 @@ import { startIpcServer } from './ipc/socket.js'
 import { createHandler } from './handler.js'
 import { Session } from './session.js'
 import { WalletStore } from './store/store.js'
+import { WalletRegistry } from './store/registry.js'
 
 const REPO_ROOT = process.env['NULLROUTE_ROOT'] ?? fileURLToPath(new URL('../../..', import.meta.url))
 const SOCKET_PATH = process.env['NULLROUTE_SOCKET'] ?? '/run/nullroute/nullrouted.sock'
@@ -62,7 +63,11 @@ async function main(): Promise<void> {
   const attestation = requirePassingVerification(REPO_ROOT, version())
 
   const store = new WalletStore(STORE_DIR)
-  const state = { attestation, session: new Session(), store }
+  // Both, deliberately. The registry owns the several-wallet directories; the
+  // single store is still the legacy location the registry migrates out of, and
+  // the old store.* methods keep working against it until nothing calls them.
+  const registry = new WalletRegistry(STORE_DIR)
+  const state = { attestation, session: new Session(), store, registry }
   const server = await startIpcServer({
     socketPath: SOCKET_PATH,
     handler: createHandler(state),

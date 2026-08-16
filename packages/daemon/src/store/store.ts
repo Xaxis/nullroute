@@ -28,7 +28,7 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { randomBytes } from 'node:crypto'
-import { Secret, networkById, type Network } from '@nullroute/core'
+import { Secret, masterFingerprint, networkById, type Network } from '@nullroute/core'
 import {
   BadPassphraseError,
   type KdfCost,
@@ -71,7 +71,11 @@ interface Sidecar {
  * a way to get a user to treat real addresses as worthless test ones.
  */
 interface SealedPayload {
-  readonly v: 1
+  /**
+   * 1 is a store written before this device could hold more than one wallet.
+   * 2 adds the wallet's identity. Both are readable; only 2 is written.
+   */
+  readonly v: 1 | 2
   readonly network: string
   /** Hex, because JSON has no bytes. */
   readonly seed: string
@@ -85,12 +89,42 @@ interface SealedPayload {
    * before multisig existed simply has none, which is the correct reading.
    */
   readonly registrations?: readonly string[]
+  /**
+   * The wallet's name and colour, sealed with the seed (v2).
+   *
+   * Inside the ciphertext for the same reason the network is. A copy lives
+   * beside the file so a picker can show something before any passphrase is
+   * typed, and that copy is editable by whoever holds the card. If the two
+   * disagree, this one is the wallet and the other one is a hint that was
+   * wrong, which the registry rewrites and reports.
+   */
+  readonly label?: string
+  readonly colour?: string
+  /**
+   * The master fingerprint of the sealed seed, on the sealed network.
+   *
+   * Not a defence against an attacker: it is sealed alongside the thing it
+   * describes, so anyone who could change one could change both. It is a check
+   * against this code, and it fires if a future change ever seals an identity
+   * beside a seed it does not belong to.
+   */
+  readonly fingerprint?: string
+}
+
+/** A wallet's name and colour, as sealed. */
+export interface WalletIdentity {
+  readonly label: string
+  readonly colour: string
+  readonly fingerprint: string
 }
 
 export interface StoredWallet {
   readonly seed: Secret
   readonly network: Network
   readonly registrations: readonly string[]
+  /** Absent for a v1 store, which sealed no identity. */
+  readonly label?: string
+  readonly colour?: string
 }
 
 export interface StoreStatus {
@@ -126,6 +160,11 @@ export class WalletStore {
     return this.#blob
   }
 
+  /** The unauthenticated attempt counter beside the blob. */
+  get sidecarPath(): string {
+    return this.#sidecar
+  }
+
   exists(): boolean {
     return existsSync(this.#blob)
   }
@@ -152,19 +191,23 @@ export class WalletStore {
     seed: Secret,
     network: Network,
     passphrase: string,
-    registrations: readonly string[] = []
+    registrations: readonly string[] = [],
+    identity?: WalletIdentity
   ): void {
     if (this.exists()) {
       throw new StoreError(
-        'A wallet already exists on this device. Erase it explicitly before creating another.'
+        'A wallet already exists here. Erase it explicitly before creating another.'
       )
     }
 
     const payload: SealedPayload = {
-      v: 1,
+      v: 2,
       network: network.id,
       seed: Buffer.from(seed.bytes).toString('hex'),
       registrations,
+      ...(identity === undefined
+        ? {}
+        : { label: identity.label, colour: identity.colour, fingerprint: identity.fingerprint }),
     }
     using plaintext = Secret.fromBytes(
       new TextEncoder().encode(JSON.stringify(payload)),
@@ -220,27 +263,113 @@ export class WalletStore {
     seed: Secret,
     network: Network,
     passphrase: string,
-    registrations: readonly string[]
+    registrations: readonly string[],
+    identity?: WalletIdentity
   ): void {
     if (!this.exists()) {
-      throw new StoreError('There is no wallet on this device to update.')
+      throw new StoreError('There is no wallet here to update.')
     }
     // Verified before the old blob is replaced. Re-sealing under a passphrase
     // that does not open the current store would silently change the
     // passphrase, and the user would discover it at the next unlock.
+    //
+    // This path COUNTS a failure, because it is reachable from registration,
+    // which a locked device can be walked into. See `resealVerified` for the
+    // cosmetic case, where counting would make renaming a wallet a way to
+    // destroy it.
     this.unlock(passphrase).seed.dispose()
+    this.#writeSealed(seed, network, passphrase, registrations, identity)
+  }
 
+  /**
+   * Re-seal without counting a failed passphrase against the wallet.
+   *
+   * For changes made while the wallet is already open: a name, a colour. The
+   * passphrase is still verified, so a wrong one changes nothing, but a wrong
+   * one also does not spend part of the ten-attempt budget that erases the
+   * wallet. The counter exists to slow someone guessing at a locked device, and
+   * a caller holding the decrypted seed has already passed that gate.
+   */
+  resealVerified(
+    seed: Secret,
+    network: Network,
+    passphrase: string,
+    registrations: readonly string[],
+    identity?: WalletIdentity
+  ): void {
+    if (!this.exists()) {
+      throw new StoreError('There is no wallet here to update.')
+    }
+    // Opened directly rather than through `unlock`, so the sidecar is untouched
+    // on both the success and the failure path.
+    open(this.#readEnvelope(), passphrase).dispose()
+    this.#writeSealed(seed, network, passphrase, registrations, identity)
+  }
+
+  #writeSealed(
+    seed: Secret,
+    network: Network,
+    passphrase: string,
+    registrations: readonly string[],
+    identity?: WalletIdentity
+  ): void {
     const payload: SealedPayload = {
-      v: 1,
+      v: 2,
       network: network.id,
       seed: Buffer.from(seed.bytes).toString('hex'),
       registrations,
+      ...(identity === undefined
+        ? {}
+        : { label: identity.label, colour: identity.colour, fingerprint: identity.fingerprint }),
     }
     using plaintext = Secret.fromBytes(
       new TextEncoder().encode(JSON.stringify(payload)),
       'store-payload'
     )
     this.#writeAtomic(this.#blob, JSON.stringify(seal(plaintext, passphrase, this.#kdf), null, 2))
+  }
+
+  /**
+   * Write a file beside the blob, atomically.
+   *
+   * For the registry's unsealed hint. Routed through here rather than written
+   * directly so every file in a wallet's directory gets the same 0600 and the
+   * same write-then-rename, including the ones that hold nothing secret.
+   */
+  writeSidecarFile(name: string, contents: string): void {
+    if (name.includes('/') || name.includes('\\') || name.includes('..')) {
+      throw new StoreError(`"${name}" is not a file name.`)
+    }
+    this.#writeAtomic(join(dirname(this.#blob), name), contents)
+  }
+
+  /**
+   * Copy another store's files into this one, without opening either.
+   *
+   * For moving a pre-multi-wallet store into a directory of its own. No
+   * passphrase is involved and the ciphertext is copied verbatim, so a
+   * migration cannot depend on the user being able to unlock right now.
+   */
+  adoptFrom(source: WalletStore): void {
+    if (!existsSync(source.path)) {
+      throw new StoreError('There is nothing at the source to move.')
+    }
+    this.#writeAtomic(this.#blob, readFileSync(source.path, 'utf8'))
+    if (existsSync(source.sidecarPath)) {
+      this.#writeAtomic(this.#sidecar, readFileSync(source.sidecarPath, 'utf8'))
+    }
+  }
+
+  /**
+   * Remove the blob and its counter, after they have been copied elsewhere.
+   *
+   * Distinct from `destroy`, which overwrites first because it is erasing the
+   * only copy. Here another copy exists and has been verified, so scribbling on
+   * these bytes protects nothing that the encryption did not already protect.
+   */
+  unlink(): void {
+    rmSync(this.#blob, { force: true })
+    rmSync(this.#sidecar, { force: true })
   }
 
   /**
@@ -282,7 +411,11 @@ export class WalletStore {
       throw new StoreError('The store opened but its contents are not an object.')
     }
     const payload = parsed as Partial<SealedPayload>
-    if (payload.v !== 1 || typeof payload.seed !== 'string' || typeof payload.network !== 'string') {
+    if (
+      (payload.v !== 1 && payload.v !== 2) ||
+      typeof payload.seed !== 'string' ||
+      typeof payload.network !== 'string'
+    ) {
       throw new StoreError('The store contents are not in a layout this build understands.')
     }
     // Absent is normal for a store written before multisig, and is not the
@@ -305,15 +438,52 @@ export class WalletStore {
     // already constructed, orphaned, and never disposed. That is an INV-KEY-2
     // violation reachable by opening a store written by a newer build, which
     // the downgrade-and-verify workflow in docs/VERIFICATION.md invites.
+    // A v1 store sealed no identity, which is not the same as a corrupt one.
+    // A v2 store that carries a label of the wrong type IS corrupt, and is
+    // refused rather than half read: a label decides what the signing screen
+    // says this wallet is called.
+    let label: string | undefined
+    let colour: string | undefined
+    if (payload.v === 2) {
+      if (payload.label !== undefined && typeof payload.label !== 'string') {
+        throw new StoreError('The store contains a wallet name this build cannot read.')
+      }
+      if (payload.colour !== undefined && typeof payload.colour !== 'string') {
+        throw new StoreError('The store contains a colour tag this build cannot read.')
+      }
+      label = payload.label
+      colour = payload.colour
+    }
+
     const network = networkById(payload.network)
+    const bytes = Uint8Array.from(Buffer.from(payload.seed, 'hex'))
+
+    // The sealed fingerprint is checked against the sealed seed before either
+    // is handed out. Both were written by this code under one passphrase, so
+    // this catches a bug here rather than an attacker: it fires if an identity
+    // is ever sealed beside a seed it does not describe, which would mean the
+    // signing screen naming a wallet whose keys are not the ones signing.
+    if (typeof payload.fingerprint === 'string') {
+      // copyOf, NOT fromBytes. fromBytes takes ownership and disposal zeroizes
+      // the buffer in place, so checking through it would hand back a seed of
+      // 32 zero bytes: every stored wallet would unlock into the same empty
+      // wallet, and the fingerprint on screen would be consistent with it.
+      using check = Secret.copyOf(bytes, 'fingerprint-check')
+      const actual = masterFingerprint(check, network)
+      if (actual !== payload.fingerprint) {
+        throw new StoreError(
+          `This store's sealed identity does not match its seed (says ${payload.fingerprint}, ` +
+            `derives ${actual}). Refusing to open it.`
+        )
+      }
+    }
 
     return {
-      seed: Secret.fromBytes(
-        Uint8Array.from(Buffer.from(payload.seed, 'hex')),
-        'stored-seed'
-      ),
+      seed: Secret.fromBytes(bytes, 'stored-seed'),
       network,
       registrations,
+      ...(label === undefined ? {} : { label }),
+      ...(colour === undefined ? {} : { colour }),
     }
   }
 

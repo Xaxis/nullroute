@@ -54,6 +54,11 @@ export type { ScanScreenProps, ScanResult } from './screens/ScanScreen.js'
 export { QrDisplay } from './components/QrDisplay.js'
 export type { QrDisplayProps } from './components/QrDisplay.js'
 
+export { WalletsScreen } from './screens/WalletsScreen.js'
+export type { WalletsScreenProps, WalletRow } from './screens/WalletsScreen.js'
+export { WalletChip } from './components/WalletChip.js'
+export type { WalletChipProps } from './components/WalletChip.js'
+
 export { WordKeyboard } from './components/WordKeyboard.js'
 export type { WordKeyboardProps } from './components/WordKeyboard.js'
 export { TextKeyboard } from './components/TextKeyboard.js'
