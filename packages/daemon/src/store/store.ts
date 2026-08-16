@@ -298,12 +298,21 @@ export class WalletStore {
       registrations = raw as readonly string[]
     }
 
+    // The network is resolved BEFORE the seed becomes a Secret, and the order
+    // is load-bearing rather than stylistic. Object literal properties evaluate
+    // top to bottom, so building the Secret first and calling networkById in
+    // the next line means an unknown network id throws with a decrypted seed
+    // already constructed, orphaned, and never disposed. That is an INV-KEY-2
+    // violation reachable by opening a store written by a newer build, which
+    // the downgrade-and-verify workflow in docs/VERIFICATION.md invites.
+    const network = networkById(payload.network)
+
     return {
       seed: Secret.fromBytes(
         Uint8Array.from(Buffer.from(payload.seed, 'hex')),
         'stored-seed'
       ),
-      network: networkById(payload.network),
+      network,
       registrations,
     }
   }

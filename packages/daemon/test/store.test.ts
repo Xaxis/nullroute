@@ -11,7 +11,7 @@
  * defaults so that turning them down here cannot quietly turn them down there.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -324,6 +324,49 @@ describe('daemon.store', () => {
     expect(opened.network.isMainnet).toBe(false)
     expect(opened.network.id).not.toBe(MAINNET.id)
     opened.seed.dispose()
+  })
+
+  /**
+   * INV-STORE-6. An unreadable payload must not leave a decrypted seed behind.
+   *
+   * The store is opened with the correct passphrase, so the plaintext is
+   * authentic and the seed is real. It then fails validation, and the question
+   * is what happened to the bytes in between. Building the Secret before the
+   * last thing that can throw leaves a decrypted seed constructed, orphaned and
+   * never disposed, which is an INV-KEY-2 violation.
+   *
+   * Reachable in practice: a store written by a newer build naming a network
+   * this one does not know, which is exactly what the downgrade-and-verify
+   * workflow in docs/VERIFICATION.md asks people to do.
+   */
+  it('constructs-no-seed-when-the-payload-fails-validation', () => {
+    const store = new WalletStore(dir, FAST)
+    using seed = seedBytes()
+    store.create(seed, SIGNET, PASSPHRASE)
+
+    // Re-seal the same wallet naming a network that does not exist here. Sealed
+    // rather than edited on disk, because the header is authenticated and an
+    // edited file would fail to open before it ever reached the decoder.
+    const payload = JSON.stringify({
+      v: 1,
+      network: 'chain-from-the-future',
+      seed: '00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff',
+    })
+    using plaintext = Secret.fromBytes(new TextEncoder().encode(payload), 'test-payload')
+    writeFileSync(
+      join(dir, 'wallet.store'),
+      JSON.stringify(seal(plaintext, PASSPHRASE, FAST), null, 2)
+    )
+
+    const made = vi.spyOn(Secret, 'fromBytes')
+    try {
+      expect(() => store.unlock(PASSPHRASE)).toThrow(/Unknown network/)
+      // The seed is the one Secret that must never be built on this path.
+      const labels = made.mock.calls.map((call) => call[1])
+      expect(labels).not.toContain('stored-seed')
+    } finally {
+      made.mockRestore()
+    }
   })
 
   it('erases-on-request', () => {

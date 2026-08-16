@@ -65,6 +65,25 @@ prose: ## No em dashes, no emoji, no overclaiming markers in docs and UI copy
 links: ## Every internal link resolves, and every anchor exists on its target
 	@node tools/check-links.mjs
 
+invariant-claims: ## The threat model and the specs agree on which invariants hold
+	# A row in the threat model's invariant table is a claim about what this
+	# device protects. One with no spec behind it is a promise nothing keeps,
+	# which this project calls a security bug rather than a documentation chore.
+	@node tools/check-invariant-claims.mjs
+
+device-ui: ## The device frontend actually boots under its own CSP. Drives a real browser.
+	# check-device-csp reads the policy and judges it, which cannot catch a
+	# policy so strict the application never starts. That failure is silent
+	# everywhere else: the build succeeds, jsdom tests pass, the panel is black.
+	@npm run build:app --workspace @nullroute/ui >/dev/null
+	@node tools/check-device-ui.mjs
+
+device-csp: ## The device frontend really has the policy INV-NET-3 claims
+	# The threat model claimed this policy while packages/ui/index.html carried
+	# none: the only CSP in the repo was the website's, and the website is not
+	# the device.
+	@node tools/check-device-csp.mjs
+
 profiles: ## Hardening profiles validate, and every assertion is falsifiable
 	# Enforces the rules a JSON Schema cannot: every assertion carries a
 	# verifier, every assertion states what it does NOT cover, and no assertion
@@ -220,6 +239,6 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 
 # --- aggregates --------------------------------------------------------------
 
-check-fast: lint ui-classes type-check prose links profiles test manifest-check ## Everything except the slow suites
+check-fast: lint ui-classes type-check prose links profiles invariant-claims device-csp test manifest-check ## Everything except the slow suites
 
-check: check-fast build verify test-vectors test-differential repro-check sbom web-check ## Everything CI runs
+check: check-fast build verify test-vectors test-differential repro-check sbom device-ui web-check ## Everything CI runs

@@ -70,7 +70,7 @@ loudly if the defence regresses. Invariant identifiers are listed in the
 | Offline guessing of a stolen card | Argon2id at 64 MiB, parameters authenticated so they cannot be weakened in the file | INV-STORE-3 |
 | Supply chain tampering | Exact version pins, committed lockfile, `ignore-scripts=true`, SBOM, dependency review on every lockfile change | INV-BUILD-1 |
 | Build tampering | Reproducible builds, manifest root hash displayed at boot and comparable against the published release | INV-BUILD-1 |
-| Casual physical access | Seed encrypted under an Argon2id-derived key, PIN gate, failed-attempt counter with a configurable wipe threshold | INV-DURESS-1 |
+| Casual physical access | Seed encrypted under an Argon2id-derived key, passphrase gate, failed-attempt counter that erases the sealed blob | INV-STORE-1, INV-STORE-4 |
 | Operator error | Address verification mode, descriptor checksums, forced scroll-through review, fingerprint display before funds actions | INV-INTEROP-1 |
 | Vendor lock-in becoming a loss vector | Every wallet recoverable from the mnemonic and a standard descriptor with third-party software, proved in CI against Bitcoin Core | INV-INTEROP-1 |
 
@@ -101,14 +101,20 @@ real one, not a free win.
 
 ### Coercion
 
-nullroute supports multiple indistinguishable profiles and a wipe PIN. See
-`docs/DURESS.md` for the design.
+**Not built yet.** Indistinguishable profiles and a wipe PIN are planned for
+phase 7 and no part of either exists in the code today. What the device has
+right now is a passphrase and a failed-attempt counter that erases the sealed
+blob, and that counter is not a coercion defence: anyone holding the card can
+copy it first and guess against the copy forever.
 
-**This does not protect you from someone who is willing to hurt you.** The
-source code of this project is public. Anyone who reads it knows that multiple
-profiles are possible, knows that an apparently empty device may be hiding one,
-and knows that a wipe PIN exists. An adversary who has done ten minutes of
-research will simply keep applying pressure.
+This section describes the intended design so the limits are on record before
+anything is built, not after.
+
+**It will not protect you from someone who is willing to hurt you.** The source
+code of this project is public. Anyone who reads it will know that multiple
+profiles are possible, that an apparently empty device may be hiding one, and
+that a wipe PIN exists. An adversary who has done ten minutes of research will
+simply keep applying pressure.
 
 What it actually buys you is time and plausibility against an unsophisticated
 adversary, for example a thief who wants a quick win and moves on. That is a
@@ -213,8 +219,8 @@ unsophisticated modification visible to a user who reads the boot screen. It
 does not defeat an attacker who also rewrites the boot partition.
 
 **A determined adversary with unlimited time, you in custody, and knowledge of
-this codebase.** Nothing in this repository helps you here. Duress profiles do
-not help you here.
+this codebase.** Nothing in this repository helps you here. Duress profiles will
+not help you here either, when they exist.
 
 **Malicious hardware in the supply chain.** We check the software supply chain.
 We cannot check that your Pi is a real Pi.
@@ -282,8 +288,15 @@ Stated so they can be challenged:
 
 ## Invariants
 
-The full list lives in the spec files and is checked by `npm run verify`. The
-security-critical ones:
+The full list lives in the spec files and is checked by `make verify`. The
+security-critical ones are below.
+
+Every row here is enforced by a spec and its tests unless it is marked
+*Planned*, which means the design is on record and nothing implements it yet. A
+planned invariant is a statement about a future build and protects you from
+nothing today. `make invariant-claims` checks that this page and the spec files
+agree about which is which, so a row cannot quietly become a promise the code
+does not keep.
 
 | ID | Statement |
 | --- | --- |
@@ -299,7 +312,7 @@ security-critical ones:
 | INV-PSBT-3 | Sighash types other than `SIGHASH_ALL` / `SIGHASH_DEFAULT` are refused unless advanced mode is explicitly enabled, per operation, never persisted. |
 | INV-BUILD-1 | `npm run verify` must pass before the app starts. On failure the UI shows the error and refuses to load the wallet. |
 | INV-WALLET-1 | `packages/wallet` may import `packages/core`, never the reverse. Removing it leaves a functional signer. |
-| INV-WALLET-2 | The wallet layer proposes but never signs. |
+| INV-WALLET-2 | *Planned, phase 5, not enforced today.* The wallet layer proposes but never signs. `packages/wallet` does not exist yet, so there is nothing to constrain. |
 | INV-INTEROP-1 | Every wallet is fully recoverable from the BIP-39 mnemonic plus a standard descriptor, with third-party software and no nullroute code. Drilled in CI against a real Bitcoin Core on regtest for p2wpkh, sh(wpkh) and p2pkh. Taproot is not yet drilled. |
 | INV-MULTI-6 | A multisig descriptor in which this device holds no key is refused at registration, rather than producing a wallet that can receive and never spend. |
 | INV-MULTI-7 | Quorum membership is decided by key material. A key origin claiming this device's fingerprint does not make a stranger's key ours. |
@@ -308,8 +321,8 @@ security-critical ones:
 | INV-STORE-3 | The key derivation parameters are authenticated, so editing them in the file breaks the open rather than weakening the next guess. |
 | INV-STORE-4 | Consecutive failed unlocks are counted, and passing the limit erases the sealed blob before the error is raised. |
 | INV-STORE-5 | A store is never left half written and an existing wallet is never silently overwritten. |
-| INV-DURESS-1 | The encrypted store does not reveal how many profiles exist or which slots are in use. |
-| INV-DURESS-2 | Unlock latency is independent of which PIN was entered and whether it was correct. |
+| INV-DURESS-1 | *Planned, phase 7, not enforced today.* The encrypted store does not reveal how many profiles exist or which slots are in use. |
+| INV-DURESS-2 | *Planned, phase 7, not enforced today.* Unlock latency is independent of which PIN was entered and whether it was correct. |
 
 ---
 

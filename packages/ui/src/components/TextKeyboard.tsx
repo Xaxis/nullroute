@@ -30,9 +30,32 @@ export interface TextKeyboardProps {
   readonly testId?: string
 }
 
-const LOWER = ['abcdefghij', 'klmnopqrst', 'uvwxyz'] as const
-const UPPER = ['ABCDEFGHIJ', 'KLMNOPQRST', 'UVWXYZ'] as const
-const SYMBOLS = ['0123456789', "!@#$%^&*()", "-_=+[]{}|;", ":',.<>/?~`", '"\\'] as const
+/**
+ * Rows as arrays of characters rather than strings to be split.
+ *
+ * Splitting a string by code unit mishandles anything outside the basic plane,
+ * and a keyboard is the last place to be casually wrong about characters. These
+ * are all ASCII, so nothing would break today, but writing them out means the
+ * question never arises and a future row of accented or non-Latin keys cannot
+ * introduce the bug silently.
+ */
+const LOWER: readonly (readonly string[])[] = [
+  ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'],
+  ['k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't'],
+  ['u', 'v', 'w', 'x', 'y', 'z'],
+]
+const UPPER: readonly (readonly string[])[] = [
+  ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'],
+  ['K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T'],
+  ['U', 'V', 'W', 'X', 'Y', 'Z'],
+]
+const SYMBOLS: readonly (readonly string[])[] = [
+  ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
+  ['!', '@', '#', '$', '%', '^', '&', '*', '(', ')'],
+  ['-', '_', '=', '+', '[', ']', '{', '}', '|', ';'],
+  [':', "'", ',', '.', '<', '>', '/', '?', '~', '`'],
+  ['"', '\\'],
+]
 
 type Layer = 'lower' | 'upper' | 'symbols'
 
@@ -75,7 +98,7 @@ export function TextKeyboard(props: TextKeyboardProps): ReactElement {
 
       <div className="nr-kb__keys">
         {rows.map((row) =>
-          [...row].map((character) => (
+          row.map((character) => (
             <button
               key={character}
               type="button"

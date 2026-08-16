@@ -15,7 +15,7 @@ afterEach(cleanup)
 
 /** This repo does not load jest-dom, so disabledness is read off the element. */
 function disabled(testId: string): boolean {
-  return (screen.getByTestId(testId) as HTMLButtonElement).disabled
+  return screen.getByTestId<HTMLButtonElement>(testId).disabled
 }
 
 /** Type letters into a freshly mounted word keyboard, collecting the words. */

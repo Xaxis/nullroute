@@ -4,6 +4,39 @@
     <meta charset="utf-8" />
     <!-- The device is a fixed 800x480 panel. No zoom, no scaling. -->
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+
+    <!--
+      INV-NET-3. The device frontend loads nothing it did not ship with.
+
+      `default-src 'none'` then an allowlist, so a directive nobody thought about
+      is denied rather than inherited. The threat model claimed this policy for
+      years while this file carried no policy at all: the only CSP in the
+      repository was the website's, and the website is explicitly not the device.
+
+      connect-src 'self' is the IPC call to the daemon over loopback and is the
+      only network-shaped thing here. There is no other origin to reach, and a
+      device that could reach one would be a different product.
+
+      'wasm-unsafe-eval' is load-bearing and unfortunate. The QR decoder is
+      WebAssembly, and instantiating it is blocked outright without this. The
+      name overstates what it grants: it permits WebAssembly compilation and does
+      NOT re-enable eval or new Function for JavaScript. The wasm itself is
+      bundled and served from this origin, and packages/ui/src/lib/scanner.ts
+      refuses to load it from anywhere else.
+
+      No 'unsafe-inline' anywhere. Vite emits external script and style files for
+      the production build, so nothing here needs it.
+
+      frame-ancestors is deliberately ABSENT. A meta-delivered policy cannot set
+      it, and browsers log that they are ignoring it. Listing a directive that
+      does nothing is worse than omitting it: it reads as a defence to anyone
+      auditing the file. object-src and base-uri below do work in a meta tag.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; media-src 'self' blob:; base-uri 'none'; form-action 'none'; object-src 'none'"
+    />
+
     <title>nullroute</title>
   </head>
   <body>
