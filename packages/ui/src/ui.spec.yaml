@@ -36,6 +36,8 @@ covers:
   - packages/ui/src/lib/scanner.ts::prepareScanner
   - packages/ui/src/lib/scanner.ts::decodeFrame
   - packages/ui/src/lib/scanner.ts::ScannerError
+  - packages/ui/src/components/WordKeyboard.tsx::WordKeyboard
+  - packages/ui/src/components/TextKeyboard.tsx::TextKeyboard
 
 algorithm: >
   Renders the manifest root hash, the verification status with spec and
@@ -274,6 +276,50 @@ invariants:
       - packages/ui/test/scan-screen.test.tsx::releases-the-camera-when-it-goes-away
       - packages/ui/test/scan-screen.test.tsx::reports-a-camera-that-will-not-open
 
+  # --- Typing, on a device with no keyboard --------------------------------
+  # Without these the device cannot be used at all: a mnemonic could not be
+  # entered by finger, which makes recovery impossible on the hardware.
+  - id: INV-UI-26
+    statement: >
+      The word keyboard disables every letter that cannot reach a BIP-39 word,
+      without moving the keys, and enters a word as soon as only one remains.
+    tests:
+      - packages/ui/test/keyboard.test.tsx::disables-letters-that-cannot-reach-a-word
+      - packages/ui/test/keyboard.test.tsx::commits-a-word-as-soon-as-only-one-is-possible
+      - packages/ui/test/keyboard.test.tsx::counts-towards-a-target
+
+  - id: INV-UI-27
+    statement: >
+      A word that is also the prefix of a longer word is never entered
+      automatically. Both remain reachable and the choice stays with the user.
+      A word may be entered more than once, and backspace removes a letter
+      before it removes a word.
+    tests:
+      - packages/ui/test/keyboard.test.tsx::never-commits-a-short-word-that-is-also-a-prefix
+      - packages/ui/test/keyboard.test.tsx::commits-the-suggestion-the-user-taps
+      - packages/ui/test/keyboard.test.tsx::allows-the-same-word-more-than-once
+      - packages/ui/test/keyboard.test.tsx::backspaces-into-the-prefix-first-and-then-the-words
+
+  - id: INV-UI-28
+    statement: >
+      The text keyboard types exactly what was tapped. No autocorrect, no
+      automatic capitalisation, and a space is kept rather than trimmed. Shift
+      applies to one character.
+    tests:
+      - packages/ui/test/keyboard.test.tsx::types-exactly-what-was-tapped
+      - packages/ui/test/keyboard.test.tsx::applies-shift-once-and-then-releases-it
+      - packages/ui/test/keyboard.test.tsx::types-a-space-without-trimming-it
+      - packages/ui/test/keyboard.test.tsx::reaches-digits-and-symbols
+
+  - id: INV-UI-29
+    statement: >
+      A passphrase is hidden until the user asks to see it, and its length is
+      shown either way so a user can tell that a key registered.
+    tests:
+      - packages/ui/test/keyboard.test.tsx::hides-the-value-until-asked-and-always-shows-the-length
+      - packages/ui/test/keyboard.test.tsx::backspaces-and-refuses-to-when-empty
+      - packages/ui/test/keyboard.test.tsx::offers-a-return-key-only-when-there-is-somewhere-to-go
+
 threats:
   - INV-KEY-1
   - INV-BUILD-1
@@ -325,6 +371,29 @@ security_notes: >
   interface is dark, which is the one place the palette is deliberately ignored.
   Scanners look for a light margin, and an inverted code without one is a code
   most phones refuse.
+
+  THE KEYBOARDS HAVE OPPOSITE JOBS AND ARE SEPARATE FOR THAT REASON. The word
+  keyboard narrows a finger down to a list of 2048 known words, and can afford
+  to be opinionated because every possible answer is known in advance. The text
+  keyboard must accept any string at all, including one the user will never be
+  able to reproduce if they get it wrong, and it can help with nothing.
+
+  The word keyboard has exactly one way to lose someone money, and INV-UI-27 is
+  it. `act` is a word, and so are `action`, `actor`, `actress` and `actual`. A
+  user who typed `act` meaning `act` and a user on their way to `actual` are
+  indistinguishable to the software, so it must not choose. Auto-entry happens
+  only when a single word remains possible.
+
+  The text keyboard transforms nothing. No autocorrect, no capitalisation of a
+  first letter, no trimming of a trailing space. Any of those would derive a
+  different wallet, silently, with no error and no way for the user to discover
+  which character was altered. This is why it is a purpose-built component
+  rather than a system keyboard: a system keyboard's helpfulness is a hazard
+  here.
+
+  Dead letter keys go dim in place rather than disappearing. A key that moves
+  as you type is a key you mis-hit, and this is a screen where a mis-hit is a
+  wrong word in a mnemonic.
 
 references:
   - docs/VERIFICATION.md

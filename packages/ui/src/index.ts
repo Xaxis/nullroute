@@ -54,6 +54,11 @@ export type { ScanScreenProps, ScanResult } from './screens/ScanScreen.js'
 export { QrDisplay } from './components/QrDisplay.js'
 export type { QrDisplayProps } from './components/QrDisplay.js'
 
+export { WordKeyboard } from './components/WordKeyboard.js'
+export type { WordKeyboardProps } from './components/WordKeyboard.js'
+export { TextKeyboard } from './components/TextKeyboard.js'
+export type { TextKeyboardProps } from './components/TextKeyboard.js'
+
 export { Screen } from './components/Screen.js'
 export type { ScreenProps } from './components/Screen.js'
 export { Button } from './components/Button.js'

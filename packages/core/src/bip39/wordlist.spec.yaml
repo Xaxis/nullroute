@@ -1,0 +1,89 @@
+id: core.bip39.wordlist
+version: 1
+title: Prefix search over the BIP-39 English wordlist
+assurance_tier: standard
+status: implemented
+
+purpose: >
+  Let a finger enter a mnemonic on a device with no keyboard, by answering
+  "which letters can still reach a word" rather than "what might this be". A
+  recovery a user abandons halfway is a recovery that failed, and the money is
+  still at stake.
+
+covers:
+  - packages/core/src/bip39/wordlist.ts::WORDLIST
+  - packages/core/src/bip39/wordlist.ts::UNIQUE_PREFIX
+  - packages/core/src/bip39/wordlist.ts::wordsWithPrefix
+  - packages/core/src/bip39/wordlist.ts::nextLetters
+  - packages/core/src/bip39/wordlist.ts::uniqueCompletion
+  - packages/core/src/bip39/wordlist.ts::isWord
+
+algorithm: >
+  Linear scans over the 2048 word English list. No index and no trie: the list
+  is small, the scans run once per keystroke on a human timescale, and a data
+  structure built at module load would be a second representation of the list
+  that could disagree with the first.
+
+  `nextLetters` returns the letters that can follow a prefix and still reach a
+  word, which is what lets a keyboard disable the rest. `wordsWithPrefix`
+  returns matches for a suggestion strip, and an empty prefix returns nothing
+  rather than all 2048, because nothing typed means nothing to suggest.
+
+  `uniqueCompletion` returns a word only when it is the sole match. Case is
+  folded and surrounding whitespace ignored throughout.
+
+invariants:
+  - id: INV-WORDS-1
+    statement: >
+      The list is the 2048 sorted lowercase words BIP-39 defines, and no two
+      share their first four letters.
+    tests:
+      - packages/core/test/bip39.wordlist.test.ts::has-2048-words-uniquely-determined-by-four-letters
+      - packages/core/test/bip39.wordlist.test.ts::determines-any-word-of-four-letters-or-more-from-its-first-four
+
+  - id: INV-WORDS-2
+    statement: >
+      Every letter reported as a continuation reaches at least one word, and a
+      prefix that reaches nothing reports none.
+    tests:
+      - packages/core/test/bip39.wordlist.test.ts::reports-which-letters-can-still-reach-a-word
+      - packages/core/test/bip39.wordlist.test.ts::finds-words-by-prefix-and-nothing-for-an-empty-one
+      - packages/core/test/bip39.wordlist.test.ts::honours-the-limit
+      - packages/core/test/bip39.wordlist.test.ts::folds-case-and-trims
+
+  - id: INV-WORDS-3
+    statement: >
+      Completion returns a word only when exactly one word matches, and never
+      commits a short word that is also the prefix of a longer one.
+    tests:
+      - packages/core/test/bip39.wordlist.test.ts::completes-only-when-a-prefix-is-unambiguous
+      - packages/core/test/bip39.wordlist.test.ts::never-auto-commits-a-short-word-that-is-also-a-prefix
+
+threats:
+  - INV-WORDS-3
+
+security_notes: >
+  NOTHING HERE VALIDATES ANYTHING. Twenty-four words drawn from this list are
+  still almost certainly not a mnemonic, because the final word carries a
+  checksum over the rest. Prefix search narrows what a finger can type;
+  `isValidMnemonic` decides whether the result is a mnemonic. Treating the two
+  as the same would let the device accept a typo that happened to land on
+  another real word, which is precisely the error the wordlist was designed to
+  make visible.
+
+  The four letter rule is asserted rather than assumed. It says no two words
+  share their first four letters. It does NOT say four letters always identify
+  a word, because a three letter word can be a prefix of longer ones: `act` is
+  a word, and so are `action`, `actor`, `actress` and `actual`. INV-WORDS-3
+  exists because a completion that resolved that ambiguity by picking the first
+  match would enter a word the user did not choose, in the one place where a
+  wrong word means a wallet that is not theirs.
+
+  This is standard tier. It handles no key material and makes no decision that
+  reaches a signature. Its failure mode is a keyboard that will not let someone
+  type a word they need, which is loud, or one that types a word they did not
+  choose, which is what INV-WORDS-3 is for.
+
+references:
+  - BIP-39, Mnemonic code for generating deterministic keys
+  - docs/ENTROPY.md

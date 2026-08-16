@@ -1,6 +1,7 @@
 import { type ReactElement, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
+import { TextKeyboard } from '../components/TextKeyboard.js'
 
 /**
  * Setting a passphrase, and entering one.
@@ -73,6 +74,13 @@ export function PassphraseScreen(props: PassphraseScreenProps): ReactElement {
 
   const [value, setValue] = useState('')
   const [confirm, setConfirm] = useState('')
+  /**
+   * Which field the on-screen keyboard types into.
+   *
+   * One keyboard rather than two, because 480px of height does not hold two and
+   * a user who cannot see both fields cannot tell why they do not match.
+   */
+  const [field, setField] = useState<'value' | 'confirm'>('value')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -144,6 +152,9 @@ export function PassphraseScreen(props: PassphraseScreenProps): ReactElement {
           onChange={(e) => {
             setValue(e.target.value)
           }}
+          onFocus={() => {
+            setField('value')
+          }}
           data-testid="passphrase-input"
         />
         {value.length > 0 && (
@@ -167,11 +178,43 @@ export function PassphraseScreen(props: PassphraseScreenProps): ReactElement {
             onChange={(e) => {
               setConfirm(e.target.value)
             }}
+            onFocus={() => {
+              setField('confirm')
+            }}
             data-testid="passphrase-confirm"
           />
           {mismatch && <span className="nr-hint nr-warn">These do not match.</span>}
         </div>
       )}
+
+      {/* The device has no keyboard, so this is the real input. The fields
+          above stay editable for a workstation and for tests. */}
+      {setting && (
+        <div className="nr-tabs">
+          {(['value', 'confirm'] as const).map((which) => (
+            <button
+              key={which}
+              type="button"
+              className="nr-tab"
+              aria-pressed={field === which}
+              onClick={() => {
+                setField(which)
+              }}
+              data-testid={`passphrase-field-${which}`}
+            >
+              {which === 'value' ? 'Passphrase' : 'Again'}
+            </button>
+          ))}
+        </div>
+      )}
+      <TextKeyboard
+        value={field === 'confirm' ? confirm : value}
+        onChange={field === 'confirm' ? setConfirm : setValue}
+        onSubmit={() => {
+          if (ready && !busy) void submit()
+        }}
+        testId="passphrase-keyboard"
+      />
 
       {error !== null && (
         <div className="nr-banner nr-banner--danger" data-testid="passphrase-error">

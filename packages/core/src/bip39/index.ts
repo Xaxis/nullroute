@@ -7,3 +7,12 @@ export {
   mnemonicToSeed,
   wordCount,
 } from './mnemonic.js'
+
+export {
+  WORDLIST,
+  UNIQUE_PREFIX,
+  wordsWithPrefix,
+  nextLetters,
+  uniqueCompletion,
+  isWord,
+} from './wordlist.js'
