@@ -73,6 +73,25 @@ export class Session {
   #wallet: WalletSession | undefined
   #network: Network = MAINNET
   #unlocked = false
+  /**
+   * True when this seed must never reach the disk.
+   *
+   * A property of the SESSION rather than of a request, so persistence cannot
+   * be reached by a caller that simply forgets to pass a flag. Everything that
+   * writes asks the session, and the session refuses. It is set once, at load,
+   * and there is no way to clear it: the only exit is `lock`, which forgets the
+   * seed. A mode that could be turned off would be a mode that a mis-tap turns
+   * off.
+   */
+  #ephemeral = false
+  /**
+   * Whether a BIP-39 passphrase was applied to reach the loaded seed.
+   *
+   * Not the passphrase itself, which is never held: it is consumed deriving the
+   * seed and forgotten. This is one bit, and it exists so a screen can say that
+   * this wallet cannot be recovered from the mnemonic alone.
+   */
+  #bip39Passphrase = false
 
   get network(): Network {
     return this.#network
@@ -115,8 +134,15 @@ export class Session {
    * Takes ownership: the previous seed, if any, is disposed here so that a
    * second wallet creation cannot leave the first one's bytes in memory.
    */
-  load(seed: Secret, mnemonic: string, provenance: SeedProvenance): void {
+  load(
+    seed: Secret,
+    mnemonic: string,
+    provenance: SeedProvenance,
+    options: { readonly ephemeral?: boolean; readonly bip39Passphrase?: boolean } = {}
+  ): void {
     this.#wallet?.seed.dispose()
+    this.#ephemeral = options.ephemeral === true
+    this.#bip39Passphrase = options.bip39Passphrase === true
     this.#wallet = {
       seed,
       mnemonic,
@@ -145,6 +171,11 @@ export class Session {
    */
   loadFromStore(seed: Secret, active?: ActiveWallet): void {
     this.#wallet?.seed.dispose()
+    // A seed that came off the disk is by definition already on the disk.
+    this.#ephemeral = false
+    // Whether a passphrase was used is a property of the stored wallet and is
+    // set from its sealed hint by the caller, not inferred here.
+    this.#bip39Passphrase = false
     this.#wallet = {
       seed,
       mnemonic: undefined,
@@ -168,6 +199,31 @@ export class Session {
    */
   get active(): ActiveWallet | undefined {
     return this.#wallet?.active
+  }
+
+  /** Whether this seed is barred from reaching the disk. */
+  get ephemeral(): boolean {
+    return this.#ephemeral
+  }
+
+  /** Whether a BIP-39 passphrase was applied to reach this seed. */
+  get bip39Passphrase(): boolean {
+    return this.#bip39Passphrase
+  }
+
+  /**
+   * Refuse anything that would write this seed down.
+   *
+   * Called by every persistence path rather than checked at one of them, so
+   * adding a new way to write is a decision someone has to make on purpose.
+   */
+  assertPersistable(): void {
+    if (this.#ephemeral) {
+      throw new SessionError(
+        'This wallet was loaded for one session only and nothing about it may be written to ' +
+          'this device. Lock and load it again without that option if you want to keep it.'
+      )
+    }
   }
 
   /**
@@ -304,5 +360,9 @@ export class Session {
     this.#wallet = undefined
     this.#unlocked = false
     this.#network = MAINNET
+    // Cleared with everything else. A stale flag would either bar a later
+    // wallet from being saved or, worse, let an ephemeral one be saved.
+    this.#ephemeral = false
+    this.#bip39Passphrase = false
   }
 }

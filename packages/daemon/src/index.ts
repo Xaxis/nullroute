@@ -58,6 +58,7 @@ export {
   WALLET_COLOURS,
   DEFAULT_COLOUR,
   normaliseLabel,
+  UNCONFIRMED_LABEL,
   hintNetwork,
 } from './store/registry.js'
 export type {

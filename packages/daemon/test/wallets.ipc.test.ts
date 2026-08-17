@@ -13,7 +13,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { MAINNET, SIGNET, mnemonicToSeed } from '@nullroute/core'
@@ -217,6 +217,58 @@ describe('daemon wallets IPC', () => {
     })) as { active: { label: string }; hintCorrected: boolean }
     expect(opened.active.label).toBe('Cold storage')
     expect(opened.hintCorrected).toBe(false)
+  })
+
+  /**
+   * INV-MW-11. One seed cannot be written twice by using two doors.
+   *
+   * store.create is the single-wallet path and predates the registry. Leaving
+   * both open meant the same seed could be sealed once through each, under two
+   * passphrases, with the weaker one governing the money and nothing on any
+   * screen showing that the two entries were the same wallet. The registry's
+   * duplicate check cannot see a store written behind its back.
+   */
+  it('refuses-the-legacy-single-wallet-path-once-it-holds-named-wallets', async () => {
+    session.lock()
+    await call('wallet.import', { mnemonic: MNEMONIC_A, passphrase: '' })
+    await call('wallets.create', { passphrase: 'strong', label: 'Cold', colour: 'teal' })
+
+    await expect(call('store.create', { passphrase: 'weak' })).rejects.toThrow(
+      /Save this one with wallets.create/
+    )
+  })
+
+  /**
+   * INV-MW-12. A legacy store that cannot be migrated must not take the picker
+   * with it.
+   *
+   * The picker is the only route to every other wallet on the device, so a
+   * failure to read one file would otherwise make all of them unreachable. The
+   * error is reported beside the list rather than instead of it.
+   */
+  it('still-lists-wallets-when-a-legacy-store-cannot-be-migrated', async () => {
+    session.lock()
+    await call('wallet.import', { mnemonic: MNEMONIC_A, passphrase: '' })
+    await call('wallets.create', { passphrase: 'one', label: 'Cold', colour: 'teal' })
+    session.lock()
+
+    // A legacy blob the daemon cannot read.
+    const legacy = join(dir, 'wallet.store')
+    writeFileSync(legacy, '{}')
+    chmodSync(legacy, 0o000)
+
+    try {
+      const listed = (await call('wallets.list')) as ListResponse & {
+        migrated: string | null
+        migrationError: string | null
+      }
+      expect(listed.wallets.map((w) => w.label)).toEqual(['Cold'])
+      expect(listed.migrated).toBeNull()
+      // Reported, not swallowed.
+      expect(listed.migrationError).not.toBeNull()
+    } finally {
+      chmodSync(legacy, 0o600)
+    }
   })
 
   it('refuses-an-id-that-is-not-an-id', async () => {

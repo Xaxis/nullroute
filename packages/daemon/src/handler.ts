@@ -178,11 +178,15 @@ export function createHandler(state: DaemonState): IpcHandler {
         }
 
       case 'device.status':
+        // Reported here, not only where it is set, so a screen entered later in
+        // the session still knows nothing is being written.
         return {
           hasWallet: session.hasWallet,
           unlocked: session.unlocked,
           backupConfirmed: session.backupConfirmed,
           fingerprint: session.fingerprint ?? null,
+          ephemeral: session.ephemeral,
+          activeWallet: activeWallet(),
           network: {
             id: session.network.id,
             label: session.network.label,
@@ -269,8 +273,19 @@ export function createHandler(state: DaemonState): IpcHandler {
           )
         }
         const seed = mnemonicToSeed(mnemonic, optionalString(request, 'passphrase'))
-        session.load(seed, mnemonic, 'imported')
-        return { fingerprint: session.fingerprint }
+        // Ephemeral is opt-in and set here, at load, because the session has no
+        // way to turn it off afterwards. See Session.assertPersistable.
+        const ephemeral = params(request)['ephemeral'] === true
+        const bip39Passphrase = optionalString(request, 'passphrase').length > 0
+        session.load(seed, mnemonic, 'imported', { ephemeral, bip39Passphrase })
+        return {
+          fingerprint: session.fingerprint,
+          ephemeral,
+          // The fingerprint is the ONLY signal that a passphrase was mistyped.
+          // A wrong one produces a valid, different, empty wallet, so this is
+          // returned for display rather than left to a caller to ask for.
+          passphraseApplied: bip39Passphrase,
+        }
       }
 
       // --- The one exception to INV-KEY-1 --------------------------------
@@ -644,9 +659,15 @@ export function createHandler(state: DaemonState): IpcHandler {
         // store needs one. A registration made without it lives for this
         // session, which is a legitimate choice and is reported back so the UI
         // can say so rather than implying it was saved.
+        //
+        // An ephemeral session registers for this session and never writes,
+        // which is the same shape as omitting the passphrase and is reported
+        // the same way. Checked rather than assumed, because a registration
+        // names cosigners and a device asked to record nothing must record
+        // nothing.
         const passphrase = optionalString(request, 'passphrase')
         let persisted = false
-        if (passphrase.length > 0 && state.store !== undefined) {
+        if (passphrase.length > 0 && !session.ephemeral && state.store !== undefined) {
           state.store.reseal(
             session.requireSeed(),
             session.network,
@@ -756,6 +777,19 @@ export function createHandler(state: DaemonState): IpcHandler {
        * until the store was erased or the card died.
        */
       case 'store.create': {
+        // Refused once this device can hold several wallets. Leaving both paths
+        // open meant the same seed could be written twice, once here and once
+        // through wallets.create, under two different passphrases: the weaker
+        // one would govern the money and nothing would show the user that the
+        // two entries were the same wallet. The registry's duplicate check
+        // cannot see a store written behind its back.
+        if (state.registry !== undefined) {
+          throw new Error(
+            'This device holds named wallets. Save this one with wallets.create so it appears ' +
+              'in the picker and cannot be stored twice.'
+          )
+        }
+        session.assertPersistable()
         if (!session.backupConfirmed) {
           throw new Error(
             'Confirm you have written the mnemonic down before saving the wallet to this device. ' +
@@ -822,10 +856,28 @@ export function createHandler(state: DaemonState): IpcHandler {
        */
       case 'wallets.list': {
         const registry = requireRegistry()
+        // Migration happens here rather than at boot so a device that has never
+        // been opened is not rewritten by a status poll.
+        //
+        // A failure must NOT take the listing with it. A legacy blob that
+        // cannot be read (bad permissions, a truncated file, a card going bad)
+        // would otherwise make every OTHER wallet on the device unreachable,
+        // because the picker is the only way to any of them. So the failure is
+        // reported alongside the list rather than instead of it. Not swallowed:
+        // the message is returned and the screen shows it.
+        let migrated: string | null = null
+        let migrationError: string | null = null
+        if (registry.hasLegacy()) {
+          try {
+            migrated = registry.migrateLegacy() ?? null
+          } catch (err) {
+            migrationError = (err as Error).message
+          }
+        }
+
         return {
-          // Migration happens here rather than at boot so a device that has
-          // never been opened is not rewritten by a status poll.
-          migrated: registry.hasLegacy() ? registry.migrateLegacy() : null,
+          migrated,
+          migrationError,
           max: MAX_WALLETS,
           active: activeWallet(),
           wallets: registry.list().map((entry) => ({
@@ -836,6 +888,9 @@ export function createHandler(state: DaemonState): IpcHandler {
             exists: entry.exists,
             attemptsRemaining: entry.attemptsRemaining,
             destroyed: entry.destroyed,
+            // So a row can say this wallet needs its BIP-39 passphrase as well
+            // as its store passphrase. Unverified like everything else here.
+            bip39Passphrase: entry.hint.bip39Passphrase === true,
           })),
           // Stated in the payload so a screen cannot forget to say it.
           verified: false,
@@ -853,6 +908,7 @@ export function createHandler(state: DaemonState): IpcHandler {
        * recover it is worse than a device holding nothing.
        */
       case 'wallets.create': {
+        session.assertPersistable()
         if (!session.backupConfirmed) {
           throw new Error(
             'Confirm you have written the mnemonic down before saving this wallet. It is the ' +
@@ -872,6 +928,7 @@ export function createHandler(state: DaemonState): IpcHandler {
           label: requireString(request, 'label'),
           colour,
           registrations: session.registrations,
+          bip39Passphrase: session.bip39Passphrase,
         })
         session.attachTo({ id: created.id, label: created.label, colour })
         return { id: created.id, active: activeWallet() }
@@ -904,6 +961,10 @@ export function createHandler(state: DaemonState): IpcHandler {
         return {
           unlocked: true,
           active: activeWallet(),
+          // THE fingerprint, derived from the seed just loaded, and the only
+          // signal a user gets that a BIP-39 passphrase was mistyped. A wrong
+          // one opens a valid, different, empty wallet with no error anywhere,
+          // so this is returned for prominent display rather than on request.
           fingerprint: session.fingerprint,
           registrations: opened.registrations.length,
           // True when the picker was showing something the ciphertext
@@ -976,6 +1037,11 @@ export function createHandler(state: DaemonState): IpcHandler {
        * passphrase, which is a decision rather than a default.
        */
       case 'backup.create': {
+        // A backup is a file, so an ephemeral seed may not go into one. The
+        // seedless case is refused too: a watch-only backup of a wallet the
+        // user asked not to record still records that the wallet existed, its
+        // network, and its cosigners.
+        session.assertPersistable()
         const includeSeed = params(request)['includeSeed'] === true
         const passphrase = requireString(request, 'passphrase')
         return {

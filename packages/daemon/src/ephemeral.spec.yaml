@@ -1,0 +1,92 @@
+id: daemon.session.ephemeral
+version: 1
+title: Ephemeral seed mode, a session that writes nothing
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Let a seed be used for one session and forgotten, with nothing about it
+  reaching the disk. For checking that a backup restores what you believe it
+  does, and for signing once with a key this device must not keep.
+
+covers:
+  - packages/daemon/src/session.ts::Session
+
+algorithm: >
+  A flag on the SESSION, not on a request. It is set once, at load, by
+  wallet.import with ephemeral true. There is no method that clears it and no
+  parameter that overrides it. The only exit is lock, which forgets the seed.
+
+  Every path that writes calls session.assertPersistable() before doing
+  anything: store.create, wallets.create and backup.create refuse outright.
+  multisig.register is allowed and simply does not persist, which is the same
+  shape as registering without a passphrase and is reported the same way.
+
+  loadFromStore clears the flag, because a seed that came off the disk is
+  already on the disk. lock clears it, so the next wallet is neither barred from
+  being saved nor silently permitted.
+
+invariants:
+  - id: INV-EPH-1
+    statement: >
+      An ephemeral seed is a working wallet. It derives the same addresses and
+      signs the same as one loaded any other way.
+    tests:
+      - packages/daemon/test/ephemeral.test.ts::signs-and-derives-like-any-other-wallet
+
+  - id: INV-EPH-2
+    statement: >
+      Every path that would write the seed, or anything describing it, refuses.
+      Nothing appears under the store directory during or after the session.
+    tests:
+      - packages/daemon/test/ephemeral.test.ts::refuses-every-way-of-writing-the-seed-down
+      - packages/daemon/test/ephemeral.test.ts::registers-a-quorum-for-the-session-without-writing-it
+      - packages/daemon/test/ephemeral.test.ts::leaves-nothing-of-the-seed-on-disk-after-a-whole-session
+
+  - id: INV-EPH-3
+    statement: >
+      The mode cannot be switched off for a loaded seed. Locking clears it, and
+      a wallet loaded from the store never inherits it.
+    tests:
+      - packages/daemon/test/ephemeral.test.ts::cannot-be-switched-off-without-forgetting-the-seed
+      - packages/daemon/test/ephemeral.test.ts::does-not-carry-the-flag-onto-a-stored-wallet
+      - packages/daemon/test/ephemeral.test.ts::says-so-on-device-status-so-every-screen-can-repeat-it
+
+threats:
+  - INV-KEY-1
+  - INV-KEY-2
+
+security_notes: >
+  THE WHOLE FEATURE IS A REFUSAL, and its failure mode is silent. A device that
+  wrote a seed the user asked it not to keep looks exactly like one that did
+  not, until somebody finds the file. So the tests check the disk rather than
+  checking that a method returned an error, and INV-EPH-2 enumerates every write
+  path instead of sampling one: adding a new way to write has to be a decision
+  somebody makes on purpose, and that test is where they find out.
+
+  THE FLAG LIVES ON THE SESSION rather than being passed to each call. A caller
+  that forgets to pass a parameter gets persistence, which is the wrong default
+  for a mode whose entire purpose is not to persist. Asking the session means a
+  new write path is barred by default and has to opt out explicitly.
+
+  IT CANNOT BE TURNED OFF. A mode with an off switch is a mode a mis-tap turns
+  off, and the user would have no way to notice: the wallet would keep working
+  and the seed would quietly be on the card. The only exit is locking, which
+  forgets the seed, so the worst outcome of changing your mind is retyping a
+  mnemonic.
+
+  A SEEDLESS BACKUP IS REFUSED TOO, which is stricter than it first looks
+  necessary. It carries no key material, but it does record that this wallet
+  existed, which network it was on, and who its cosigners are. A user who asked
+  the device to keep nothing about a wallet did not mean "nothing except its
+  shape".
+
+  WHAT THIS DOES NOT DO. It does not defend the seed while the session is
+  running: it is in memory, and anyone who can read this process's memory has
+  it either way. It does not survive a crash any better than a normal session,
+  because nothing was written to survive. And it says nothing about swap, which
+  is disabled at the image level and is a property of the device rather than of
+  this code.
+
+references:
+  - docs/THREAT-MODEL.md

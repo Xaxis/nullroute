@@ -12,7 +12,15 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { MAINNET, SIGNET, Secret, masterFingerprint } from '@nullroute/core'
@@ -21,6 +29,7 @@ import { MAX_ATTEMPTS, WalletStore } from '../src/store/store.js'
 import {
   MAX_LABEL,
   MAX_WALLETS,
+  UNCONFIRMED_LABEL,
   WalletRegistry,
   normaliseLabel,
 } from '../src/store/registry.js'
@@ -353,8 +362,11 @@ describe('daemon.store.registry', () => {
     if (id === undefined) throw new Error('nothing migrated')
 
     const opened = reg.unlock(id, PASSPHRASE)
-    // Falls back to the hint the migration wrote, which says what it is.
-    expect(opened.label).toBe('My wallet')
+    // A constant, NOT the hint. A v1 store sealed no name, so falling back to
+    // the file beside it would make an editable string the wallet's identity
+    // and the disagreement check would be comparing that string to itself.
+    expect(opened.label).toBe(UNCONFIRMED_LABEL)
+    expect(opened.labelVerified).toBe(false)
     opened.seed.dispose()
   })
 
@@ -410,6 +422,29 @@ describe('daemon.store.registry', () => {
     expect(opened.label).toBe('Cold storage')
     expect(opened.hintCorrected).toBe(true)
     opened.seed.dispose()
+  })
+
+  /**
+   * INV-MW-10. Housekeeping must not be able to throw away a decrypted seed.
+   *
+   * The hint rewrite runs AFTER the store has been opened, so a failure there
+   * happens with a live Secret in hand. Letting it propagate would abandon that
+   * seed undisposed, which is an INV-KEY-2 leak reachable by nothing more
+   * exotic than a read-only card or a full disk.
+   */
+  it('disposes-the-seed-when-the-hint-cannot-be-written-back', () => {
+    const reg = registry()
+    const id = createWallet(reg, 1, 'Cold storage')
+
+    // The hint path occupied by a non-empty directory: reading it fails (so a
+    // correction is due) and writing it fails too. The blob is untouched.
+    rmSync(hintPath(id), { force: true })
+    mkdirSync(hintPath(id))
+    writeFileSync(join(hintPath(id), 'occupied'), 'x')
+
+    expect(() => reg.unlock(id, PASSPHRASE)).toThrow(/could not be written back/)
+    // The blob is still fine, so this is a reportable failure and not a loss.
+    expect(reg.store(id).exists()).toBe(true)
   })
 
   it('ignores-directories-that-are-not-wallets', () => {

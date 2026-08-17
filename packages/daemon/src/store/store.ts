@@ -72,8 +72,11 @@ interface Sidecar {
  */
 interface SealedPayload {
   /**
-   * 1 is a store written before this device could hold more than one wallet.
-   * 2 adds the wallet's identity. Both are readable; only 2 is written.
+   * 1 is a store with no sealed identity, which is what every build before
+   * multi-wallet wrote and what the legacy single-wallet path still writes.
+   * 2 adds a label, colour and fingerprint. Both are read, and which one is
+   * written depends only on whether there is an identity to put in it, so a
+   * store without one stays readable by an older build.
    */
   readonly v: 1 | 2
   readonly network: string
@@ -200,15 +203,28 @@ export class WalletStore {
       )
     }
 
-    const payload: SealedPayload = {
-      v: 2,
-      network: network.id,
-      seed: Buffer.from(seed.bytes).toString('hex'),
-      registrations,
-      ...(identity === undefined
-        ? {}
-        : { label: identity.label, colour: identity.colour, fingerprint: identity.fingerprint }),
-    }
+    // v1 when there is no identity to seal, and only then. A store with no
+    // label is byte-compatible with what every earlier build wrote and can
+    // still be opened by one, which the downgrade-and-verify workflow in
+    // docs/VERIFICATION.md depends on. Bumping the version for a field that is
+    // absent would break that for nothing.
+    const payload: SealedPayload =
+      identity === undefined
+        ? {
+            v: 1,
+            network: network.id,
+            seed: Buffer.from(seed.bytes).toString('hex'),
+            registrations,
+          }
+        : {
+            v: 2,
+            network: network.id,
+            seed: Buffer.from(seed.bytes).toString('hex'),
+            registrations,
+            label: identity.label,
+            colour: identity.colour,
+            fingerprint: identity.fingerprint,
+          }
     using plaintext = Secret.fromBytes(
       new TextEncoder().encode(JSON.stringify(payload)),
       'store-payload'
@@ -313,15 +329,28 @@ export class WalletStore {
     registrations: readonly string[],
     identity?: WalletIdentity
   ): void {
-    const payload: SealedPayload = {
-      v: 2,
-      network: network.id,
-      seed: Buffer.from(seed.bytes).toString('hex'),
-      registrations,
-      ...(identity === undefined
-        ? {}
-        : { label: identity.label, colour: identity.colour, fingerprint: identity.fingerprint }),
-    }
+    // v1 when there is no identity to seal, and only then. A store with no
+    // label is byte-compatible with what every earlier build wrote and can
+    // still be opened by one, which the downgrade-and-verify workflow in
+    // docs/VERIFICATION.md depends on. Bumping the version for a field that is
+    // absent would break that for nothing.
+    const payload: SealedPayload =
+      identity === undefined
+        ? {
+            v: 1,
+            network: network.id,
+            seed: Buffer.from(seed.bytes).toString('hex'),
+            registrations,
+          }
+        : {
+            v: 2,
+            network: network.id,
+            seed: Buffer.from(seed.bytes).toString('hex'),
+            registrations,
+            label: identity.label,
+            colour: identity.colour,
+            fingerprint: identity.fingerprint,
+          }
     using plaintext = Secret.fromBytes(
       new TextEncoder().encode(JSON.stringify(payload)),
       'store-payload'

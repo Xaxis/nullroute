@@ -17,6 +17,7 @@ covers:
   - packages/daemon/src/store/registry.ts::MAX_LABEL
   - packages/daemon/src/store/registry.ts::WALLET_COLOURS
   - packages/daemon/src/store/registry.ts::DEFAULT_COLOUR
+  - packages/daemon/src/store/registry.ts::UNCONFIRMED_LABEL
 
 algorithm: >
   Each wallet is a WalletStore of its own, in a directory named by 64 bits of
@@ -138,6 +139,29 @@ invariants:
       - packages/daemon/test/wallets.ipc.test.ts::refuses-to-rename-or-erase-with-nothing-open
       - packages/daemon/test/wallets.ipc.test.ts::names-the-wallet-by-what-was-sealed-not-by-what-was-asked-for
 
+  - id: INV-MW-10
+    statement: >
+      Housekeeping cannot throw away a decrypted seed. A failure to write a
+      hint back after unlocking disposes the seed and reports, rather than
+      abandoning it, and a failed migration leaves no phantom wallet behind.
+    tests:
+      - packages/daemon/test/registry.test.ts::disposes-the-seed-when-the-hint-cannot-be-written-back
+
+  - id: INV-MW-11
+    statement: >
+      One seed cannot be written twice through two doors. The legacy
+      single-wallet path is refused once the device holds named wallets.
+    tests:
+      - packages/daemon/test/wallets.ipc.test.ts::refuses-the-legacy-single-wallet-path-once-it-holds-named-wallets
+
+  - id: INV-MW-12
+    statement: >
+      A legacy store that cannot be migrated is reported beside the wallet list
+      rather than instead of it, so one unreadable file cannot make every other
+      wallet on the device unreachable.
+    tests:
+      - packages/daemon/test/wallets.ipc.test.ts::still-lists-wallets-when-a-legacy-store-cannot-be-migrated
+
 threats:
   - INV-KEY-1
   - INV-PSBT-2
@@ -151,6 +175,14 @@ security_notes: >
   same ciphertext as the bytes it describes, so the only way to see a name is to
   have opened the wallet it belongs to, and the answer the signing screen quotes
   comes from the session rather than from anything the picker rendered.
+
+  A V1 STORE SEALED NO NAME, and that gap had to be closed rather than papered
+  over. Falling back to the hint made an editable file the wallet's identity,
+  and worse, made the disagreement check compare that file against itself and
+  report agreement: the one signal that something was wrong could never fire
+  for exactly the wallets most likely to be attacked, the migrated ones. A
+  constant is returned instead, with labelVerified false, and renaming seals a
+  real name.
 
   WHAT THE UNSEALED HINT CAN DO. Anyone holding the card can edit it, so the
   picker can be made to lie about which wallet is which. This is worth less than

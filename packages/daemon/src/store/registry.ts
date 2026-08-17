@@ -97,6 +97,16 @@ export interface WalletHint {
    * user to then go and create a duplicate on purpose.
    */
   readonly fingerprint?: string
+  /**
+   * Whether a BIP-39 passphrase was applied when this wallet was created.
+   *
+   * NOT the passphrase that encrypts the store. That one protects a file; this
+   * one IS part of the key, and a wallet created under one is unrecoverable
+   * from the mnemonic alone. Recorded so a screen can say so before the user
+   * wonders where their money went. It reveals nothing: the wallet's existence
+   * already implies someone made it.
+   */
+  readonly bip39Passphrase?: boolean
 }
 
 export interface WalletEntry {
@@ -110,10 +120,29 @@ export interface WalletEntry {
 }
 
 /** What an unlocked wallet is, once its identity has been checked. */
+/**
+ * The name shown for a wallet whose store sealed no identity.
+ *
+ * A v1 store predates sealed labels, so there is nothing authenticated to show.
+ * The hint beside it is editable by anyone holding the card, so using it would
+ * make an attacker's string the wallet's name on the signing screen, with
+ * nothing anywhere reporting that it was never confirmed. A constant is worse
+ * to look at and cannot be forged.
+ */
+export const UNCONFIRMED_LABEL = 'Unconfirmed wallet'
+
 export interface OpenedWallet extends StoredWallet {
   readonly id: string
   readonly label: string
   readonly colour: WalletColour
+  /**
+   * Whether the label came from inside the ciphertext.
+   *
+   * False for a wallet migrated from a v1 store, which sealed no identity.
+   * Renaming it seals one and makes this true. Until then the caller must
+   * present the name as unconfirmed, because there is nothing behind it.
+   */
+  readonly labelVerified: boolean
   /**
    * True when the hint outside disagreed with the sealed identity.
    *
@@ -243,6 +272,7 @@ export class WalletRegistry {
           ...(typeof record['fingerprint'] === 'string'
             ? { fingerprint: record['fingerprint'] }
             : {}),
+          ...(record['bip39Passphrase'] === true ? { bip39Passphrase: true } : {}),
         }
       }
     } catch {
@@ -309,6 +339,15 @@ export class WalletRegistry {
     readonly label: string
     readonly colour: WalletColour
     readonly registrations?: readonly string[]
+    /**
+     * True when a BIP-39 passphrase was applied to reach this seed.
+     *
+     * Named at length because "passphrase" already means the one that encrypts
+     * the store, and the two are unrelated: one protects a file and the other
+     * IS part of the key. Confusing them in a variable name is how they get
+     * confused on a screen.
+     */
+    readonly bip39Passphrase?: boolean
   }): { readonly id: string; readonly label: string } {
     const label = normaliseLabel(options.label)
     const existing = this.list()
@@ -353,7 +392,13 @@ export class WalletRegistry {
       colour: options.colour,
       fingerprint,
     })
-    this.#writeHint(id, { label, colour: options.colour, network: options.network.id, fingerprint })
+    this.#writeHint(id, {
+      label,
+      colour: options.colour,
+      network: options.network.id,
+      fingerprint,
+      ...(options.bip39Passphrase === true ? { bip39Passphrase: true } : {}),
+    })
     // The NORMALISED label is returned, not the caller's. They can differ, and
     // a caller that went on using its own copy would put an unsanitised name in
     // the session while a sanitised one sat in the ciphertext, which is the
@@ -373,8 +418,15 @@ export class WalletRegistry {
     const opened = store.unlock(passphrase)
 
     const hint = this.#readHint(id)
-    const label = opened.label ?? hint.label
-    const colour = isColour(opened.colour) ? opened.colour : hint.colour
+
+    // A v1 store sealed no identity. Falling back to the hint would make an
+    // editable file authoritative, and the disagreement check would then be
+    // comparing the hint against itself and reporting agreement, so the one
+    // signal that something was wrong would never fire. A constant is used
+    // instead, and the caller is told the name is not confirmed.
+    const labelVerified = opened.label !== undefined
+    const label = labelVerified ? (opened.label ?? UNCONFIRMED_LABEL) : UNCONFIRMED_LABEL
+    const colour = isColour(opened.colour) ? opened.colour : DEFAULT_COLOUR
 
     const fingerprint = masterFingerprint(opened.seed, opened.network)
     const corrected =
@@ -383,10 +435,30 @@ export class WalletRegistry {
       hint.network !== opened.network.id ||
       hint.fingerprint !== fingerprint
     if (corrected) {
-      this.#writeHint(id, { label, colour, network: opened.network.id, fingerprint })
+      // Repairing the hint is housekeeping, and housekeeping must not be able
+      // to throw away a seed that has already been decrypted. `opened.seed` is
+      // live by this point, and a throw here would abandon it undisposed: an
+      // INV-KEY-2 leak triggered by nothing more than a read-only card or a
+      // full disk. So the failure is caught, the seed is disposed on the way
+      // out, and the error is re-raised rather than hidden.
+      try {
+        this.#writeHint(id, {
+          label,
+          colour,
+          network: opened.network.id,
+          fingerprint,
+          ...(hint.bip39Passphrase === true ? { bip39Passphrase: true } : {}),
+        })
+      } catch (err) {
+        opened.seed.dispose()
+        throw new StoreError(
+          `That wallet opened, but its name could not be written back to the device. ` +
+            `Nothing was signed and the seed has been discarded. ${(err as Error).message}`
+        )
+      }
     }
 
-    return { ...opened, id, label, colour, hintCorrected: corrected }
+    return { ...opened, id, label, colour, labelVerified, hintCorrected: corrected }
   }
 
   /**
@@ -479,9 +551,19 @@ export class WalletRegistry {
 
     const legacy = new WalletStore(this.#root, this.#kdf)
     const moved = new WalletStore(directory, this.#kdf)
-    moved.adoptFrom(legacy)
+    try {
+      moved.adoptFrom(legacy)
+    } catch (err) {
+      // Leave nothing behind. A half-made directory lists as a wallet that
+      // does not exist, so a failed migration would add a phantom row to the
+      // picker on every attempt, and the user would have no way to tell it
+      // from a wallet whose blob had been erased.
+      rmSync(directory, { recursive: true, force: true })
+      throw err
+    }
 
     if (!moved.exists()) {
+      rmSync(directory, { recursive: true, force: true })
       throw new StoreError(
         'Moving the existing wallet into its own directory did not produce a readable file. ' +
           'Nothing was removed. The wallet is still where it was.'
@@ -492,9 +574,10 @@ export class WalletRegistry {
     legacy.unlink()
 
     this.#writeHint(id, {
-      // No label was ever sealed in a v1 store, so this is honest rather than
-      // invented. The user renames it whenever they like.
-      label: 'My wallet',
+      // No label was ever sealed in a v1 store. The same constant `unlock`
+      // returns, so the picker and the opened wallet agree, and neither
+      // invents a name. Renaming seals a real one.
+      label: UNCONFIRMED_LABEL,
       colour: DEFAULT_COLOUR,
       network: 'unknown',
     })
