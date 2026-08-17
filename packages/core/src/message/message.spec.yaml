@@ -17,6 +17,7 @@ covers:
   - packages/core/src/message/bip322.ts::assertSignable
   - packages/core/src/message/bip322.ts::MessageError
   - packages/core/src/message/bip322.ts::MAX_MESSAGE_LENGTH
+  - packages/core/src/message/sign.ts::buildToSpend
 
 algorithm: >
   The commitment is the BIP-340 style tagged hash under "BIP0322-signed-message":
@@ -30,11 +31,11 @@ algorithm: >
   that must not be able to proceed by forgetting to read a list.
 
   STATUS IS DRAFT AND THE SCOPE IS DELIBERATELY NARROW. What is implemented is
-  the commitment and the review. The to_spend and to_sign transaction pair, the
-  witness serialisation, and the simple, full and legacy variants are NOT
-  implemented, and nothing in this module produces a signature. Anything on this
-  device claiming to sign a message is claiming something that does not exist
-  yet.
+  the commitment, the review, and the to_spend transaction, whose txid is
+  checked against the value the standard publishes. to_sign, the witness
+  serialisation, and the simple, full and legacy variants are NOT implemented,
+  and nothing in this module produces a signature. Anything on this device
+  claiming to sign a message is claiming something that does not exist yet.
 
 invariants:
   - id: INV-MSG-1
@@ -71,15 +72,36 @@ invariants:
       - packages/core/test/message.test.ts::reports-the-commitment-and-the-shape-of-the-message
       - packages/core/test/message.test.ts::warns-about-what-is-easy-to-miss-without-blocking-it
 
+  - id: INV-MSG-5
+    statement: >
+      The to_spend transaction matches the txid BIP-322 publishes, commits to
+      both the message and the address, and is deterministic.
+    tests:
+      - packages/core/test/message.sign.test.ts::matches-the-published-to_spend-txid
+      - packages/core/test/message.sign.test.ts::builds-every-field-the-standard-fixes
+      - packages/core/test/message.sign.test.ts::commits-to-the-message-in-the-transaction-itself
+      - packages/core/test/message.sign.test.ts::commits-to-the-address-as-well-as-the-message
+      - packages/core/test/message.sign.test.ts::is-deterministic
+
 threats:
   - INV-SIG-1
 
 security_notes: >
-  WHAT IS NOT BUILT. This module commits and reviews. It does not sign. The
-  to_spend and to_sign pair, the witness encoding, and the simple, full and
-  legacy variants are outstanding, and the spec status says draft for that
-  reason rather than because the parts that exist are provisional. No screen or
-  IPC method offers message signing, because there is nothing behind it.
+  WHAT IS NOT BUILT, AND WHY IT WAS TAKEN OUT AGAIN. A signing implementation
+  existed. It built to_sign, signed it, and serialised the witness. It produced
+  output of the right shape, deterministically, for the right address, and the
+  to_spend half matched the published txid exactly. It could not be shown to
+  verify against a BIP-143 digest computed by bitcoinjs-lib, and the published
+  base64 signature could not be confirmed either, so there was no evidence it
+  interoperates.
+
+  A message signature that only this device accepts proves nothing to the person
+  who asked for it, which is the entire purpose. So it was removed rather than
+  shipped behind a flag or left in with a passing test that only checked shape.
+  What survives is the part that IS verified against somebody else's numbers.
+
+  No screen and no IPC method offers message signing, and a test asserts the
+  absence of `message.sign`, so adding one is a decision rather than a drift.
 
   THE ATTACK THIS MODULE IS SHAPED AROUND is a user induced to sign a string
   chosen by somebody else, where the string means something elsewhere. A

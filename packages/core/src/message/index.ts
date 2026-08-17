@@ -7,3 +7,5 @@ export {
   assertSignable,
 } from './bip322.js'
 export type { MessageReview } from './bip322.js'
+
+export { buildToSpend } from './sign.js'
