@@ -1247,3 +1247,30 @@ body {
   background-color: var(--color-surface-3);
   color: var(--color-text-dim);
 }
+
+/* The fingerprint on the post-unlock screen. Deliberately the largest thing
+   there: it is the only signal a mistyped passphrase ever produces, and a
+   wrong one opens a valid, empty wallet with no error anywhere. */
+.nr-fp {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.125rem;
+  border-radius: 0.5rem;
+  background-color: var(--color-surface-2);
+  border: 1px solid var(--color-line);
+}
+
+.nr-fp__label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-dim);
+}
+
+.nr-fp__value {
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}

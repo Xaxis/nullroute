@@ -212,6 +212,17 @@ export class Session {
   }
 
   /**
+   * Record that the loaded wallet was made with a BIP-39 passphrase.
+   *
+   * For a wallet coming out of the store, where the fact was recorded when it
+   * was created and cannot be inferred from the seed. One bit, and it changes
+   * nothing but what a screen says.
+   */
+  setBip39Passphrase(used: boolean): void {
+    this.#bip39Passphrase = used
+  }
+
+  /**
    * Refuse anything that would write this seed down.
    *
    * Called by every persistence path rather than checked at one of them, so

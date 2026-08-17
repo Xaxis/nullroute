@@ -149,8 +149,10 @@ invariants:
 
   - id: INV-MW-11
     statement: >
-      One seed cannot be written twice through two doors. The legacy
-      single-wallet path is refused once the device holds named wallets.
+      One seed cannot be written twice through two doors. The whole
+      single-wallet store surface that writes or erases is refused once the
+      device holds named wallets, so nothing can address a file that is not one
+      of them and report success. The read-only status call stays.
     tests:
       - packages/daemon/test/wallets.ipc.test.ts::refuses-the-legacy-single-wallet-path-once-it-holds-named-wallets
 

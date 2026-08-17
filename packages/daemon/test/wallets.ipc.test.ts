@@ -234,8 +234,22 @@ describe('daemon wallets IPC', () => {
     await call('wallets.create', { passphrase: 'strong', label: 'Cold', colour: 'teal' })
 
     await expect(call('store.create', { passphrase: 'weak' })).rejects.toThrow(
-      /Save this one with wallets.create/
+      /Use wallets.create instead/
     )
+
+    // The whole single-wallet surface is closed, not just the one that could
+    // fork a seed. store.destroy was the worse of the two: it addressed a file
+    // that does not exist for a named wallet and reported destroyed:true having
+    // removed nothing, which is the worst possible answer to "did you erase my
+    // wallet".
+    await expect(call('store.destroy')).rejects.toThrow(/Use wallets.destroy instead/)
+    await expect(call('store.unlock', { passphrase: 'weak' })).rejects.toThrow(
+      /Use wallets.unlock instead/
+    )
+
+    // store.status stays: it is read-only, and the lock screen calls it before
+    // anything about this device is known.
+    await expect(call('store.status')).resolves.toBeTruthy()
   })
 
   /**

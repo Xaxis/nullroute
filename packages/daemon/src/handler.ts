@@ -150,6 +150,30 @@ export function createHandler(state: DaemonState): IpcHandler {
   }
 
   /**
+   * Close the single-wallet surface once this device holds named wallets.
+   *
+   * The two APIs address different files: store.* works on the blob at the root
+   * of the store directory, wallets.* on the per-wallet directories. Leaving
+   * both open produced two distinct hazards. One seed could be sealed through
+   * each under two passphrases, with the weaker governing the money and nothing
+   * showing they were the same wallet, because the registry cannot see a store
+   * written behind its back. And store.destroy reported destroyed:true having
+   * removed nothing at all, which is the worst possible answer to "did you
+   * erase my wallet".
+   *
+   * store.status is deliberately still allowed: it is read-only, it reports on
+   * a file that will not exist, and the lock screen calls it before anything
+   * else is known.
+   */
+  const refuseLegacyStore = (replacement: string): void => {
+    if (state.registry === undefined) return
+    throw new Error(
+      `This device holds named wallets, so that operation would act on a file that is not ` +
+        `one of them. Use ${replacement} instead.`
+    )
+  }
+
+  /**
    * What every response naming a wallet says.
    *
    * Read off the session rather than off a request or a hint, so it is the
@@ -777,18 +801,7 @@ export function createHandler(state: DaemonState): IpcHandler {
        * until the store was erased or the card died.
        */
       case 'store.create': {
-        // Refused once this device can hold several wallets. Leaving both paths
-        // open meant the same seed could be written twice, once here and once
-        // through wallets.create, under two different passphrases: the weaker
-        // one would govern the money and nothing would show the user that the
-        // two entries were the same wallet. The registry's duplicate check
-        // cannot see a store written behind its back.
-        if (state.registry !== undefined) {
-          throw new Error(
-            'This device holds named wallets. Save this one with wallets.create so it appears ' +
-              'in the picker and cannot be stored twice.'
-          )
-        }
+        refuseLegacyStore('wallets.create')
         session.assertPersistable()
         if (!session.backupConfirmed) {
           throw new Error(
@@ -817,6 +830,7 @@ export function createHandler(state: DaemonState): IpcHandler {
        * key material is reachable exactly once per wallet.
        */
       case 'store.unlock': {
+        refuseLegacyStore('wallets.unlock')
         const wallet = requireStore().unlock(requireString(request, 'passphrase'))
         // Network first. `masterFingerprint` and every later derivation depend
         // on it, so loading the seed under the session's default and fixing the
@@ -838,6 +852,7 @@ export function createHandler(state: DaemonState): IpcHandler {
 
       /** Erase the wallet from this device. Irreversible without the mnemonic. */
       case 'store.destroy': {
+        refuseLegacyStore('wallets.destroy')
         requireStore().destroy()
         session.lock()
         return { destroyed: true }
@@ -956,6 +971,13 @@ export function createHandler(state: DaemonState): IpcHandler {
           label: opened.label,
           colour: opened.colour,
         })
+        // Whether this wallet needs a BIP-39 passphrase is a property of the
+        // wallet, recorded when it was made, and the session has just been
+        // cleared. Restored from the registry so the screen after this one can
+        // say which kind of wallet just opened.
+        session.setBip39Passphrase(
+          registry.list().find((entry) => entry.id === id)?.hint.bip39Passphrase === true
+        )
         session.setRegistrations(opened.registrations)
 
         return {
@@ -971,6 +993,10 @@ export function createHandler(state: DaemonState): IpcHandler {
           // disagreed with. A screen must tell the user rather than quietly
           // fixing it, because the picker just got caught being wrong.
           hintCorrected: opened.hintCorrected,
+          // False for a wallet migrated from a v1 store, which sealed no name.
+          // The screen must present the name as unconfirmed rather than as one.
+          labelVerified: opened.labelVerified,
+          bip39Passphrase: session.bip39Passphrase,
           network: {
             id: session.network.id,
             label: session.network.label,

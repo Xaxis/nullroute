@@ -40,6 +40,7 @@ covers:
   - packages/ui/src/components/TextKeyboard.tsx::TextKeyboard
   - packages/ui/src/screens/WalletsScreen.tsx::WalletsScreen
   - packages/ui/src/components/WalletChip.tsx::WalletChip
+  - packages/ui/src/screens/UnlockedScreen.tsx::UnlockedScreen
 
 algorithm: >
   Renders the manifest root hash, the verification status with spec and
@@ -356,6 +357,32 @@ invariants:
       - packages/ui/test/wallets-screen.test.tsx::states-what-the-attempt-counter-does-and-does-not-do
       - packages/ui/test/wallets-screen.test.tsx::refuses-to-add-a-wallet-past-the-limit
       - packages/ui/test/wallets-screen.test.tsx::marks-the-open-wallet-and-disables-an-erased-one
+
+  # --- What just opened ------------------------------------------------------
+  # A wrong BIP-39 passphrase produces no error. It derives a different, valid,
+  # empty wallet, and every screen after this one looks normal.
+  - id: INV-UI-33
+    statement: >
+      A wallet that has just opened shows its fingerprint before it can be
+      used, says what a mismatch means, admits that it helps nobody who did not
+      record one, and does not make continuing the focused default.
+    tests:
+      - packages/ui/test/unlocked-screen.test.tsx::shows-the-fingerprint-and-what-a-mismatch-means
+      - packages/ui/test/unlocked-screen.test.tsx::offers-a-way-out-that-is-not-the-primary-action
+      - packages/ui/test/unlocked-screen.test.tsx::names-the-network-and-marks-a-test-one
+
+  - id: INV-UI-34
+    statement: >
+      A wallet made with a BIP-39 passphrase says so in the words that matter,
+      a wallet whose name is not sealed says the name is unconfirmed, and a
+      picker that disagreed with the ciphertext is reported. None of these
+      appear on an ordinary unlock.
+    tests:
+      - packages/ui/test/unlocked-screen.test.tsx::warns-specifically-when-the-wallet-uses-a-passphrase
+      - packages/ui/test/unlocked-screen.test.tsx::says-when-the-name-is-not-confirmed
+      - packages/ui/test/unlocked-screen.test.tsx::reports-that-the-picker-was-showing-something-else
+      - packages/ui/test/unlocked-screen.test.tsx::says-nothing-about-passphrases-when-none-was-used
+      - packages/ui/test/unlocked-screen.test.tsx::shows-nothing-alarming-on-an-ordinary-unlock
 
 threats:
   - INV-KEY-1

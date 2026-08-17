@@ -54,6 +54,9 @@ export type { ScanScreenProps, ScanResult } from './screens/ScanScreen.js'
 export { QrDisplay } from './components/QrDisplay.js'
 export type { QrDisplayProps } from './components/QrDisplay.js'
 
+export { UnlockedScreen } from './screens/UnlockedScreen.js'
+export type { UnlockedScreenProps } from './screens/UnlockedScreen.js'
+
 export { WalletsScreen } from './screens/WalletsScreen.js'
 export type { WalletsScreenProps, WalletRow } from './screens/WalletsScreen.js'
 export { WalletChip } from './components/WalletChip.js'

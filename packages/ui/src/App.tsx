@@ -25,6 +25,7 @@ import { WalletScreen, type ScriptType } from './screens/WalletScreen.js'
 import { PsbtScreen, type PsbtReviewView } from './screens/PsbtScreen.js'
 import { ScanScreen, type ScanResult } from './screens/ScanScreen.js'
 import { WalletsScreen, type WalletRow } from './screens/WalletsScreen.js'
+import { UnlockedScreen } from './screens/UnlockedScreen.js'
 import { WalletChip } from './components/WalletChip.js'
 import { PassphraseScreen } from './screens/PassphraseScreen.js'
 import {
@@ -83,6 +84,20 @@ type Stage =
   | { readonly at: 'multisig' }
   /** Choosing which of several wallets to open. */
   | { readonly at: 'wallets' }
+  /**
+   * What just opened, before it can be used.
+   *
+   * A separate stage rather than a banner on the wallet screen, because a
+   * wrong BIP-39 passphrase produces no error and every screen afterwards
+   * looks normal. The fingerprint has to be read before anything else happens.
+   */
+  | {
+      readonly at: 'unlocked'
+      readonly fingerprint: string
+      readonly usedPassphrase: boolean
+      readonly labelVerified: boolean
+      readonly hintCorrected: boolean
+    }
 
 const transport = httpTransport()
 
@@ -207,18 +222,23 @@ export function App() {
     async (id: string, passphrase: string): Promise<void> => {
       const opened = await call<{
         active: { id: string; label: string; colour: string }
+        fingerprint: string
         hintCorrected: boolean
+        labelVerified: boolean
+        bip39Passphrase: boolean
       }>(transport, 'wallets.unlock', { id, passphrase })
       setActiveWallet(opened.active)
-      // The picker was showing something the ciphertext disagreed with. Say so
-      // rather than quietly correcting it: the row the user tapped was wrong.
-      setError(
-        opened.hintCorrected
-          ? `This wallet is called "${opened.active.label}". The picker was showing something ` +
-              `else, which has now been corrected.`
-          : null
-      )
-      setStage({ at: 'wallet' })
+      setError(null)
+      // Never straight to the wallet. Everything a user needs in order to
+      // notice that the wrong wallet opened is on the next screen, and after
+      // that there is nothing left to notice it with.
+      setStage({
+        at: 'unlocked',
+        fingerprint: opened.fingerprint,
+        usedPassphrase: opened.bip39Passphrase,
+        labelVerified: opened.labelVerified,
+        hintCorrected: opened.hintCorrected,
+      })
     },
     []
   )
@@ -560,6 +580,37 @@ export function App() {
         }}
         onCancel={() => {
           setStage({ at: 'lock' })
+        }}
+      />
+    )
+  }
+
+  if (stage.at === 'unlocked' && status !== null && activeWallet !== null) {
+    return (
+      <UnlockedScreen
+        banner={banner}
+        label={activeWallet.label}
+        colour={activeWallet.colour}
+        fingerprint={stage.fingerprint}
+        networkLabel={status.network.label}
+        isMainnet={status.network.isMainnet}
+        usedPassphrase={stage.usedPassphrase}
+        labelVerified={stage.labelVerified}
+        hintCorrected={stage.hintCorrected}
+        onContinue={() => {
+          setStage({ at: 'wallet' })
+        }}
+        onLock={() => {
+          // Straight back to the picker, with the seed forgotten. This is the
+          // exit for someone who looked at the fingerprint and did not
+          // recognise it, so it must not leave the wallet loaded.
+          const go = async (): Promise<void> => {
+            await call(transport, 'session.lock')
+            setActiveWallet(null)
+            await refresh()
+            setStage({ at: 'wallets' })
+          }
+          void go()
         }}
       />
     )
