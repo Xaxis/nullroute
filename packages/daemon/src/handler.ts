@@ -43,6 +43,12 @@ import {
   signTransaction,
   validateRolls,
   withChecksum,
+  deriveBip85Hex,
+  deriveBip85Mnemonic,
+  deriveBip85Password,
+  exportLabels,
+  importLabels,
+  reviewMessage,
 } from '@nullroute/core'
 import { randomBytes } from 'node:crypto'
 import { type BootAttestation, abbreviateHash } from './boot/attestation.js'
@@ -888,6 +894,79 @@ export function createHandler(state: DaemonState): IpcHandler {
         requireStore().destroy()
         session.lock()
         return { destroyed: true }
+      }
+
+      // --- Message signing, labels and child seeds ---------------------------
+      /**
+       * Read a message before anything signs it.
+       *
+       * The only method in this group today. core.message.bip322 implements the
+       * commitment and the review; the transaction pair and the witness
+       * encoding are not built, so there is deliberately no `message.sign` here
+       * to call. A method that existed and threw would read as a broken feature
+       * rather than an absent one.
+       */
+      case 'message.review': {
+        return reviewMessage(requireString(request, 'message'))
+      }
+
+      /**
+       * Read a BIP-329 label file.
+       *
+       * Nothing is stored and nothing is trusted. Labels are text shown beside
+       * things this device already recognised by re-deriving them, and the
+       * response carries the lines that were dropped so a screen can say the
+       * import was partial rather than leaving the user to notice.
+       */
+      case 'labels.import': {
+        const result = importLabels(requireString(request, 'text'))
+        return {
+          labels: result.labels,
+          skipped: result.skipped,
+          note:
+            'Labels are text. Nothing here decides whether an address is yours: that is ' +
+            'decided by re-deriving it from your seed.',
+        }
+      }
+
+      /** Write a BIP-329 label file, byte identical for the same labels. */
+      case 'labels.export': {
+        const raw = params(request)['labels']
+        if (!Array.isArray(raw)) {
+          throw new Error('Parameter "labels" is required and must be an array.')
+        }
+        return { text: exportLabels(raw as Parameters<typeof exportLabels>[0]) }
+      }
+
+      /**
+       * A BIP-85 child.
+       *
+       * Returns the path with the child, always. The child is unrecoverable
+       * without it, and a user who records only the words has recorded the half
+       * their master mnemonic already implies.
+       *
+       * This returns key material, which is the exception INV-KEY-1 makes for
+       * the one screen that has to show a mnemonic so it can be written down.
+       * It is gated on an unlocked wallet and is never persisted here: a child
+       * the user wants to keep is imported as a wallet in its own right.
+       */
+      case 'bip85.derive': {
+        const application = requireString(request, 'application')
+        const index = requireNumber(request, 'index', 0)
+        const seed = session.requireSeed()
+
+        switch (application) {
+          case 'mnemonic':
+            return deriveBip85Mnemonic(seed, requireNumber(request, 'wordCount', 24), index)
+          case 'hex':
+            return deriveBip85Hex(seed, requireNumber(request, 'bytes', 32), index)
+          case 'password':
+            return deriveBip85Password(seed, requireNumber(request, 'length', 32), index)
+          default:
+            throw new Error(
+              `Unknown BIP-85 application "${application}". Expected mnemonic, hex or password.`
+            )
+        }
       }
 
       // --- Several wallets --------------------------------------------------

@@ -85,6 +85,38 @@ invariants:
     tests:
       - packages/daemon/test/ipc.test.ts::serves-attestation
 
+  # --- Phase 4 surface -------------------------------------------------------
+  - id: INV-DAEMON-20
+    statement: >
+      Message review reports the commitment a verifier recomputes and refuses a
+      message that would display differently from what is signed. No method
+      signs a message, because that part is not built.
+    tests:
+      - packages/daemon/test/phase4.ipc.test.ts::reports-the-commitment-a-verifier-will-recompute
+      - packages/daemon/test/phase4.ipc.test.ts::refuses-a-message-that-would-display-differently-from-what-is-signed
+      - packages/daemon/test/phase4.ipc.test.ts::offers-no-way-to-sign-a-message-yet
+
+  - id: INV-DAEMON-21
+    statement: >
+      Labels cross the boundary as text, with the dropped lines reported and a
+      statement that a label decides nothing about ownership.
+    tests:
+      - packages/daemon/test/phase4.ipc.test.ts::imports-and-exports-without-deciding-anything
+      - packages/daemon/test/phase4.ipc.test.ts::refuses-an-export-that-is-not-a-list
+
+  - id: INV-DAEMON-22
+    statement: >
+      A BIP-85 child is returned with the path that produced it, is gated on an
+      unlocked wallet, refuses parameters the standard does not allow, and is
+      never written to the device.
+    tests:
+      - packages/daemon/test/phase4.ipc.test.ts::returns-a-child-with-the-path-that-produced-it
+      - packages/daemon/test/phase4.ipc.test.ts::derives-hex-and-passwords-too
+      - packages/daemon/test/phase4.ipc.test.ts::refuses-an-application-it-does-not-know
+      - packages/daemon/test/phase4.ipc.test.ts::refuses-parameters-the-standard-does-not-allow
+      - packages/daemon/test/phase4.ipc.test.ts::refuses-when-no-wallet-is-loaded
+      - packages/daemon/test/phase4.ipc.test.ts::writes-nothing-to-the-device
+
 threats:
   - INV-NET-1
   - INV-NET-2
