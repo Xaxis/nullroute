@@ -500,6 +500,12 @@ export class WalletStore {
       using check = Secret.copyOf(bytes, 'fingerprint-check')
       const actual = masterFingerprint(check, network)
       if (actual !== payload.fingerprint) {
+        // `bytes` is a raw buffer holding a decrypted seed and no Secret owns
+        // it yet, so nothing else will ever clear it. Zeroized by hand before
+        // the throw: an INV-KEY-2 violation on a refusal path is still an
+        // INV-KEY-2 violation, and this one is reachable by opening a store
+        // whose contents disagree with themselves.
+        bytes.fill(0)
         throw new StoreError(
           `This store's sealed identity does not match its seed (says ${payload.fingerprint}, ` +
             `derives ${actual}). Refusing to open it.`

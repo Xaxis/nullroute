@@ -12,7 +12,6 @@ purpose: >
 covers:
   - packages/daemon/src/store/registry.ts::WalletRegistry
   - packages/daemon/src/store/registry.ts::normaliseLabel
-  - packages/daemon/src/store/registry.ts::hintNetwork
   - packages/daemon/src/store/registry.ts::MAX_WALLETS
   - packages/daemon/src/store/registry.ts::MAX_LABEL
   - packages/daemon/src/store/registry.ts::WALLET_COLOURS
@@ -164,6 +163,24 @@ invariants:
     tests:
       - packages/daemon/test/wallets.ipc.test.ts::still-lists-wallets-when-a-legacy-store-cannot-be-migrated
 
+  - id: INV-MW-13
+    statement: >
+      A wallet erased by exhausted attempts does not hold its slot forever. Its
+      tombstone is still listed, does not count against the limit, and can be
+      cleared away, but only because its seed is already gone.
+    tests:
+      - packages/daemon/test/registry.test.ts::frees-the-slot-of-a-wallet-erased-by-exhausted-attempts
+      - packages/ui/test/wallets-screen.test.tsx::does-not-count-erased-wallets-against-the-limit
+
+  - id: INV-MW-14
+    statement: >
+      Registering a quorum writes to the wallet that is open, carrying its
+      sealed identity through, and a registration that failed to persist is
+      never left live for signing.
+    tests:
+      - packages/daemon/test/wallets.ipc.test.ts::registers-against-the-open-wallet-and-keeps-its-sealed-name
+      - packages/daemon/test/wallets.ipc.test.ts::does-not-leave-a-failed-registration-live-for-signing
+
 threats:
   - INV-KEY-1
   - INV-PSBT-2
@@ -185,6 +202,31 @@ security_notes: >
   for exactly the wallets most likely to be attacked, the migrated ones. A
   constant is returned instead, with labelVerified false, and renaming seals a
   real name.
+
+  REGISTERING A QUORUM RE-SEALS, AND IT MUST RE-SEAL THE RIGHT FILE. It was
+  writing to the blob at the root of the store directory, which is not the open
+  wallet: on a migrated device that is a DIFFERENT wallet's file, so registering
+  a quorum could overwrite another wallet's sealed seed and spend its
+  ten-attempt budget. It also re-sealed with no identity, which would strip the
+  sealed label and hand the wallet's name back to the editable hint beside it.
+  Both are why the registration path now goes through `rename`, which carries
+  the identity and does not count a wrong passphrase against a wallet that is
+  already open.
+
+  A MIGRATED WALLET'S HINT CARRIES NO FINGERPRINT until its first successful
+  unlock, because migration has no passphrase and therefore no seed. The
+  one-seed-one-wallet check keys on that fingerprint, so it cannot fire for a
+  migrated wallet in the window between migration and first unlock. Stated
+  rather than closed: closing it would mean either refusing to create any
+  wallet while an unopened one exists, which blocks legitimate use, or deriving
+  a fingerprint the device cannot derive.
+
+  THE FINGERPRINT IS WRITTEN IN CLEARTEXT beside each sealed blob, and exists
+  for one purpose: refusing a duplicate seed. It is never displayed and never
+  used to identify a wallet to a user. Anyone reading the card learns which
+  wallets are on it, which they already knew from the file names, and learns a
+  value that is public by construction: it is derived from an extended PUBLIC
+  key and appears in every descriptor this device exports.
 
   WHAT THE UNSEALED HINT CAN DO. Anyone holding the card can edit it, so the
   picker can be made to lie about which wallet is which. This is worth less than

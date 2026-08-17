@@ -677,29 +677,61 @@ export function createHandler(state: DaemonState): IpcHandler {
           session.network,
           requireNumber(request, 'account', 0)
         )
-        session.addRegistration(registration.descriptor)
-
-        // Persisted only when a passphrase is supplied, because re-sealing the
-        // store needs one. A registration made without it lives for this
-        // session, which is a legitimate choice and is reported back so the UI
-        // can say so rather than implying it was saved.
+        // Persisted only when a passphrase is supplied, because re-sealing
+        // needs one. A registration made without it lives for this session,
+        // which is a legitimate choice and is reported back so the UI can say
+        // so rather than implying it was saved.
         //
         // An ephemeral session registers for this session and never writes,
         // which is the same shape as omitting the passphrase and is reported
-        // the same way. Checked rather than assumed, because a registration
-        // names cosigners and a device asked to record nothing must record
-        // nothing.
+        // the same way. Checked rather than assumed: a registration names
+        // cosigners, and a device asked to record nothing must record nothing.
         const passphrase = optionalString(request, 'passphrase')
+        const active = session.active
+
+        // The list that WOULD be sealed, built without touching the session.
+        // Persisting must be able to fail without leaving a registration live
+        // for signing that the user was told had not been saved.
+        const next = session.registrations.includes(registration.descriptor)
+          ? [...session.registrations]
+          : [...session.registrations, registration.descriptor]
+
         let persisted = false
-        if (passphrase.length > 0 && !session.ephemeral && state.store !== undefined) {
-          state.store.reseal(
-            session.requireSeed(),
-            session.network,
-            passphrase,
-            session.registrations
-          )
-          persisted = true
+        if (passphrase.length > 0 && !session.ephemeral) {
+          if (active !== undefined && state.registry !== undefined) {
+            // The OPEN wallet, through the registry. Writing to state.store
+            // addresses the legacy blob at the ROOT of the store directory,
+            // which is not this wallet: on a migrated device that is a
+            // different wallet's file, and re-sealing it would overwrite its
+            // seed and spend its ten-attempt budget.
+            //
+            // Through rename, so the sealed identity is carried through. A
+            // bare reseal writes no label, which would strip the wallet's name
+            // out of the ciphertext and hand it back to the editable hint. It
+            // also does not count a wrong passphrase, which is right here: the
+            // wallet is already open, so there is nothing left to slow down.
+            state.registry.rename(active.id, {
+              seed: session.requireSeed(),
+              network: session.network,
+              passphrase,
+              label: active.label,
+              colour: active.colour as WalletColour,
+              registrations: next,
+            })
+            persisted = true
+          } else if (state.registry === undefined && state.store !== undefined) {
+            state.store.reseal(session.requireSeed(), session.network, passphrase, next)
+            persisted = true
+          } else {
+            throw new Error(
+              'No wallet is open, so there is nothing to save this registration to. Open a ' +
+                'wallet first, or register without a passphrase to use it for this session only.'
+            )
+          }
         }
+
+        // Only now. A registration reported as not saved must not be live.
+        session.addRegistration(registration.descriptor)
         return { ...registration, persisted }
       }
 
@@ -1052,6 +1084,21 @@ export function createHandler(state: DaemonState): IpcHandler {
         registry.destroy(active.id)
         session.lock()
         return { destroyed: true, id: active.id }
+      }
+
+      /**
+       * Remove the directory of a wallet whose seed is already gone.
+       *
+       * Exhausting the attempt counter erases the blob and leaves the
+       * directory, which `wallets.destroy` cannot clear because that requires
+       * the wallet to be open and an erased wallet cannot be opened. Without
+       * this, eight erasures would fill the device permanently.
+       */
+      case 'wallets.forget': {
+        const registry = requireRegistry()
+        const id = requireWalletId(request)
+        registry.forget(id)
+        return { forgotten: true, id }
       }
 
       // --- Backup and restore ---------------------------------------------

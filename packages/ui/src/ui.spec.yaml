@@ -336,6 +336,7 @@ invariants:
       - packages/ui/test/wallets-screen.test.tsx::always-names-the-network-including-mainnet
       - packages/ui/test/wallets-screen.test.tsx::shows-the-label-beside-every-colour
       - packages/ui/test/wallets-screen.test.tsx::shows-an-empty-device-honestly
+      - packages/ui/test/wallets-screen.test.tsx::never-renders-a-failed-list-as-an-empty-device
 
   - id: INV-UI-31
     statement: >

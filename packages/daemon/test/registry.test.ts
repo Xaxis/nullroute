@@ -294,6 +294,48 @@ describe('daemon.store.registry', () => {
     opened.seed.dispose()
   })
 
+  /**
+   * INV-MW-13. An erased wallet must not hold its slot forever.
+   *
+   * Exhausting the counter removes the blob and leaves the directory, and
+   * `destroy` cannot clear it because that needs the wallet open. Eight of
+   * those would fill the device permanently, turning a recoverable mistake
+   * into a brick.
+   */
+  it('frees-the-slot-of-a-wallet-erased-by-exhausted-attempts', () => {
+    const reg = registry()
+    const id = createWallet(reg, 1, 'Burned')
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+      try {
+        reg.unlock(id, 'wrong')
+      } catch {
+        // Counted, and the last one erases. The throw is the point.
+      }
+    }
+    expect(reg.store(id).exists()).toBe(false)
+
+    // The tombstone is still listed, so a user can see what happened, and it
+    // no longer counts against the limit.
+    const listed = reg.list()
+    expect(listed).toHaveLength(1)
+    expect(listed[0]?.exists).toBe(false)
+
+    for (let index = 0; index < MAX_WALLETS; index += 1) {
+      createWallet(reg, index + 10, `Wallet ${String(index)}`)
+    }
+    expect(reg.list().filter((entry) => entry.exists)).toHaveLength(MAX_WALLETS)
+
+    // And it can be cleared away, but only because its seed is already gone.
+    reg.forget(id)
+    expect(reg.list().some((entry) => entry.id === id)).toBe(false)
+
+    const live = reg.list().find((entry) => entry.exists)
+    if (live === undefined) throw new Error('no live wallet')
+    expect(() => {
+      reg.forget(live.id)
+    }).toThrow(/still has a sealed seed/)
+  })
+
   it('caps-how-many-wallets-one-device-holds', () => {
     const reg = registry()
     for (let index = 0; index < MAX_WALLETS; index += 1) {

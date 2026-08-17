@@ -170,6 +170,49 @@ describe('WalletsScreen', () => {
     render(<WalletsScreen wallets={[]} max={8} onUnlock={vi.fn()} onCreate={vi.fn()} />)
     expect(screen.getByTestId('wallets-empty')).toBeTruthy()
   })
+
+  /**
+   * INV-UI-30. A list that failed to load must never render as an empty one.
+   *
+   * "This device holds no wallets" is the most alarming sentence a signing
+   * device can say, and saying it because a call failed is a lie told at the
+   * worst possible moment: the user's next move is to set up a new wallet.
+   */
+  it('never-renders-a-failed-list-as-an-empty-device', () => {
+    render(
+      <WalletsScreen
+        wallets={[]}
+        max={8}
+        failure="The daemon did not answer."
+        onUnlock={vi.fn()}
+        onCreate={vi.fn()}
+      />
+    )
+    expect(screen.queryByTestId('wallets-empty')).toBeNull()
+    const shown = screen.getByTestId('wallets-failure').textContent
+    expect(shown).toContain('may be incomplete')
+    expect(shown).toContain('The daemon did not answer.')
+  })
+
+  /**
+   * A wallet erased by exhausted attempts leaves a row, and that row must not
+   * count towards the limit. Eight of them would otherwise say the device is
+   * full while it holds nothing.
+   */
+  it('does-not-count-erased-wallets-against-the-limit', () => {
+    const tombstones = Array.from({ length: 8 }, (_, index) => ({
+      ...(rows()[0] ?? { colour: 'teal', network: 'mainnet', attemptsRemaining: 0 }),
+      id: String(index).repeat(16).slice(0, 16),
+      label: `Gone ${String(index)}`,
+      exists: false,
+      destroyed: true,
+    })) as WalletRow[]
+
+    render(<WalletsScreen wallets={tombstones} max={8} onUnlock={vi.fn()} onCreate={vi.fn()} />)
+    const add = screen.getByTestId<HTMLButtonElement>('wallets-add')
+    expect(add.disabled).toBe(false)
+    expect(screen.getByTestId('wallets-screen').textContent).toContain('0 of 8')
+  })
 })
 
 describe('WalletChip', () => {

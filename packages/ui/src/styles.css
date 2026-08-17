@@ -1274,3 +1274,20 @@ body {
   font-weight: 600;
   letter-spacing: 0.04em;
 }
+
+/* The picker's honesty note stays put while the list scrolls under it. Eight
+   rows at 48px do not fit a 480px panel beside a header and an action bar, and
+   the first thing to scroll away would otherwise be the sentence saying none of
+   this is verified. */
+.nr-note--pinned {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--color-surface-1);
+  padding-bottom: 0.5rem;
+}
+
+.nr-wlist--scroll {
+  overflow-y: auto;
+  min-height: 0;
+}

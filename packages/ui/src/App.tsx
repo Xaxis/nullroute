@@ -126,6 +126,8 @@ export function App() {
   const [expanded, setExpanded] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [wallets, setWallets] = useState<readonly WalletRow[]>([])
+  /** Why the wallet list may be wrong or incomplete. Never rendered as empty. */
+  const [listFailure, setListFailure] = useState<string | null>(null)
   const [maxWallets, setMaxWallets] = useState(8)
   /**
    * The open wallet, as the daemon reports it.
@@ -195,14 +197,33 @@ export function App() {
     )
 
   const loadWallets = useCallback(async (): Promise<void> => {
-    const listed = await call<{
-      wallets: readonly WalletRow[]
-      max: number
-      active: { id: string; label: string; colour: string } | null
-    }>(transport, 'wallets.list', {})
-    setWallets(listed.wallets)
-    setMaxWallets(listed.max)
-    setActiveWallet(listed.active)
+    // Never swallowed. A failed list rendered as an empty one tells a user with
+    // three wallets that this device holds none, which is the single most
+    // alarming thing a signing device can say and is a lie. The error is shown
+    // and the previous list is left alone.
+    try {
+      const listed = await call<{
+        wallets: readonly WalletRow[]
+        max: number
+        active: { id: string; label: string; colour: string } | null
+        migrationError: string | null
+      }>(transport, 'wallets.list', {})
+      setWallets(listed.wallets)
+      setMaxWallets(listed.max)
+      setActiveWallet(listed.active)
+      setListFailure(
+        listed.migrationError === null
+          ? null
+          : `A wallet saved by an older version of this device could not be moved into place: ` +
+              `${listed.migrationError} It has not been changed, and the wallets below are ` +
+              `unaffected.`
+      )
+    } catch (err) {
+      setListFailure(
+        `This device could not be asked what wallets it holds: ${(err as Error).message} ` +
+          `That is not the same as holding none. Do not set up a new wallet until this is fixed.`
+      )
+    }
   }, [])
 
   /**
@@ -220,6 +241,13 @@ export function App() {
 
   const unlockWallet = useCallback(
     async (id: string, passphrase: string): Promise<void> => {
+      // Cleared BEFORE the call. wallets.unlock locks the session first, so
+      // from the moment it is issued nothing is open; leaving the old value in
+      // place means a failed unlock returns to a picker whose header still
+      // names, and whose list still marks as open, a wallet the daemon has
+      // already closed.
+      setActiveWallet(null)
+
       const opened = await call<{
         active: { id: string; label: string; colour: string }
         fingerprint: string
@@ -357,12 +385,15 @@ export function App() {
           setExpanded((v) => !v)
         }}
         onUnlock={() => {
-          // Three ways past this screen. A wallet already in memory goes
-          // straight through; a wallet sealed on disk needs its passphrase;
-          // nothing at all means setup.
+          // A wallet already in memory goes straight through. Everything else
+          // goes to the picker, which is what lists the wallets on the device,
+          // migrates a pre-multi-wallet store on first sight, and offers to
+          // make one when there are none. Routing "no wallet" straight to
+          // setup would mean a device that had wallets but no session could
+          // never reach them, and a legacy store would never be migrated
+          // because nothing else calls wallets.list.
           if (status.hasWallet) setStage({ at: 'wallet' })
-          else if (store?.exists === true) setStage({ at: 'unlock' })
-          else setStage({ at: 'setup' })
+          else setStage({ at: 'wallets' })
         }}
       />
     )
@@ -468,6 +499,9 @@ export function App() {
           onLock={() => {
             const go = async (): Promise<void> => {
               await call(transport, 'session.lock')
+              // The chip is the only always-visible answer to "which wallet is
+              // this", so it must not survive the wallet it names.
+              setActiveWallet(null)
               await refresh()
               setStage({ at: 'lock' })
             }
@@ -581,6 +615,7 @@ export function App() {
         onCancel={() => {
           setStage({ at: 'lock' })
         }}
+        {...(listFailure === null ? {} : { failure: listFailure })}
       />
     )
   }

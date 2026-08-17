@@ -42,11 +42,25 @@ export interface WalletsScreenProps {
   readonly onUnlock: (id: string, passphrase: string) => Promise<void>
   readonly onCreate: () => void
   readonly onCancel?: () => void
+  /**
+   * Why this list may be wrong or incomplete.
+   *
+   * Shown ABOVE the rows, because a list that failed to load renders as an
+   * empty one, and an empty picker tells a user with three wallets that this
+   * device holds none.
+   */
+  readonly failure?: string
   readonly banner?: ReactElement | null
 }
 
 export function WalletsScreen(props: WalletsScreenProps): ReactElement {
-  const { wallets, max, active, onUnlock, onCreate, onCancel, banner } = props
+  const { wallets, max, active, onUnlock, onCreate, onCancel, failure, banner } = props
+
+  // Only wallets that still hold a seed count against the limit. A row left by
+  // a wallet erased through exhausted attempts is a tombstone, and letting
+  // eight of those say "device is full" would turn a recoverable mistake into
+  // a device nobody can add a wallet to.
+  const live = wallets.filter((wallet) => wallet.exists).length
 
   const [selected, setSelected] = useState<WalletRow | null>(null)
   const [passphrase, setPassphrase] = useState('')
@@ -135,7 +149,7 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
   return (
     <Screen
       title="Wallets"
-      subtitle={`${String(wallets.length)} of ${String(max)} on this device`}
+      subtitle={`${String(live)} of ${String(max)} on this device`}
       banner={banner}
       testId="wallets-screen"
       actions={
@@ -148,24 +162,33 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
           <div className="nr-spacer" />
           <Button
             variant="primary"
-            disabled={wallets.length >= max}
+            disabled={live >= max}
             onClick={onCreate}
             testId="wallets-add"
           >
-            {wallets.length >= max ? 'Device is full' : 'Add a wallet'}
+            {live >= max ? 'Device is full' : 'Add a wallet'}
           </Button>
         </>
       }
     >
-      {/* Not dismissible, and first, because everything below it is a claim
-          made by a file rather than by the device. */}
-      <p className="nr-note" data-testid="wallets-unverified">
+      {/* Not dismissible, first, and pinned. Everything below it is a claim
+          made by a file rather than by the device, and on a 480px panel a note
+          that scrolls away once the device holds five wallets is a note the
+          user reads exactly once. */}
+      <p className="nr-note nr-note--pinned" data-testid="wallets-unverified">
         These names, colours and networks are read from files on this device and are not confirmed
         until you open a wallet. If one opens with a different name to the one you tapped, the
         device will say so.
       </p>
 
-      <div className="nr-wlist" data-testid="wallet-rows">
+      {failure !== undefined && (
+        <div className="nr-banner nr-banner--danger" data-testid="wallets-failure">
+          <strong>This list may be incomplete</strong>
+          <span>{failure}</span>
+        </div>
+      )}
+
+      <div className="nr-wlist nr-wlist--scroll" data-testid="wallet-rows">
         {wallets.map((wallet) => (
           <button
             key={wallet.id}
@@ -194,7 +217,7 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
           </button>
         ))}
 
-        {wallets.length === 0 && (
+        {wallets.length === 0 && failure === undefined && (
           <p className="nr-hint" data-testid="wallets-empty">
             No wallets on this device yet.
           </p>

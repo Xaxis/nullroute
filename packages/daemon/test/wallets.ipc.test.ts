@@ -13,7 +13,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { MAINNET, SIGNET, mnemonicToSeed } from '@nullroute/core'
@@ -283,6 +283,74 @@ describe('daemon wallets IPC', () => {
     } finally {
       chmodSync(legacy, 0o600)
     }
+  })
+
+  /**
+   * INV-MW-14. Registering a quorum writes to the wallet that is open.
+   *
+   * multisig.register re-seals, and it was re-sealing state.store: the blob at
+   * the ROOT of the store directory, which is not the open wallet. On a device
+   * that had been migrated that is a different wallet's file, so registering a
+   * quorum could overwrite another wallet's sealed seed and spend its
+   * ten-attempt budget. It also re-sealed with no identity, which would strip
+   * the sealed label and hand the wallet's name back to the editable hint.
+   */
+  it('registers-against-the-open-wallet-and-keeps-its-sealed-name', async () => {
+    const id = await makeWallet(MNEMONIC_A, 'Cold storage', 'one')
+
+    const ourKey = (await call('multisig.ourKey', { account: 0 })) as { xpub: string }
+    using cosigner = mnemonicToSeed(MNEMONIC_B, '')
+    const { deriveAccountXpub, withChecksum } = await import('@nullroute/core')
+    const { multisigAccountPath } = await import('../src/multisig.js')
+    const other = deriveAccountXpub(cosigner, MAINNET, multisigAccountPath(MAINNET)).xpub
+    const descriptor = withChecksum(
+      `wsh(sortedmulti(2,${ourKey.xpub}/<0;1>/*,${other}/<0;1>/*))`
+    )
+
+    const registered = (await call('multisig.register', {
+      descriptor,
+      passphrase: 'one',
+    })) as { persisted: boolean }
+    expect(registered.persisted).toBe(true)
+
+    // Nothing was written to the legacy root location.
+    expect(existsSync(join(dir, 'wallet.store'))).toBe(false)
+
+    // And the wallet keeps both its registration AND its sealed name, which a
+    // re-seal without an identity would have stripped.
+    session.lock()
+    const reopened = (await call('wallets.unlock', { id, passphrase: 'one' })) as {
+      active: { label: string }
+      registrations: number
+    }
+    expect(reopened.active.label).toBe('Cold storage')
+    expect(reopened.registrations).toBe(1)
+  })
+
+  /**
+   * A registration the user was told was NOT saved must not be live for
+   * signing. The session is mutated only after persistence succeeds.
+   */
+  it('does-not-leave-a-failed-registration-live-for-signing', async () => {
+    await makeWallet(MNEMONIC_A, 'Cold storage', 'one')
+
+    const ourKey = (await call('multisig.ourKey', { account: 0 })) as { xpub: string }
+    using cosigner = mnemonicToSeed(MNEMONIC_B, '')
+    const { deriveAccountXpub, withChecksum } = await import('@nullroute/core')
+    const { multisigAccountPath } = await import('../src/multisig.js')
+    const other = deriveAccountXpub(cosigner, MAINNET, multisigAccountPath(MAINNET)).xpub
+    const descriptor = withChecksum(
+      `wsh(sortedmulti(2,${ourKey.xpub}/<0;1>/*,${other}/<0;1>/*))`
+    )
+
+    await expect(
+      call('multisig.register', { descriptor, passphrase: 'the wrong passphrase' })
+    ).rejects.toThrow()
+
+    const registrations = (await call('multisig.registrations')) as {
+      descriptors: readonly string[]
+    }
+    expect(registrations.descriptors).toHaveLength(0)
   })
 
   it('refuses-an-id-that-is-not-an-id', async () => {

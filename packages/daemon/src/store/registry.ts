@@ -34,7 +34,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { randomBytes } from 'node:crypto'
-import { type Network, type Secret, masterFingerprint, networkById } from '@nullroute/core'
+import { type Network, type Secret, masterFingerprint } from '@nullroute/core'
 import { StoreError, type KdfCost, KDF_DEFAULTS } from './envelope.js'
 import { WalletStore, type StoredWallet } from './store.js'
 
@@ -188,7 +188,11 @@ export function normaliseLabel(raw: string): string {
     /[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u2028-\u2029\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/gu,
     ''
   )
-  const trimmed = stripped.trim()
+  // Collapse every Unicode space to an ordinary one before trimming. A label
+  // of non-breaking spaces survives `trim`, renders as a blank row, and lets
+  // two wallets carry names that look identical while differing in storage.
+  const spaced = stripped.replace(/\p{White_Space}/gu, ' ').replace(/ {2,}/g, ' ')
+  const trimmed = spaced.trim()
 
   if (trimmed.length === 0) {
     throw new StoreError(
@@ -352,7 +356,11 @@ export class WalletRegistry {
     const label = normaliseLabel(options.label)
     const existing = this.list()
 
-    if (existing.length >= MAX_WALLETS) {
+    // Only wallets that still have a sealed blob count against the limit. A
+    // directory left behind by a wallet erased through exhausted attempts is a
+    // tombstone, and letting eight of those brick the device would turn a
+    // recoverable mistake into a permanent one.
+    if (existing.filter((entry) => entry.exists).length >= MAX_WALLETS) {
       throw new StoreError(
         `This device already holds ${String(MAX_WALLETS)} wallets, which is the limit. ` +
           `Erase one before adding another.`
@@ -518,6 +526,24 @@ export class WalletRegistry {
    * last and a failure there is not fatal: an empty directory is listed as a
    * wallet that does not exist, which is untidy rather than dangerous.
    */
+  /**
+   * Remove the directory of a wallet whose blob is already gone.
+   *
+   * For tidying a tombstone left by exhausted attempts, which `destroy` cannot
+   * reach because that requires the wallet to be open and an erased wallet
+   * cannot be opened. Refuses while a blob is present, so this can never be a
+   * second, quieter way to erase a wallet that still exists.
+   */
+  forget(id: string): void {
+    if (this.store(id).exists()) {
+      throw new StoreError(
+        'That wallet still has a sealed seed. Open it and erase it explicitly, so the device ' +
+          'cannot lose a wallet without being asked to.'
+      )
+    }
+    rmSync(this.#directory(id), { recursive: true, force: true })
+  }
+
   destroy(id: string): void {
     const directory = this.#directory(id)
     this.store(id).destroy()
@@ -592,14 +618,5 @@ export class WalletRegistry {
   /** Validate an id that arrived over IPC. */
   static isId(value: unknown): value is string {
     return typeof value === 'string' && ID_PATTERN.test(value)
-  }
-}
-
-/** Re-exported so callers validating a network from a hint have one place. */
-export function hintNetwork(hint: WalletHint): Network | undefined {
-  try {
-    return networkById(hint.network)
-  } catch {
-    return undefined
   }
 }
