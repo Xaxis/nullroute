@@ -7,20 +7,17 @@
  * sequence, the zero value, produces a different one and a proof nobody can
  * verify.
  *
- * WHY THERE IS NO SIGNING TEST HERE. There was a signing implementation. It
- * produced witnesses of the right shape, deterministically, for the right
- * address. It could not be shown to verify against a BIP-143 digest computed by
- * bitcoinjs-lib, and a message signature that only this device accepts proves
- * nothing to the person asking for it. It was removed rather than shipped, and
- * this comment is here so the next person does not assume the absence is an
- * oversight.
  */
 
 import { describe, expect, it } from 'vitest'
 import * as btc from '@scure/btc-signer'
 import { sha256 } from '@noble/hashes/sha2.js'
 import { bytesToHex } from '@noble/hashes/utils.js'
-import { buildToSpend } from '../src/message/sign.js'
+import { secp256k1 } from '@noble/curves/secp256k1.js'
+import { base64 } from '@scure/base'
+import { MAINNET } from '../src/network/networks.js'
+import { mnemonicToSeed } from '../src/bip39/mnemonic.js'
+import { buildToSpend, signMessage, signMessageWithKey } from '../src/message/sign.js'
 
 /** The address and to_spend txid BIP-322 publishes, verbatim. */
 const VECTOR_ADDRESS = 'bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l'
@@ -92,6 +89,122 @@ describe('core.message.bip322 to_spend', () => {
     const script = scriptFor(VECTOR_ADDRESS)
     expect(bytesToHex(buildToSpend('Hello World', script))).toBe(
       bytesToHex(buildToSpend('Hello World', script))
+    )
+  })
+})
+
+/**
+ * Tests for BIP-322 signing.
+ *
+ * ONE TEST MATTERS and the rest support it: does a signature this device
+ * produces verify against a digest computed by a different library? A message
+ * signature only this software accepts proves nothing to the person who asked
+ * for it, which is the entire purpose of the scheme.
+ *
+ * An earlier implementation passed every other test here and failed that one.
+ * It was deterministic, correctly shaped, and for the correct address, and it
+ * committed to an outpoint that does not exist, because @scure/btc-signer takes
+ * a txid in displayed order and bitcoinjs-lib takes it in hashed order.
+ */
+describe('core.message.bip322 signing', () => {
+  const MNEMONIC =
+    'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
+  const VECTOR_WIF = 'L3VFeEujGtevx9w18HD1fhRbCH67Az2dpCymeRE1SoPK6XQtaN2k'
+
+  /**
+   * INV-MSG-6. The signature verifies against a sighash this module did not
+   * compute, for a transaction rebuilt by a different library.
+   */
+  it('produces-a-signature-that-verifies-against-an-independent-sighash', async () => {
+    const bitcoin = await import('bitcoinjs-lib')
+    const key = btc.WIF(btc.NETWORK).decode(VECTOR_WIF)
+    const message = 'Hello World'
+
+    const signed = signMessageWithKey(key, MAINNET, 'p2wpkh', message)
+    expect(signed.address).toBe(VECTOR_ADDRESS)
+
+    // Rebuilt with the other library, which takes the txid in HASHED order.
+    const toSpendId = sha256(sha256(buildToSpend(message, scriptFor(VECTOR_ADDRESS))))
+    const toSign = new bitcoin.Transaction()
+    toSign.version = 0
+    toSign.addInput(Buffer.from(toSpendId), 0, 0)
+    toSign.addOutput(Buffer.from([0x6a]), 0n)
+
+    const pubkey = secp256k1.getPublicKey(key, true)
+    const scriptCode = Buffer.concat([
+      Buffer.from([0x76, 0xa9, 0x14]),
+      bitcoin.crypto.hash160(Buffer.from(pubkey)),
+      Buffer.from([0x88, 0xac]),
+    ])
+    const digest = toSign.hashForWitnessV0(0, scriptCode, 0n, bitcoin.Transaction.SIGHASH_ALL)
+
+    // Pull the DER signature out of our witness and check it against that.
+    const raw = base64.decode(signed.signature)
+    expect(raw[0]).toBe(2)
+    const sigLength = raw[1] ?? 0
+    const der = raw.subarray(2, 2 + sigLength - 1)
+    expect(raw[2 + sigLength - 1]).toBe(bitcoin.Transaction.SIGHASH_ALL)
+
+    const compact = secp256k1.Signature.fromBytes(der, 'der').toBytes('compact')
+    expect(secp256k1.verify(compact, Uint8Array.from(digest), pubkey)).toBe(true)
+
+    // And the witness carries the public key that address commits to.
+    const keyStart = 2 + sigLength + 1
+    expect(bytesToHex(raw.subarray(keyStart))).toBe(bytesToHex(pubkey))
+  })
+
+  it('signs-wrapped-segwit-too', async () => {
+    const bitcoin = await import('bitcoinjs-lib')
+    using seed = mnemonicToSeed(MNEMONIC, '')
+    const signed = signMessage(seed, MAINNET, 'p2sh-p2wpkh', "m/49'/0'/0'/0/0", 'Hello World')
+
+    expect(signed.address.startsWith('3')).toBe(true)
+    const raw = base64.decode(signed.signature)
+    expect(raw[0]).toBe(2)
+    void bitcoin
+  })
+
+  /**
+   * INV-MSG-6. Determinism, for the reason INV-SIG-1 exists. A message
+   * signature is the easiest thing in the world to ask somebody for repeatedly,
+   * so any room to hide key material is room an attacker can use at will.
+   */
+  it('signs-the-same-message-identically-every-time', () => {
+    using seed = mnemonicToSeed(MNEMONIC, '')
+    const a = signMessage(seed, MAINNET, 'p2wpkh', "m/84'/0'/0'/0/0", 'Hello World')
+    const b = signMessage(seed, MAINNET, 'p2wpkh', "m/84'/0'/0'/0/0", 'Hello World')
+    expect(b.signature).toBe(a.signature)
+    // A different message is a different signature.
+    const c = signMessage(seed, MAINNET, 'p2wpkh', "m/84'/0'/0'/0/0", 'Goodbye World')
+    expect(c.signature).not.toBe(a.signature)
+  })
+
+  it('signs-for-the-address-the-path-produces', () => {
+    using seed = mnemonicToSeed(MNEMONIC, '')
+    const signed = signMessage(seed, MAINNET, 'p2wpkh', "m/84'/0'/0'/0/0", 'Hello World')
+    expect(signed.address).toBe('bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu')
+    expect(signed.path).toBe("m/84'/0'/0'/0/0")
+  })
+
+  /**
+   * INV-MSG-7. What is refused, and refused by name rather than approximated.
+   * A proof a verifier rejects is worse than no proof.
+   */
+  it('refuses-what-it-cannot-sign', () => {
+    using seed = mnemonicToSeed(MNEMONIC, '')
+    for (const scriptType of ['p2pkh', 'p2tr'] as const) {
+      expect(() =>
+        signMessage(seed, MAINNET, scriptType, "m/84'/0'/0'/0/0", 'Hello World')
+      ).toThrow(/not one of them/)
+    }
+  })
+
+  it('refuses-a-message-the-review-would-refuse', () => {
+    using seed = mnemonicToSeed(MNEMONIC, '')
+    const path = "m/84'/0'/0'/0/0"
+    expect(() => signMessage(seed, MAINNET, 'p2wpkh', path, '')).toThrow(/no message/)
+    expect(() => signMessage(seed, MAINNET, 'p2wpkh', path, 'x'.repeat(2000))).toThrow(
+      /nobody read to the end/
     )
   })
 })

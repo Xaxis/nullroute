@@ -89,12 +89,15 @@ invariants:
   - id: INV-DAEMON-20
     statement: >
       Message review reports the commitment a verifier recomputes and refuses a
-      message that would display differently from what is signed. No method
-      signs a message, because that part is not built.
+      message that would display differently from what is signed. Signing runs
+      the review again rather than trusting an earlier call, names the address
+      that proves it, and is gated on an unlocked wallet.
     tests:
       - packages/daemon/test/phase4.ipc.test.ts::reports-the-commitment-a-verifier-will-recompute
       - packages/daemon/test/phase4.ipc.test.ts::refuses-a-message-that-would-display-differently-from-what-is-signed
-      - packages/daemon/test/phase4.ipc.test.ts::offers-no-way-to-sign-a-message-yet
+      - packages/daemon/test/phase4.ipc.test.ts::signs-a-message-and-names-the-address-that-proves-it
+      - packages/daemon/test/phase4.ipc.test.ts::refuses-to-sign-a-message-the-review-refuses
+      - packages/daemon/test/phase4.ipc.test.ts::refuses-to-sign-with-no-wallet-loaded
 
   - id: INV-DAEMON-21
     statement: >

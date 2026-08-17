@@ -49,6 +49,7 @@ import {
   exportLabels,
   importLabels,
   reviewMessage,
+  signMessage,
 } from '@nullroute/core'
 import { randomBytes } from 'node:crypto'
 import { type BootAttestation, abbreviateHash } from './boot/attestation.js'
@@ -908,6 +909,30 @@ export function createHandler(state: DaemonState): IpcHandler {
        */
       case 'message.review': {
         return reviewMessage(requireString(request, 'message'))
+      }
+
+      /**
+       * Prove control of an address by signing a message with it.
+       *
+       * Returns the address with the signature, because a BIP-322 signature is
+       * meaningless without one: a verifier takes the address, the message and
+       * the signature, and this device is the only thing that knows which
+       * address a path produced.
+       *
+       * The review is run again here rather than trusted from an earlier call.
+       * A caller that reviewed one message and signed another would produce a
+       * proof over text nobody read, which is the entire risk on this path.
+       */
+      case 'message.sign': {
+        const message = requireString(request, 'message')
+        const signed = signMessage(
+          session.requireSeed(),
+          session.network,
+          requireScriptType(request),
+          requireString(request, 'path'),
+          message
+        )
+        return { ...signed, activeWallet: activeWallet() }
       }
 
       /**

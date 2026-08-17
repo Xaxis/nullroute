@@ -57,7 +57,7 @@ export const PURPOSE: Readonly<Record<ScriptType, number>> = {
  * always present: a network literal without it typechecks as an error but does
  * not throw at runtime, it emits a corrupt WIF.
  */
-function toBtcNetwork(network: Network): BTC_NETWORK {
+export function toBtcNetwork(network: Network): BTC_NETWORK {
   return {
     bech32: network.bech32,
     pubKeyHash: network.pubKeyHash,

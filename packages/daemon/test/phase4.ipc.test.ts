@@ -71,13 +71,47 @@ describe('message.review', () => {
   })
 
   /**
-   * There is deliberately no `message.sign`. The commitment and the review are
-   * built; the transaction pair and the witness encoding are not. A method that
-   * existed and threw would read as a broken feature rather than an absent one,
-   * and a UI would be written against it.
+   * INV-DAEMON-20. Signing runs the review again rather than trusting an
+   * earlier call. A caller that reviewed one message and signed another would
+   * produce a proof over text nobody read, which is the whole risk here.
    */
-  it('offers-no-way-to-sign-a-message-yet', async () => {
-    await expect(call('message.sign', { message: 'Hello World' })).rejects.toThrow()
+  it('signs-a-message-and-names-the-address-that-proves-it', async () => {
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+
+    const signed = (await call('message.sign', {
+      message: 'Hello World',
+      scriptType: 'p2wpkh',
+      path: "m/84'/0'/0'/0/0",
+    })) as { address: string; signature: string; path: string }
+
+    expect(signed.address).toBe('bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu')
+    expect(signed.path).toBe("m/84'/0'/0'/0/0")
+    expect(signed.signature.length).toBeGreaterThan(0)
+  })
+
+  it('refuses-to-sign-a-message-the-review-refuses', async () => {
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+    await expect(
+      call('message.sign', { message: '', scriptType: 'p2wpkh', path: "m/84'/0'/0'/0/0" })
+    ).rejects.toThrow(/no message/)
+    await expect(
+      call('message.sign', {
+        message: 'pay \u202eBTC 1',
+        scriptType: 'p2wpkh',
+        path: "m/84'/0'/0'/0/0",
+      })
+    ).rejects.toThrow(/display differently/)
+  })
+
+  it('refuses-to-sign-with-no-wallet-loaded', async () => {
+    session.lock()
+    await expect(
+      call('message.sign', {
+        message: 'Hello World',
+        scriptType: 'p2wpkh',
+        path: "m/84'/0'/0'/0/0",
+      })
+    ).rejects.toThrow(/No wallet is loaded/)
   })
 })
 
