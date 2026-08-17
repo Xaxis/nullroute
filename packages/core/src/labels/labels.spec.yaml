@@ -1,0 +1,100 @@
+id: core.labels
+version: 1
+title: BIP-329 label import and export
+assurance_tier: standard
+status: implemented
+
+purpose: >
+  Carry the part of a wallet no seed can recreate. A mnemonic restores every key
+  and knows nothing about which output was the rent or which one must never be
+  spent, and that knowledge is the first thing lost when somebody moves between
+  wallets.
+
+covers:
+  - packages/core/src/labels/bip329.ts::importLabels
+  - packages/core/src/labels/bip329.ts::exportLabels
+  - packages/core/src/labels/bip329.ts::findLabel
+  - packages/core/src/labels/bip329.ts::LabelError
+  - packages/core/src/labels/bip329.ts::LABEL_TYPES
+  - packages/core/src/labels/bip329.ts::MAX_FILE_BYTES
+  - packages/core/src/labels/bip329.ts::MAX_LABEL_LENGTH
+
+algorithm: >
+  JSON Lines: one object per line, no wrapping array, so a file can be appended
+  to and a corrupt line skipped without losing the ones around it. Import reads
+  it that way, reporting the lines it dropped and the reason for each.
+
+  A later line replaces an earlier one for the same type and reference, which is
+  what appending to such a file means.
+
+  Export writes the standard's key order with a trailing newline, so two exports
+  of the same labels are byte identical and a user can compare one against the
+  last.
+
+invariants:
+  - id: INV-LABEL-1
+    statement: >
+      The format is the published one, so a file written here round-trips and is
+      readable by other wallets, and re-exporting what was imported gives the
+      same bytes.
+    tests:
+      - packages/core/test/labels.test.ts::round-trips-through-the-published-format
+      - packages/core/test/labels.test.ts::lets-a-later-line-replace-an-earlier-one
+      - packages/core/test/labels.test.ts::reads-an-empty-file-as-no-labels-rather-than-an-error
+
+  - id: INV-LABEL-2
+    statement: >
+      A line that cannot be read costs that line and nothing else, and every
+      dropped line is reported with its number and the reason.
+    tests:
+      - packages/core/test/labels.test.ts::skips-only-the-lines-it-cannot-read-and-says-which
+      - packages/core/test/labels.test.ts::bounds-what-it-will-read
+
+  - id: INV-LABEL-3
+    statement: >
+      A label that could render as something other than what it contains is
+      refused rather than repaired, while ordinary text in any script is kept
+      as written.
+    tests:
+      - packages/core/test/labels.test.ts::refuses-a-label-that-can-render-as-something-else
+      - packages/core/test/labels.test.ts::accepts-ordinary-text-including-other-scripts
+
+  - id: INV-LABEL-4
+    statement: >
+      The do-not-spend flag survives import and export, absent stays absent, and
+      a non-boolean is refused rather than coerced.
+    tests:
+      - packages/core/test/labels.test.ts::carries-the-do-not-spend-flag-in-both-directions
+      - packages/core/test/labels.test.ts::finds-nothing-for-a-reference-it-does-not-hold
+
+threats:
+  - INV-PSBT-2
+
+security_notes: >
+  A LABEL IS NEVER EVIDENCE. A file can say an address belongs to this wallet,
+  and importing it does not make that true. This device decides what is its own
+  by re-deriving from the seed, and that is the only thing it acts on. Nothing
+  in this module is consulted when deciding whether an output is change, which
+  is the decision an attacker would want to influence.
+
+  LABELS ARE HOSTILE INPUT. They arrive on a card from software that may have
+  been compromised, and they end up rendered beside amounts on the screen a user
+  reads before signing. INV-LABEL-3 is the consequence: a bidi override reverses
+  the rendered order of a string and zero-width characters render as nothing, so
+  either can make a label read as something other than what it holds. Those are
+  refused rather than stripped, because quietly repairing one would hide that
+  somebody tried.
+
+  The size bounds exist because this parser runs on a Pi and the file comes from
+  a card. A megabyte is tens of thousands of labels, which is more than any
+  human wrote.
+
+  ONE LINE MUST NOT COST THE FILE. The format exists to be appended to and
+  partially recovered, so a single corrupt record is skipped and reported rather
+  than thrown. Reported, not swallowed: a silent partial import is a user
+  believing they have labels they do not have, and discovering it when a screen
+  shows nothing beside an output they carefully named.
+
+references:
+  - BIP-329, Wallet Labels Export Format
+  - docs/AIR-GAP.md

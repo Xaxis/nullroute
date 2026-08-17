@@ -1,0 +1,101 @@
+id: core.bip85
+version: 1
+title: BIP-85 deterministic child seeds
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Derive independent child wallets from one master seed, so a user backs up one
+  mnemonic and can hand a child to software this device does not trust without
+  putting anything else at risk.
+
+covers:
+  - packages/core/src/bip85/derive.ts::bip85Entropy
+  - packages/core/src/bip85/derive.ts::deriveBip85Mnemonic
+  - packages/core/src/bip85/derive.ts::deriveBip85Hex
+  - packages/core/src/bip85/derive.ts::deriveBip85Password
+  - packages/core/src/bip85/derive.ts::Bip85Error
+
+algorithm: >
+  Derive a fully hardened path under 83696968', take the child's private key,
+  and HMAC-SHA512 it under the ASCII key "bip-entropy-from-k". Applications take
+  a prefix of the resulting 64 bytes.
+
+  Three applications: BIP-39 mnemonics (39'), raw hex (128169') and base64
+  passwords (707764'). The password case encodes all 64 bytes and then cuts,
+  which is what the standard says and is not the same as encoding only the bytes
+  needed.
+
+  Every parameter that changes the answer is in the path, so the path is the
+  child's identity and is returned with every derivation.
+
+  BIP-32 comes from @scure/bip32 and HMAC-SHA512 from @noble/hashes. Nothing is
+  implemented here beyond the arrangement BIP-85 specifies.
+
+invariants:
+  - id: INV-BIP85-1
+    statement: >
+      Derivation matches the entropy values published in BIP-85, at the
+      document's own master key, for the bare paths and for all three
+      applications.
+    tests:
+      - packages/core/test/bip85.test.ts::matches-the-published-entropy-vectors
+      - packages/core/test/bip85.test.ts::matches-the-published-application-vectors
+      - packages/core/test/bip85.test.ts::matches-the-published-password-vector
+
+  - id: INV-BIP85-2
+    statement: >
+      A child is a pure function of the master seed and the path. Changing the
+      seed, the index, the word count or the application changes the child.
+    tests:
+      - packages/core/test/bip85.test.ts::is-deterministic-and-depends-on-every-part-of-the-path
+      - packages/core/test/bip85.test.ts::depends-on-the-master-seed
+      - packages/core/test/bip85.test.ts::takes-a-prefix-of-one-64-byte-answer-for-hex
+
+  - id: INV-BIP85-3
+    statement: >
+      Every derivation reports the fully hardened path that produced it, and a
+      parameter outside what the standard allows is refused rather than clamped.
+    tests:
+      - packages/core/test/bip85.test.ts::always-reports-the-path-it-used
+      - packages/core/test/bip85.test.ts::refuses-parameters-outside-what-the-standard-allows
+      - packages/core/test/bip85.test.ts::produces-a-password-of-exactly-the-length-asked-for
+      - packages/core/test/bip85.test.ts::produces-a-valid-mnemonic-that-this-device-can-import
+
+threats:
+  - INV-KEY-1
+  - INV-KEY-2
+
+security_notes: >
+  A CHILD HAS ONE BACKUP AND IT IS THE MASTER. Writing a child's words down as
+  well does not make it independently recoverable; it makes a second copy of
+  something the master already implies, in a second place, with the same
+  consequences if found. What must be recorded is the master mnemonic and the
+  path, which is why every derivation returns the path and why the UI shows it
+  beside the words rather than behind a disclosure.
+
+  THE SILENT FAILURE is that every child is a real wallet with real addresses,
+  and nothing about a child says which master it came from or at which index.
+  Deriving at index 0 with 12 words and later at index 0 with 24 words gives two
+  completely different wallets and no error, because the word count is part of
+  the path. INV-BIP85-2 pins that, and the test says so in as many words,
+  because it is the assumption people arrive with.
+
+  PATHS ARE FULLY HARDENED, which is what makes a child safe to hand out. A
+  child cannot be derived from an extended public key, so possessing one reveals
+  nothing about its siblings or its parent. INV-BIP85-3 checks every element of
+  every path for the hardened marker rather than trusting the constants above it.
+
+  THE PASSWORD APPLICATION IS NOT FOR THIS DEVICE. A passphrase protecting a
+  wallet here should be one a human chose and can reproduce from memory; a
+  derived password has exactly one copy and it is on paper. It exists for logins
+  on other machines, and the UI says so where it is offered.
+
+  Bounds are refused rather than clamped. A clamped length would derive at a
+  path the user did not ask for while they recorded the one they typed, leaving
+  a funded child that their own notes cannot recover.
+
+references:
+  - BIP-85, Deterministic Entropy From BIP32 Keychains
+  - BIP-39, Mnemonic code for generating deterministic keys
+  - docs/ENTROPY.md

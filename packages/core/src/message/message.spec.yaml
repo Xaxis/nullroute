@@ -1,0 +1,106 @@
+id: core.message.bip322
+version: 1
+title: BIP-322 message commitment and review
+assurance_tier: critical
+status: draft
+
+purpose: >
+  Commit to a message the way BIP-322 specifies, and put it in front of a human
+  before anything signs it. A message signature is a proof that whoever holds
+  the key agreed to a specific string, so the string is the thing that must be
+  read.
+
+covers:
+  - packages/core/src/message/bip322.ts::taggedHash
+  - packages/core/src/message/bip322.ts::messageHash
+  - packages/core/src/message/bip322.ts::reviewMessage
+  - packages/core/src/message/bip322.ts::assertSignable
+  - packages/core/src/message/bip322.ts::MessageError
+  - packages/core/src/message/bip322.ts::MAX_MESSAGE_LENGTH
+
+algorithm: >
+  The commitment is the BIP-340 style tagged hash under "BIP0322-signed-message":
+  SHA256(SHA256(tag) || SHA256(tag) || message). The doubled tag hash is what
+  makes a commitment under one tag unusable under another, so a message hash can
+  never be mistaken for a transaction sighash.
+
+  Review bounds the message, refuses anything that can render differently from
+  the bytes it commits to, and warns about what is legitimate but easy to miss.
+  assertSignable is the same check as a refusal, for callers on the signing path
+  that must not be able to proceed by forgetting to read a list.
+
+  STATUS IS DRAFT AND THE SCOPE IS DELIBERATELY NARROW. What is implemented is
+  the commitment and the review. The to_spend and to_sign transaction pair, the
+  witness serialisation, and the simple, full and legacy variants are NOT
+  implemented, and nothing in this module produces a signature. Anything on this
+  device claiming to sign a message is claiming something that does not exist
+  yet.
+
+invariants:
+  - id: INV-MSG-1
+    statement: >
+      The message hash matches the values published in BIP-322, and commitments
+      are separated by tag so one cannot be replayed as another.
+    tests:
+      - packages/core/test/message.test.ts::matches-the-published-message-hashes
+      - packages/core/test/message.test.ts::separates-commitments-by-tag
+      - packages/core/test/message.test.ts::is-deterministic
+
+  - id: INV-MSG-2
+    statement: >
+      A message that could display differently from what would be signed is
+      refused rather than repaired, while newlines and tabs are allowed and
+      warned about.
+    tests:
+      - packages/core/test/message.test.ts::refuses-a-message-that-can-display-differently-from-what-is-signed
+      - packages/core/test/message.test.ts::allows-newlines-and-tabs-and-warns-about-them
+
+  - id: INV-MSG-3
+    statement: >
+      An empty message and one too long to read are both refused, on the review
+      path and on the signing path.
+    tests:
+      - packages/core/test/message.test.ts::refuses-an-empty-message-and-one-too-long-to-read
+      - packages/core/test/message.test.ts::refuses-on-the-signing-path-rather-than-returning-a-list-to-ignore
+
+  - id: INV-MSG-4
+    statement: >
+      The review reports the exact commitment and the shape of the message, and
+      warns about what is legitimate but invisible without blocking it.
+    tests:
+      - packages/core/test/message.test.ts::reports-the-commitment-and-the-shape-of-the-message
+      - packages/core/test/message.test.ts::warns-about-what-is-easy-to-miss-without-blocking-it
+
+threats:
+  - INV-SIG-1
+
+security_notes: >
+  WHAT IS NOT BUILT. This module commits and reviews. It does not sign. The
+  to_spend and to_sign pair, the witness encoding, and the simple, full and
+  legacy variants are outstanding, and the spec status says draft for that
+  reason rather than because the parts that exist are provisional. No screen or
+  IPC method offers message signing, because there is nothing behind it.
+
+  THE ATTACK THIS MODULE IS SHAPED AROUND is a user induced to sign a string
+  chosen by somebody else, where the string means something elsewhere. A
+  signature is a proof of agreement, and agreement to text nobody read is not
+  agreement. Hence the length bound, which is a reading limit rather than a
+  protocol one, and the refusal of an empty message, which commits to nothing
+  and whose meaning is supplied entirely by whoever asked for it.
+
+  INV-MSG-2 IS THE SHARP EDGE. The signature commits to bytes and the user
+  agrees to pixels. A bidi override reverses rendered order and zero-width
+  characters render as nothing, so either lets a message read as one thing and
+  commit to another. Those are refused rather than stripped: repairing one
+  quietly would hide that somebody tried, on the one screen where being tricked
+  is the entire risk.
+
+  WHEN SIGNING LANDS IT MUST BE DETERMINISTIC, for the reason INV-SIG-1 exists.
+  A randomised signature has room to leak the key a few bits at a time, and a
+  message signature is the easiest thing in the world to ask somebody for
+  repeatedly and at will.
+
+references:
+  - BIP-322, Generic Signed Message Format
+  - BIP-340, Schnorr Signatures for secp256k1
+  - docs/THREAT-MODEL.md
