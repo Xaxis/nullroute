@@ -136,6 +136,7 @@ invariants:
       - packages/daemon/test/wallets.ipc.test.ts::will-not-save-a-wallet-before-the-mnemonic-is-confirmed
       - packages/daemon/test/wallets.ipc.test.ts::refuses-a-colour-it-does-not-know
       - packages/daemon/test/wallets.ipc.test.ts::refuses-to-rename-or-erase-with-nothing-open
+      - packages/daemon/test/wallets.ipc.test.ts::names-the-wallet-by-what-was-sealed-not-by-what-was-asked-for
 
 threats:
   - INV-KEY-1

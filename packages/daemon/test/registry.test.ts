@@ -57,7 +57,7 @@ function createWallet(
   passphrase = PASSPHRASE
 ): string {
   using seed = seedFor(index)
-  return reg.create({ seed, network, passphrase, label, colour: 'teal' })
+  return reg.create({ seed, network, passphrase, label, colour: 'teal' }).id
 }
 
 function hintPath(id: string): string {

@@ -860,20 +860,21 @@ export function createHandler(state: DaemonState): IpcHandler {
           )
         }
         const registry = requireRegistry()
-        const id = registry.create({
+        const colour = requireColour(request)
+        // The label that comes back is the one that was sealed, which may
+        // differ from what was sent: the registry trims it and strips
+        // characters that do not display. The session takes the sealed one, so
+        // the chip on every screen and the ciphertext agree.
+        const created = registry.create({
           seed: session.requireSeed(),
           network: session.network,
           passphrase: requireString(request, 'passphrase'),
           label: requireString(request, 'label'),
-          colour: requireColour(request),
+          colour,
           registrations: session.registrations,
         })
-        session.attachTo({
-          id,
-          label: requireString(request, 'label'),
-          colour: requireColour(request),
-        })
-        return { id, active: activeWallet() }
+        session.attachTo({ id: created.id, label: created.label, colour })
+        return { id: created.id, active: activeWallet() }
       }
 
       /**
@@ -934,7 +935,8 @@ export function createHandler(state: DaemonState): IpcHandler {
         const label = requireString(request, 'label')
         const colour = requireColour(request)
 
-        registry.rename(active.id, {
+        // Again the sealed label, not the requested one.
+        const hint = registry.rename(active.id, {
           seed: session.requireSeed(),
           network: session.network,
           passphrase: requireString(request, 'passphrase'),
@@ -942,7 +944,7 @@ export function createHandler(state: DaemonState): IpcHandler {
           colour,
           registrations: session.registrations,
         })
-        session.relabel(label, colour)
+        session.relabel(hint.label, hint.colour)
         return { active: activeWallet() }
       }
 

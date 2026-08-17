@@ -309,7 +309,7 @@ export class WalletRegistry {
     readonly label: string
     readonly colour: WalletColour
     readonly registrations?: readonly string[]
-  }): string {
+  }): { readonly id: string; readonly label: string } {
     const label = normaliseLabel(options.label)
     const existing = this.list()
 
@@ -354,7 +354,11 @@ export class WalletRegistry {
       fingerprint,
     })
     this.#writeHint(id, { label, colour: options.colour, network: options.network.id, fingerprint })
-    return id
+    // The NORMALISED label is returned, not the caller's. They can differ, and
+    // a caller that went on using its own copy would put an unsanitised name in
+    // the session while a sanitised one sat in the ciphertext, which is the
+    // two-sources-of-identity problem this module exists to prevent.
+    return { id, label }
   }
 
   /**

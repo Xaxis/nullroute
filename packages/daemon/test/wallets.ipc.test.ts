@@ -53,7 +53,7 @@ beforeEach(() => {
     store: new WalletStore(dir, FAST),
     registry,
   })
-  call = (method, params = {}) => handler({ id: 1, method, params })
+  call = (method, params = {}) => handler({ id: '1', method, params })
 })
 
 afterEach(() => {
@@ -183,6 +183,40 @@ describe('daemon wallets IPC', () => {
     expect(opened.active.label).toBe('Signet test')
     expect(opened.network.id).toBe('signet')
     expect(opened.hintCorrected).toBe(true)
+  })
+
+  /**
+   * INV-MW-9. The session takes the label that was SEALED, not the one that
+   * was asked for.
+   *
+   * The registry trims a label and strips characters that do not display, so
+   * the two can differ. A handler that went on using its own copy would put an
+   * unsanitised name on every screen while a sanitised one sat in the
+   * ciphertext, which is the two-sources-of-identity problem the whole module
+   * exists to prevent.
+   */
+  it('names-the-wallet-by-what-was-sealed-not-by-what-was-asked-for', async () => {
+    session.lock()
+    await call('wallet.import', { mnemonic: MNEMONIC_A, passphrase: '' })
+    const created = (await call('wallets.create', {
+      passphrase: 'one',
+      // Padded, and carrying a zero-width space that renders as nothing.
+      label: '  Cold\u200b storage  ',
+      colour: 'teal',
+    })) as { id: string; active: { label: string } }
+
+    expect(created.active.label).toBe('Cold storage')
+    expect(session.active?.label).toBe('Cold storage')
+
+    // And it survives a lock and reopen, so the session matched the ciphertext
+    // rather than both being wrong in the same way.
+    session.lock()
+    const opened = (await call('wallets.unlock', {
+      id: created.id,
+      passphrase: 'one',
+    })) as { active: { label: string }; hintCorrected: boolean }
+    expect(opened.active.label).toBe('Cold storage')
+    expect(opened.hintCorrected).toBe(false)
   })
 
   it('refuses-an-id-that-is-not-an-id', async () => {
