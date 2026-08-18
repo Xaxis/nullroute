@@ -65,6 +65,13 @@ export interface WalletScreenProps {
   readonly onSignTransaction: () => void
   /** Leaves for cosigner registration. */
   readonly onMultisig: () => void
+  /**
+   * Leaves for message signing.
+   *
+   * Optional so the screen renders in tests and on a build without it, and so
+   * the button is absent rather than dead when there is nowhere to go.
+   */
+  readonly onProveControl?: () => void
   readonly onLock: () => void
   readonly banner?: ReactElement | null
 }
@@ -87,6 +94,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
     onVerifyAddress,
     onSignTransaction,
     onMultisig,
+    onProveControl,
     onLock,
     banner,
   } = props
@@ -159,6 +167,11 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
           <Button onClick={onMultisig} testId="wallet-multisig">
             Multisig
           </Button>
+          {onProveControl !== undefined && (
+            <Button onClick={onProveControl} testId="wallet-prove">
+              Prove an address
+            </Button>
+          )}
           <div className="nr-spacer" />
           {tab === 'addresses' && (
             <>

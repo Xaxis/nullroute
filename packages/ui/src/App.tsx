@@ -26,6 +26,11 @@ import { PsbtScreen, type PsbtReviewView } from './screens/PsbtScreen.js'
 import { ScanScreen, type ScanResult } from './screens/ScanScreen.js'
 import { WalletsScreen, type WalletRow } from './screens/WalletsScreen.js'
 import { UnlockedScreen } from './screens/UnlockedScreen.js'
+import {
+  MessageScreen,
+  type MessageReviewView,
+  type MessageSignatureView,
+} from './screens/MessageScreen.js'
 import { WalletChip } from './components/WalletChip.js'
 import { PassphraseScreen } from './screens/PassphraseScreen.js'
 import {
@@ -82,6 +87,8 @@ type Stage =
   /** A wallet has just been created and can be saved to this device. */
   | { readonly at: 'protect' }
   | { readonly at: 'multisig' }
+  /** Proving control of an address by signing a message with it. */
+  | { readonly at: 'message' }
   /** Choosing which of several wallets to open. */
   | { readonly at: 'wallets' }
   /**
@@ -534,6 +541,9 @@ export function App() {
           onMultisig={() => {
             setStage({ at: 'multisig' })
           }}
+          onProveControl={() => {
+            setStage({ at: 'message' })
+          }}
           onLock={() => {
             const go = async (): Promise<void> => {
               await call(transport, 'session.lock')
@@ -594,7 +604,26 @@ export function App() {
         mode="set"
         banner={banner}
         onSubmit={async (passphrase) => {
-          await call(transport, 'store.create', { passphrase })
+          // wallets.create, NOT store.create. The latter addresses the single
+          // blob at the root of the store directory and is refused outright
+          // once the device can hold named wallets, which it always can. This
+          // called store.create for a while after that refusal landed, so
+          // saving a newly created wallet failed on a real device while every
+          // test passed, because the tests called the daemon directly.
+          //
+          // The label is provisional and the user renames it from the wallet
+          // screen. Naming a wallet before its passphrase would be one more
+          // screen between generating a seed and protecting it.
+          const created = await call<{ id: string; active: { label: string; colour: string } }>(
+            transport,
+            'wallets.create',
+            { passphrase, label: `Wallet ${new Date().toISOString().slice(0, 10)}`, colour: 'slate' }
+          )
+          setActiveWallet({
+            id: created.id,
+            label: created.active.label,
+            colour: created.active.colour,
+          })
           setStore(await call<StoreStatus>(transport, 'store.status'))
           setStage({ at: 'wallet' })
         }}
@@ -684,6 +713,23 @@ export function App() {
             setStage({ at: 'wallets' })
           }
           void go()
+        }}
+      />
+    )
+  }
+
+  if (stage.at === 'message') {
+    return (
+      <MessageScreen
+        banner={banner}
+        onReview={async (message: string) =>
+          call<MessageReviewView>(transport, 'message.review', { message })
+        }
+        onSign={async (message: string, scriptType: string, path: string) =>
+          call<MessageSignatureView>(transport, 'message.sign', { message, scriptType, path })
+        }
+        onBack={() => {
+          setStage({ at: 'wallet' })
         }}
       />
     )

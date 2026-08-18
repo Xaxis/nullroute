@@ -41,6 +41,8 @@ covers:
   - packages/ui/src/screens/WalletsScreen.tsx::WalletsScreen
   - packages/ui/src/components/WalletChip.tsx::WalletChip
   - packages/ui/src/screens/UnlockedScreen.tsx::UnlockedScreen
+  - packages/ui/src/screens/MessageScreen.tsx::MessageScreen
+  - packages/ui/src/screens/MessageScreen.tsx::MESSAGE_SCRIPT_TYPES
 
 algorithm: >
   Renders the manifest root hash, the verification status with spec and
@@ -418,6 +420,29 @@ invariants:
       - packages/ui/test/wallet-screen.test.tsx::says-when-it-cannot-place-itself-rather-than-showing-a-number
       - packages/ui/test/wallet-screen.test.tsx::shows-nothing-for-a-single-signature-wallet
       - packages/ui/test/wallet-screen.test.tsx::lists-every-quorum-when-a-device-is-in-more-than-one
+
+  # --- Proving control of an address ----------------------------------------
+  # The signing screen's risk in a smaller package: a signature is a proof that
+  # whoever holds the key agreed to a specific string.
+  - id: INV-UI-38
+    statement: >
+      Reviewing a message never signs it, and the message is shown in full with
+      the commitment a verifier recomputes.
+    tests:
+      - packages/ui/test/message-screen.test.tsx::does-not-sign-when-reviewing
+      - packages/ui/test/message-screen.test.tsx::shows-the-whole-message-and-what-a-verifier-recomputes
+      - packages/ui/test/message-screen.test.tsx::reports-a-failure-and-leaves-nothing-stale
+
+  - id: INV-UI-39
+    statement: >
+      A refused message cannot be signed and there is no override, warnings do
+      not block, and what leaves the device is the address, the message and the
+      signature together.
+    tests:
+      - packages/ui/test/message-screen.test.tsx::refuses-to-sign-a-message-the-review-rejected
+      - packages/ui/test/message-screen.test.tsx::shows-warnings-without-blocking
+      - packages/ui/test/message-screen.test.tsx::hands-over-everything-a-verifier-needs
+      - packages/ui/test/message-screen.test.tsx::signs-with-the-path-the-chosen-script-type-implies
 
 threats:
   - INV-KEY-1

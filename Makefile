@@ -195,6 +195,13 @@ image: ## Build the hardened Raspberry Pi image. NOT IMPLEMENTED YET.
 make-targets: ## Every script the Makefile invokes actually exists
 	@node tools/check-make-targets.mjs
 
+ipc-reachable: ## Every IPC method the daemon implements is reachable from the UI
+	# A feature nobody can reach is not a shipped feature. This has happened
+	# twice: the multi-wallet picker, and then message signing, BIP-85 and
+	# labels. Both times every test passed, because every test called the
+	# daemon directly.
+	@node tools/check-ipc-reachable.mjs
+
 clean: ## Remove build output
 	rm -rf packages/*/dist apps/web/.next apps/web/out **/*.tsbuildinfo
 
@@ -258,6 +265,6 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 
 # --- aggregates --------------------------------------------------------------
 
-check-fast: lint ui-classes type-check prose links profiles invariant-claims make-targets device-csp test manifest-check ## Everything except the slow suites
+check-fast: lint ui-classes type-check prose links profiles invariant-claims make-targets ipc-reachable device-csp test manifest-check ## Everything except the slow suites
 
 check: check-fast build verify test-vectors test-differential repro-check sbom device-ui web-check ## Everything CI runs
