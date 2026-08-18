@@ -41,6 +41,15 @@ export interface WalletsScreenProps {
   readonly active?: { readonly id: string; readonly label: string } | null
   readonly onUnlock: (id: string, passphrase: string) => Promise<void>
   readonly onCreate: () => void
+  /**
+   * Clear the directory of a wallet whose seed is already gone.
+   *
+   * Optional, because a device with no tombstones never needs it. A row left by
+   * exhausted attempts cannot be opened and cannot be erased through the manage
+   * screen, which requires the wallet to be open, so without this the row is
+   * permanent and eight of them fill the device.
+   */
+  readonly onForget?: (id: string) => Promise<void>
   readonly onCancel?: () => void
   /**
    * Why this list may be wrong or incomplete.
@@ -54,7 +63,7 @@ export interface WalletsScreenProps {
 }
 
 export function WalletsScreen(props: WalletsScreenProps): ReactElement {
-  const { wallets, max, active, onUnlock, onCreate, onCancel, failure, banner } = props
+  const { wallets, max, active, onUnlock, onCreate, onForget, onCancel, failure, banner } = props
 
   // Only wallets that still hold a seed count against the limit. A row left by
   // a wallet erased through exhausted attempts is a tombstone, and letting
@@ -63,6 +72,7 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
   const live = wallets.filter((wallet) => wallet.exists).length
 
   const [selected, setSelected] = useState<WalletRow | null>(null)
+  const [tombstone, setTombstone] = useState<WalletRow | null>(null)
   const [passphrase, setPassphrase] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -81,6 +91,72 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
     } finally {
       setBusy(false)
     }
+  }
+
+  const forget = async (): Promise<void> => {
+    if (tombstone === null || onForget === undefined) return
+    setBusy(true)
+    setError(null)
+    try {
+      await onForget(tombstone.id)
+      setTombstone(null)
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // --- Clearing a row whose wallet is already gone ---------------------------
+  // Confirmed rather than tapped through, not because anything is at risk (the
+  // seed went when the counter ran out) but because a user who sees the row
+  // disappear should have understood first that it was already empty.
+  if (tombstone !== null) {
+    return (
+      <Screen
+        title="Clear this row"
+        subtitle={tombstone.label}
+        banner={banner}
+        testId="wallets-forget"
+        actions={
+          <>
+            <Button
+              onClick={() => {
+                setTombstone(null)
+                setError(null)
+              }}
+              testId="wallets-forget-back"
+            >
+              Back
+            </Button>
+            <div className="nr-spacer" />
+            <Button
+              variant="danger"
+              disabled={busy}
+              onClick={() => {
+                void forget()
+              }}
+              testId="wallets-forget-submit"
+            >
+              {busy ? 'Clearing' : 'Clear it'}
+            </Button>
+          </>
+        }
+      >
+        <p className="nr-note" data-testid="wallets-forget-note">
+          This wallet was erased when its attempt counter ran out. Its seed is already gone and
+          clearing the row does not remove anything else. Your mnemonic still recovers it. If you
+          do not have one, this row is not what is standing between you and the money.
+        </p>
+
+        {error !== null && (
+          <div className="nr-banner nr-banner--danger" data-testid="wallets-forget-error">
+            <strong>Not cleared</strong>
+            <span>{error}</span>
+          </div>
+        )}
+      </Screen>
+    )
   }
 
   // --- Entering a passphrase for one wallet ---------------------------------
@@ -194,11 +270,15 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
             key={wallet.id}
             type="button"
             className="nr-wrow"
-            disabled={!wallet.exists}
+            disabled={!wallet.exists && !(wallet.destroyed && onForget !== undefined)}
             onClick={() => {
+              setError(null)
+              if (!wallet.exists) {
+                setTombstone(wallet)
+                return
+              }
               setSelected(wallet)
               setPassphrase('')
-              setError(null)
             }}
             data-testid={`wallet-row-${wallet.id}`}
           >

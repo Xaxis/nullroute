@@ -213,6 +213,85 @@ describe('WalletsScreen', () => {
     expect(add.disabled).toBe(false)
     expect(screen.getByTestId('wallets-screen').textContent).toContain('0 of 8')
   })
+
+  /**
+   * INV-UI-44. A row left by a wallet that ran out of attempts can be cleared.
+   *
+   * That row is the only kind this device cannot reach any other way: it cannot
+   * be opened, and the manage screen erases only the wallet that is open. Left
+   * alone it is permanent, and eight of them is a device that still works and
+   * looks broken.
+   */
+  it('lets-a-tombstone-row-be-cleared-and-says-what-clearing-does-not-do', async () => {
+    const onForget = vi.fn(async () => Promise.resolve())
+    const list = rows()
+    const second = list[1]
+    if (second === undefined) throw new Error('no fixture row')
+    list[1] = { ...second, exists: false, destroyed: true }
+
+    render(
+      <WalletsScreen
+        wallets={list}
+        max={8}
+        onUnlock={vi.fn()}
+        onCreate={vi.fn()}
+        onForget={onForget}
+      />
+    )
+
+    const erased = screen.getByTestId<HTMLButtonElement>('wallet-row-bbbbbbbbbbbbbbbb')
+    expect(erased.disabled).toBe(false)
+    fireEvent.click(erased)
+
+    // It says the seed is already gone, so nobody reads this as a second
+    // erasure and hesitates over a row that costs nothing.
+    const note = screen.getByTestId('wallets-forget-note').textContent
+    expect(note).toContain('already gone')
+    expect(note).toContain('mnemonic still recovers it')
+
+    fireEvent.click(screen.getByTestId('wallets-forget-submit'))
+    await waitFor(() => {
+      expect(onForget).toHaveBeenCalledWith('bbbbbbbbbbbbbbbb')
+    })
+  })
+
+  it('reports-a-failed-clear-rather-than-pretending-the-row-went', async () => {
+    const onForget = vi.fn().mockRejectedValue(new Error('That directory is not writable.'))
+    const list = rows()
+    const second = list[1]
+    if (second === undefined) throw new Error('no fixture row')
+    list[1] = { ...second, exists: false, destroyed: true }
+
+    render(
+      <WalletsScreen
+        wallets={list}
+        max={8}
+        onUnlock={vi.fn()}
+        onCreate={vi.fn()}
+        onForget={onForget}
+      />
+    )
+    fireEvent.click(screen.getByTestId('wallet-row-bbbbbbbbbbbbbbbb'))
+    fireEvent.click(screen.getByTestId('wallets-forget-submit'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('wallets-forget-error').textContent).toContain('not writable')
+    })
+    expect(screen.queryByTestId('wallets-forget')).not.toBeNull()
+  })
+
+  /**
+   * Without a handler the row stays inert rather than opening a screen whose
+   * only button cannot work.
+   */
+  it('leaves-a-tombstone-alone-when-there-is-nothing-to-clear-it-with', () => {
+    const list = rows()
+    const second = list[1]
+    if (second === undefined) throw new Error('no fixture row')
+    list[1] = { ...second, exists: false, destroyed: true }
+    render(<WalletsScreen wallets={list} max={8} onUnlock={vi.fn()} onCreate={vi.fn()} />)
+    expect(screen.getByTestId<HTMLButtonElement>('wallet-row-bbbbbbbbbbbbbbbb').disabled).toBe(true)
+  })
 })
 
 describe('WalletChip', () => {

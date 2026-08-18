@@ -54,6 +54,9 @@ export type { ScanScreenProps, ScanResult } from './screens/ScanScreen.js'
 export { QrDisplay } from './components/QrDisplay.js'
 export type { QrDisplayProps } from './components/QrDisplay.js'
 
+export { ManageWalletScreen, WALLET_COLOUR_NAMES } from './screens/ManageWalletScreen.js'
+export type { ManageWalletScreenProps, WalletColourName } from './screens/ManageWalletScreen.js'
+
 export { BackupScreen } from './screens/BackupScreen.js'
 export type {
   BackupScreenProps,

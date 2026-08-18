@@ -25,6 +25,7 @@ import { WalletScreen, type QuorumView, type ScriptType } from './screens/Wallet
 import { PsbtScreen, type PsbtReviewView } from './screens/PsbtScreen.js'
 import { ScanScreen, type ScanResult } from './screens/ScanScreen.js'
 import { WalletsScreen, type WalletRow } from './screens/WalletsScreen.js'
+import { ManageWalletScreen } from './screens/ManageWalletScreen.js'
 import { UnlockedScreen } from './screens/UnlockedScreen.js'
 import {
   MessageScreen,
@@ -98,6 +99,8 @@ type Stage =
   | { readonly at: 'backup' }
   /** Choosing which of several wallets to open. */
   | { readonly at: 'wallets' }
+  /** Naming, recolouring or erasing the wallet that is open. */
+  | { readonly at: 'manage' }
   /**
    * What just opened, before it can be used.
    *
@@ -158,6 +161,10 @@ export function App() {
    * loaded, and never from the row the user tapped. Those differ exactly when
    * something has gone wrong, which is when it matters.
    */
+  // Whether the open wallet's name came out of the ciphertext. False for one
+  // migrated from a v1 store, which sealed no name. The unlocked screen says so
+  // once; the manage screen is where it gets fixed, so it has to know too.
+  const [labelVerified, setLabelVerified] = useState(true)
   const [activeWallet, setActiveWallet] = useState<{
     id: string
     label: string
@@ -307,6 +314,7 @@ export function App() {
         bip39Passphrase: boolean
       }>(transport, 'wallets.unlock', { id, passphrase })
       setActiveWallet(opened.active)
+      setLabelVerified(opened.labelVerified)
       setError(null)
       // Never straight to the wallet. Everything a user needs in order to
       // notice that the wrong wallet opened is on the next screen, and after
@@ -554,6 +562,13 @@ export function App() {
           onBackup={() => {
             setStage({ at: 'backup' })
           }}
+          {...(activeWallet === null
+            ? {}
+            : {
+                onManage: () => {
+                  setStage({ at: 'manage' })
+                },
+              })}
           onLock={() => {
             const go = async (): Promise<void> => {
               await call(transport, 'session.lock')
@@ -689,6 +704,10 @@ export function App() {
         onCreate={() => {
           setStage({ at: 'setup' })
         }}
+        onForget={async (id: string) => {
+          await call(transport, 'wallets.forget', { id })
+          await refresh()
+        }}
         onCancel={() => {
           setStage({ at: 'lock' })
         }}
@@ -723,6 +742,41 @@ export function App() {
             setStage({ at: 'wallets' })
           }
           void go()
+        }}
+      />
+    )
+  }
+
+  if (stage.at === 'manage' && activeWallet !== null) {
+    return (
+      <ManageWalletScreen
+        banner={banner}
+        wallet={activeWallet}
+        labelVerified={labelVerified}
+        onRename={async (label: string, colour: string, passphrase: string) => {
+          const renamed = await call<{ active: { id: string; label: string; colour: string } }>(
+            transport,
+            'wallets.rename',
+            { label, colour, passphrase }
+          )
+          // The sealed label, not the requested one: the registry trims it and
+          // strips characters that do not display, and the chip has to agree
+          // with the ciphertext rather than with what was typed.
+          setActiveWallet(renamed.active)
+          // It came back out of a reseal, so from here it is confirmed.
+          setLabelVerified(true)
+          await refresh()
+        }}
+        onDestroy={async () => {
+          await call(transport, 'wallets.destroy')
+          setActiveWallet(null)
+          // Erasing locks the session daemon-side, so there is no wallet to
+          // return to. The picker is the only honest destination.
+          await refresh()
+          setStage({ at: 'wallets' })
+        }}
+        onBack={() => {
+          setStage({ at: 'wallet' })
         }}
       />
     )

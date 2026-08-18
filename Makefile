@@ -202,6 +202,12 @@ ipc-reachable: ## Every IPC method the daemon implements is reachable from the U
 	# daemon directly.
 	@node tools/check-ipc-reachable.mjs
 
+ui-constants: ## Values the frontend restates agree with the daemon that enforces them
+	# The UI may not import from packages/daemon, so a few lists exist twice.
+	# A colour on one side and not the other is a swatch that produces an
+	# error when tapped, and nothing else in the suite looks at both.
+	@node tools/check-ui-constants.mjs
+
 clean: ## Remove build output
 	rm -rf packages/*/dist apps/web/.next apps/web/out **/*.tsbuildinfo
 
@@ -265,6 +271,6 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 
 # --- aggregates --------------------------------------------------------------
 
-check-fast: lint ui-classes type-check prose links profiles invariant-claims make-targets ipc-reachable device-csp test manifest-check ## Everything except the slow suites
+check-fast: lint ui-classes ui-constants type-check prose links profiles invariant-claims make-targets ipc-reachable device-csp test manifest-check ## Everything except the slow suites
 
 check: check-fast build verify test-vectors test-differential repro-check sbom device-ui web-check ## Everything CI runs

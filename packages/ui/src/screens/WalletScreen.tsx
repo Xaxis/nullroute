@@ -74,6 +74,14 @@ export interface WalletScreenProps {
   readonly onProveControl?: () => void
   /** Leaves for encrypted backup and restore. Optional, like the others. */
   readonly onBackup?: () => void
+  /**
+   * Leaves for naming and erasing this wallet.
+   *
+   * Absent when the wallet in the session is not a stored one. There is nothing
+   * to rename and nothing to erase, and offering it would be an error message
+   * dressed as a feature.
+   */
+  readonly onManage?: () => void
   readonly onLock: () => void
   readonly banner?: ReactElement | null
 }
@@ -98,6 +106,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
     onMultisig,
     onProveControl,
     onBackup,
+    onManage,
     onLock,
     banner,
   } = props
@@ -178,6 +187,11 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
           {onBackup !== undefined && (
             <Button onClick={onBackup} testId="wallet-backup">
               Backup
+            </Button>
+          )}
+          {onManage !== undefined && (
+            <Button onClick={onManage} testId="wallet-manage">
+              Manage
             </Button>
           )}
           <div className="nr-spacer" />

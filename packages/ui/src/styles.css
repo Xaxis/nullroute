@@ -47,6 +47,36 @@
   --color-verify-500: #4fa88a;
   --color-verify-300: #86c9b2;
 
+  /* --- Semantic names for the palette above ---------------------------------
+     Fifty uses of these existed before any of them was defined, which is a
+     failure mode worth naming: an undefined custom property is not an error,
+     it is an empty value, so `color: var(--color-text)` silently renders as
+     whatever the browser inherited. On this device that meant the screens
+     added last drew dark text on a dark panel in places, and every test still
+     passed, because jsdom does not compute a cascade and the browser check
+     only asserts that React mounted.
+
+     tools/check-ui-constants.mjs now fails the build on an undefined one. */
+  --color-bg: #08090b;
+  --color-surface-1: #101216;
+  --color-surface-2: #171a20;
+  --color-surface-3: #1f232b;
+  --color-line: #2d323d;
+  --color-border: #414856;
+  --color-text: #f4f6f9;
+  --color-text-dim: #949cab;
+
+  --color-accent-600: #cf6f2a;
+  --color-accent-500: #e8833a;
+  --color-accent-400: #f39c5c;
+
+  --radius-md: 8px;
+
+  --color-danger-700: #8e2f2c;
+  --color-danger-500: #d9534f;
+  --color-danger-300: #f0918e;
+
+
   --font-mono:
     'JetBrains Mono', 'IBM Plex Mono', 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
   --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -1305,4 +1335,50 @@ body {
   word-break: break-word;
   max-height: 12rem;
   overflow-y: auto;
+}
+
+/* --- Managing a wallet ------------------------------------------------------
+   The swatch row and the erase block. The block is set apart rather than
+   spaced apart: on a panel this size, a destructive button that reads as one
+   more item in a list is a destructive button somebody taps by accident. */
+
+.nr-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+  padding: 0.25rem 0;
+}
+
+.nr-swatch {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  border: 2px solid var(--color-border);
+  background: var(--wallet-colour, var(--color-surface-2));
+  cursor: pointer;
+  padding: 0;
+}
+
+.nr-swatch[aria-pressed='true'] {
+  border-color: var(--color-text);
+  box-shadow: 0 0 0 3px var(--color-bg), 0 0 0 5px var(--wallet-colour, transparent);
+}
+
+.nr-danger-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+  padding: 0.875rem;
+  border: 1px solid var(--color-danger-700, var(--color-border));
+  border-radius: var(--radius-md);
+  background: var(--color-surface-1);
+}
+
+.nr-danger-zone__title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-danger-300, var(--color-text-dim));
 }

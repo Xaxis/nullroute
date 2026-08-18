@@ -44,6 +44,8 @@ covers:
   - packages/ui/src/screens/MessageScreen.tsx::MessageScreen
   - packages/ui/src/screens/MessageScreen.tsx::MESSAGE_SCRIPT_TYPES
   - packages/ui/src/screens/BackupScreen.tsx::BackupScreen
+  - packages/ui/src/screens/ManageWalletScreen.tsx::ManageWalletScreen
+  - packages/ui/src/screens/ManageWalletScreen.tsx::WALLET_COLOUR_NAMES
 
 algorithm: >
   Renders the manifest root hash, the verification status with spec and
@@ -468,6 +470,40 @@ invariants:
       - packages/ui/test/backup-screen.test.tsx::says-when-a-restore-cannot-sign
       - packages/ui/test/backup-screen.test.tsx::says-when-a-restore-can-sign-again
       - packages/ui/test/backup-screen.test.tsx::reports-a-wrong-passphrase-and-leaves-nothing-restored
+
+  # --- Managing a wallet -----------------------------------------------------
+  # Renaming and erasing sit one tap apart and have nothing else in common.
+  - id: INV-UI-42
+    statement: >
+      Erasing a wallet requires its name to be typed, states before that is
+      possible that a written mnemonic is the only thing that recovers it, and
+      reports a refusal rather than claiming the wallet went.
+    tests:
+      - packages/ui/test/manage-wallet-screen.test.tsx::will-not-erase-on-a-tap
+      - packages/ui/test/manage-wallet-screen.test.tsx::ignores-whitespace-around-the-typed-name
+      - packages/ui/test/manage-wallet-screen.test.tsx::says-what-erasing-costs-before-it-is-possible
+      - packages/ui/test/manage-wallet-screen.test.tsx::reports-a-refused-erase-without-claiming-it-happened
+
+  - id: INV-UI-43
+    statement: >
+      Renaming requires the passphrase, says that a wrong one does not count
+      against the attempts that erase the wallet, offers exactly the colours the
+      daemon accepts, and does not present an unconfirmed name as a chosen one.
+    tests:
+      - packages/ui/test/manage-wallet-screen.test.tsx::renames-with-the-passphrase-and-says-a-wrong-one-is-free
+      - packages/ui/test/manage-wallet-screen.test.tsx::offers-every-colour-the-daemon-accepts
+      - packages/ui/test/manage-wallet-screen.test.tsx::says-when-the-name-was-never-confirmed
+      - packages/ui/test/manage-wallet-screen.test.tsx::reports-a-refused-rename-and-clears-the-passphrase
+
+  - id: INV-UI-44
+    statement: >
+      The row left by a wallet erased through exhausted attempts can be cleared,
+      says that clearing removes nothing further, and stays inert when no
+      handler for clearing it was given.
+    tests:
+      - packages/ui/test/wallets-screen.test.tsx::lets-a-tombstone-row-be-cleared-and-says-what-clearing-does-not-do
+      - packages/ui/test/wallets-screen.test.tsx::reports-a-failed-clear-rather-than-pretending-the-row-went
+      - packages/ui/test/wallets-screen.test.tsx::leaves-a-tombstone-alone-when-there-is-nothing-to-clear-it-with
 
 threats:
   - INV-KEY-1
