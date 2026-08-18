@@ -173,8 +173,27 @@ dev-daemon: build manifest verify ## Just the daemon, on a Unix socket in /tmp
 build-app: ## Production build of the device UI
 	@npm run build:app --workspace @nullroute/ui
 
-image: ## Build the hardened Raspberry Pi image
-	@bash tools/build-image/build.sh
+image: ## Build the hardened Raspberry Pi image. NOT IMPLEMENTED YET.
+	# Fails on purpose, and says so, rather than calling a script that is not
+	# there. This target used to run tools/build-image/build.sh, which was never
+	# written, so `make image` produced a bash "no such file" that reads as a
+	# broken checkout rather than as a feature in design.
+	#
+	# docs/PROVISIONING.md is honest that the build system is being designed. The
+	# Makefile was not, and the Makefile is what somebody actually runs.
+	@echo 'make image: the image build system is not implemented yet.'
+	@echo
+	@echo '  The hardware, the hardening controls and the constraints are settled'
+	@echo '  and written up in docs/PROVISIONING.md. The build system that turns'
+	@echo '  them into a flashable image is still being designed, and this target'
+	@echo '  exists so that is a sentence rather than a missing file.'
+	@echo
+	@echo '  What DOES work today: make check, make verify, and make dev to run'
+	@echo '  the daemon and the frontend on this machine.'
+	@exit 1
+
+make-targets: ## Every script the Makefile invokes actually exists
+	@node tools/check-make-targets.mjs
 
 clean: ## Remove build output
 	rm -rf packages/*/dist apps/web/.next apps/web/out **/*.tsbuildinfo
@@ -239,6 +258,6 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 
 # --- aggregates --------------------------------------------------------------
 
-check-fast: lint ui-classes type-check prose links profiles invariant-claims device-csp test manifest-check ## Everything except the slow suites
+check-fast: lint ui-classes type-check prose links profiles invariant-claims make-targets device-csp test manifest-check ## Everything except the slow suites
 
 check: check-fast build verify test-vectors test-differential repro-check sbom device-ui web-check ## Everything CI runs

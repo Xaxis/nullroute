@@ -61,6 +61,13 @@ card; a missing chip cannot.
 
 ## What the hardening actually does
 
+**Read this section as a specification, not as a description of something you
+can flash today.** The controls below are settled and the reasoning behind each
+is final, but the build system that applies them is still being designed, so
+`make image` refuses rather than producing anything. See
+[Status](#status-of-this-document). Every table in this section says what the
+image WILL do; none of it is running on a device yet.
+
 The controls below are the ones that matter for a single-purpose, air-gapped
 device. That qualifier is doing real work: most published hardening baselines
 (CIS, STIG) are written for multi-user networked servers, and a large fraction
