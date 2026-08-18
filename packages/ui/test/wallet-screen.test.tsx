@@ -32,7 +32,7 @@ function withQuorums(quorums: readonly QuorumView[]) {
 describe('WalletScreen quorum position', () => {
   // INV-UI-37. The number that tells three identical devices apart.
   it('says-which-cosigner-of-how-many-this-device-is', () => {
-    withQuorums([{ threshold: 2, total: 3, ourPosition: 2, unreadable: null }])
+    withQuorums([{ descriptor: 'wsh(sortedmulti(2,...))#aaaaaaaa', threshold: 2, total: 3, ourPosition: 2, unreadable: null }])
 
     const shown = screen.getByTestId('wallet-quorums').textContent
     expect(shown).toContain('2 of 3')
@@ -48,7 +48,7 @@ describe('WalletScreen quorum position', () => {
    * the number is that it is derived from the keys.
    */
   it('says-when-it-cannot-place-itself-rather-than-showing-a-number', () => {
-    withQuorums([{ threshold: null, total: null, ourPosition: null, unreadable: 'no key of ours' }])
+    withQuorums([{ descriptor: 'wsh(unreadable)#bbbbbbbb', threshold: null, total: null, ourPosition: null, unreadable: 'no key of ours' }])
 
     const shown = screen.getByTestId('wallet-quorums').textContent
     expect(shown).toContain('cannot place itself')
@@ -62,8 +62,8 @@ describe('WalletScreen quorum position', () => {
 
   it('lists-every-quorum-when-a-device-is-in-more-than-one', () => {
     withQuorums([
-      { threshold: 2, total: 3, ourPosition: 1, unreadable: null },
-      { threshold: 3, total: 5, ourPosition: 4, unreadable: null },
+      { descriptor: 'wsh(sortedmulti(2,...))#aaaaaaaa', threshold: 2, total: 3, ourPosition: 1, unreadable: null },
+      { descriptor: 'wsh(sortedmulti(3,...))#aaaaaaaa', threshold: 3, total: 5, ourPosition: 4, unreadable: null },
     ])
     const shown = screen.getByTestId('wallet-quorums').textContent
     expect(shown).toContain('2 of 3, you are cosigner 1')

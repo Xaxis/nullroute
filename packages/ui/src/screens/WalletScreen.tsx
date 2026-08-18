@@ -27,6 +27,7 @@ export interface AddressRow {
 
 /** A registered quorum, and where this device sits in it. */
 export interface QuorumView {
+  readonly descriptor: string
   readonly threshold: number | null
   readonly total: number | null
   /** One-based, so it can be said out loud to another cosigner. */
@@ -82,6 +83,13 @@ export interface WalletScreenProps {
    * dressed as a feature.
    */
   readonly onManage?: () => void
+  /**
+   * Leaves for the quorum's addresses.
+   *
+   * The one screen that proves every cosigner registered the same descriptor,
+   * so it is reached from the quorum itself rather than from a menu.
+   */
+  readonly onQuorum?: (quorum: QuorumView) => void
   readonly onLock: () => void
   readonly banner?: ReactElement | null
 }
@@ -107,6 +115,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
     onProveControl,
     onBackup,
     onManage,
+    onQuorum,
     onLock,
     banner,
   } = props
@@ -229,11 +238,26 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
                   ? 'This device cannot place itself in this quorum'
                   : `${String(quorum.threshold)} of ${String(quorum.total)}, you are cosigner ${String(quorum.ourPosition)}`}
               </span>
+              {/* Only for a quorum this device can actually place itself in.
+                  Deriving addresses from a descriptor it cannot read would
+                  produce an error, and offering the button anyway would make
+                  the unreadable case look like a display problem. */}
+              {onQuorum !== undefined && quorum.unreadable === null && (
+                <Button
+                  onClick={() => {
+                    onQuorum(quorum)
+                  }}
+                  testId={`wallet-quorum-${String(index)}`}
+                >
+                  Addresses
+                </Button>
+              )}
             </div>
           ))}
           <p className="nr-hint">
             Every device in this quorum shows the same wallet name, because they hold the same
-            wallet. The cosigner number is what tells them apart.
+            wallet. The cosigner number is what tells them apart, and the addresses are what prove
+            they all registered the same descriptor.
           </p>
         </div>
       )}

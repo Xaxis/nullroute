@@ -75,9 +75,6 @@ const DELIBERATELY_UNREACHABLE = new Map([
  */
 const NOT_YET_ON_A_SCREEN = new Map([
   ['wallet.xpub', 'Single-signature xpub export. The wallet screen exports a descriptor instead.'],
-  ['multisig.importFile', 'Reading a coordinator setup file. Registration takes a descriptor.'],
-  ['multisig.exportBundle', 'Writing a descriptor bundle for a coordinator.'],
-  ['multisig.addresses', 'Viewing addresses for a registered quorum.'],
   ['labels.import', 'BIP-329 label import.'],
   ['labels.export', 'BIP-329 label export.'],
   ['bip85.derive', 'Deriving a child seed. Returns key material, so the screen needs care.'],
@@ -90,7 +87,7 @@ const NOT_YET_ON_A_SCREEN = new Map([
  * than written in a comment: adding a fourteenth unreachable feature fails the
  * build, and clearing one without lowering the cap fails it too.
  */
-const MAX_NOT_YET_ON_A_SCREEN = 7
+const MAX_NOT_YET_ON_A_SCREEN = 4
 
 const handler = readFileSync(HANDLER, 'utf8')
 

@@ -46,6 +46,7 @@ covers:
   - packages/ui/src/screens/BackupScreen.tsx::BackupScreen
   - packages/ui/src/screens/ManageWalletScreen.tsx::ManageWalletScreen
   - packages/ui/src/screens/ManageWalletScreen.tsx::WALLET_COLOUR_NAMES
+  - packages/ui/src/screens/QuorumAddressesScreen.tsx::QuorumAddressesScreen
 
 algorithm: >
   Renders the manifest root hash, the verification status with spec and
@@ -504,6 +505,37 @@ invariants:
       - packages/ui/test/wallets-screen.test.tsx::lets-a-tombstone-row-be-cleared-and-says-what-clearing-does-not-do
       - packages/ui/test/wallets-screen.test.tsx::reports-a-failed-clear-rather-than-pretending-the-row-went
       - packages/ui/test/wallets-screen.test.tsx::leaves-a-tombstone-alone-when-there-is-nothing-to-clear-it-with
+
+  # --- A quorum across several devices ---------------------------------------
+  # The screen three Pis in one quorum read against each other.
+  - id: INV-UI-45
+    statement: >
+      Quorum addresses are derived from the registered descriptor, say what
+      comparing them against another device proves, restart at index zero when
+      the branch changes, and never leave a stale page under a new header.
+    tests:
+      - packages/ui/test/quorum-addresses-screen.test.tsx::derives-from-the-descriptor-and-says-what-a-match-proves
+      - packages/ui/test/quorum-addresses-screen.test.tsx::shows-receive-and-change-separately-and-restarts-the-page
+      - packages/ui/test/quorum-addresses-screen.test.tsx::clears-the-page-rather-than-leaving-a-stale-one-under-a-new-header
+      - packages/ui/test/quorum-addresses-screen.test.tsx::says-nothing-about-a-position-it-was-not-given
+
+  - id: INV-UI-46
+    statement: >
+      Reading a coordinator file registers nothing, shows what the file asserts
+      about itself as unverified, and sends any descriptor chosen from it
+      through the same review as one typed by hand.
+    tests:
+      - packages/ui/test/multisig-screen.test.tsx::reads-a-coordinator-file-without-believing-any-of-it
+
+  - id: INV-UI-47
+    statement: >
+      The coordinator bundle is offered only when a quorum is registered, and
+      says that a quorum every device agreed to is still invisible to the
+      software that builds the transactions until the bundle reaches it.
+    tests:
+      - packages/ui/test/multisig-screen.test.tsx::writes-the-bundle-and-says-why-it-matters
+      - packages/ui/test/multisig-screen.test.tsx::does-not-offer-a-bundle-with-no-quorum-in-it
+      - packages/ui/test/multisig-screen.test.tsx::leaves-both-out-when-there-is-nowhere-to-send-them
 
 threats:
   - INV-KEY-1

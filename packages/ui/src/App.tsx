@@ -26,6 +26,10 @@ import { PsbtScreen, type PsbtReviewView } from './screens/PsbtScreen.js'
 import { ScanScreen, type ScanResult } from './screens/ScanScreen.js'
 import { WalletsScreen, type WalletRow } from './screens/WalletsScreen.js'
 import { ManageWalletScreen } from './screens/ManageWalletScreen.js'
+import {
+  QuorumAddressesScreen,
+  type QuorumAddressRow,
+} from './screens/QuorumAddressesScreen.js'
 import { UnlockedScreen } from './screens/UnlockedScreen.js'
 import {
   MessageScreen,
@@ -41,6 +45,7 @@ import { WalletChip } from './components/WalletChip.js'
 import { PassphraseScreen } from './screens/PassphraseScreen.js'
 import {
   MultisigScreen,
+  type ImportedFileView,
   type OurKeyView,
   type RegistrationView,
 } from './screens/MultisigScreen.js'
@@ -101,6 +106,15 @@ type Stage =
   | { readonly at: 'wallets' }
   /** Naming, recolouring or erasing the wallet that is open. */
   | { readonly at: 'manage' }
+  /**
+   * Addresses for one registered quorum.
+   *
+   * Carries the quorum rather than an index into the list, because the list is
+   * refreshed asynchronously and an index into a list that just changed is how
+   * a screen ends up showing a different wallet's addresses under this one's
+   * header.
+   */
+  | { readonly at: 'quorum'; readonly quorum: QuorumView }
   /**
    * What just opened, before it can be used.
    *
@@ -545,6 +559,9 @@ export function App() {
       <>
         <WalletScreen
           quorums={quorums}
+          onQuorum={(quorum: QuorumView) => {
+            setStage({ at: 'quorum', quorum })
+          }}
           banner={banner}
           fingerprint={status.fingerprint ?? 'unknown'}
           onAddresses={addresses}
@@ -669,6 +686,37 @@ export function App() {
         onOurKey={ourMultisigKey}
         onReview={reviewQuorum}
         onRegister={registerQuorum}
+        registeredCount={quorums.length}
+        onImportFile={async (contents: string) =>
+          call<ImportedFileView>(transport, 'multisig.importFile', { contents })
+        }
+        onExportBundle={async () =>
+          call<{ bundle: string }>(transport, 'multisig.exportBundle', {})
+        }
+        onBack={() => {
+          setStage({ at: 'wallet' })
+        }}
+      />
+    )
+  }
+
+  if (stage.at === 'quorum') {
+    return (
+      <QuorumAddressesScreen
+        banner={banner}
+        descriptor={stage.quorum.descriptor}
+        position={
+          stage.quorum.ourPosition === null || stage.quorum.total === null
+            ? undefined
+            : { ours: stage.quorum.ourPosition, of: stage.quorum.total }
+        }
+        onAddresses={async (descriptor: string, change: boolean, start: number, count: number) =>
+          call<{ addresses: readonly QuorumAddressRow[]; change: boolean }>(
+            transport,
+            'multisig.addresses',
+            { descriptor, change, start, count }
+          )
+        }
         onBack={() => {
           setStage({ at: 'wallet' })
         }}

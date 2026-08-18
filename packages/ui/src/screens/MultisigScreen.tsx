@@ -2,6 +2,7 @@ import { type ReactElement, useEffect, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { Hash } from '../components/Hash.js'
+import { QrDisplay } from '../components/QrDisplay.js'
 
 /**
  * Registering a quorum.
@@ -50,21 +51,69 @@ export interface OurKeyView {
   readonly keyExpression: string
 }
 
+/** What a coordinator file said about itself, and what it actually carried. */
+export interface ImportedFileView {
+  readonly format: string
+  readonly name: string | null
+  /**
+   * Lines the file asserted that this device does not check.
+   *
+   * A coordinator states its policy and derivation in prose. Those lines are a
+   * hint about what the writer intended and never evidence: the descriptor
+   * alone determines addresses. Shown so a disagreement can be noticed, and
+   * used to decide nothing.
+   */
+  readonly unverifiedClaims: readonly string[]
+  readonly descriptors: readonly {
+    readonly descriptor: string
+    readonly change: boolean | null
+  }[]
+}
+
 export interface MultisigScreenProps {
   readonly onOurKey: () => Promise<OurKeyView>
   readonly onReview: (descriptor: string) => Promise<RegistrationView>
   readonly onRegister: (descriptor: string) => Promise<void>
+  /**
+   * Read a file a coordinator exported.
+   *
+   * Optional, so the screen still works where the only route in is a pasted
+   * descriptor. Importing decides nothing: it produces descriptors, and each
+   * one still goes through the same review as one typed by hand.
+   */
+  readonly onImportFile?: (contents: string) => Promise<ImportedFileView>
+  /**
+   * Write the bundle a coordinator needs to watch this wallet.
+   *
+   * The other half of registration, and the half that is easy to forget: a
+   * quorum every device has agreed to is still invisible to the software that
+   * builds the transactions.
+   */
+  readonly onExportBundle?: () => Promise<{ bundle: string }>
+  /** How many quorums are registered, so the export is offered only when it carries something. */
+  readonly registeredCount?: number
   readonly onBack: () => void
   readonly banner?: ReactElement | null
 }
 
 export function MultisigScreen(props: MultisigScreenProps): ReactElement {
-  const { onOurKey, onReview, onRegister, onBack, banner } = props
+  const {
+    onOurKey,
+    onReview,
+    onRegister,
+    onImportFile,
+    onExportBundle,
+    registeredCount = 0,
+    onBack,
+    banner,
+  } = props
 
   const [ourKey, setOurKey] = useState<OurKeyView | null>(null)
   const [descriptor, setDescriptor] = useState('')
   const [review, setReview] = useState<RegistrationView | null>(null)
   const [registered, setRegistered] = useState(false)
+  const [imported, setImported] = useState<ImportedFileView | null>(null)
+  const [bundle, setBundle] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -96,6 +145,137 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
     }
   }
 
+  // --- The bundle a coordinator needs -------------------------------------
+  if (bundle !== null) {
+    return (
+      <Screen
+        title="For the coordinator"
+        subtitle="Public keys and descriptors. Nothing here can spend."
+        banner={banner}
+        testId="multisig-bundle"
+        actions={
+          <Button
+            onClick={() => {
+              setBundle(null)
+            }}
+            testId="multisig-bundle-back"
+          >
+            Back
+          </Button>
+        }
+      >
+        <QrDisplay text={bundle} fileType="json" testId="multisig-bundle-qr" />
+
+        <details className="nr-details">
+          <summary className="nr-details__summary">Show it as text, to save on a card</summary>
+          <div className="nr-field">
+            <textarea
+              className="nr-input nr-input--area nr-break"
+              readOnly
+              rows={8}
+              value={bundle}
+              data-testid="multisig-bundle-text"
+            />
+          </div>
+        </details>
+
+        <p className="nr-note" data-testid="multisig-bundle-note">
+          Every cosigner has to register the same descriptor, character for character, and the
+          coordinator has to import it too. A quorum that every device agreed to is still invisible
+          to the software that builds the transactions until this reaches it.
+        </p>
+      </Screen>
+    )
+  }
+
+  // --- What arrived in a coordinator file ----------------------------------
+  // The file is read, and nothing in it is believed. Its name and its policy
+  // lines are prose written by whoever exported it; the descriptor is the only
+  // part that decides an address, and it still goes through the same review as
+  // one typed in by hand.
+  if (imported !== null) {
+    return (
+      <Screen
+        title="What that file contains"
+        subtitle={`Read as ${imported.format}. Nothing in it is verified yet.`}
+        banner={banner}
+        testId="multisig-imported"
+        actions={
+          <Button
+            onClick={() => {
+              setImported(null)
+              setError(null)
+            }}
+            testId="multisig-imported-back"
+          >
+            Back
+          </Button>
+        }
+      >
+        {imported.name !== null && (
+          <div className="nr-card nr-card--tight">
+            <div className="nr-row">
+              <span className="nr-label">Called</span>
+              <span className="nr-value" data-testid="multisig-imported-name">
+                {imported.name}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {imported.unverifiedClaims.length > 0 && (
+          <div className="nr-banner nr-banner--testnet" data-testid="multisig-imported-claims">
+            <strong>The file also says this, and the device does not check it</strong>
+            <span>
+              {imported.unverifiedClaims.join('. ')}. Only the descriptor decides an address. If
+              one of those lines disagrees with what you were told, stop and ask the coordinator
+              before registering anything.
+            </span>
+          </div>
+        )}
+
+        <div className="nr-wlist" data-testid="multisig-imported-descriptors">
+          {imported.descriptors.map((entry) => (
+            <button
+              key={entry.descriptor}
+              type="button"
+              className="nr-choice"
+              onClick={() => {
+                setDescriptor(entry.descriptor)
+                setImported(null)
+                void run(async () => {
+                  setReview(await onReview(entry.descriptor))
+                })
+              }}
+              data-testid={`multisig-imported-pick-${String(imported.descriptors.indexOf(entry))}`}
+            >
+              <span className="nr-choice__title">
+                {entry.change === null
+                  ? 'Descriptor'
+                  : entry.change
+                    ? 'Change branch'
+                    : 'Receive branch'}
+              </span>
+              <span className="nr-choice__desc nr-mono nr-break">{entry.descriptor}</span>
+            </button>
+          ))}
+        </div>
+
+        <p className="nr-note">
+          Choosing one checks it the same way a descriptor typed in by hand is checked. Reading a
+          file registers nothing.
+        </p>
+
+        {error !== null && (
+          <div className="nr-banner nr-banner--danger" data-testid="multisig-error">
+            <strong>Not registered</strong>
+            <span>{error}</span>
+          </div>
+        )}
+      </Screen>
+    )
+  }
+
   if (registered && review !== null) {
     return (
       <Screen
@@ -105,6 +285,18 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
         testId="multisig-registered"
         actions={
           <>
+            {onExportBundle !== undefined && (
+              <Button
+                onClick={() =>
+                  void run(async () => {
+                    setBundle((await onExportBundle()).bundle)
+                  })
+                }
+                testId="multisig-export-after"
+              >
+                {busy ? 'Writing' : 'For the coordinator'}
+              </Button>
+            )}
             <div className="nr-spacer" />
             <Button variant="primary" onClick={onBack} testId="multisig-done">
               Done
@@ -189,6 +381,19 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
         </div>
       )}
 
+      {review === null && onExportBundle !== undefined && registeredCount > 0 && (
+        <Button
+          onClick={() =>
+            void run(async () => {
+              setBundle((await onExportBundle()).bundle)
+            })
+          }
+          testId="multisig-export"
+        >
+          {busy ? 'Writing' : `For the coordinator (${String(registeredCount)} registered)`}
+        </Button>
+      )}
+
       {review === null && (
         <div className="nr-field">
           <span className="nr-field__label">Quorum descriptor</span>
@@ -209,6 +414,23 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
             The checksum is required. It is the only thing standing between a mistyped character
             and a valid descriptor for a completely different wallet.
           </p>
+
+          {/* The same field. A coordinator export is usually a wrapper around
+              the descriptor above, and pasting either into one box is fewer
+              decisions than choosing which box to paste into. */}
+          {onImportFile !== undefined && (
+            <Button
+              disabled={descriptor.trim().length === 0 || busy}
+              onClick={() =>
+                void run(async () => {
+                  setImported(await onImportFile(descriptor))
+                })
+              }
+              testId="multisig-import"
+            >
+              {busy ? 'Reading' : 'That is a coordinator file, read it'}
+            </Button>
+          )}
         </div>
       )}
 
