@@ -23,16 +23,35 @@
  */
 
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 
+const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const ORIGIN = process.argv[2] ?? process.env['NULLROUTE_SITE'] ?? 'https://nullroute.diy'
 
-const PAGES = [
-  { path: '/', expect: 'Built to be checked' },
-  { path: '/docs/threat-model', expect: 'Threat model' },
-  { path: '/docs/verification', expect: 'Verifying nullroute' },
-  { path: '/docs/entropy', expect: 'Entropy and seed generation' },
-]
+/**
+ * Every document, read out of the registry rather than listed here.
+ *
+ * This list was four entries long while the site published six documents, so
+ * the two most recent ones were live, unlinked and unchecked, and the check
+ * reported all pages clean. A hardcoded list of what to check is a list that
+ * silently stops covering what exists.
+ *
+ * Parsed with a regular expression because this file is plain Node with no
+ * build step, and the shape it reads is a literal array of string fields.
+ */
+function docPages() {
+  const source = readFileSync(join(ROOT, 'apps/web/lib/docs.ts'), 'utf8')
+  const found = [...source.matchAll(/slug:\s*'([a-z0-9-]+)'[\s\S]{0,400}?title:\s*'([^']+)'/g)]
+  if (found.length === 0) {
+    console.error('check-web-live: no documents parsed from apps/web/lib/docs.ts, so this is blind.')
+    process.exit(1)
+  }
+  return found.map((m) => ({ path: `/docs/${m[1]}`, expect: m[2] }))
+}
+
+const PAGES = [{ path: '/', expect: 'Built to be checked' }, ...docPages()]
 
 /** A doc page that renders its shell but not its body would still "load". */
 const MIN_CHARS = 5000

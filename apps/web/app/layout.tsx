@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import Link from 'next/link'
+import { DOCS } from '@/lib/docs'
 import '../styles/globals.css'
 
 export const metadata: Metadata = {
@@ -26,44 +27,52 @@ export const viewport: Viewport = {
   initialScale: 1,
 }
 
-const NAV = [
-  { href: '/docs/threat-model', label: 'Threat model' },
-  { href: '/docs/verification', label: 'Verification' },
-  { href: '/docs/entropy', label: 'Entropy' },
-  { href: '/docs/provisioning', label: 'Provisioning' },
-]
+/**
+ * The header links, derived from the document set rather than listed again.
+ *
+ * They were listed again, and two documents were published for a week with no
+ * link to them from anywhere: the pages built, the sitemap listed them, and the
+ * only route in was to type the URL. Deriving it means a new document is in the
+ * header the moment it is registered, which is the only version of this that
+ * stays true.
+ */
+const NAV = DOCS.map((doc) => ({ href: `/docs/${doc.slug}`, label: doc.navLabel }))
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body className="min-h-screen flex flex-col">
+        {/* The header wraps rather than scrolls. A horizontal scroller with no
+            visible affordance had the last two links off the right edge of a
+            320px screen, reachable only by a swipe nobody knew to try, and
+            every check passed because the document itself did not scroll. */}
         <header className="border-b border-ink-800 sticky top-0 z-20 bg-ink-950/95 backdrop-blur-sm">
-          <div className="mx-auto max-w-5xl px-5 h-14 flex items-center gap-4 sm:gap-6">
+          <div className="mx-auto max-w-5xl px-5 py-3 flex flex-wrap items-center gap-x-5 gap-y-2">
             <Link
               href="/"
               className="font-mono text-ink-100 font-semibold tracking-tight shrink-0 hover:text-signal-400 transition-colors"
             >
               nullroute
             </Link>
-            <nav className="flex items-center gap-5 text-sm overflow-x-auto min-w-0">
+            <a
+              href="https://github.com/Xaxis/nullroute"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-auto order-1 shrink-0 text-sm text-ink-400 hover:text-ink-100 transition-colors"
+            >
+              Source
+            </a>
+            <nav className="order-2 basis-full sm:order-none sm:basis-auto flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
               {NAV.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="text-ink-400 hover:text-ink-100 transition-colors whitespace-nowrap"
+                  className="text-ink-400 hover:text-ink-100 transition-colors"
                 >
                   {item.label}
                 </Link>
               ))}
             </nav>
-            <a
-              href="https://github.com/Xaxis/nullroute"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-auto shrink-0 text-sm text-ink-400 hover:text-ink-100 transition-colors whitespace-nowrap"
-            >
-              Source
-            </a>
           </div>
         </header>
 

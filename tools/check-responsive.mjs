@@ -88,7 +88,20 @@ function htmlPages(dir, found = []) {
   return found
 }
 
-/** Runs in the page. Returns the elements whose right edge exceeds the viewport. */
+/**
+ * Runs in the page. Returns two different failures.
+ *
+ * ONE: the document itself scrolls sideways. A flex item does not shrink below
+ * its content by default, so one nowrap element pushes the whole page wider
+ * than the phone and the right-hand third is cut off.
+ *
+ * TWO: a link sits outside the viewport. This is the failure the first measure
+ * cannot see, and it shipped: the header nav was a horizontal scroller, so the
+ * DOCUMENT fitted perfectly while two of the six links were off the right edge
+ * of a 320px screen with nothing on screen suggesting a sideways swipe. Wide
+ * code blocks and wide tables are read by scrolling and are fine. A link is
+ * not read, it is found, and one nobody can see is one nobody follows.
+ */
 const MEASURE = `(() => {
   const vw = document.documentElement.clientWidth
   const offenders = []
@@ -108,10 +121,27 @@ const MEASURE = `(() => {
       text: (el.textContent || '').trim().replace(/\\s+/g, ' ').slice(0, 50),
     })
   }
+
+  const hidden = []
+  for (const el of document.querySelectorAll('a[href], button')) {
+    const r = el.getBoundingClientRect()
+    if (r.width === 0 && r.height === 0) continue
+    // Fully inside, with a pixel of slack for subpixel layout.
+    if (r.left >= -1 && r.right <= vw + 1) continue
+    hidden.push({
+      tag: el.tagName.toLowerCase(),
+      href: el.getAttribute('href') || '',
+      left: Math.round(r.left),
+      right: Math.round(r.right),
+      text: (el.textContent || '').trim().replace(/\\s+/g, ' ').slice(0, 40),
+    })
+  }
+
   return JSON.stringify({
     viewport: vw,
     scrollWidth: document.documentElement.scrollWidth,
     offenders: offenders.map(({ el, ...rest }) => rest).slice(0, 8),
+    hidden: hidden.slice(0, 8),
   })
 })()`
 
@@ -214,6 +244,21 @@ async function main() {
         }
         console.error(
           '    A flex or grid item will not shrink below its content unless it has min-width:0.\n'
+        )
+      }
+
+      if (measured.hidden.length > 0) {
+        failures += 1
+        console.error(`${path} at ${width}px: ${measured.hidden.length} link(s) off screen`)
+        for (const h of measured.hidden) {
+          console.error(
+            `    <${h.tag} href="${h.href}"> spans ${h.left}..${h.right}   ${JSON.stringify(h.text)}`
+          )
+        }
+        console.error(
+          '    The page fits, so nothing scrolls and nothing looks wrong. The link is\n' +
+            '    simply not on the screen. Wrap the row rather than making it scroll: a\n' +
+            '    sideways scroller with no visible edge is a link nobody finds.\n'
         )
       }
     }

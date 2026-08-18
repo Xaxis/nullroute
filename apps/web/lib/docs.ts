@@ -13,6 +13,16 @@ export interface DocMeta {
   readonly slug: string
   readonly file: string
   readonly title: string
+  /**
+   * The header's name for it, which is shorter than the title on purpose.
+   *
+   * Six full titles do not fit across a phone, and a nav that scrolls sideways
+   * with no visible affordance is a nav whose last two items nobody finds. The
+   * short form is written out here rather than derived, because truncating
+   * "Entropy and seed generation" by rule gives "Entropy and seed..." and by
+   * hand gives "Entropy".
+   */
+  readonly navLabel: string
   readonly summary: string
   /** The question a reader actually arrived with. */
   readonly question: string
@@ -21,6 +31,7 @@ export interface DocMeta {
 export const DOCS: readonly DocMeta[] = [
   {
     slug: 'threat-model',
+    navLabel: 'Threats',
     file: 'docs/THREAT-MODEL.md',
     title: 'Threat model',
     summary:
@@ -29,6 +40,7 @@ export const DOCS: readonly DocMeta[] = [
   },
   {
     slug: 'verification',
+    navLabel: 'Verify',
     file: 'docs/VERIFICATION.md',
     title: 'Verification',
     summary:
@@ -37,6 +49,7 @@ export const DOCS: readonly DocMeta[] = [
   },
   {
     slug: 'entropy',
+    navLabel: 'Entropy',
     file: 'docs/ENTROPY.md',
     title: 'Entropy and seed generation',
     summary:
@@ -45,6 +58,7 @@ export const DOCS: readonly DocMeta[] = [
   },
   {
     slug: 'air-gap',
+    navLabel: 'Air gap',
     file: 'docs/AIR-GAP.md',
     title: 'The air gap',
     summary:
@@ -53,6 +67,7 @@ export const DOCS: readonly DocMeta[] = [
   },
   {
     slug: 'fleet',
+    navLabel: 'Fleet',
     file: 'docs/FLEET.md',
     title: 'Running several devices',
     summary:
@@ -61,6 +76,7 @@ export const DOCS: readonly DocMeta[] = [
   },
   {
     slug: 'provisioning',
+    navLabel: 'Provisioning',
     file: 'docs/PROVISIONING.md',
     title: 'Provisioning a device',
     summary:
