@@ -26,6 +26,7 @@
 
 import * as btc from '@scure/btc-signer'
 import { type Network } from '../network/networks.js'
+import { signatureProgress, type SignatureProgress } from './quorum.js'
 
 export class PsbtError extends Error {
   constructor(message: string) {
@@ -168,6 +169,14 @@ export interface Review {
   readonly network: Network
   /** True when nothing blocking was found. */
   readonly signable: boolean
+  /**
+   * How far along the signatures are, read from the PSBT alone.
+   *
+   * The fleet case: a 2-of-3 walked from device to device needs each one to know
+   * whether ITS signature completes the transaction. Without this, the second
+   * device cannot tell the user whether to carry the PSBT onward or broadcast it.
+   */
+  readonly signatures: SignatureProgress
 }
 
 export interface ReviewOptions {
@@ -417,6 +426,7 @@ export function reviewTransaction(tx: btc.Transaction, options: ReviewOptions): 
     replaceable,
     network,
     signable: !warnings.some((w) => w.blocking),
+    signatures: signatureProgress(tx),
   }
 }
 

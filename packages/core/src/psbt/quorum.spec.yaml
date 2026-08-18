@@ -1,0 +1,113 @@
+id: core.psbt.quorum
+version: 1
+title: How far along a transaction's signatures are
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Let a device answer the one question the single-signature flow never asks: does
+  my signature finish this transaction, or does it have to reach another
+  cosigner? That is the difference between broadcasting and carrying it onward,
+  and a device that cannot say which has left the most consequential fact off the
+  screen.
+
+covers:
+  - packages/core/src/psbt/quorum.ts::signatureProgress
+  - packages/core/src/psbt/quorum.ts::alreadySignedBy
+
+algorithm: >
+  Everything is read out of the PSBT. A wsh(multi) input carries its witness
+  script, which encodes m and n; a sh(multi) carries a redeem script; a
+  sh(wsh(multi)) carries both and the witness script holds the quorum, so they
+  are checked in that order. Partial signatures name the public keys that
+  produced them.
+
+  A single-key input needs exactly one signature, and that is readable too: the
+  previous output is a key hash with no accompanying script that could add
+  conditions.
+
+  Where the requirement cannot be read it is reported as unknown and treated as
+  UNMET. Guessing would mean reporting completion on the strength of a script
+  this build did not decode.
+
+  Taproot key-path signatures are counted without naming a signer, because the
+  key is the output and pretending to know which key produced the signature
+  would be inventing information.
+
+invariants:
+  - id: INV-QUORUM-1
+    statement: >
+      The quorum and the signers are read from the PSBT alone, with no
+      registration, no coordinator and no stored state.
+    tests:
+      - packages/core/test/psbt.quorum.test.ts::reads-m-of-n-and-who-signed-out-of-the-psbt
+      - packages/core/test/psbt.quorum.test.ts::reports-progress-on-the-review-so-a-screen-can-show-it-before-signing
+
+  - id: INV-QUORUM-2
+    statement: >
+      A second device adds its signature to the first device's rather than
+      replacing it, the result finalises, and a device signing an already
+      complete transaction does not break it.
+    tests:
+      - packages/core/test/psbt.quorum.test.ts::lets-a-second-device-add-to-the-first-devices-signature
+      - packages/core/test/psbt.quorum.test.ts::survives-a-third-device-signing-a-transaction-already-complete
+
+  - id: INV-QUORUM-3
+    statement: >
+      A device recognises a transaction it has already signed, and signing it
+      again produces byte-identical output.
+    tests:
+      - packages/core/test/psbt.quorum.test.ts::knows-when-it-has-already-signed
+
+  - id: INV-QUORUM-4
+    statement: >
+      Completion is reported for a single-signature wallet as well, and a
+      requirement that cannot be read is reported as unknown and treated as
+      unmet rather than guessed.
+    tests:
+      - packages/core/test/psbt.quorum.test.ts::reports-a-single-signature-wallet-as-complete-when-signed
+      - packages/core/test/psbt.quorum.test.ts::treats-an-unreadable-requirement-as-unmet-rather-than-guessing
+
+threats:
+  - INV-PSBT-2
+  - INV-SIG-2
+
+security_notes: >
+  THE FLEET PROPERTY IS INV-QUORUM-2 AND IT WAS UNTESTED. Three of these devices
+  holding one 2-of-3 is the deployment this project is designed for, and it works
+  by walking a PSBT between them. If the second device replaced the first's
+  signature instead of adding to it, that arrangement would be impossible, and
+  the symptom would be a transaction that simply never becomes broadcastable
+  rather than anything resembling an error. The mechanism worked; nothing
+  demonstrated it.
+
+  THE DANGEROUS DIRECTION IS OPTIMISM. Telling a user their signature completed
+  a transaction when it did not means they stop carrying it, believe the spend
+  happened, and discover otherwise whenever they next look. That is why an
+  unknown requirement counts as unmet: the alternative is a screen saying
+  "complete" on the strength of a script this build could not decode.
+
+  Reporting progress on the REVIEW as well as the result is not a convenience. A
+  user signing as the first of three cosigners and as the last are performing
+  different acts, one producing something that must travel and one producing
+  something spendable, and they are entitled to know which before they commit
+  rather than after.
+
+  ALREADY-SIGNED IS SAFE, WHICH IS WHY IT IS WORTH SAYING. Scanning a QR
+  sequence back or reading a card twice is routine, and the result is
+  byte-identical because signing is deterministic (INV-SIG-2). A device that
+  said nothing would leave the user unsure whether anything happened, and a
+  device that refused would make a harmless mistake look like a failure.
+
+  THE FINALISED TRANSACTION IS PRODUCED ON A COPY. Finalising mutates, and the
+  PSBT has to remain the combinable form every other wallet in the quorum
+  expects. Returning only a finalised transaction would destroy the artefact a
+  coordinator needs; returning only a PSBT would make the user hunt for
+  something a node accepts. Both are returned, and the finalised one is absent
+  rather than empty when the quorum is short, because a half-signed transaction
+  has no broadcastable form and inventing one would lie about its state.
+
+references:
+  - BIP-174, Partially Signed Bitcoin Transaction Format
+  - BIP-67, Deterministic Key Ordering
+  - docs/FLEET.md

@@ -35,7 +35,9 @@ import { type Secret } from '../util/secret.js'
 import { type Network } from '../network/networks.js'
 import { rootFromSeed } from '../derive/hd.js'
 import { normalizePath } from '../derive/path.js'
+import { bytesToHex } from '@noble/hashes/utils.js'
 import { PsbtError, SIGHASH_ALL, SIGHASH_DEFAULT, type Review } from './review.js'
+import { alreadySignedBy, signatureProgress, type SignatureProgress } from './quorum.js'
 
 /** Zero, always. See the note above: this is what closes the covert channel. */
 export const AUX_RAND = new Uint8Array(32)
@@ -63,6 +65,31 @@ export interface SignResult {
   readonly inputsSigned: number
   /** Paths that actually produced a signature. */
   readonly signedWith: readonly string[]
+  /**
+   * How far along the signatures are AFTER this device signed.
+   *
+   * The fleet case. A 2-of-3 walked between three devices needs each one to
+   * answer "does my signature finish this", and the answer decides whether the
+   * user carries the PSBT to the next device or broadcasts it.
+   */
+  readonly signatures: SignatureProgress
+  /**
+   * True when this device's signature was already present before it signed.
+   *
+   * Happens whenever a QR sequence is scanned back or a card is read twice.
+   * Signing again is harmless, because the result is byte-identical, but a
+   * device that says nothing leaves the user unsure whether anything happened.
+   */
+  readonly wasAlreadySigned: boolean
+  /**
+   * The finalised transaction, present only when nothing else has to sign.
+   *
+   * A PSBT is what a coordinator wants and a raw transaction is what a node
+   * wants, so both are returned rather than making the user find out which they
+   * needed. Absent when the quorum is short: a half-signed transaction has no
+   * broadcastable form, and producing one would be a lie about its state.
+   */
+  readonly finalised?: { readonly hex: string; readonly txid: string }
 }
 
 /**
@@ -97,6 +124,16 @@ export function signTransaction(
   const root = rootFromSeed(seed, network)
   const signedWith: string[] = []
   let inputsSigned = 0
+
+  // Recorded BEFORE signing. Afterwards the answer is always yes, so a device
+  // that checked later could never tell the user their signature was already
+  // there, which is the common case when a QR sequence is scanned back.
+  const ourKeys: Uint8Array[] = []
+  for (const path of paths) {
+    const child = root.derive(normalizePath(path))
+    if (child.publicKey !== null) ourKeys.push(child.publicKey)
+  }
+  const wasAlreadySigned = alreadySignedBy(tx, ourKeys)
 
   try {
     for (const path of paths) {
@@ -150,7 +187,41 @@ export function signTransaction(
     )
   }
 
-  return { psbt: tx.toPSBT(), inputsSigned, signedWith }
+  const signatures = signatureProgress(tx)
+
+  return {
+    psbt: tx.toPSBT(),
+    inputsSigned,
+    signedWith,
+    signatures,
+    wasAlreadySigned,
+    // Finalised on a COPY. Finalising mutates, and the PSBT above has to remain
+    // the un-finalised form a coordinator can still combine with; a device that
+    // returned only a finalised transaction would have destroyed the artefact
+    // every other wallet in the quorum expects.
+    ...(signatures.complete ? finaliseCopy(tx) : {}),
+  }
+}
+
+/**
+ * Finalise a copy and describe it, or say nothing if finalising fails.
+ *
+ * Failure here is not an error the user can act on: the signatures are present
+ * and the PSBT is valid, and the only consequence is that this device cannot
+ * also hand over a broadcastable form. So the raw transaction is omitted rather
+ * than the whole signing call failing at the last step, and the omission is
+ * visible because `finalised` is simply absent.
+ */
+function finaliseCopy(
+  tx: btc.Transaction
+): { finalised: { hex: string; txid: string } } | Record<string, never> {
+  try {
+    const copy = btc.Transaction.fromPSBT(tx.toPSBT())
+    copy.finalize()
+    return { finalised: { hex: bytesToHex(copy.extract()), txid: copy.id } }
+  } catch {
+    return {}
+  }
 }
 
 /** How many partial signatures the transaction currently carries. */

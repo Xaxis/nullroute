@@ -24,3 +24,6 @@ export { parsePsbt, encodePsbt, addressFromScript } from './parse.js'
 
 export { signTransaction, AUX_RAND } from './sign.js'
 export type { SignOptions, SignResult } from './sign.js'
+
+export { signatureProgress, alreadySignedBy } from './quorum.js'
+export type { SignatureProgress, InputSignatures } from './quorum.js'

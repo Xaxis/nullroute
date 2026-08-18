@@ -532,6 +532,10 @@ export function createHandler(state: DaemonState): IpcHandler {
           signable: review.signable,
           replaceable: review.replaceable,
           locktime: review.locktime,
+          // Before signing, not after. A user on the second device of a 2-of-3
+          // needs to know they are the last signature, or that they are not,
+          // while deciding whether to sign at all.
+          signatures: review.signatures,
           network: {
             id: review.network.id,
             label: review.network.label,
@@ -629,6 +633,16 @@ export function createHandler(state: DaemonState): IpcHandler {
           psbt: encodePsbt(result.psbt),
           inputsSigned: result.inputsSigned,
           signedWith: result.signedWith,
+          // The fleet answer: does this signature finish the transaction, or
+          // does it have to go to another device? Without this the user cannot
+          // tell whether to broadcast or keep walking.
+          signatures: result.signatures,
+          wasAlreadySigned: result.wasAlreadySigned,
+          // Present only when nothing else has to sign. A coordinator wants the
+          // PSBT above; a node wants this. Both are returned rather than making
+          // the user discover which they needed.
+          ...(result.finalised === undefined ? {} : { finalised: result.finalised }),
+          activeWallet: activeWallet(),
         }
       }
 

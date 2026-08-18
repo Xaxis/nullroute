@@ -56,8 +56,31 @@ export interface PsbtWarningView {
   readonly blocking: boolean
 }
 
+/**
+ * How far along the signatures are.
+ *
+ * The fleet case, and the most consequential thing on this screen after the
+ * amounts. Three devices holding one 2-of-3 means a PSBT walks from one to the
+ * next, and each device has to answer "does my signature finish this". Getting
+ * that wrong in the optimistic direction means a user broadcasts nothing and
+ * believes they are done.
+ */
+export interface SignatureProgressView {
+  readonly present: number
+  readonly required: number | null
+  readonly complete: boolean
+  readonly inputs: readonly {
+    readonly index: number
+    readonly required: number | null
+    readonly cosigners: number | null
+    readonly present: number
+    readonly satisfied: boolean
+  }[]
+}
+
 export interface PsbtReviewView {
   readonly signable: boolean
+  readonly signatures?: SignatureProgressView
   readonly replaceable: boolean
   readonly locktime: number
   readonly ownedInputs: number
@@ -83,7 +106,14 @@ export interface PsbtScreenProps {
   readonly onSign: (
     psbt: string,
     override: boolean
-  ) => Promise<{ psbt: string; inputsSigned: number; signedWith: readonly string[] }>
+  ) => Promise<{
+    psbt: string
+    inputsSigned: number
+    signedWith: readonly string[]
+    signatures?: SignatureProgressView
+    wasAlreadySigned?: boolean
+    finalised?: { hex: string; txid: string }
+  }>
   readonly onBack: () => void
   readonly banner?: ReactElement | null
 }
@@ -95,6 +125,9 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
   const [review, setReview] = useState<PsbtReviewView | null>(null)
   const [signed, setSigned] = useState<string | null>(null)
   const [signedWith, setSignedWith] = useState<readonly string[]>([])
+  const [progress, setProgress] = useState<SignatureProgressView | null>(null)
+  const [finalised, setFinalised] = useState<{ hex: string; txid: string } | null>(null)
+  const [wasAlready, setWasAlready] = useState(false)
   const [override, setOverride] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -124,6 +157,9 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
       const result = await onSign(psbt, override)
       setSigned(result.psbt)
       setSignedWith(result.signedWith)
+      setProgress(result.signatures ?? null)
+      setFinalised(result.finalised ?? null)
+      setWasAlready(result.wasAlreadySigned === true)
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -171,10 +207,68 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
           </p>
         </div>
 
+        {/* THE FLEET ANSWER, above everything else on this screen. A user
+            holding the second of three devices needs to know whether they are
+            finished or carrying this onward, and that is more urgent than the
+            bytes. */}
+        {progress !== null &&
+          (progress.complete ? (
+            <div className="nr-card nr-card--tight" data-testid="psbt-complete">
+              <div className="nr-row">
+                <span className="nr-label">Signatures</span>
+                <span className="nr-status nr-status--ok">
+                  {progress.present} of {progress.required ?? '?'}, complete
+                </span>
+              </div>
+              <p className="nr-hint">
+                Nothing else has to sign this. Take it to whatever will broadcast it.
+              </p>
+            </div>
+          ) : (
+            <div className="nr-banner nr-banner--testnet" data-testid="psbt-incomplete">
+              <strong>Not finished</strong>
+              <span>
+                {progress.present} of {progress.required ?? 'an unknown number of'} signatures are
+                present. This transaction cannot be broadcast yet: carry it to the next cosigner
+                and sign there too.
+              </span>
+            </div>
+          ))}
+
+        {wasAlready && (
+          <p className="nr-note" data-testid="psbt-already-signed">
+            This device had already signed this transaction. Signing again produced exactly the
+            same bytes, which is why doing it twice is safe rather than merely tolerated.
+          </p>
+        )}
+
         {/* The QR comes before the text, because it is how this actually leaves
             the device. The textarea below it is the fallback for a machine with
             no camera, and for anyone who would rather read the bytes. */}
         <QrDisplay text={signed} fileType="psbt" testId="psbt-qr" />
+
+        {finalised !== null && (
+          <details className="nr-details" data-testid="psbt-finalised">
+            <summary className="nr-details__summary">
+              Show the finished transaction, for broadcasting
+            </summary>
+            <div className="nr-field">
+              <span className="nr-field__label">Transaction id</span>
+              <span className="nr-value nr-mono nr-break">{finalised.txid}</span>
+              <textarea
+                className="nr-input nr-input--area nr-break"
+                readOnly
+                rows={4}
+                value={finalised.hex}
+                data-testid="psbt-final-hex"
+              />
+              <p className="nr-hint">
+                This is the raw transaction a node accepts. The PSBT above is what a coordinator
+                wants. Both describe the same spend.
+              </p>
+            </div>
+          </details>
+        )}
 
         <details className="nr-details">
           <summary className="nr-details__summary">Show the signed PSBT as text</summary>
@@ -264,6 +358,33 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
 
       {review !== null && (
         <>
+          {/* Where this device sits in the quorum, BEFORE the amounts. Signing a
+              2-of-3 as the first cosigner and as the last are different acts:
+              one produces something that has to travel, the other produces
+              something spendable. A user is entitled to know which they are
+              about to do. */}
+          {review.signatures?.required != null && (
+            <div className="nr-card nr-card--tight" data-testid="psbt-quorum">
+              <div className="nr-row">
+                <span className="nr-label">Signatures</span>
+                <span className="nr-value">
+                  {review.signatures.present} of {review.signatures.required} present
+                  {review.signatures.inputs[0]?.cosigners != null &&
+                    `, ${String(review.signatures.inputs[0].cosigners)} cosigners`}
+                </span>
+              </div>
+              <p className="nr-hint">
+                {review.signatures.present + 1 >= review.signatures.required
+                  ? 'Yours would be the last signature needed, so this becomes spendable.'
+                  : `Yours would not be the last. After signing, this still has to reach ${String(
+                      review.signatures.required - review.signatures.present - 1
+                    )} more cosigner${
+                      review.signatures.required - review.signatures.present - 1 === 1 ? '' : 's'
+                    }.`}
+              </p>
+            </div>
+          )}
+
           {/* Money leaving first. It is what the user is actually approving. */}
           <div className="nr-card">
             <span className="nr-card__label">Where the money goes</span>

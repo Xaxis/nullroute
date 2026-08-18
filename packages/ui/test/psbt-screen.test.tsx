@@ -232,3 +232,145 @@ describe('ui.screens.psbt', () => {
     expect(screen.queryByTestId('psbt-signed')).toBeNull()
   })
 })
+
+/**
+ * The fleet case: several of these devices holding one multisig wallet.
+ *
+ * A 2-of-3 is signed by walking a PSBT from device to device, so each one has to
+ * answer a question the single-signature flow never asks: does MY signature
+ * finish this? Getting that wrong in the optimistic direction is the expensive
+ * failure. The user stops carrying the transaction onward, believes they are
+ * done, and nothing was ever broadcast.
+ */
+describe('PsbtScreen quorum progress', () => {
+  function progress(present: number, required: number, cosigners = 3) {
+    return {
+      present,
+      required,
+      complete: present >= required,
+      inputs: [{ index: 0, required, cosigners, present, satisfied: present >= required }],
+    }
+  }
+
+  function quorumSetup(options: {
+    reviewProgress?: ReturnType<typeof progress>
+    signProgress?: ReturnType<typeof progress>
+    finalised?: { hex: string; txid: string }
+    wasAlreadySigned?: boolean
+  }) {
+    const onReview = vi
+      .fn()
+      .mockResolvedValue(review({ signatures: options.reviewProgress }))
+    const onSign = vi.fn().mockResolvedValue({
+      psbt: 'cHNidP8BSIGNED',
+      inputsSigned: 1,
+      signedWith: ["m/48'/0'/0'/2'/0/0"],
+      signatures: options.signProgress,
+      wasAlreadySigned: options.wasAlreadySigned ?? false,
+      ...(options.finalised === undefined ? {} : { finalised: options.finalised }),
+    })
+    render(<PsbtScreen onReview={onReview} onSign={onSign} onBack={vi.fn()} />)
+    return { onReview, onSign }
+  }
+
+  /**
+   * INV-UI-35. Before signing, the review says where this device sits in the
+   * quorum and whether its signature would be the last.
+   */
+  it('says-before-signing-that-yours-is-not-the-last-signature', async () => {
+    quorumSetup({ reviewProgress: progress(0, 2) })
+    await reachReview()
+
+    const shown = screen.getByTestId('psbt-quorum').textContent
+    expect(shown).toContain('0 of 2 present')
+    expect(shown).toContain('3 cosigners')
+    expect(shown).toContain('would not be the last')
+    expect(shown).toContain('1 more cosigner')
+  })
+
+  it('says-before-signing-when-yours-completes-it', async () => {
+    quorumSetup({ reviewProgress: progress(1, 2) })
+    await reachReview()
+
+    const shown = screen.getByTestId('psbt-quorum').textContent
+    expect(shown).toContain('1 of 2 present')
+    expect(shown).toContain('last signature needed')
+    expect(shown).toContain('becomes spendable')
+  })
+
+  /**
+   * INV-UI-36. After signing, a transaction that is NOT finished says so
+   * unmissably. This is the message whose absence loses money by inaction.
+   */
+  it('says-after-signing-that-the-transaction-cannot-be-broadcast-yet', async () => {
+    quorumSetup({ reviewProgress: progress(0, 2), signProgress: progress(1, 2) })
+    await reachReview()
+    fireEvent.click(screen.getByTestId('psbt-sign'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('psbt-incomplete')).toBeTruthy()
+    })
+    const shown = screen.getByTestId('psbt-incomplete').textContent
+    expect(shown).toContain('Not finished')
+    expect(shown).toContain('1 of 2 signatures')
+    expect(shown).toContain('carry it to the next cosigner')
+    // And it does not offer a finished transaction, because there is not one.
+    expect(screen.queryByTestId('psbt-finalised')).toBeNull()
+  })
+
+  /**
+   * INV-UI-36. And a transaction that IS finished offers the raw form, because
+   * that is what a node takes. The PSBT is still there for a coordinator.
+   */
+  it('offers-the-finished-transaction-when-nothing-else-has-to-sign', async () => {
+    quorumSetup({
+      reviewProgress: progress(1, 2),
+      signProgress: progress(2, 2),
+      finalised: { hex: '02000000abcd', txid: 'f'.repeat(64) },
+    })
+    await reachReview()
+    fireEvent.click(screen.getByTestId('psbt-sign'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('psbt-complete')).toBeTruthy()
+    })
+    expect(screen.getByTestId('psbt-complete').textContent).toContain('2 of 2, complete')
+    expect(screen.getByTestId('psbt-complete').textContent).toContain('broadcast')
+
+    const finalised = screen.getByTestId('psbt-finalised').textContent
+    expect(finalised).toContain('f'.repeat(64))
+    // The PSBT is still offered: a coordinator wants that, a node wants the hex.
+    expect(screen.getByTestId('psbt-qr')).toBeTruthy()
+    expect(screen.queryByTestId('psbt-incomplete')).toBeNull()
+  })
+
+  /**
+   * Scanning a QR sequence back, or reading a card twice, is routine. Signing
+   * again is safe because the bytes are identical, but silence leaves the user
+   * unsure whether anything happened.
+   */
+  it('says-when-this-device-had-already-signed', async () => {
+    quorumSetup({
+      reviewProgress: progress(1, 2),
+      signProgress: progress(1, 2),
+      wasAlreadySigned: true,
+    })
+    await reachReview()
+    fireEvent.click(screen.getByTestId('psbt-sign'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('psbt-already-signed')).toBeTruthy()
+    })
+    expect(screen.getByTestId('psbt-already-signed').textContent).toContain('same bytes')
+  })
+
+  /**
+   * A single-signature wallet has no quorum to report, and the screen must not
+   * grow a confusing "1 of 1" panel for the ordinary case.
+   */
+  it('shows-no-quorum-panel-when-there-is-nothing-to-say', async () => {
+    quorumSetup({})
+    await reachReview()
+    expect(screen.queryByTestId('psbt-quorum')).toBeNull()
+  })
+})

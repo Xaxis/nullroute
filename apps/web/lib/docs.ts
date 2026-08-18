@@ -52,6 +52,14 @@ export const DOCS: readonly DocMeta[] = [
     question: 'How does anything get on and off this thing?',
   },
   {
+    slug: 'fleet',
+    file: 'docs/FLEET.md',
+    title: 'Running several devices',
+    summary:
+      'Several of these devices holding one multisig wallet between them: setting up the quorum, walking a PSBT between them, and what they deliberately do not do for each other.',
+    question: 'How do I use more than one of these together?',
+  },
+  {
     slug: 'provisioning',
     file: 'docs/PROVISIONING.md',
     title: 'Provisioning a device',

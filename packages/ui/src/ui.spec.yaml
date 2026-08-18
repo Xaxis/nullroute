@@ -385,6 +385,29 @@ invariants:
       - packages/ui/test/unlocked-screen.test.tsx::says-nothing-about-passphrases-when-none-was-used
       - packages/ui/test/unlocked-screen.test.tsx::shows-nothing-alarming-on-an-ordinary-unlock
 
+  # --- The fleet case --------------------------------------------------------
+  # Several of these devices holding one multisig wallet. Signing first and
+  # signing last are different acts and the screen has to say which.
+  - id: INV-UI-35
+    statement: >
+      Before signing, the review says how many signatures are present, how many
+      are needed, how many cosigners there are, and whether this device's
+      signature would be the last one.
+    tests:
+      - packages/ui/test/psbt-screen.test.tsx::says-before-signing-that-yours-is-not-the-last-signature
+      - packages/ui/test/psbt-screen.test.tsx::says-before-signing-when-yours-completes-it
+      - packages/ui/test/psbt-screen.test.tsx::shows-no-quorum-panel-when-there-is-nothing-to-say
+
+  - id: INV-UI-36
+    statement: >
+      After signing, a transaction that cannot be broadcast says so unmissably
+      and offers no finished form, and one that can offers the raw transaction
+      alongside the PSBT. A device that had already signed says so.
+    tests:
+      - packages/ui/test/psbt-screen.test.tsx::says-after-signing-that-the-transaction-cannot-be-broadcast-yet
+      - packages/ui/test/psbt-screen.test.tsx::offers-the-finished-transaction-when-nothing-else-has-to-sign
+      - packages/ui/test/psbt-screen.test.tsx::says-when-this-device-had-already-signed
+
 threats:
   - INV-KEY-1
   - INV-BUILD-1
