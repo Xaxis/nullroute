@@ -77,6 +77,15 @@ invariants:
       - packages/daemon/test/multisig.test.ts::reports-each-cosigner-so-a-user-can-compare-them-aloud
       - packages/daemon/test/multisig.test.ts::refuses-something-that-is-not-multisig-at-all
 
+  - id: INV-MULTI-10
+    statement: >
+      Listing registered quorums reports where this device sits in each,
+      recomputed from the seed, and lists a quorum it cannot place itself in
+      with the reason rather than omitting it.
+    tests:
+      - packages/daemon/test/wallets.ipc.test.ts::says-which-cosigner-this-device-is
+      - packages/daemon/test/wallets.ipc.test.ts::lists-a-quorum-it-cannot-place-itself-in-rather-than-hiding-it
+
 threats:
   - INV-PSBT-2
   - INV-MULTI-6

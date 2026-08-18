@@ -484,3 +484,98 @@ describe('daemon wallets IPC', () => {
     expect(again.wallets).toHaveLength(1)
   })
 })
+
+/**
+ * Which cosigner is this device?
+ *
+ * Three identical Raspberry Pis holding one 2-of-3 all show the same wallet
+ * name, because they hold the same wallet. Nothing else on any screen says
+ * which of the three you are holding, which is how somebody signs with the
+ * wrong device or carries the wrong one somewhere.
+ *
+ * The position is recomputed from the seed every time rather than stored,
+ * because a stored position is a number that can be wrong about the keys
+ * sitting beside it.
+ */
+describe('daemon multisig position', () => {
+  const MNEMONIC_C =
+    'letter advice cage absurd amount doctor acoustic avoid letter advice cage above'
+
+  async function quorumOf(mnemonics: readonly string[]): Promise<string> {
+    const { deriveAccountXpub, withChecksum } = await import('@nullroute/core')
+    const { multisigAccountPath } = await import('../src/multisig.js')
+    const keys = mnemonics.map((mnemonic) => {
+      using seed = mnemonicToSeed(mnemonic, '')
+      return deriveAccountXpub(seed, MAINNET, multisigAccountPath(MAINNET)).xpub
+    })
+    return withChecksum(`wsh(sortedmulti(2,${keys.map((k) => `${k}/<0;1>/*`).join(',')}))`)
+  }
+
+  it('says-which-cosigner-this-device-is', async () => {
+    const descriptor = await quorumOf([MNEMONIC_A, MNEMONIC_B, MNEMONIC_C])
+
+    // Device A registers the quorum.
+    session.lock()
+    await call('network.set', { id: 'mainnet' })
+    await call('wallet.import', { mnemonic: MNEMONIC_A, passphrase: '' })
+    await call('multisig.register', { descriptor })
+
+    const onA = (await call('multisig.registrations')) as {
+      quorums: { ourPosition: number | null; threshold: number; total: number }[]
+    }
+    expect(onA.quorums).toHaveLength(1)
+    expect(onA.quorums[0]?.threshold).toBe(2)
+    expect(onA.quorums[0]?.total).toBe(3)
+    // One-based, so it can be compared out loud with the other cosigners.
+    expect(onA.quorums[0]?.ourPosition).toBeGreaterThanOrEqual(1)
+    expect(onA.quorums[0]?.ourPosition).toBeLessThanOrEqual(3)
+
+    // The SAME quorum on a different device reports a different position, which
+    // is the entire point: the wallet is identical and the devices are not.
+    session.lock()
+    await call('network.set', { id: 'mainnet' })
+    await call('wallet.import', { mnemonic: MNEMONIC_B, passphrase: '' })
+    await call('multisig.register', { descriptor })
+
+    const onB = (await call('multisig.registrations')) as {
+      quorums: { ourPosition: number | null }[]
+    }
+    expect(onB.quorums[0]?.ourPosition).not.toBe(onA.quorums[0]?.ourPosition)
+  })
+
+  /**
+   * A quorum this device can no longer place itself in is listed with the
+   * reason rather than dropped. A registration that has become unreadable is
+   * exactly the thing a user needs to see, not the thing to hide.
+   */
+  it('lists-a-quorum-it-cannot-place-itself-in-rather-than-hiding-it', async () => {
+    session.lock()
+    await call('network.set', { id: 'mainnet' })
+    await call('wallet.import', { mnemonic: MNEMONIC_A, passphrase: '' })
+
+    // Registered legitimately, then the session is reloaded as a DIFFERENT
+    // wallet holding the same registration, which is what a restored backup
+    // from another cosigner looks like.
+    const descriptor = await quorumOf([MNEMONIC_A, MNEMONIC_B, MNEMONIC_C])
+    await call('multisig.register', { descriptor })
+
+    session.lock()
+    await call('network.set', { id: 'mainnet' })
+    await call('wallet.import', {
+      mnemonic: 'zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo wrong',
+      passphrase: '',
+    }).catch(() => undefined)
+
+    // A stranger's seed, holding that registration.
+    using stranger = mnemonicToSeed(MNEMONIC_C, 'a passphrase nobody else has')
+    session.load(stranger, 'x', 'imported')
+    session.setRegistrations([descriptor])
+
+    const listed = (await call('multisig.registrations')) as {
+      quorums: { ourPosition: number | null; unreadable: string | null }[]
+    }
+    expect(listed.quorums).toHaveLength(1)
+    expect(listed.quorums[0]?.ourPosition).toBeNull()
+    expect(listed.quorums[0]?.unreadable).toBeTruthy()
+  })
+})

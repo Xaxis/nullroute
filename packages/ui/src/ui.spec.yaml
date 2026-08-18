@@ -408,6 +408,17 @@ invariants:
       - packages/ui/test/psbt-screen.test.tsx::offers-the-finished-transaction-when-nothing-else-has-to-sign
       - packages/ui/test/psbt-screen.test.tsx::says-when-this-device-had-already-signed
 
+  - id: INV-UI-37
+    statement: >
+      A device in a quorum says which cosigner it is and of how many, says so
+      when it cannot place itself rather than showing a guess, and shows nothing
+      for a single-signature wallet.
+    tests:
+      - packages/ui/test/wallet-screen.test.tsx::says-which-cosigner-of-how-many-this-device-is
+      - packages/ui/test/wallet-screen.test.tsx::says-when-it-cannot-place-itself-rather-than-showing-a-number
+      - packages/ui/test/wallet-screen.test.tsx::shows-nothing-for-a-single-signature-wallet
+      - packages/ui/test/wallet-screen.test.tsx::lists-every-quorum-when-a-device-is-in-more-than-one
+
 threats:
   - INV-KEY-1
   - INV-BUILD-1

@@ -805,8 +805,52 @@ export function createHandler(state: DaemonState): IpcHandler {
       }
 
       /** Quorums this device has agreed to. */
-      case 'multisig.registrations':
-        return { descriptors: session.registrations }
+      /**
+       * The registered quorums, and where this device sits in each.
+       *
+       * The position is the fleet answer to a question three identical Pis make
+       * unavoidable: they all hold the same wallet, so they all show the same
+       * wallet name, and nothing else on screen says which cosigner you are
+       * holding. Recomputed from the seed rather than stored, because a stored
+       * position is a number that can be wrong about the keys beside it.
+       *
+       * A descriptor that no longer resolves is listed with a null position and
+       * the reason, rather than omitted. A quorum the device cannot place itself
+       * in is exactly the thing a user needs to see.
+       */
+      case 'multisig.registrations': {
+        const seed = session.requireSeed()
+        return {
+          descriptors: session.registrations,
+          quorums: session.registrations.map((descriptor) => {
+            try {
+              const review = reviewRegistration(descriptor, seed, session.network)
+              return {
+                descriptor,
+                threshold: review.threshold,
+                total: review.total,
+                // One-based for display. Every screen that shows this says
+                // "cosigner 2 of 3", and a zero-based number there would be a
+                // number nobody could compare with anybody else out loud.
+                ourPosition: review.ourPosition + 1,
+                kind: review.kind,
+                sorted: review.sorted,
+                unreadable: null,
+              }
+            } catch (err) {
+              return {
+                descriptor,
+                threshold: null,
+                total: null,
+                ourPosition: null,
+                kind: null,
+                sorted: null,
+                unreadable: (err as Error).message,
+              }
+            }
+          }),
+        }
+      }
 
       /** Addresses for a registered quorum. */
       case 'multisig.addresses': {

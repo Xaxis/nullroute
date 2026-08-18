@@ -25,8 +25,25 @@ export interface AddressRow {
   readonly index: number
 }
 
+/** A registered quorum, and where this device sits in it. */
+export interface QuorumView {
+  readonly threshold: number | null
+  readonly total: number | null
+  /** One-based, so it can be said out loud to another cosigner. */
+  readonly ourPosition: number | null
+  readonly unreadable: string | null
+}
+
 export interface WalletScreenProps {
   readonly fingerprint: string
+  /**
+   * Registered quorums.
+   *
+   * Shown because three identical devices holding one wallet all display the
+   * same wallet name. Which cosigner you are holding is otherwise nowhere on
+   * the screen, and that is how somebody signs with the wrong device.
+   */
+  readonly quorums?: readonly QuorumView[]
   readonly onAddresses: (
     scriptType: ScriptType,
     change: boolean,
@@ -64,6 +81,7 @@ type Tab = 'addresses' | 'export' | 'verify'
 export function WalletScreen(props: WalletScreenProps): ReactElement {
   const {
     fingerprint,
+    quorums = [],
     onAddresses,
     onDescriptor,
     onVerifyAddress,
@@ -166,6 +184,25 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
         </>
       }
     >
+      {quorums.length > 0 && (
+        <div className="nr-card nr-card--tight" data-testid="wallet-quorums">
+          {quorums.map((quorum, index) => (
+            <div className="nr-row" key={index}>
+              <span className="nr-label">Multisig</span>
+              <span className="nr-value">
+                {quorum.unreadable !== null
+                  ? 'This device cannot place itself in this quorum'
+                  : `${String(quorum.threshold)} of ${String(quorum.total)}, you are cosigner ${String(quorum.ourPosition)}`}
+              </span>
+            </div>
+          ))}
+          <p className="nr-hint">
+            Every device in this quorum shows the same wallet name, because they hold the same
+            wallet. The cosigner number is what tells them apart.
+          </p>
+        </div>
+      )}
+
       <div className="nr-tabs">
         {(['addresses', 'export', 'verify'] as const).map((t) => (
           <button

@@ -121,6 +121,11 @@ carry the wrong device somewhere.
 
 What actually distinguishes them:
 
+- **The cosigner number**, shown on the wallet screen once a quorum is
+  registered: `2 of 3, you are cosigner 2`. It is recomputed from the seed every
+  time rather than stored, so it is a statement about the keys actually loaded
+  rather than a label somebody typed. A device that cannot place itself in a
+  registered quorum says that instead of showing a number.
 - **The wallet name you chose**, which is per-device and should differ. Name them
   by their role in the quorum, not by the wallet: `Cosigner A`, not
   `Family Vault` on all three.

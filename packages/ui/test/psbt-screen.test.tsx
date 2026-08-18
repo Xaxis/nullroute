@@ -260,7 +260,11 @@ describe('PsbtScreen quorum progress', () => {
   }) {
     const onReview = vi
       .fn()
-      .mockResolvedValue(review({ signatures: options.reviewProgress }))
+      .mockResolvedValue(
+        review(
+          options.reviewProgress === undefined ? {} : { signatures: options.reviewProgress }
+        )
+      )
     const onSign = vi.fn().mockResolvedValue({
       psbt: 'cHNidP8BSIGNED',
       inputsSigned: 1,

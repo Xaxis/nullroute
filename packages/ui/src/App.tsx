@@ -21,7 +21,7 @@ import { SetupScreen, type EntropyMode, type NetworkChoice } from './screens/Set
 import { DiceScreen } from './screens/DiceScreen.js'
 import { SeedScreen } from './screens/SeedScreen.js'
 import { ImportScreen } from './screens/ImportScreen.js'
-import { WalletScreen, type ScriptType } from './screens/WalletScreen.js'
+import { WalletScreen, type QuorumView, type ScriptType } from './screens/WalletScreen.js'
 import { PsbtScreen, type PsbtReviewView } from './screens/PsbtScreen.js'
 import { ScanScreen, type ScanResult } from './screens/ScanScreen.js'
 import { WalletsScreen, type WalletRow } from './screens/WalletsScreen.js'
@@ -126,6 +126,14 @@ export function App() {
   const [expanded, setExpanded] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [wallets, setWallets] = useState<readonly WalletRow[]>([])
+  /**
+   * Registered quorums, refreshed whenever the wallet screen is entered.
+   *
+   * Held here rather than fetched inside the screen so a lock clears it: a
+   * cosigner number left over from the previous wallet would be the exact
+   * wrong thing to show on a device that holds several.
+   */
+  const [quorums, setQuorums] = useState<readonly QuorumView[]>([])
   /** Why the wallet list may be wrong or incomplete. Never rendered as empty. */
   const [listFailure, setListFailure] = useState<string | null>(null)
   const [maxWallets, setMaxWallets] = useState(8)
@@ -238,6 +246,35 @@ export function App() {
     if (stage.at !== 'wallets') return
     void loadWallets()
   }, [stage.at, loadWallets])
+
+  /**
+   * Refresh the quorum list when the wallet screen is entered.
+   *
+   * Failure is swallowed here and only here: a device with no registrations at
+   * all is the common case, and a wallet screen that refused to render because
+   * a multisig query failed would be worse than one showing no cosigner number.
+   * The panel is absent rather than wrong.
+   */
+  useEffect(() => {
+    if (stage.at !== 'wallet') return
+    let cancelled = false
+    const run = async (): Promise<void> => {
+      try {
+        const listed = await call<{ quorums: readonly QuorumView[] }>(
+          transport,
+          'multisig.registrations',
+          {}
+        )
+        if (!cancelled) setQuorums(listed.quorums)
+      } catch {
+        if (!cancelled) setQuorums([])
+      }
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [stage.at])
 
   const unlockWallet = useCallback(
     async (id: string, passphrase: string): Promise<void> => {
@@ -485,6 +522,7 @@ export function App() {
     return (
       <>
         <WalletScreen
+          quorums={quorums}
           banner={banner}
           fingerprint={status.fingerprint ?? 'unknown'}
           onAddresses={addresses}
