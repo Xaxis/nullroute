@@ -81,9 +81,6 @@ const NOT_YET_ON_A_SCREEN = new Map([
   ['wallets.rename', 'Renaming or recolouring a wallet, which INV-MW-5 made safe to offer.'],
   ['wallets.destroy', 'Erasing the open wallet.'],
   ['wallets.forget', 'Clearing the tombstone of a wallet erased by exhausted attempts.'],
-  ['backup.create', 'Encrypted backup. Built in phase 3 and reachable by nobody.'],
-  ['backup.describe', 'Reading what a backup file says about itself before a passphrase.'],
-  ['backup.restore', 'Restoring a backup onto a replacement device.'],
   ['labels.import', 'BIP-329 label import.'],
   ['labels.export', 'BIP-329 label export.'],
   ['bip85.derive', 'Deriving a child seed. Returns key material, so the screen needs care.'],
@@ -96,7 +93,7 @@ const NOT_YET_ON_A_SCREEN = new Map([
  * than written in a comment: adding a fourteenth unreachable feature fails the
  * build, and clearing one without lowering the cap fails it too.
  */
-const MAX_NOT_YET_ON_A_SCREEN = 13
+const MAX_NOT_YET_ON_A_SCREEN = 10
 
 const handler = readFileSync(HANDLER, 'utf8')
 

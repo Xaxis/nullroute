@@ -43,6 +43,7 @@ covers:
   - packages/ui/src/screens/UnlockedScreen.tsx::UnlockedScreen
   - packages/ui/src/screens/MessageScreen.tsx::MessageScreen
   - packages/ui/src/screens/MessageScreen.tsx::MESSAGE_SCRIPT_TYPES
+  - packages/ui/src/screens/BackupScreen.tsx::BackupScreen
 
 algorithm: >
   Renders the manifest root hash, the verification status with spec and
@@ -443,6 +444,30 @@ invariants:
       - packages/ui/test/message-screen.test.tsx::shows-warnings-without-blocking
       - packages/ui/test/message-screen.test.tsx::hands-over-everything-a-verifier-needs
       - packages/ui/test/message-screen.test.tsx::signs-with-the-path-the-chosen-script-type-implies
+
+  # --- Backup and restore ----------------------------------------------------
+  # One decision matters: whether the seed goes in the file. A file that quietly
+  # held a spendable key would look like a settings export and be a wallet.
+  - id: INV-UI-40
+    statement: >
+      A backup is seedless by default, including the seed states what it means
+      before it happens and changes the action, and a file that carries one says
+      so again once written.
+    tests:
+      - packages/ui/test/backup-screen.test.tsx::does-not-include-the-seed-unless-asked
+      - packages/ui/test/backup-screen.test.tsx::says-what-including-the-seed-means-before-doing-it
+      - packages/ui/test/backup-screen.test.tsx::warns-again-on-the-file-that-carries-a-seed
+
+  - id: INV-UI-41
+    statement: >
+      What a backup claims about itself is shown before a passphrase is typed
+      and stated as unverified, a watch-only restore says it cannot sign, and a
+      failed restore leaves nothing restored.
+    tests:
+      - packages/ui/test/backup-screen.test.tsx::shows-what-the-file-claims-and-says-it-is-not-confirmed
+      - packages/ui/test/backup-screen.test.tsx::says-when-a-restore-cannot-sign
+      - packages/ui/test/backup-screen.test.tsx::says-when-a-restore-can-sign-again
+      - packages/ui/test/backup-screen.test.tsx::reports-a-wrong-passphrase-and-leaves-nothing-restored
 
 threats:
   - INV-KEY-1

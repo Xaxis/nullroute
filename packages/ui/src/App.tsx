@@ -31,6 +31,11 @@ import {
   type MessageReviewView,
   type MessageSignatureView,
 } from './screens/MessageScreen.js'
+import {
+  BackupScreen,
+  type BackupDescription,
+  type RestoredView,
+} from './screens/BackupScreen.js'
 import { WalletChip } from './components/WalletChip.js'
 import { PassphraseScreen } from './screens/PassphraseScreen.js'
 import {
@@ -89,6 +94,8 @@ type Stage =
   | { readonly at: 'multisig' }
   /** Proving control of an address by signing a message with it. */
   | { readonly at: 'message' }
+  /** Writing or restoring an encrypted backup. */
+  | { readonly at: 'backup' }
   /** Choosing which of several wallets to open. */
   | { readonly at: 'wallets' }
   /**
@@ -544,6 +551,9 @@ export function App() {
           onProveControl={() => {
             setStage({ at: 'message' })
           }}
+          onBackup={() => {
+            setStage({ at: 'backup' })
+          }}
           onLock={() => {
             const go = async (): Promise<void> => {
               await call(transport, 'session.lock')
@@ -713,6 +723,35 @@ export function App() {
             setStage({ at: 'wallets' })
           }
           void go()
+        }}
+      />
+    )
+  }
+
+  if (stage.at === 'backup') {
+    return (
+      <BackupScreen
+        banner={banner}
+        onCreate={async (passphrase: string, includeSeed: boolean, label: string) =>
+          call<{ backup: string; includesSeed: boolean }>(transport, 'backup.create', {
+            passphrase,
+            includeSeed,
+            label,
+          })
+        }
+        onDescribe={async (backup: string) =>
+          call<BackupDescription>(transport, 'backup.describe', { backup })
+        }
+        onRestore={async (backup: string, passphrase: string) => {
+          const result = await call<RestoredView>(transport, 'backup.restore', {
+            backup,
+            passphrase,
+          })
+          await refresh()
+          return result
+        }}
+        onBack={() => {
+          setStage({ at: 'wallet' })
         }}
       />
     )

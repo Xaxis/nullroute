@@ -54,6 +54,13 @@ export type { ScanScreenProps, ScanResult } from './screens/ScanScreen.js'
 export { QrDisplay } from './components/QrDisplay.js'
 export type { QrDisplayProps } from './components/QrDisplay.js'
 
+export { BackupScreen } from './screens/BackupScreen.js'
+export type {
+  BackupScreenProps,
+  BackupDescription,
+  RestoredView,
+} from './screens/BackupScreen.js'
+
 export { MessageScreen, MESSAGE_SCRIPT_TYPES } from './screens/MessageScreen.js'
 export type {
   MessageScreenProps,

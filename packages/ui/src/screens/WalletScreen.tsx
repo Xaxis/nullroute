@@ -72,6 +72,8 @@ export interface WalletScreenProps {
    * the button is absent rather than dead when there is nowhere to go.
    */
   readonly onProveControl?: () => void
+  /** Leaves for encrypted backup and restore. Optional, like the others. */
+  readonly onBackup?: () => void
   readonly onLock: () => void
   readonly banner?: ReactElement | null
 }
@@ -95,6 +97,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
     onSignTransaction,
     onMultisig,
     onProveControl,
+    onBackup,
     onLock,
     banner,
   } = props
@@ -170,6 +173,11 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
           {onProveControl !== undefined && (
             <Button onClick={onProveControl} testId="wallet-prove">
               Prove an address
+            </Button>
+          )}
+          {onBackup !== undefined && (
+            <Button onClick={onBackup} testId="wallet-backup">
+              Backup
             </Button>
           )}
           <div className="nr-spacer" />
