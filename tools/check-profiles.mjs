@@ -27,9 +27,17 @@ import { createRequire } from 'node:module'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const PROFILE_DIR = join(ROOT, 'provisioning/profiles')
+const CHECKS_DIR = join(ROOT, 'provisioning/checks')
 const SCHEMA = join(ROOT, 'provisioning/schema.json')
 
 const require = createRequire(join(ROOT, 'packages/verify/package.json'))
+
+const { VERIFIERS, implemented } = await import(
+  join(ROOT, 'provisioning/checks/registry.mjs')
+)
+const { profileSelfCheck, verifierIgnoresBackends, documentedWeakness } = await import(
+  join(ROOT, 'provisioning/checks/meta.mjs')
+)
 const { load: loadYaml, JSON_SCHEMA } = require('js-yaml')
 const { Ajv2020 } = require('ajv/dist/2020.js')
 
@@ -76,6 +84,9 @@ const files = readdirSync(PROFILE_DIR)
 /** id -> the file that declared it, across every profile. */
 const invariantOwner = new Map()
 
+/** Every profile that parsed, for the meta verifiers to inspect as a set. */
+const loaded = []
+
 for (const file of files) {
   const rel = `provisioning/profiles/${file}`
   let profile
@@ -92,6 +103,8 @@ for (const file of files) {
     }
     continue
   }
+
+  loaded.push({ file: rel, profile })
 
   for (const assertion of profile.assertions) {
     const where = `${rel}  ${assertion.id}`
@@ -151,12 +164,32 @@ for (const file of files) {
   }
 }
 
+/**
+ * Run the verifiers that inspect the profiles themselves.
+ *
+ * These are the three that need no built image, and they are the ones that keep
+ * the abstraction falsifiable. Before they existed, every assertion named a
+ * verifier and none of those verifiers were anywhere: INV-PROV-1 was false
+ * about itself in the document whose whole thesis is that unfalsifiable
+ * abstractions are worthless.
+ */
+for (const problem of profileSelfCheck(loaded)) fail('provisioning/checks', problem)
+for (const problem of verifierIgnoresBackends(CHECKS_DIR)) fail('provisioning/checks', problem)
+for (const problem of documentedWeakness(loaded)) fail('provisioning/checks', problem)
+
 if (problems > 0) {
   console.error(`check-profiles: ${problems} problem${problems === 1 ? '' : 's'} in ${files.length} profile(s)`)
   process.exit(1)
 }
 
+// The counts are printed rather than kept, because the gap between what these
+// profiles assert and what can currently be checked IS the status of this work.
+// A run that said only "valid" would be hiding the number that matters.
+const declared = Object.keys(VERIFIERS).length
+const runnable = implemented().length
 console.log(
   `check-profiles: ${files.length} profile(s) valid, ` +
-    `${invariantOwner.size} provisioning invariants declared`
+    `${invariantOwner.size} provisioning invariants declared, ` +
+    `${runnable} of ${declared} verifiers implemented ` +
+    `(the rest need a built image or a running device)`
 )
