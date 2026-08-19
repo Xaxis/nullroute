@@ -33,6 +33,28 @@ import { QrDisplay } from '../components/QrDisplay.js'
  *     separate checkbox that says what it does.
  */
 
+/**
+ * Everything `psbt.sign` returns.
+ *
+ * Named and exported rather than written inline on the prop, so App.tsx can
+ * declare the same shape for its `call<T>()` instead of a narrower one written
+ * out by hand. That drift has happened three times on this device: a caller
+ * types the two or three fields it remembers, the daemon returns more, the
+ * screen reads them, and it all works because `call<T>()` casts JSON and an
+ * extra key survives. What breaks is the reader, who concludes the field never
+ * arrives.
+ */
+export interface PsbtSignedView {
+  readonly psbt: string
+  readonly inputsSigned: number
+  readonly signedWith: readonly string[]
+  readonly signatures?: SignatureProgressView
+  /** Who still has to sign, when the quorum is registered on this device. */
+  readonly attribution?: AttributionView
+  readonly wasAlreadySigned?: boolean
+  readonly finalised?: { readonly hex: string; readonly txid: string }
+}
+
 /** Who has signed and who has not, when the quorum is registered. */
 export interface AttributionView {
   readonly cosigners: readonly {
@@ -127,19 +149,7 @@ export interface PsbtScreenProps {
   /** Opens the scanner. Absent on a build with no camera. */
   readonly onScan?: () => void
   readonly onReview: (psbt: string) => Promise<PsbtReviewView>
-  readonly onSign: (
-    psbt: string,
-    override: boolean
-  ) => Promise<{
-    psbt: string
-    inputsSigned: number
-    signedWith: readonly string[]
-    signatures?: SignatureProgressView
-    /** Who still has to sign, when the quorum is registered on this device. */
-    attribution?: AttributionView
-    wasAlreadySigned?: boolean
-    finalised?: { hex: string; txid: string }
-  }>
+  readonly onSign: (psbt: string, override: boolean) => Promise<PsbtSignedView>
   readonly onBack: () => void
   /** Where this screen sits in a journey, when it is part of one. */
   readonly steps?: ReactElement | null

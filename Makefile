@@ -266,6 +266,10 @@ no-dead-ends: ## No screen traps the user with no way out
 	# wallets.unlock did not refresh, so status.hasWallet stayed false all
 	# session and the idle lock never armed. Every test passed.
 	@node tools/check-status-refresh.mjs
+	# A call type that promises a field the daemon never sends. call() casts
+	# parsed JSON and checks nothing, so the compiler will not catch it: the
+	# value is undefined at runtime and typed as present.
+	@node tools/check-ipc-types.mjs
 
 docs-reachable: ## Every document is registered on the site and linked from the README
 	# A document nobody can find is not a published document. This happened

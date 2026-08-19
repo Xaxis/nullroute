@@ -27,7 +27,11 @@ import {
   type QuorumView,
   type ScriptType,
 } from './screens/WalletScreen.js'
-import { PsbtScreen, type PsbtReviewView } from './screens/PsbtScreen.js'
+import {
+  PsbtScreen,
+  type PsbtReviewView,
+  type PsbtSignedView,
+} from './screens/PsbtScreen.js'
 import { ScanScreen, type ScanResult } from './screens/ScanScreen.js'
 import { WalletsScreen, type WalletRow } from './screens/WalletsScreen.js'
 import { ManageWalletScreen } from './screens/ManageWalletScreen.js'
@@ -664,11 +668,12 @@ export function App() {
 
   const signPsbt = useCallback(
     async (psbt: string, overrideBlockingWarnings: boolean) =>
-      call<{ psbt: string; inputsSigned: number; signedWith: readonly string[] }>(
-        transport,
-        'psbt.sign',
-        { psbt, overrideBlockingWarnings }
-      ),
+      // PsbtSignedView, not three fields written out here. This had drifted:
+      // the daemon returns the signature progress, who still has to sign,
+      // whether this device had already signed, and the finalised transaction,
+      // and the screen renders all four. It worked, because call() casts JSON,
+      // and anybody reading this would have concluded none of them arrive.
+      call<PsbtSignedView>(transport, 'psbt.sign', { psbt, overrideBlockingWarnings }),
     []
   )
 
