@@ -24,6 +24,10 @@
  *   4. With the body scrolled to its end, no control is left under the action
  *      bar. The bar is opaque and fixed, so a button still beneath it there is
  *      not one the user has to scroll to reach, it is one they cannot reach.
+ *   5. Every control is big enough to hit with a finger, and far enough from
+ *      its neighbours. This is a touchscreen with no cursor, no hover and no
+ *      keyboard, so a 20px target is not merely awkward, it is a mis-tap next
+ *      to a button that erases a wallet.
  *
  * It renders from tools/screens, a gallery outside packages/ so no fixture is
  * shipped to the device or covered by MANIFEST.lock.
@@ -50,6 +54,30 @@ const DEBUG_PORT = 9413
 /** The panel. Not a breakpoint, a fixed piece of hardware. */
 const WIDTH = 800
 const HEIGHT = 480
+
+/**
+ * The smallest a control may be, in CSS pixels.
+ *
+ * 44 is WCAG 2.2's target size (2.5.8 at AA is 24, 2.5.5 at AAA is 44). The
+ * higher number is the right one here and not because of the certificate: this
+ * is a 7 inch panel operated by a finger, with no cursor, no hover and no
+ * keyboard, and the mis-tap lands on whatever is beside it. On several of these
+ * screens what is beside it erases a wallet.
+ *
+ * Measured on the border box, so padding counts and a small label inside a
+ * large button passes.
+ */
+const MIN_TARGET = 44
+
+/**
+ * The gap two adjacent controls need, in CSS pixels.
+ *
+ * Targets that meet the size rule and touch each other still produce mis-taps,
+ * because a fingertip is wider than the point the browser reports. Only
+ * neighbours are checked: a control far from anything else can be any distance
+ * from the rest of the screen.
+ */
+const MIN_GAP = 6
 
 const CHROME_CANDIDATES = [
   process.env['CHROME_PATH'],
@@ -94,6 +122,8 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 /** Runs in the page, once the screen has rendered. */
 const MEASURE = `(() => {
+  const MIN_TARGET = ${MIN_TARGET}
+  const MIN_GAP = ${MIN_GAP}
   const de = document.documentElement
   const vw = de.clientWidth
   const vh = de.clientHeight
@@ -184,6 +214,76 @@ const MEASURE = `(() => {
           '" sits at ' + Math.round(r.top) + '..' + Math.round(r.bottom) +
           ' with the bar starting at ' + Math.round(barTop) +
           ', and the body is already scrolled to the end',
+      })
+    }
+  }
+
+  // --- 5. Big enough to hit, and far enough apart ---------------------------
+  /**
+   * The box a finger has to land in, which is not always the element's own.
+   *
+   * A checkbox inside a <label> is activated by tapping anywhere in the label,
+   * so the 24px box is not the target and measuring it reports a screen as
+   * unhittable when it is fine. The seed screen does exactly this on purpose:
+   * an 18px checkbox gating an irreversible action would be a control that
+   * gets missed, so the whole sentence is the target.
+   */
+  const hitBox = (el) => {
+    if (el.tagName === 'INPUT' && (el.type === 'checkbox' || el.type === 'radio')) {
+      const wrapper = el.closest('label')
+      if (wrapper !== null) return wrapper.getBoundingClientRect()
+    }
+    return el.getBoundingClientRect()
+  }
+
+  const targets = []
+  for (const el of document.querySelectorAll('button, a[href], input, textarea, summary, [role="button"]')) {
+    if (!visible(el)) continue
+    const r = hitBox(el)
+    if (r.width === 0 && r.height === 0) continue
+    // A field the user types into is sized by its content and is not a target
+    // in the same sense: nothing sits beside it to mis-hit.
+    const typed = el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && el.type !== 'checkbox')
+    targets.push({ el, r, typed, name: label(el) })
+  }
+
+  for (const t of targets) {
+    if (t.r.height + 0.5 < MIN_TARGET || t.r.width + 0.5 < MIN_TARGET) {
+      problems.push({
+        kind: 'target-too-small',
+        detail: '<' + t.el.tagName.toLowerCase() + '> "' + t.name + '" is ' +
+          Math.round(t.r.width) + 'x' + Math.round(t.r.height) +
+          ', and a finger needs ' + MIN_TARGET + 'x' + MIN_TARGET,
+      })
+    }
+  }
+
+  // Neighbours only, and each pair once.
+  for (let i = 0; i < targets.length; i += 1) {
+    for (let j = i + 1; j < targets.length; j += 1) {
+      const a = targets[i]
+      const b = targets[j]
+      if (a.typed && b.typed) continue
+      if (a.el.contains(b.el) || b.el.contains(a.el)) continue
+      // A checkbox and its own label are one target measured twice.
+      if (a.r.width === b.r.width && a.r.height === b.r.height && a.r.left === b.r.left &&
+          a.r.top === b.r.top) continue
+
+      // Gap along each axis. A negative value on both means they overlap.
+      const dx = Math.max(a.r.left - b.r.right, b.r.left - a.r.right)
+      const dy = Math.max(a.r.top - b.r.bottom, b.r.top - a.r.bottom)
+      const gap = Math.max(dx, dy)
+      if (gap >= MIN_GAP) continue
+      // Only when they actually sit beside each other: two controls in
+      // different columns and different rows are not confusable.
+      const overlapsX = a.r.left < b.r.right && b.r.left < a.r.right
+      const overlapsY = a.r.top < b.r.bottom && b.r.top < a.r.bottom
+      if (!overlapsX && !overlapsY) continue
+
+      problems.push({
+        kind: 'targets-too-close',
+        detail: '"' + a.name + '" and "' + b.name + '" are ' + Math.round(Math.max(gap, 0)) +
+          'px apart, and adjacent targets need ' + MIN_GAP + 'px',
       })
     }
   }
@@ -357,6 +457,10 @@ async function main() {
         `  fit is a control that does not exist, and a warning under a fixed\n` +
         `  action bar is a warning nobody reads. Move destinations into the body\n` +
         `  rather than adding a button.\n\n` +
+        `  A target too small or too close: this is a 7 inch panel operated by a\n` +
+        `  finger, with no cursor, no hover and no keyboard. The mis-tap lands on\n` +
+        `  whatever is beside it, and on several of these screens what is beside\n` +
+        `  it erases a wallet. Give it ${String(MIN_TARGET)}px of box and ${String(MIN_GAP)}px of air.\n\n` +
         `  A state reported unreachable: the tap list in tools/screens/gallery.tsx\n` +
         `  names a testid that is gone. Point it at the new one, or drop it, but\n` +
         `  do not leave it: a reach list that reaches nowhere reports every state\n` +
