@@ -192,7 +192,16 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
     return (
       <Screen
         title="Signed"
-        subtitle="Carry this back to the machine that built it."
+        /* Where this goes next depends on whether it is finished, and the
+           subtitle is what gets read on a 480px panel. It said "carry this back
+           to the machine that built it" unconditionally, which is the wrong
+           instruction for the second device of three and contradicted the
+           banner further down the same screen. */
+        subtitle={
+          progress !== null && !progress.complete
+            ? 'Not finished. Carry this to the next cosigner.'
+            : 'Carry this back to the machine that built it.'
+        }
         banner={banner}
         steps={steps}
         testId="psbt-signed"

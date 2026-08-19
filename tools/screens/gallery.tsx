@@ -315,6 +315,30 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   psbt: () => (
     <PsbtScreen initialPsbt="" onScan={noop} onReview={never} onSign={never} onBack={noop} />
   ),
+  // Signed, and NOT finished: the state the second device of three lands on,
+  // where the next move is another device rather than the machine that built
+  // the transaction.
+  'psbt-signed-partial': () => (
+    <PsbtScreen
+      initialPsbt="cHNidP8BAHUCAAAAAQ=="
+      onScan={noop}
+      onReview={async () => Promise.resolve({ ...REVIEW, warnings: [], signable: true })}
+      onSign={async () =>
+        Promise.resolve({
+          psbt: 'cHNidP8BAHUCAAAAAQ==',
+          inputsSigned: 2,
+          signedWith: ["m/48'/0'/0'/2'/0/4", "m/48'/0'/0'/2'/0/9"],
+          signatures: {
+            present: 2,
+            required: 3,
+            complete: false,
+            inputs: [{ index: 0, required: 3, cosigners: 5, present: 2, satisfied: false }],
+          },
+        })
+      }
+      onBack={noop}
+    />
+  ),
   // The screen that authorises spending money, in the state where it does so.
   'psbt-review': () => (
     <PsbtScreen
@@ -424,6 +448,7 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   // Straight into the review, which is the state that matters, and then into
   // the confirmation that a blocking warning forces.
   'psbt-review': [['psbt-review'], ['psbt-review', 'psbt-sign']],
+  'psbt-signed-partial': [['psbt-review'], ['psbt-review', 'psbt-sign']],
 }
 
 // Published before rendering. A screen that throws must fail loudly as that

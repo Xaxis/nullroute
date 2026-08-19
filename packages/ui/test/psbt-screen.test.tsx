@@ -489,3 +489,67 @@ describe('ui.screens.psbt refusal', () => {
     expect(screen.getByTestId<HTMLButtonElement>('psbt-sign').disabled).toBe(true)
   })
 })
+
+/**
+ * Where the transaction goes next, which is not the same answer twice.
+ *
+ * A quorum walks a PSBT from device to device. The second of three has to carry
+ * it onward and the last one takes it to whatever broadcasts, and the subtitle
+ * is what gets read on a 480px panel: it said "carry this back to the machine
+ * that built it" unconditionally, contradicting the banner further down its own
+ * screen.
+ */
+describe('ui.screens.psbt what to do next', () => {
+  async function signWith(signatures: {
+    present: number
+    required: number | null
+    complete: boolean
+  }) {
+    render(
+      <PsbtScreen
+        onReview={vi.fn().mockResolvedValue(review())}
+        onSign={vi.fn().mockResolvedValue({
+          psbt: 'signed',
+          inputsSigned: 1,
+          signedWith: ["m/84'/0'/0'/0/0"],
+          signatures: { ...signatures, inputs: [] },
+        })}
+        onBack={vi.fn()}
+        initialPsbt="cHNidP8="
+      />
+    )
+    fireEvent.click(screen.getByTestId('psbt-review'))
+    await waitFor(() => {
+      expect(screen.getByTestId('psbt-sign')).toBeTruthy()
+    })
+    fireEvent.click(screen.getByTestId('psbt-sign'))
+    await waitFor(() => {
+      expect(screen.getByTestId('psbt-signed')).toBeTruthy()
+    })
+  }
+
+  /**
+   * INV-UI-63. An unfinished transaction says so where it is read first, and
+   * points at the next cosigner rather than at a broadcaster.
+   */
+  it('points-an-unfinished-transaction-at-the-next-cosigner', async () => {
+    await signWith({ present: 2, required: 3, complete: false })
+
+    const subtitle = document.querySelector('.nr-screen__subtitle')?.textContent
+    expect(subtitle).toContain('Not finished')
+    expect(subtitle).toContain('next cosigner')
+    expect(subtitle).not.toContain('machine that built it')
+
+    // And the banner agrees with it rather than saying something else.
+    expect(screen.getByTestId('psbt-incomplete').textContent).toContain('cannot be broadcast yet')
+  })
+
+  it('points-a-finished-transaction-back-at-the-machine-that-built-it', async () => {
+    await signWith({ present: 3, required: 3, complete: true })
+
+    const subtitle = document.querySelector('.nr-screen__subtitle')?.textContent
+    expect(subtitle).toContain('machine that built it')
+    expect(subtitle).not.toContain('Not finished')
+    expect(screen.getByTestId('psbt-complete').textContent).toContain('complete')
+  })
+})

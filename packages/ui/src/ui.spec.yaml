@@ -714,6 +714,15 @@ invariants:
       - packages/ui/test/psbt-screen.test.tsx::does-not-refuse-a-warning-that-is-not-blocking
       - packages/ui/test/psbt-screen.test.tsx::says-when-no-input-belongs-to-this-device
 
+  - id: INV-UI-63
+    statement: >
+      After signing, where the transaction goes next is stated in the subtitle
+      and matches what the rest of the screen says: an unfinished one points at
+      the next cosigner, a complete one at whatever will broadcast it.
+    tests:
+      - packages/ui/test/psbt-screen.test.tsx::points-an-unfinished-transaction-at-the-next-cosigner
+      - packages/ui/test/psbt-screen.test.tsx::points-a-finished-transaction-back-at-the-machine-that-built-it
+
 threats:
   - INV-KEY-1
   - INV-BUILD-1
