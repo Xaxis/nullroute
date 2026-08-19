@@ -38,6 +38,13 @@ this screen is a list of those sentences:
 - Set up a wallet across several devices
 - Protect against this device dying
 
+If no wallet is open, a flow that works on one **opens a wallet as its first
+step** rather than refusing to start. Signing needs a key in memory and deriving
+an address needs a seed: that is the ordinary state of a cold storage device,
+not an obstacle worth reporting to somebody who just asked to sign something.
+The step is counted, so the flow says 4 steps instead of 3 and the counter stays
+honest.
+
 Choosing one does **not** start it. It first shows what the goal needs, in plain
 language, because the expensive failure in all of these is discovering at step
 three that you needed a die, somewhere to write 24 words, or every other

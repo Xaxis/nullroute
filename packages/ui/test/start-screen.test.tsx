@@ -66,32 +66,52 @@ describe('StartScreen', () => {
   })
 
   /**
-   * INV-UI-56. A journey needing a wallet says so on the list and cannot be
-   * started without one, rather than starting and failing at the first screen.
+   * INV-UI-56. A journey that operates on a wallet OPENS one when none is open,
+   * rather than refusing to start.
+   *
+   * This screen used to disable the button and say "open a wallet first". That
+   * is a refusal, and a guide that stops at its own first prerequisite has
+   * failed at the one thing it exists to do. This is a cold storage device:
+   * signing needs a key in memory and deriving an address needs a seed, which
+   * is the ordinary state of the machine rather than an obstacle to report.
    */
-  it('will-not-start-a-journey-that-needs-a-wallet-nobody-has-opened', () => {
+  it('opens-a-wallet-as-a-step-rather-than-refusing-to-start', () => {
     const { onBegin } = setup({ walletOpen: false })
 
-    expect(screen.getByTestId('start-goal-sign').textContent).toContain('needs a wallet open')
-    // And one that does not need a wallet is not marked.
+    expect(screen.getByTestId('start-goal-sign').textContent).toContain('opens a wallet first')
+    // A journey that makes a wallet is not marked, because it does not need one.
     expect(screen.getByTestId('start-goal-new-wallet').textContent).not.toContain(
-      'needs a wallet open'
+      'opens a wallet first'
     )
 
     fireEvent.click(screen.getByTestId('start-goal-sign'))
     const begin = screen.getByTestId<HTMLButtonElement>('start-begin')
-    expect(begin.disabled).toBe(true)
-    expect(begin.textContent).toContain('Open a wallet first')
-    expect(screen.getByTestId('start-blocked')).toBeTruthy()
+    expect(begin.disabled).toBe(false)
+
+    // The extra step is in the list and in the count, because opening a wallet
+    // is a real step and hiding it would make the counter wrong.
+    expect(screen.getByTestId('start-steps').textContent).toContain('Open a wallet')
+    const signing = journeyById('sign')
+    expect(begin.textContent).toContain(String((signing?.steps.length ?? 0) + 1))
+    expect(screen.getByTestId('start-opens-a-wallet').textContent).toContain(
+      'a step rather than an obstacle'
+    )
 
     fireEvent.click(begin)
-    expect(onBegin).not.toHaveBeenCalled()
+    expect(onBegin).toHaveBeenCalledWith('sign')
   })
 
-  it('lets-that-same-journey-start-once-a-wallet-is-open', () => {
+  it('does-not-add-that-step-when-a-wallet-is-already-open', () => {
     const { onBegin } = setup({ walletOpen: true })
     fireEvent.click(screen.getByTestId('start-goal-sign'))
-    expect(screen.getByTestId<HTMLButtonElement>('start-begin').disabled).toBe(false)
+
+    expect(screen.getByTestId('start-steps').textContent).not.toContain('Open a wallet')
+    expect(screen.queryByTestId('start-opens-a-wallet')).toBeNull()
+    const signing = journeyById('sign')
+    expect(screen.getByTestId('start-begin').textContent).toContain(
+      String(signing?.steps.length ?? 0)
+    )
+
     fireEvent.click(screen.getByTestId('start-begin'))
     expect(onBegin).toHaveBeenCalledWith('sign')
   })

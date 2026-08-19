@@ -2,7 +2,7 @@ import { type ReactElement, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { Choice } from '../components/Choice.js'
-import { JOURNEYS, type Journey, type JourneyId } from '../journeys.js'
+import { JOURNEYS, stepsFor, type Journey, type JourneyId } from '../journeys.js'
 
 /**
  * What are you trying to do?
@@ -43,7 +43,9 @@ export function StartScreen(props: StartScreenProps): ReactElement {
 
   // --- What this goal needs before it starts --------------------------------
   if (chosen !== null) {
-    const blocked = chosen.needsWallet && !walletOpen
+    // The steps this will actually take, which include opening a wallet when
+    // none is open. Nothing is refused: see Journey.operatesOnAWallet.
+    const steps = stepsFor(chosen, walletOpen)
     return (
       <Screen
         title={chosen.goal}
@@ -64,13 +66,12 @@ export function StartScreen(props: StartScreenProps): ReactElement {
             <div className="nr-spacer" />
             <Button
               variant="primary"
-              disabled={blocked}
               onClick={() => {
                 onBegin(chosen.id)
               }}
               testId="start-begin"
             >
-              {blocked ? 'Open a wallet first' : `Start, ${String(chosen.steps.length)} steps`}
+              Start, {steps.length} steps
             </Button>
           </>
         }
@@ -89,7 +90,7 @@ export function StartScreen(props: StartScreenProps): ReactElement {
         <div className="nr-card nr-card--tight" data-testid="start-steps">
           <span className="nr-card__label">The steps</span>
           <ol className="nr-list nr-list--numbered">
-            {chosen.steps.map((step, index) => (
+            {steps.map((step, index) => (
               <li key={`${step.stage}-${String(index)}`}>{step.label}</li>
             ))}
           </ol>
@@ -105,9 +106,10 @@ export function StartScreen(props: StartScreenProps): ReactElement {
           </div>
         )}
 
-        {blocked && (
-          <p className="nr-note" data-testid="start-blocked">
-            This needs a wallet open on the device. Set one up or unlock one, then come back.
+        {chosen.operatesOnAWallet && !walletOpen && (
+          <p className="nr-note" data-testid="start-opens-a-wallet">
+            No wallet is open, so this starts by opening one. That is a step rather than an
+            obstacle: everything below it works on a wallet, which is what this device is for.
           </p>
         )}
       </Screen>
@@ -147,8 +149,8 @@ export function StartScreen(props: StartScreenProps): ReactElement {
             onSelect={() => {
               setChosen(journey)
             }}
-            {...(journey.needsWallet && !walletOpen
-              ? { tag: { text: 'needs a wallet open', tone: 'warn' as const } }
+            {...(journey.operatesOnAWallet && !walletOpen
+              ? { tag: { text: 'opens a wallet first', tone: 'ok' as const } }
               : {})}
             testId={`start-goal-${journey.id}`}
           />

@@ -61,11 +61,30 @@ export interface WalletsScreenProps {
   readonly failure?: string
   /** Back to the wallet, or the picker. Rendered in the header by Screen. */
   readonly onHome?: (() => void) | undefined
+  /**
+   * Where this screen sits in a journey.
+   *
+   * The picker became a journey step when journeys stopped refusing to start
+   * without a wallet and began opening one instead.
+   */
+  readonly steps?: ReactElement | null
   readonly banner?: ReactElement | null
 }
 
 export function WalletsScreen(props: WalletsScreenProps): ReactElement {
-  const { wallets, max, active, onUnlock, onCreate, onForget, onCancel, failure, onHome, banner } = props
+  const {
+    wallets,
+    max,
+    active,
+    onUnlock,
+    onCreate,
+    onForget,
+    onCancel,
+    failure,
+    steps,
+    onHome,
+    banner,
+  } = props
 
   // Only wallets that still hold a seed count against the limit. A row left by
   // a wallet erased through exhausted attempts is a tombstone, and letting
@@ -119,6 +138,7 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
         title="Clear this row"
         subtitle={tombstone.label}
         banner={banner}
+      steps={steps}
         onHome={onHome}
         testId="wallets-forget"
         actions={
@@ -169,6 +189,7 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
         title={selected.label}
         subtitle="This name is not confirmed until the wallet opens."
         banner={banner}
+      steps={steps}
         onHome={onHome}
         testId="wallet-unlock-screen"
         actions={
@@ -231,6 +252,7 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
       title="Wallets"
       subtitle={`${String(live)} of ${String(max)} on this device`}
       banner={banner}
+      steps={steps}
       onHome={onHome}
       testId="wallets-screen"
       actions={

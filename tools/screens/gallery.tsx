@@ -499,7 +499,9 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   import: [['import-typed-toggle']],
   // The preamble for the longest journey: what it needs, its five steps, and
   // what it still does not finish. The most text this screen ever holds.
-  start: [['start-goal-multisig']],
+  // Chosen with no wallet open, which is the state that used to be refused and
+  // now gains a step.
+  start: [['start-goal-multisig'], ['start-goal-sign']],
   // Verified, which adds a paragraph under a screen that already holds a QR
   // code, an address in large type and a warning banner.
   receive: [['receive-verify']],

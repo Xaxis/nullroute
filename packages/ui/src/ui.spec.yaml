@@ -643,11 +643,12 @@ invariants:
 
   - id: INV-UI-56
     statement: >
-      A journey that needs a wallet says so on the list and cannot be started
-      without one, and the hub is always a route in rather than the only one.
+      A journey that operates on a wallet opens one as a counted first step when
+      none is open, rather than refusing to start, and the hub is always a route
+      in rather than the only one.
     tests:
-      - packages/ui/test/start-screen.test.tsx::will-not-start-a-journey-that-needs-a-wallet-nobody-has-opened
-      - packages/ui/test/start-screen.test.tsx::lets-that-same-journey-start-once-a-wallet-is-open
+      - packages/ui/test/start-screen.test.tsx::opens-a-wallet-as-a-step-rather-than-refusing-to-start
+      - packages/ui/test/start-screen.test.tsx::does-not-add-that-step-when-a-wallet-is-already-open
       - packages/ui/test/start-screen.test.tsx::can-be-walked-past
 
   - id: INV-UI-57
@@ -852,6 +853,14 @@ invariants:
       - packages/ui/test/dice-screen.test.tsx::says-how-many-of-the-rolls-it-chose-itself
       - packages/ui/test/dice-screen.test.tsx::says-nothing-when-every-roll-was-entered-by-hand
       - packages/ui/test/dice-screen.test.tsx::offers-nothing-when-there-is-no-generator-to-ask
+
+  - id: INV-UI-77
+    statement: >
+      Starting such a journey walks through the picker and the fingerprint gate
+      and then continues into the step that follows, rather than landing on the
+      wallet screen and abandoning the flow.
+    tests:
+      - packages/ui/test/app.test.tsx::walks-through-opening-a-wallet-and-continues-the-flow
 
 threats:
   - INV-KEY-1

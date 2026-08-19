@@ -35,7 +35,7 @@ import {
 import { FinishScreen } from './screens/FinishScreen.js'
 import { ReceiveScreen, type ReceiveAddress } from './screens/ReceiveScreen.js'
 import { Steps } from './components/Steps.js'
-import { journeyById, type JourneyId } from './journeys.js'
+import { journeyById, stepsFor as journeyStepsFor, type JourneyId } from './journeys.js'
 import { LabelsScreen, type ImportedLabels, type LabelRow } from './screens/LabelsScreen.js'
 import {
   ChildSeedScreen,
@@ -224,7 +224,20 @@ export function App() {
    * The step is tracked here rather than derived from the stage: the signing
    * journey is three steps on one screen, so a stage does not identify a step.
    */
-  const [journey, setJourney] = useState<{ id: JourneyId; step: number } | null>(null)
+  const [journey, setJourney] = useState<{
+    id: JourneyId
+    step: number
+    /**
+     * The steps decided when the journey began.
+     *
+     * Held rather than recomputed, because a journey that starts by opening a
+     * wallet has one more step than the same journey started with one already
+     * open, and recomputing after the wallet opens would renumber the flow
+     * under the user: "step 2 of 5" would become "step 1 of 4" at the moment
+     * they succeeded at something.
+     */
+    steps: readonly { stage: string; label: string }[]
+  } | null>(null)
 
   /**
    * A journey whose last step just completed, and whose leftovers have not been
@@ -270,14 +283,12 @@ export function App() {
 
   const stepsFor = (at: Stage['at']): ReactElement | null => {
     if (journey === null) return null
-    const current = journeyById(journey.id)
-    if (current === undefined) return null
-    const step = current.steps[journey.step]
+    const step = journey.steps[journey.step]
     if (step?.stage !== at) return null
     return (
       <Steps
         current={journey.step + 1}
-        total={current.steps.length}
+        total={journey.steps.length}
         label={step.label}
         testId="journey-steps"
       />
@@ -294,14 +305,12 @@ export function App() {
   const advance = (from: Stage['at']): void => {
     setJourney((held) => {
       if (held === null) return held
-      const current = journeyById(held.id)
-      if (current === undefined) return held
-      if (current.steps[held.step]?.stage !== from) return held
-      if (held.step + 1 >= current.steps.length) {
+      if (held.steps[held.step]?.stage !== from) return held
+      if (held.step + 1 >= held.steps.length) {
         setCompleted(held.id)
         return null
       }
-      return { id: held.id, step: held.step + 1 }
+      return { ...held, step: held.step + 1 }
     })
   }
   const [attestation, setAttestation] = useState<AttestationView | null>(null)
@@ -649,8 +658,13 @@ export function App() {
         onBegin={(id: JourneyId) => {
           const chosen = journeyById(id)
           if (chosen === undefined) return
-          setJourney({ id, step: 0 })
-          const first = chosen.steps[0]
+          // Decided once, here. A journey that operates on a wallet gains an
+          // "open a wallet" step at the front when none is open, rather than
+          // being refused: this is a cold storage device, and needing a wallet
+          // is its ordinary state rather than an obstacle to report.
+          const steps = journeyStepsFor(chosen, status?.hasWallet === true)
+          setJourney({ id, step: 0, steps })
+          const first = steps[0]
           if (first !== undefined) setStage({ at: first.stage } as Stage)
         }}
         onSkip={() => {
@@ -1056,6 +1070,7 @@ export function App() {
     return (
       <WalletsScreen
         banner={banner}
+        steps={stepsFor('wallets')}
         wallets={wallets}
         max={maxWallets}
         active={activeWallet}
@@ -1091,6 +1106,20 @@ export function App() {
         labelVerified={stage.labelVerified}
         hintCorrected={stage.hintCorrected}
         onContinue={() => {
+          // Inside a journey that began by opening a wallet, continuing goes to
+          // the NEXT step rather than to the wallet screen. Landing somebody on
+          // a wallet after they asked to sign a transaction is the flow giving
+          // up one step in, which is what the refusal it replaced did.
+          //
+          // The unlocked screen is still shown first and is not skipped: it is
+          // the only place a mistyped BIP-39 passphrase shows, and that is true
+          // whether or not a journey is underway.
+          const next = journey === null ? undefined : journey.steps[journey.step + 1]
+          if (journey !== null && journey.steps[journey.step]?.stage === 'wallets') {
+            setJourney({ ...journey, step: journey.step + 1 })
+            setStage({ at: (next?.stage ?? 'wallet') } as Stage)
+            return
+          }
           setStage({ at: 'wallet' })
         }}
         onLock={() => {

@@ -610,3 +610,92 @@ describe('ui.app scanning', () => {
     expect(document.body.textContent).toContain('Scan a descriptor')
   })
 })
+
+/**
+ * A journey that operates on a wallet, started with none open.
+ *
+ * The hub used to disable the button and say "open a wallet first". That is a
+ * refusal, and a guide that stops at its own first prerequisite has failed at
+ * the one thing it exists to do. On a cold storage device, signing needing a
+ * key in memory is the ordinary state of the machine, not an obstacle worth
+ * reporting to somebody who just asked to sign something.
+ */
+describe('ui.app opening a wallet inside a journey', () => {
+  const WALLET = {
+    id: 'a'.repeat(16),
+    label: 'Cold storage',
+    colour: 'teal',
+    network: 'mainnet',
+    exists: true,
+    attemptsRemaining: 10,
+    destroyed: false,
+    bip39Passphrase: false,
+  }
+
+  /**
+   * INV-UI-77. The journey absorbs opening a wallet as its first step, counts
+   * it, and carries on into the step that follows once it is open.
+   */
+  it('walks-through-opening-a-wallet-and-continues-the-flow', async () => {
+    replies.set('wallets.list', {
+      migrated: null,
+      migrationError: null,
+      max: 8,
+      active: null,
+      wallets: [WALLET],
+      verified: false,
+      note: 'Not verified until you open one.',
+    })
+    replies.set('wallets.unlock', {
+      unlocked: true,
+      active: { id: WALLET.id, label: WALLET.label, colour: 'teal' },
+      fingerprint: '73c5da0a',
+      registrations: 0,
+      hintCorrected: false,
+      labelVerified: true,
+      bip39Passphrase: false,
+      network: { id: 'mainnet', label: 'Mainnet', isMainnet: true },
+    })
+
+    await boot()
+    fireEvent.click(screen.getByTestId('lock-guide'))
+    await waitFor(() => {
+      expect(screen.getByTestId('start-screen')).toBeTruthy()
+    })
+
+    fireEvent.click(screen.getByTestId('start-goal-sign'))
+    // Not refused, and the extra step is visible before starting.
+    expect(screen.getByTestId<HTMLButtonElement>('start-begin').disabled).toBe(false)
+    expect(screen.getByTestId('start-steps').textContent).toContain('Open a wallet')
+    fireEvent.click(screen.getByTestId('start-begin'))
+
+    // Step one is the picker, and the counter says so.
+    await waitFor(() => {
+      expect(screen.getByTestId('wallets-screen')).toBeTruthy()
+    })
+    const first = screen.getByTestId('journey-steps').textContent
+    expect(first).toContain('Step 1 of 4')
+    expect(first).toContain('Open a wallet')
+
+    fireEvent.click(screen.getByTestId(`wallet-row-${WALLET.id}`))
+    fireEvent.change(screen.getByTestId('wallet-unlock-keyboard'), { target: {} })
+    fireEvent.click(screen.getByTestId('pk-key-a'))
+    fireEvent.click(screen.getByTestId('wallet-unlock-submit'))
+
+    // The fingerprint gate is still shown. It is the only place a mistyped
+    // BIP-39 passphrase surfaces, and that is true inside a journey too.
+    await waitFor(() => {
+      expect(screen.getByTestId('unlocked-screen')).toBeTruthy()
+    })
+
+    fireEvent.click(screen.getByTestId('unlocked-continue'))
+    // Straight into signing, not onto the wallet screen. Landing there would be
+    // the flow giving up one step in, which is what the refusal used to do.
+    await waitFor(() => {
+      expect(screen.getByTestId('psbt-screen')).toBeTruthy()
+    })
+    const next = screen.getByTestId('journey-steps').textContent
+    expect(next).toContain('Step 2 of 4')
+    expect(next).toContain('Load the transaction')
+  })
+})

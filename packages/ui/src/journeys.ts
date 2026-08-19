@@ -86,8 +86,21 @@ export interface Journey {
    * cosigner registers the same descriptor.
    */
   readonly thenWhat: readonly string[]
-  /** True when a wallet has to be open before this can start. */
-  readonly needsWallet: boolean
+  /**
+   * True when this journey operates on a wallet, so one has to be open.
+   *
+   * NOT a reason to refuse. This is a cold storage device: signing needs a key
+   * in memory, deriving a receive address needs a seed, backing up needs
+   * something to back up. Those are not limitations to report, they are the
+   * ordinary state of the machine, and a guide that stops at its own first
+   * prerequisite has failed at the one thing it exists to do.
+   *
+   * So it prepends a step instead. `stepsFor` puts "Open a wallet" at the front
+   * when none is open, the count says 5 rather than 4, and the flow continues
+   * through it. The user asked to sign a transaction; being told to go and do
+   * something else first is the device declining to help.
+   */
+  readonly operatesOnAWallet: boolean
 }
 
 export const JOURNEYS: readonly Journey[] = [
@@ -108,7 +121,7 @@ export const JOURNEYS: readonly Journey[] = [
     thenWhat: [
       'The words you wrote down are the only thing that recovers this wallet. This device is a convenience; that paper is the wallet.',
     ],
-    needsWallet: false,
+    operatesOnAWallet: false,
   },
   {
     id: 'restore-wallet',
@@ -125,7 +138,7 @@ export const JOURNEYS: readonly Journey[] = [
     thenWhat: [
       'Check the fingerprint against what the old device showed. A mistyped BIP-39 passphrase opens a different wallet silently, and the fingerprint is the only place it shows.',
     ],
-    needsWallet: false,
+    operatesOnAWallet: false,
   },
   {
     id: 'sign',
@@ -141,7 +154,7 @@ export const JOURNEYS: readonly Journey[] = [
     thenWhat: [
       'Take the signed transaction back to the machine that made it. Nothing has been broadcast: this device has no network.',
     ],
-    needsWallet: true,
+    operatesOnAWallet: true,
   },
   {
     id: 'receive',
@@ -156,7 +169,7 @@ export const JOURNEYS: readonly Journey[] = [
     thenWhat: [
       'Read the address off THIS screen, not off the machine you copied it into. Software that swaps an address in the clipboard is the ordinary way this money is lost.',
     ],
-    needsWallet: true,
+    operatesOnAWallet: true,
   },
   {
     id: 'multisig',
@@ -180,7 +193,7 @@ export const JOURNEYS: readonly Journey[] = [
       'The coordinator has to import the bundle, or the wallet is invisible to the software that builds transactions and shows a zero balance.',
       'Compare an address at the same index on every device before sending anything to it. That is the only cheap proof they all agree.',
     ],
-    needsWallet: true,
+    operatesOnAWallet: true,
   },
   {
     id: 'protect-device',
@@ -195,12 +208,28 @@ export const JOURNEYS: readonly Journey[] = [
     thenWhat: [
       'A seedless backup restores a device that can check what is yours and cannot spend. Your mnemonic is what restores the ability to sign, and this file is not a substitute for it.',
     ],
-    needsWallet: true,
+    operatesOnAWallet: true,
   },
 ]
 
 export function journeyById(id: JourneyId): Journey | undefined {
   return JOURNEYS.find((journey) => journey.id === id)
+}
+
+/**
+ * The step this journey actually starts from, given what is open.
+ *
+ * A journey that operates on a wallet gains "Open a wallet" at the front when
+ * none is, rather than being refused. The rest of the device then works exactly
+ * as it does outside a journey: the picker opens a wallet and the flow carries
+ * on from the step after it.
+ *
+ * The step count changes with it, which is the honest thing: opening a wallet
+ * is a real step and hiding it would make the counter wrong.
+ */
+export function stepsFor(journey: Journey, walletOpen: boolean): readonly JourneyStep[] {
+  if (!journey.operatesOnAWallet || walletOpen) return journey.steps
+  return [{ stage: 'wallets', label: 'Open a wallet' }, ...journey.steps]
 }
 
 /**
