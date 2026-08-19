@@ -378,3 +378,114 @@ describe('PsbtScreen quorum progress', () => {
     expect(screen.queryByTestId('psbt-quorum')).toBeNull()
   })
 })
+
+/**
+ * Tests for the refusal to sign, and for saying why.
+ *
+ * `signable` arrives as a boolean over JSON. In core it is DEFINED as "no
+ * blocking warning", and this screen used to rely on that coupling holding
+ * across the boundary. Nothing enforces it there: not TypeScript, which sees
+ * whatever the response is typed as, and not the daemon, which cannot know what
+ * this screen assumes. A review carrying a blocking warning and `signable: true`
+ * would have enabled the button with the warning on screen.
+ *
+ * That is the same shape as the lock screen's fail-open verdict, on the screen
+ * that spends money.
+ */
+describe('ui.screens.psbt refusal', () => {
+  const withWarnings = (
+    warnings: readonly { kind: string; message: string; blocking: boolean }[],
+    signable: boolean
+  ): PsbtReviewView => ({
+    ...review(),
+    signable,
+    warnings,
+  })
+
+  const FEE_WARNING = {
+    kind: 'fee-high',
+    message: 'The fee is 8.4 percent of what this transaction spends.',
+    blocking: true,
+  }
+
+  async function reachReview(view: PsbtReviewView) {
+    const onSign = vi.fn().mockResolvedValue({ psbt: 'x', inputsSigned: 1, signedWith: [] })
+    render(
+      <PsbtScreen
+        onReview={vi.fn().mockResolvedValue(view)}
+        onSign={onSign}
+        onBack={vi.fn()}
+        initialPsbt="cHNidP8="
+      />
+    )
+    fireEvent.click(screen.getByTestId('psbt-review'))
+    await waitFor(() => {
+      expect(screen.getByTestId('psbt-sign')).toBeTruthy()
+    })
+    return onSign
+  }
+
+  /**
+   * INV-UI-62. A blocking warning refuses the signature even when the review
+   * claims the transaction is signable.
+   */
+  it('refuses-a-blocking-warning-even-when-told-it-is-signable', async () => {
+    const onSign = await reachReview(withWarnings([FEE_WARNING], true))
+
+    expect(screen.getByTestId<HTMLButtonElement>('psbt-sign').disabled).toBe(true)
+    fireEvent.click(screen.getByTestId('psbt-sign'))
+    expect(onSign).not.toHaveBeenCalled()
+  })
+
+  /**
+   * INV-UI-62. The reason sits beside the button. A disabled control whose
+   * reason is scrolled two screens away reads as broken software rather than as
+   * a refusal, and this one refuses for reasons somebody has to act on.
+   */
+  it('says-beside-the-button-why-it-will-not-sign', async () => {
+    await reachReview(withWarnings([FEE_WARNING], false))
+    expect(screen.getByTestId('psbt-refusal').textContent).toContain('Will not sign: fee-high')
+
+    cleanup()
+    await reachReview(
+      withWarnings([FEE_WARNING, { ...FEE_WARNING, kind: 'sighash-odd' }], false)
+    )
+    expect(screen.getByTestId('psbt-refusal').textContent).toContain('2 blocking warnings')
+  })
+
+  /**
+   * The override is the user's decision and is the only thing that gets past
+   * the refusal. It says so beside the button rather than leaving the row
+   * looking the same as an ordinary signature.
+   */
+  it('signs-once-the-user-overrides-and-says-that-is-what-happened', async () => {
+    const onSign = await reachReview(withWarnings([FEE_WARNING], false))
+
+    fireEvent.click(screen.getByTestId('psbt-override'))
+    expect(screen.getByTestId('psbt-refusal').textContent).toContain('Overriding 1')
+    expect(screen.getByTestId<HTMLButtonElement>('psbt-sign').disabled).toBe(false)
+
+    fireEvent.click(screen.getByTestId('psbt-sign'))
+    await waitFor(() => {
+      expect(onSign).toHaveBeenCalledWith('cHNidP8=', true)
+    })
+  })
+
+  /**
+   * A non-blocking warning is a thing to read, not a refusal. Treating every
+   * warning as blocking would make the blocking ones mean nothing.
+   */
+  it('does-not-refuse-a-warning-that-is-not-blocking', async () => {
+    await reachReview(
+      withWarnings([{ kind: 'output-unrecognised', message: 'Bare script.', blocking: false }], true)
+    )
+    expect(screen.getByTestId<HTMLButtonElement>('psbt-sign').disabled).toBe(false)
+    expect(screen.queryByTestId('psbt-refusal')).toBeNull()
+  })
+
+  it('says-when-no-input-belongs-to-this-device', async () => {
+    await reachReview({ ...review(), ownedInputs: 0, warnings: [] })
+    expect(screen.getByTestId('psbt-refusal').textContent).toContain('No input here is yours')
+    expect(screen.getByTestId<HTMLButtonElement>('psbt-sign').disabled).toBe(true)
+  })
+})

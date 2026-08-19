@@ -136,6 +136,24 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
 
   const blocking = review?.warnings.filter((w) => w.blocking) ?? []
 
+  /**
+   * Whether signing is allowed, decided here rather than taken on trust.
+   *
+   * `signable` arrives as a boolean over JSON. In core it is defined as "no
+   * blocking warning" (see review.ts), and this screen used to rely on that
+   * coupling holding, which meant a review carrying a blocking warning and
+   * `signable: true` would have enabled the button with the warning on screen.
+   * Nothing enforces the coupling across the boundary: not TypeScript, which
+   * sees whatever the response is typed as, and not the daemon, which cannot
+   * know what this screen assumes.
+   *
+   * So both are required, the same way the lock screen requires a status it
+   * recognises rather than merely not recognising a failure. The override is
+   * the user's decision and is the only thing that gets past either.
+   */
+  const refused = review !== null && (!review.signable || blocking.length > 0)
+  const maySign = review !== null && review.ownedInputs > 0 && (!refused || override)
+
   const doReview = async (): Promise<void> => {
     setBusy(true)
     setError(null)
@@ -312,14 +330,31 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
               {busy ? 'Reading' : 'Review'}
             </Button>
           ) : (
-            <Button
-              variant="danger"
-              disabled={busy || review.ownedInputs === 0 || (!review.signable && !override)}
-              onClick={() => void doSign()}
-              testId="psbt-sign"
-            >
-              {busy ? 'Signing' : 'Sign'}
-            </Button>
+            <>
+              {/* Why the button is dead, beside the button. A disabled control
+                  with its reason scrolled two screens away is a control that
+                  reads as broken software rather than as a refusal, and this
+                  one refuses for reasons somebody needs to act on. */}
+              {(refused || review.ownedInputs === 0) && (
+                <span className="nr-status nr-status--fail" data-testid="psbt-refusal">
+                  {review.ownedInputs === 0
+                    ? 'No input here is yours'
+                    : override
+                      ? `Overriding ${String(blocking.length)}`
+                      : blocking.length === 1
+                        ? `Will not sign: ${blocking[0]?.kind ?? 'a blocking warning'}`
+                        : `Will not sign: ${String(blocking.length)} blocking warnings`}
+                </span>
+              )}
+              <Button
+                variant="danger"
+                disabled={busy || !maySign}
+                onClick={() => void doSign()}
+                testId="psbt-sign"
+              >
+                {busy ? 'Signing' : 'Sign'}
+              </Button>
+            </>
           )}
         </>
       }

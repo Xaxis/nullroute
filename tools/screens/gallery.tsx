@@ -69,6 +69,115 @@ const ADDRESS = 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'
 const MNEMONIC =
   'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
 
+/**
+ * A transaction worth reading carefully.
+ *
+ * The most security-critical screen on the device, and until this fixture
+ * existed the gallery only ever rendered its empty state: a text box waiting
+ * for a PSBT. Everything that makes the review screen hard, several outputs, a
+ * change output that has to be told apart from a payment, a fee stated three
+ * ways, a partial multisig, a blocking warning, went unmeasured and unlooked at.
+ *
+ * Deliberately at the awkward end of realistic. Four outputs rather than one, a
+ * fee that is a large fraction of the spend, two of three signatures present so
+ * the quorum arithmetic is on screen, and both a blocking and a non-blocking
+ * warning at once.
+ */
+const REVIEW = {
+  // False, because a blocking warning is present. core defines signable as
+  // exactly that, and a fixture that broke the coupling would be exercising a
+  // state the daemon cannot produce.
+  signable: false,
+  replaceable: true,
+  locktime: 0,
+  ownedInputs: 2,
+  signatures: {
+    present: 1,
+    required: 2,
+    complete: false,
+    inputs: [
+      { index: 0, required: 2, cosigners: 3, present: 1, satisfied: false },
+      { index: 1, required: 2, cosigners: 3, present: 1, satisfied: false },
+    ],
+  },
+  sighash: {
+    name: 'SIGHASH_ALL',
+    meaning: 'Every input and every output is covered. Nothing can be changed after signing.',
+    acceptable: true,
+  },
+  fee: {
+    feeBtc: '0.00042000',
+    feeSats: '42,000',
+    vsize: 312,
+    satsPerVbyte: 134.6,
+    percentOfSpend: 8.4,
+  },
+  inputs: [
+    {
+      index: 0,
+      txid: '5f2c1e9a4b7d8c3f60a1b2c3d4e5f60718293a4b5c6d7e8f9012a3b4c5d6e7f8',
+      vout: 1,
+      amountBtc: '0.00300000',
+      derivationPath: "m/48'/0'/0'/2'/0/4",
+    },
+    {
+      index: 1,
+      txid: 'a1b2c3d4e5f60718293a4b5c6d7e8f9012a3b4c5d6e7f85f2c1e9a4b7d8c3f60',
+      vout: 0,
+      amountBtc: '0.00242000',
+      derivationPath: "m/48'/0'/0'/2'/0/9",
+    },
+  ],
+  outputs: [
+    {
+      index: 0,
+      address: 'bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3',
+      amountBtc: '0.00250000',
+      amountSats: '250,000',
+      kind: 'payment' as const,
+      changePath: null,
+    },
+    {
+      index: 1,
+      address: 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu',
+      amountBtc: '0.00100000',
+      amountSats: '100,000',
+      kind: 'payment' as const,
+      changePath: null,
+    },
+    {
+      index: 2,
+      address: null,
+      amountBtc: '0.00000000',
+      amountSats: '0',
+      kind: 'payment' as const,
+      changePath: null,
+    },
+    {
+      index: 3,
+      address: 'bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l',
+      amountBtc: '0.00150000',
+      amountSats: '150,000',
+      kind: 'change' as const,
+      changePath: "m/48'/0'/0'/2'/1/7",
+    },
+  ],
+  warnings: [
+    {
+      kind: 'fee-high',
+      message:
+        'The fee is 8.4 percent of what this transaction spends, which is far above anything normal. Check the amounts before signing.',
+      blocking: true,
+    },
+    {
+      kind: 'output-unrecognised',
+      message:
+        'Output 2 has no address this device can render. It is a bare script, and nothing here can tell you where that money goes.',
+      blocking: false,
+    },
+  ],
+}
+
 const QUORUM = {
   descriptor: DESCRIPTOR,
   threshold: 2,
@@ -206,6 +315,16 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   psbt: () => (
     <PsbtScreen initialPsbt="" onScan={noop} onReview={never} onSign={never} onBack={noop} />
   ),
+  // The screen that authorises spending money, in the state where it does so.
+  'psbt-review': () => (
+    <PsbtScreen
+      initialPsbt="cHNidP8BAHUCAAAAAQ=="
+      onScan={noop}
+      onReview={async () => Promise.resolve(REVIEW)}
+      onSign={never}
+      onBack={noop}
+    />
+  ),
   multisig: () => (
     <MultisigScreen
       onOurKey={async () =>
@@ -302,6 +421,9 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   // Verified, which adds a paragraph under a screen that already holds a QR
   // code, an address in large type and a warning banner.
   receive: [['receive-verify']],
+  // Straight into the review, which is the state that matters, and then into
+  // the confirmation that a blocking warning forces.
+  'psbt-review': [['psbt-review'], ['psbt-review', 'psbt-sign']],
 }
 
 // Published before rendering. A screen that throws must fail loudly as that

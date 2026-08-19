@@ -701,6 +701,19 @@ invariants:
       - packages/ui/test/receive-screen.test.tsx::reports-a-failed-derivation-rather-than-an-empty-screen
       - packages/ui/test/receive-screen.test.tsx::chunks-an-address-into-fours
 
+  # --- Refusing to sign -------------------------------------------------------
+  - id: INV-UI-62
+    statement: >
+      A blocking warning refuses the signature whatever the review claims about
+      signability, the reason is stated beside the button rather than only
+      further down the screen, and only an explicit override gets past it.
+    tests:
+      - packages/ui/test/psbt-screen.test.tsx::refuses-a-blocking-warning-even-when-told-it-is-signable
+      - packages/ui/test/psbt-screen.test.tsx::says-beside-the-button-why-it-will-not-sign
+      - packages/ui/test/psbt-screen.test.tsx::signs-once-the-user-overrides-and-says-that-is-what-happened
+      - packages/ui/test/psbt-screen.test.tsx::does-not-refuse-a-warning-that-is-not-blocking
+      - packages/ui/test/psbt-screen.test.tsx::says-when-no-input-belongs-to-this-device
+
 threats:
   - INV-KEY-1
   - INV-BUILD-1
