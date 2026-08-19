@@ -61,16 +61,66 @@ provisioning/
 
 ## Running the verifiers
 
-The four verifiers that read a root filesystem take a **directory**, not an
-image:
+There are two kinds of artifact and they answer different questions.
+
+A **root filesystem directory** answers what is in the files: which packages are
+installed, which paths exist, what a unit declares, what the bootloader passes
+on the kernel command line.
+
+An **image file** answers what is in the bytes between and underneath
+filesystems: the partition table, the dm-verity superblock, filesystem
+identifiers. A directory of files cannot answer any of those, and a verifier
+pointed at the wrong one says so rather than passing.
 
 ```
 make verify-image ROOT=/path/to/assembled/rootfs
+make verify-image IMAGE=build/nullroute.img COMPARE=build/nullroute-again.img
 ```
 
-Mounting or loop-mounting an image needs root, and a verification tool that has
-to run privileged is one people run less often. The build backend already has
-the tree it assembled, so it hands that over.
+Neither is mounted. Mounting or loop-mounting needs root, and a verification
+tool that has to run privileged is one people run less often. The build backend
+already has the tree it assembled, and an image is read at an offset, which
+works on any operating system.
+
+`COMPARE` is a second build. Without it the reproducibility assertion reports
+could-not-run rather than passing, because one file compared against nothing is
+not evidence that two builds agree.
+
+### Before there is a backend
+
+```
+make fixture-image
+```
+
+writes a synthetic image with this release's pinned identifiers, runs the image
+verifiers against it, and then writes a third with a drifting dm-verity salt so
+the verifier can be watched failing. A verifier nobody has seen fail is a
+verifier nobody knows works.
+
+It is not bootable and is not an image of anything. What it proves is that the
+verifiers read the offsets they claim to read, and that the derivation the build
+will use and the derivation the verifier checks are the same function. It does
+not prove they agree with what `sgdisk`, `mke2fs` and `veritysetup` actually
+write, and it cannot until an image exists.
+
+### Where the pinned values come from
+
+A profile states WHICH partitions are pinned. WHAT the pinned value is comes
+from `provisioning/checks/identifiers.mjs`, derived from the release version. A
+profile holding literal hex would need editing every release, and the release
+where somebody forgot is the release where the assertion silently stops meaning
+anything.
+
+Every value is SHA-256 of a short ASCII string, so a third party recomputes it
+with coreutils rather than with our tool:
+
+```
+printf 'nullroute/verity-salt/0.4.0' | sha256sum
+```
+
+That is the same argument `MANIFEST.lock` rests on. None of it is a secret: a
+verity salt is published and is part of what a user compares, and its job in
+dm-verity is domain separation between images rather than unpredictability.
 
 There are **three** outcomes, not two: satisfied, failed, and could-not-run. An
 assertion whose verifiers are all unwritten, or whose verifier could not run

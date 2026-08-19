@@ -39,6 +39,12 @@ assertions:
     tier: 1
     verify:
       - check: verity-salt-pinned
+        # The partition to read, and where the expected value comes from. The
+        # salt itself is NOT written here: it is derived from the release
+        # version by provisioning/checks/identifiers.mjs, so this assertion
+        # cannot go stale at a release nobody remembered to edit. A third party
+        # recomputes it with sha256sum and that file.
+        params: { partition: system-hash, salt: derived }
     rationale: >
       libcryptsetup generates a random 32-byte salt when none is given, and the
       root hash is a function of (data, salt). With a random salt the root hash
@@ -57,7 +63,9 @@ assertions:
     tier: 1
     verify:
       - check: partition-present
-        params: { role: verity }
+        params:
+          expect:
+            - { name: system-hash, minMiB: 8 }
     rationale: >
       A hash tree that does not ship cannot be used at boot, and an image that
       verifies only on the build machine verifies nothing for the user.

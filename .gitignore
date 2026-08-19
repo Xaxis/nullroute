@@ -33,3 +33,7 @@ packages/ui/dist-app/
 # committed wallet is still a wallet in a public repository, and the manifest
 # covers packages/ and spec/ rather than this.
 .nullroute-store/
+
+# Synthetic images from `make fixture-image`. Half a gigabyte of mostly zeroes,
+# and regenerated deterministically by the tool, so there is nothing to keep.
+.fixture/

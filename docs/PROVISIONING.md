@@ -64,9 +64,10 @@ card; a missing chip cannot.
 **Read this section as a specification, not as a description of something you
 can flash today.** The controls below are settled and the reasoning behind each
 is final, but the build system that applies them is still being designed, so
-`make image` refuses rather than producing anything. See
-[Status](#status-of-this-document). Every table in this section says what the
-image WILL do; none of it is running on a device yet.
+`make image` refuses rather than producing anything. What does exist is the
+contract that build has to satisfy: see [Status](#status-of-this-document).
+Every table in this section says what the image WILL do; none of it is running
+on a device yet.
 
 The controls below are the ones that matter for a single-purpose, air-gapped
 device. That qualifier is doing real work: most published hardening baselines
@@ -393,11 +394,47 @@ even if they can no longer reassemble it themselves.
 The hardware, the hardening controls and the constraints above are settled and
 will not change materially.
 
-The image build system, the exact verification commands, and the boot
-attestation chain are in active design. That work also revisits the phase plan,
-because provisioning turned out to be foundational rather than the phase 7
-footnote the original brief made it: an unverifiable operating system undercuts
-every application-level guarantee this project makes.
+The image build system and the boot attestation chain are in active design. That
+work also revisits the phase plan, because provisioning turned out to be
+foundational rather than the phase 7 footnote the original brief made it: an
+unverifiable operating system undercuts every application-level guarantee this
+project makes.
+
+**The contract that build has to satisfy is written and runs.** That half had to
+come first. A backend is supported when the unchanged verifiers pass against its
+output, and verifiers written afterwards would be written to agree with whatever
+the backend happened to produce, which is not a check. Twelve of the sixteen
+assertions now carry a verifier that executes: three read the profiles, five
+read an assembled root filesystem, and four read an image file.
+
+The four that read an image cover the two defects that would otherwise make the
+published root hash meaningless.
+
+`rpi-image-gen` generates the dm-verity salt with `uuidgen`. The root hash is a
+function of (data, salt), so a random salt means the root hash changes on every
+build even when the filesystem is byte-identical, and the number this device
+displays at boot stops being something a user can compare against a release.
+`mke2fs` is separately never given a pinned hash seed, and the GPT GUIDs are
+generated fresh, which are invisible in a file-level diff of the root filesystem
+while making the images differ.
+
+Every identifier is instead derived from the release version by
+`provisioning/checks/identifiers.mjs`, so a third party recomputes it with
+coreutils rather than with our tool:
+
+```
+printf 'nullroute/verity-salt/0.4.0' | sha256sum
+```
+
+To see those verifiers run, including a deliberate failure, use
+`make fixture-image`. It writes a synthetic image with the superblocks and the
+partition table at the offsets the published formats put them at, and then a
+third one with a drifting salt so the verifier can be watched failing. It is not
+bootable and is not an image of anything: what it proves is that the verifiers
+read the offsets they claim to, and that the derivation the build will use and
+the derivation the verifier checks are the same function. It does not prove they
+agree with what `sgdisk`, `mke2fs` and `veritysetup` actually write, and it
+cannot until an image exists.
 
 The design is being written against a specific requirement: that building a new
 nullroute on any supported board is a repeatable, checkable operation, and that

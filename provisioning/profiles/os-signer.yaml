@@ -96,6 +96,10 @@ assertions:
     stage: image
     verify:
       - check: rebuild-identical
+        # Takes two artifacts. Given one it reports could-not-run rather than
+        # passing: a reproducibility check that "passed" having compared one
+        # file against nothing is the vacuous green this design exists to
+        # prevent. See make verify-image IMAGE=... COMPARE=...
     rationale: >
       Everything else here is conditional on this. A published hash that a third
       party cannot arrive at independently is a number, not a check.
@@ -113,6 +117,16 @@ assertions:
     stage: image
     verify:
       - check: identifiers-pinned
+        # WHICH partitions are pinned, and what filesystem each holds so the
+        # right superblock is read. WHAT the pinned value is comes from
+        # provisioning/checks/identifiers.mjs, derived from the release
+        # version. The state partition is absent on purpose: it is created on
+        # first boot and is deliberately not pinned.
+        params:
+          derive: true
+          partitions:
+            - { name: boot, filesystem: fat }
+            - { name: system, filesystem: ext }
     rationale: >
       Randomly generated identifiers are the most common single cause of an
       otherwise reproducible image failing to reproduce, and they are invisible

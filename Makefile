@@ -189,27 +189,68 @@ image: ## Build the hardened Raspberry Pi image. NOT IMPLEMENTED YET.
 	@echo '  them into a flashable image is still being designed, and this target'
 	@echo '  exists so that is a sentence rather than a missing file.'
 	@echo
-	@echo '  What DOES work today: make check, make verify, and make dev to run'
+	@echo '  What DOES exist is the CONTRACT that build has to satisfy, which is'
+	@echo '  the half that had to come first: a backend is supported when the'
+	@echo '  unchanged verifiers pass against its output, and verifiers written'
+	@echo '  afterwards would be written to agree with whatever it produced.'
+	@echo
+	@echo '    make profiles       what is asserted, and how much of it is checkable'
+	@echo '    make fixture-image  the image verifiers running, including a failure'
+	@echo '    make verify-image   point them at a real artifact, when there is one'
+	@echo
+	@echo '  What else works today: make check, make verify, and make dev to run'
 	@echo '  the daemon and the frontend on this machine.'
 	@exit 1
 
-verify-image: ## Check a built root filesystem against the provisioning profiles. ROOT=<dir>
-	# Takes a DIRECTORY, not an image: mounting an image needs root, and a
-	# verification tool that must run privileged is one people run less often.
-	# The build backend already has the assembled tree.
+verify-image: ## Check a built artifact against the provisioning profiles. ROOT=<dir> and/or IMAGE=<file>
+	# ROOT answers what is in the FILES: packages, paths, unit directives, the
+	# kernel command line. IMAGE answers what is in the BYTES between and
+	# underneath filesystems: the partition table, the verity superblock,
+	# filesystem identifiers. Neither can answer the other's questions.
+	#
+	# Neither is mounted. Mounting needs root, and a verification tool that
+	# must run privileged is one people run less often.
+	#
+	# COMPARE is a second image, for the reproducibility assertion. One image
+	# cannot demonstrate that two builds agree, and without it that assertion
+	# reports could-not-run rather than passing.
 	#
 	# An assertion whose verifiers are unwritten prints as "not checked" and is
 	# never counted as satisfied. The gap is the status of this work.
-	@test -n "$(ROOT)" || { \
-	  echo 'make verify-image: pass ROOT=<directory>, the assembled root filesystem.'; \
+	@test -n "$(ROOT)$(IMAGE)" || { \
+	  echo 'make verify-image: pass ROOT=<directory>, IMAGE=<file>, or both.'; \
 	  echo; \
-	  echo '  There is no image build system yet, so there is nothing on this'; \
-	  echo '  machine to point it at. The verifiers exist and are tested against'; \
-	  echo '  a fixture tree, so the day a backend produces a rootfs the only new'; \
-	  echo '  thing is the artifact.'; \
+	  echo '  There is no image build system yet, so there is nothing real on'; \
+	  echo '  this machine to point it at. To see the image verifiers run:'; \
+	  echo; \
+	  echo '    make fixture-image'; \
 	  exit 2; \
 	}
-	@node tools/verify-image.mjs --root "$(ROOT)"
+	@node tools/verify-image.mjs \
+	  $(if $(ROOT),--root "$(ROOT)") \
+	  $(if $(IMAGE),--image "$(IMAGE)") \
+	  $(if $(COMPARE),--compare "$(COMPARE)") \
+	  $(if $(RELEASE),--release "$(RELEASE)")
+
+fixture-image: ## Write a synthetic image and run the image verifiers against it
+	# Not a build. It writes the superblocks and the partition table at the
+	# offsets the published formats put them at, with this release's pinned
+	# identifiers, so the verifiers have something to run against before a
+	# backend exists. Flashing it produces a card that does nothing.
+	#
+	# It builds the image TWICE and then a third time with a drifting verity
+	# salt, because a verifier nobody has watched fail is a verifier nobody
+	# knows works. The third run is expected to fail and says so.
+	@mkdir -p .fixture
+	@node tools/make-fixture-image.mjs .fixture/a.img
+	@node tools/make-fixture-image.mjs .fixture/b.img
+	@node tools/verify-image.mjs --image .fixture/a.img --compare .fixture/b.img
+	@echo
+	@echo 'And now the upstream defect this exists to catch, on purpose:'
+	@node tools/make-fixture-image.mjs .fixture/drift.img --drift
+	@node tools/verify-image.mjs --image .fixture/drift.img --profile nullroute.os.verity \
+	  && { echo 'fixture-image: the drifting salt was NOT caught, which is a bug in the verifier.'; exit 1; } \
+	  || echo 'fixture-image: caught, which is the point.'
 
 no-dead-ends: ## No screen traps the user with no way out
 	# The device has no back button, no window to close and no keyboard. A

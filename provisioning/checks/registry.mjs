@@ -56,8 +56,19 @@ export const VERIFIERS = {
     describes: 'an assertion that concedes a weakness says what it does not cover',
   },
 
-  // --- Need a built image to inspect. Blocked on the build system. ---------
-  'rebuild-identical': { status: 'needs-image', describes: 'two clean builds are byte-identical' },
+  // --- Read a built image file. Implemented, and waiting for an image. -----
+  //
+  // These were `needs-image` and are not any more. The distinction that
+  // mattered was never "is there an image yet", it was "does the verifier
+  // exist": a backend is supported when the UNCHANGED verifiers pass against
+  // its output, so writing them AFTER the backend would mean writing them to
+  // agree with whatever it happened to produce. They read a file at an offset,
+  // which needs no mounting and no Linux, and they are exercised against a
+  // synthetic image today.
+  'rebuild-identical': {
+    status: 'implemented',
+    describes: 'two clean builds are byte-identical',
+  },
   // --- Read a root filesystem. Implemented, and take a directory. ----------
   // Whether a file is in a filesystem, what the package database says, what a
   // unit declares and what the bootloader is configured to pass are properties
@@ -86,9 +97,18 @@ export const VERIFIERS = {
     describes:
       'the bootloader is configured to pass exactly the pinned kernel command line, which is not the same as the line the kernel received',
   },
-  'identifiers-pinned': { status: 'needs-image', describes: 'package versions are pinned to a snapshot' },
-  'partition-present': { status: 'needs-image', describes: 'the partition layout matches' },
-  'verity-salt-pinned': { status: 'needs-image', describes: 'the dm-verity salt is pinned, not random' },
+  'identifiers-pinned': {
+    status: 'implemented',
+    describes: 'every GPT GUID, filesystem UUID and FAT volume id is the pinned one',
+  },
+  'partition-present': {
+    status: 'implemented',
+    describes: 'the partition layout matches',
+  },
+  'verity-salt-pinned': {
+    status: 'implemented',
+    describes: 'the dm-verity salt is pinned, not generated per build',
+  },
 
   // --- Need a running device. Reading these from an image lies. ------------
   'mount-options': { status: 'needs-device', describes: 'noexec and nosuid are actually enforced' },
@@ -116,6 +136,22 @@ export function implemented() {
  * point at. This project treats that kind of rounding in its own favour as a
  * bug, so the two counts are printed separately.
  */
+/**
+ * Verifiers that read an IMAGE FILE rather than a directory of files.
+ *
+ * A partition table, a verity superblock and a filesystem UUID are not files.
+ * They live in the bytes between and underneath filesystems, so a rootfs
+ * directory cannot answer any of them, and a verifier pointed at one has to say
+ * so rather than pass.
+ */
+export const NEEDS_IMAGE = new Set([
+  'partition-present',
+  'verity-salt-pinned',
+  'identifiers-pinned',
+  // And a SECOND image, which is why it reports could-not-run with one.
+  'rebuild-identical',
+])
+
 export const NEEDS_ROOTFS = new Set([
   'absent-packages',
   'absent-paths',

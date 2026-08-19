@@ -35,6 +35,7 @@ const require = createRequire(join(ROOT, 'packages/verify/package.json'))
 const { VERIFIERS, implemented, NEEDS_ROOTFS } = await import(
   join(ROOT, 'provisioning/checks/registry.mjs')
 )
+const { NEEDS_IMAGE } = await import(join(ROOT, 'provisioning/checks/registry.mjs'))
 const { profileSelfCheck, verifierIgnoresBackends, documentedWeakness } = await import(
   join(ROOT, 'provisioning/checks/meta.mjs')
 )
@@ -191,12 +192,14 @@ const built = implemented()
 // numbers and reporting only the first would claim four verifiers are checking
 // an image that does not exist yet.
 const needRootfs = built.filter((name) => NEEDS_ROOTFS.has(name))
-const runNow = built.length - needRootfs.length
+const needImage = built.filter((name) => NEEDS_IMAGE.has(name))
+const runNow = built.length - needRootfs.length - needImage.length
 console.log(
   `check-profiles: ${files.length} profile(s) valid, ` +
     `${invariantOwner.size} provisioning invariants declared, ` +
     `${String(built.length)} of ${declared} verifiers written ` +
     `(${String(runNow)} run on every commit, ` +
     `${String(needRootfs.length)} run against a root filesystem via "make verify-image ROOT=...", ` +
-    `${String(declared - built.length)} need a whole image or a booted device)`
+    `${String(needImage.length)} against an image via "make verify-image IMAGE=...", ` +
+    `${String(declared - built.length)} need a booted device)`
 )

@@ -34,7 +34,17 @@ export default tseslint.config(
         // projectService resolves each file to its owning tsconfig, which is
         // what makes composite project references work without enumerating them.
         projectService: {
-          allowDefaultProject: ['*.js', '*.mjs', 'eslint-rules/*.js', 'tools/*.mjs'],
+          allowDefaultProject: [
+            '*.js',
+            '*.mjs',
+            'eslint-rules/*.js',
+            'tools/*.mjs',
+            // The provisioning verifiers. Plain ESM rather than TypeScript
+            // because they are pointed at a build artifact by a build machine
+            // that has node and nothing else, and the typed tests that exercise
+            // them import from here.
+            'provisioning/checks/*.mjs',
+          ],
         },
         tsconfigRootDir: import.meta.dirname,
       },
