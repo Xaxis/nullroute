@@ -1627,6 +1627,46 @@ export function createHandler(state: DaemonState): IpcHandler {
       }
 
       /**
+       * Change the passphrase the open wallet is sealed under.
+       *
+       * WHAT IT CHANGES is what unlocks the file. The seed is untouched, so
+       * every address, xpub and descriptor stays what it was and the mnemonic
+       * still produces them. A BIP-39 passphrase is a different thing: it
+       * feeds the seed derivation, so changing one produces a different
+       * wallet. Nothing here can change that, and the screen says so, because
+       * confusing the two would be catastrophic and irreversible.
+       *
+       * THE OLD ONE IS STILL REQUIRED even though the wallet is open, for the
+       * reason renaming requires it: an open wallet is not proof that the
+       * person at the device is the one who opened it.
+       *
+       * The session is NOT relocked afterwards. The seed did not change, so
+       * relocking would be theatre that costs the user their place, and the
+       * next lock uses the new passphrase like any other.
+       */
+      case 'wallets.passphrase': {
+        const registry = requireRegistry()
+        const active = session.active
+        if (active === undefined) {
+          throw new Error('No stored wallet is open, so there is nothing to change.')
+        }
+
+        registry.changePassphrase(active.id, {
+          seed: session.requireSeed(),
+          network: session.network,
+          oldPassphrase: requireString(request, 'oldPassphrase'),
+          newPassphrase: requireString(request, 'newPassphrase'),
+          registrations: session.registrations,
+          // Carried through, for the reason renaming carries them: this
+          // reseals, and forgetting them would erase every cosigner name as a
+          // side effect of changing a passphrase.
+          cosigners: session.cosigners,
+        })
+
+        return { changed: true, active: activeWallet() }
+      }
+
+      /**
        * Erase the open wallet from this device.
        *
        * Only the open one. Erasing a wallet the user has not just proved they

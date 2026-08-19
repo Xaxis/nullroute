@@ -51,6 +51,18 @@ export interface ManageWalletScreenProps {
    */
   readonly labelVerified?: boolean
   readonly onRename: (label: string, colour: string, passphrase: string) => Promise<void>
+  /**
+   * Change the passphrase the wallet is sealed under.
+   *
+   * On a device with no secure element the passphrase is the entire physical
+   * defence, and until this existed there was no way to change one: somebody
+   * who thought theirs had been observed had to erase the wallet and restore
+   * from the mnemonic, which means typing twenty four words on a touchscreen
+   * and loses every registration and cosigner name sealed with it.
+   */
+  readonly onChangePassphrase?:
+    | ((oldPassphrase: string, newPassphrase: string) => Promise<void>)
+    | undefined
   readonly onDestroy: () => Promise<void>
   readonly onBack: () => void
   /** Back to the wallet, or the picker. Rendered in the header by Screen. */
@@ -60,16 +72,29 @@ export interface ManageWalletScreenProps {
   readonly banner?: ReactElement | null
 }
 
-type Mode = 'menu' | 'rename' | 'destroy'
+type Mode = 'menu' | 'rename' | 'passphrase' | 'destroy'
 
 export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement {
-  const { wallet, labelVerified = true, onRename, onDestroy, onBack, onHome, device, banner } = props
+  const {
+    wallet,
+    labelVerified = true,
+    onRename,
+    onChangePassphrase,
+    onDestroy,
+    onBack,
+    onHome,
+    device,
+    banner,
+  } = props
 
   const [mode, setMode] = useState<Mode>('menu')
   const [label, setLabel] = useState(labelVerified ? wallet.label : '')
   const [colour, setColour] = useState<string>(wallet.colour)
   const [passphrase, setPassphrase] = useState('')
   const [typed, setTyped] = useState('')
+  const [nextPassphrase, setNextPassphrase] = useState('')
+  const [confirmPassphrase, setConfirmPassphrase] = useState('')
+  const [changed, setChanged] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -86,6 +111,142 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
     } finally {
       setBusy(false)
     }
+  }
+
+  // --- Changing the passphrase ----------------------------------------------
+  if (mode === 'passphrase') {
+    const matches = nextPassphrase.length > 0 && nextPassphrase === confirmPassphrase
+    const same = nextPassphrase.length > 0 && nextPassphrase === passphrase
+    return (
+      <Screen
+        title="Change the passphrase"
+        subtitle="What unlocks the file. Not what derives your addresses."
+        banner={banner}
+        onHome={onHome}
+        device={device}
+        testId="manage-passphrase"
+        actions={
+          <>
+            <Button
+              onClick={() => {
+                setMode('menu')
+                setPassphrase('')
+                setNextPassphrase('')
+                setConfirmPassphrase('')
+                setError(null)
+              }}
+              testId="manage-passphrase-back"
+            >
+              Back
+            </Button>
+            <div className="nr-spacer" />
+            <Button
+              variant="primary"
+              disabled={
+                passphrase.length === 0 || !matches || same || busy || onChangePassphrase === undefined
+              }
+              onClick={() =>
+                void run(async () => {
+                  if (onChangePassphrase === undefined) return
+                  await onChangePassphrase(passphrase, nextPassphrase)
+                  setChanged(true)
+                  setMode('menu')
+                  setPassphrase('')
+                  setNextPassphrase('')
+                  setConfirmPassphrase('')
+                })
+              }
+              testId="manage-passphrase-submit"
+            >
+              {busy ? 'Changing' : 'Change it'}
+            </Button>
+          </>
+        }
+      >
+        {/* FIRST, above the fields, because the single most dangerous thing a
+            user can believe on this screen is that they are changing the
+            passphrase that derives their keys. They are not, that one cannot
+            be changed, and somebody who thought otherwise would conclude their
+            money had moved. */}
+        <div className="nr-banner nr-banner--testnet" data-testid="manage-passphrase-scope">
+          <strong>This does not change your addresses</strong>
+          <span>
+            It changes what unlocks the file on this card. The seed inside is untouched, so every
+            address, every xpub and every descriptor stays exactly what it was, and your mnemonic
+            still recovers them. A BIP-39 passphrase is a different thing: that one feeds the seed
+            itself, and nothing on this device can change it.
+          </span>
+        </div>
+
+        <div className="nr-field">
+          <span className="nr-field__label">The passphrase it has now</span>
+          <input
+            className="nr-input"
+            type="password"
+            value={passphrase}
+            spellCheck={false}
+            onChange={(e) => {
+              setPassphrase(e.target.value)
+            }}
+            data-testid="manage-passphrase-old"
+          />
+        </div>
+
+        <div className="nr-field">
+          <span className="nr-field__label">The new one</span>
+          <input
+            className="nr-input"
+            type="password"
+            value={nextPassphrase}
+            spellCheck={false}
+            onChange={(e) => {
+              setNextPassphrase(e.target.value)
+            }}
+            data-testid="manage-passphrase-new"
+          />
+        </div>
+
+        <div className="nr-field">
+          {/* Twice, because there is no recovery from a typo here that is not
+              "restore from your mnemonic and lose your registrations". */}
+          <span className="nr-field__label">The new one again</span>
+          <input
+            className="nr-input"
+            type="password"
+            value={confirmPassphrase}
+            spellCheck={false}
+            onChange={(e) => {
+              setConfirmPassphrase(e.target.value)
+            }}
+            data-testid="manage-passphrase-confirm"
+          />
+          {confirmPassphrase.length > 0 && !matches && (
+            <p className="nr-hint nr-warn" data-testid="manage-passphrase-mismatch">
+              These two do not match.
+            </p>
+          )}
+          {same && (
+            <p className="nr-hint nr-warn" data-testid="manage-passphrase-same">
+              That is the passphrase it already has.
+            </p>
+          )}
+        </div>
+
+        <p className="nr-note" data-testid="manage-passphrase-cost">
+          Write the new one down before you tap. Nothing on this device can recover it, and a
+          passphrase nobody remembers makes this wallet exactly as unreachable as one nobody stole.
+          Your mnemonic still restores the seed, and it does not restore the quorums registered
+          here or the names you gave the other cosigners.
+        </p>
+
+        {error !== null && (
+          <div className="nr-banner nr-banner--danger" data-testid="manage-passphrase-error">
+            <strong>Not changed</strong>
+            <span>{error}</span>
+          </div>
+        )}
+      </Screen>
+    )
   }
 
   // --- Renaming -------------------------------------------------------------
@@ -279,6 +440,16 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
         </p>
       )}
 
+      {changed && (
+        <div className="nr-banner nr-banner--ok" data-testid="manage-passphrase-done">
+          <strong>The passphrase is changed</strong>
+          <span>
+            This wallet opens under the new one from now on, including after a reboot. The old one
+            no longer works and nothing on this device remembers it.
+          </span>
+        </div>
+      )}
+
       <Button
         onClick={() => {
           setMode('rename')
@@ -288,6 +459,22 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
       >
         Name and colour
       </Button>
+
+      {onChangePassphrase !== undefined && (
+        <Button
+          onClick={() => {
+            setMode('passphrase')
+            setPassphrase('')
+            setNextPassphrase('')
+            setConfirmPassphrase('')
+            setChanged(false)
+            setError(null)
+          }}
+          testId="manage-choose-passphrase"
+        >
+          Change the passphrase
+        </Button>
+      )}
 
       {/* Separated from the button above by more than a gap. The two actions
           are one tap apart in the DOM and worlds apart in consequence. */}

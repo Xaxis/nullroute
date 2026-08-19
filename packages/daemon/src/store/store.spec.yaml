@@ -90,6 +90,22 @@ invariants:
       - packages/daemon/test/store.test.ts::refuses-a-truncated-store-file
       - packages/daemon/test/store.test.ts::uses-a-fresh-salt-and-nonce-every-time
 
+  - id: INV-STORE-6
+    statement: >
+      Changing the passphrase changes what opens the FILE and nothing else. The
+      seed, and therefore every address and the fingerprint, is identical
+      afterwards, the registrations and cosigner names survive the reseal, a
+      wrong old passphrase writes nothing and does not spend an attempt, and
+      setting it to what it already is is refused.
+    tests:
+      - packages/daemon/test/passphrase-change.ipc.test.ts::opens-under-the-new-passphrase-and-no-longer-under-the-old
+      - packages/daemon/test/passphrase-change.ipc.test.ts::leaves-the-seed-and-therefore-every-address-exactly-as-it-was
+      - packages/daemon/test/passphrase-change.ipc.test.ts::carries-the-registrations-and-cosigner-names-through
+      - packages/daemon/test/passphrase-change.ipc.test.ts::changes-nothing-at-all-when-the-old-passphrase-is-wrong
+      - packages/daemon/test/passphrase-change.ipc.test.ts::does-not-spend-the-attempts-that-erase-the-wallet
+      - packages/daemon/test/passphrase-change.ipc.test.ts::refuses-a-new-passphrase-identical-to-the-old-one
+      - packages/daemon/test/passphrase-change.ipc.test.ts::refuses-when-no-stored-wallet-is-open
+
   - id: INV-COSIGN-1
     statement: >
       A name given to another key in a quorum is the user's own, is stripped the
@@ -128,6 +144,26 @@ threats:
   - INV-STORE-3
 
 security_notes: >
+  CHANGING A PASSPHRASE IS NOT CHANGING A SEED, and the distinction is the
+  whole danger of the feature. A BIP-39 passphrase feeds the seed derivation,
+  so changing one produces a different wallet with different addresses; the
+  passphrase here encrypts the file, so changing it leaves every address
+  exactly where it was. Nothing on this device can change the first. A user who
+  confused them would go looking for money at addresses that do not exist and
+  conclude the device lost it, so the screen states the difference above the
+  fields rather than below them.
+
+  A REKEY THAT FAILS LEAVES THE OLD PASSPHRASE WORKING. The old one is verified
+  by opening the current blob before anything is written, and the write is the
+  same temp-file-and-rename every other write here uses, so a failure part way
+  through leaves a wallet openable under the old passphrase rather than under
+  neither.
+
+  IT DOES NOT COUNT A FAILED ATTEMPT. The ten-attempt counter that erases a
+  wallet exists to slow somebody guessing at a LOCKED device, and a caller here
+  already holds the decrypted seed. Making a typo in a feature for protecting a
+  wallet a step toward destroying it would be the wrong trade twice over.
+
   THE RETRY COUNTER IS NOT A DEFENCE AGAINST A STOLEN CARD, and there is a test
   named for that fact rather than a comment hoping someone reads it. The counter
   has to be legible before the passphrase is known, so it cannot be

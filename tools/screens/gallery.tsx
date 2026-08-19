@@ -671,6 +671,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       wallet={{ label: 'Cold storage, three of five', colour: 'teal' }}
       labelVerified={false}
       onRename={never}
+      onChangePassphrase={never}
       onDestroy={never}
       onBack={noop}
     />
@@ -695,7 +696,14 @@ const SCREENS: Record<string, () => React.ReactElement> = {
 const REACH: Record<string, readonly (readonly string[])[]> = {
   wallet: [['tab-export'], ['tab-verify'], ['tab-more']],
   backup: [['backup-choose-create'], ['backup-choose-restore']],
-  manage: [['manage-choose-rename'], ['manage-choose-destroy']],
+  manage: [
+    ['manage-choose-rename'],
+    ['manage-choose-destroy'],
+    // The tallest state on this screen: a banner about what it does not
+    // change, three password fields, and a paragraph about what cannot be
+    // recovered.
+    ['manage-choose-passphrase'],
+  ],
   quorum: [['quorum-branch-change']],
   // The disclosure adds a textarea to a screen already holding a full
   // keyboard, which is the tallest this screen ever gets.

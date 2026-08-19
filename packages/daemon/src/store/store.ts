@@ -353,6 +353,50 @@ export class WalletStore {
     this.#writeSealed(seed, network, passphrase, registrations, identity, cosigners)
   }
 
+  /**
+   * Re-seal under a DIFFERENT passphrase.
+   *
+   * Separate from `reseal` and `resealVerified`, which use one passphrase for
+   * both the check and the write. Here they differ, which is the entire point,
+   * and folding it into either by adding a parameter would make the one thing
+   * that must not be confused a matter of argument order.
+   *
+   * The old one is verified against the current blob FIRST, by opening it. A
+   * wrong one throws before anything is written, so a rejected change leaves
+   * the wallet exactly as it was rather than half rekeyed.
+   *
+   * Opened directly rather than through `unlock`, so the attempt counter is
+   * untouched on both paths. That counter exists to slow somebody guessing at a
+   * LOCKED device, and a caller here already holds the decrypted seed. Making a
+   * mistyped passphrase a step toward erasing the wallet would be adding a way
+   * to lose money to a feature for protecting it.
+   *
+   * WHAT IT DOES NOT CHANGE is the seed. Every address, xpub and descriptor
+   * stays what it was, and the mnemonic still produces them. A BIP-39
+   * passphrase is a different thing, feeding the seed derivation rather than
+   * the file encryption, and nothing here can change one.
+   */
+  rekey(
+    seed: Secret,
+    network: Network,
+    oldPassphrase: string,
+    newPassphrase: string,
+    registrations: readonly string[],
+    identity?: WalletIdentity,
+    cosigners: readonly CosignerLabel[] = []
+  ): void {
+    if (!this.exists()) {
+      throw new StoreError('There is no wallet here to change the passphrase of.')
+    }
+    if (newPassphrase === oldPassphrase) {
+      throw new StoreError('That is the passphrase it already has.')
+    }
+    open(this.#readEnvelope(), oldPassphrase).dispose()
+    // Write-then-rename, so a failure part way through leaves the wallet
+    // openable under the OLD passphrase rather than under neither.
+    this.#writeSealed(seed, network, newPassphrase, registrations, identity, cosigners)
+  }
+
   #writeSealed(
     seed: Secret,
     network: Network,

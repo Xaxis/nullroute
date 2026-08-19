@@ -972,6 +972,21 @@ invariants:
       - packages/ui/test/verify-message-screen.test.tsx::drops-a-result-when-a-field-is-edited-under-it
       - packages/ui/test/verify-message-screen.test.tsx::separates-a-check-that-could-not-run-from-one-that-failed
 
+  - id: INV-UI-87
+    statement: >
+      Changing a passphrase says first that it changes no address, refuses
+      until the new one is typed twice identically, refuses one identical to
+      the old, states what cannot be recovered before the change rather than
+      after, and reports a refusal rather than claiming the change went
+      through.
+    tests:
+      - packages/ui/test/manage-passphrase.test.tsx::says-first-that-this-does-not-change-any-address
+      - packages/ui/test/manage-passphrase.test.tsx::will-not-change-anything-until-the-new-one-is-typed-twice-the-same
+      - packages/ui/test/manage-passphrase.test.tsx::refuses-a-new-passphrase-identical-to-the-old-one
+      - packages/ui/test/manage-passphrase.test.tsx::says-what-cannot-be-recovered-before-the-change-happens
+      - packages/ui/test/manage-passphrase.test.tsx::reports-a-refusal-rather-than-claiming-it-changed
+      - packages/ui/test/manage-passphrase.test.tsx::confirms-the-change-rather-than-returning-silently
+
 threats:
   - INV-KEY-1
   - INV-BUILD-1

@@ -563,6 +563,68 @@ export class WalletRegistry {
   }
 
   /**
+   * Change the passphrase a wallet is sealed under.
+   *
+   * WHAT THIS CHANGES AND WHAT IT DOES NOT, because confusing the two would be
+   * catastrophic and irreversible. This changes what unlocks the FILE. The seed
+   * inside it is untouched, so every address, every xpub and every descriptor
+   * stays exactly what it was, and the mnemonic that produced them still
+   * produces them. A BIP-39 passphrase is a different thing entirely: it feeds
+   * the seed derivation, so changing one produces a different wallet. Nothing
+   * here can change that, and the screen says so.
+   *
+   * WHY IT EXISTS. On a device with no secure element the passphrase is the
+   * entire physical defence, and there was no way to change one. Somebody who
+   * thought theirs had been observed had to erase the wallet and restore from
+   * the mnemonic, which means typing twenty four words on a touchscreen and
+   * loses every registration and cosigner name sealed with it.
+   *
+   * THE OLD PASSPHRASE IS STILL REQUIRED even though the wallet is open, for
+   * the reason renaming requires it: an open wallet is not proof that the
+   * person at the device is the one who opened it.
+   *
+   * `resealVerified`, so a wrong old passphrase does not spend part of the ten
+   * attempt budget that erases the wallet. The counter exists to slow somebody
+   * guessing at a LOCKED device, and a caller holding the decrypted seed has
+   * already passed that gate. Making a mistyped passphrase here a step toward
+   * destroying the wallet would be adding a way to lose money to a feature for
+   * protecting it.
+   */
+  changePassphrase(
+    id: string,
+    options: {
+      readonly seed: Secret
+      readonly network: Network
+      readonly oldPassphrase: string
+      readonly newPassphrase: string
+      readonly registrations: readonly string[]
+      readonly cosigners?: readonly { readonly xpub: string; readonly label: string }[]
+    }
+  ): void {
+
+    // The label and colour come from the hint, which a passphrase change does
+    // not alter. The FINGERPRINT is recomputed from the seed rather than copied
+    // from the hint, the same way renaming does it: the hint is unauthenticated
+    // and the sealed identity is not, so copying an unauthenticated value into
+    // an authenticated one would launder it.
+    const hint = this.#readHint(id)
+
+    this.store(id).rekey(
+      options.seed,
+      options.network,
+      options.oldPassphrase,
+      options.newPassphrase,
+      options.registrations,
+      {
+        label: hint.label,
+        colour: hint.colour,
+        fingerprint: masterFingerprint(options.seed, options.network),
+      },
+      options.cosigners ?? []
+    )
+  }
+
+  /**
    * Erase a wallet and everything beside it.
    *
    * The blob first, so a failure part way through leaves a device with no seed

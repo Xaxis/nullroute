@@ -364,6 +364,27 @@ can hold thousands of entries about transactions this device has never seen, and
 none of them decides anything, so the encrypted wallet does not grow to carry
 them. Read the file again after a reboot.
 
+### Changing the passphrase
+
+Under **Name or erase this wallet**. It needs the passphrase it has now, and
+the new one typed twice.
+
+**This changes what unlocks the file, not what derives your addresses.** The
+seed inside is untouched, so every address, every xpub and every descriptor
+stays exactly what it was, and your mnemonic still recovers them. A BIP-39
+passphrase is a different thing: that one feeds the seed itself, and nothing on
+this device can change it. Confusing the two is the one way to leave this screen
+badly wrong, so the screen says it above the fields.
+
+Write the new one down before you tap. Nothing on this device can recover it,
+and a passphrase nobody remembers makes a wallet exactly as unreachable as one
+nobody stole. Your mnemonic still restores the seed, and it does not restore the
+quorums registered here or the names you gave the other cosigners.
+
+A wrong old passphrase changes nothing and does not count toward the ten
+attempts that erase the wallet. That counter is there to slow somebody guessing
+at a locked device, and you have already opened this one.
+
 ### Erasing a wallet
 
 Requires typing the wallet's name. A confirmation that is a second tap is not a

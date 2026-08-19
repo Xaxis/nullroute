@@ -1361,6 +1361,14 @@ export function App() {
         device={headerDevice}
         wallet={activeWallet}
         labelVerified={labelVerified}
+        onChangePassphrase={async (oldPassphrase: string, newPassphrase: string) => {
+          await call(transport, 'wallets.passphrase', { oldPassphrase, newPassphrase })
+          // The seed did not change, so nothing about the session is stale and
+          // the wallet stays open. Refreshed anyway rather than assumed: the
+          // one thing this screen must never do is report a change the daemon
+          // did not make.
+          await refresh()
+        }}
         onRename={async (label: string, colour: string, passphrase: string) => {
           const renamed = await call<{ active: { id: string; label: string; colour: string } }>(
             transport,
