@@ -723,6 +723,39 @@ invariants:
       - packages/ui/test/psbt-screen.test.tsx::points-an-unfinished-transaction-at-the-next-cosigner
       - packages/ui/test/psbt-screen.test.tsx::points-a-finished-transaction-back-at-the-machine-that-built-it
 
+  # --- The shell -------------------------------------------------------------
+  # The layer that keeps breaking in production while everything else passes.
+  # Screens are tested against their props, the daemon against its handler, and
+  # the thing in between decides which screen comes next and what to call with
+  # what arguments. It is where saving a wallet called a refused API for a while
+  # with every test in the repository green.
+  - id: INV-UI-64
+    statement: >
+      The shell reads the attestation before rendering anything, reports an
+      unreachable daemon as unreachable rather than as a device holding no
+      wallet, and starts a journey at its first step with the counter showing.
+    tests:
+      - packages/ui/test/app.test.tsx::reads-the-attestation-before-showing-anything
+      - packages/ui/test/app.test.tsx::says-when-the-daemon-is-unreachable-rather-than-showing-an-empty-device
+      - packages/ui/test/app.test.tsx::starts-a-journey-at-its-first-step-with-the-counter-showing
+
+  - id: INV-UI-65
+    statement: >
+      The step counter advances with the flow and stops entirely once the user
+      leaves the journey's path, rather than describing a position they are not
+      in, and the hub can always be skipped into the device.
+    tests:
+      - packages/ui/test/app.test.tsx::advances-the-counter-and-sets-the-network-on-the-way
+      - packages/ui/test/app.test.tsx::stops-counting-when-the-user-leaves-the-path
+      - packages/ui/test/app.test.tsx::lets-the-hub-be-skipped-into-the-device
+
+  - id: INV-UI-66
+    statement: >
+      Saving a newly created wallet goes through the multi-wallet API and never
+      through the single-store API the daemon refuses.
+    tests:
+      - packages/ui/test/app.test.tsx::saves-a-new-wallet-through-the-multi-wallet-api
+
 threats:
   - INV-KEY-1
   - INV-BUILD-1
