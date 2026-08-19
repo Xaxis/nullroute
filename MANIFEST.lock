@@ -185,7 +185,7 @@ b63e1bad0c0ee7ed326483793a945224341ee54a6fdcb228ff761ca83594e117  packages/ui/te
 68308169c93ab025a868f93d6715eb9ee047180de7f51c11670c29211f394af1  packages/ui/test/device-name-screen.test.tsx
 d39a69f6d70a40edc26085594ee2b5b3c51b8ce456e7d1f66b2aab475262b801  packages/ui/test/dice-screen.test.tsx
 3fd735d11d165de3ba3d4b386bdcb9aef28f85f8b6353c401f19134ea47bf1de  packages/ui/test/finish-screen.test.tsx
-a00b693b2bde9338246daf8f0820486015731620de174be818fdef83ee7c93d8  packages/ui/test/fleet-screen.test.tsx
+48ec7edba6fd89fa27813b107d02d095c9c8f4b7626f5ec08cd316db0f027330  packages/ui/test/fleet-screen.test.tsx
 16e1336ac2a08cdffb67e4eb8c42ce942f7e02f7421217be2759fbd9b1a205a4  packages/ui/test/keyboard.test.tsx
 b4ebe2936f4f1f5d17ac9f7cbf7f74d9c1f86f6492650ff8f3e5047c72221454  packages/ui/test/labels-screen.test.tsx
 3f6888c2838dd1d25324e0268f5aa132450f428809993be2d3c71b81f3a13371  packages/ui/test/lock-screen.test.tsx

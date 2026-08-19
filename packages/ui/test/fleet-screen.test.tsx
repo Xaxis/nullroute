@@ -132,7 +132,7 @@ describe('FleetScreen', () => {
  * this device calls change.
  */
 describe('FleetScreen forgetting', () => {
-  async function reachConfirm() {
+  function reachConfirm() {
     const onForget = vi.fn().mockResolvedValue(undefined)
     render(<FleetScreen quorums={[quorum()]} onForget={onForget} onBack={vi.fn()} />)
     fireEvent.click(screen.getByTestId('fleet-forget-start'))
@@ -144,7 +144,7 @@ describe('FleetScreen forgetting', () => {
    * inch panel the second tap lands where the first one did.
    */
   it('will-not-forget-on-a-tap', async () => {
-    const onForget = await reachConfirm()
+    const onForget = reachConfirm()
 
     expect(screen.getByTestId<HTMLButtonElement>('fleet-forget-submit').disabled).toBe(true)
     fireEvent.change(screen.getByTestId('fleet-forget-confirm'), { target: { value: 'q35wkfm' } })
@@ -163,8 +163,8 @@ describe('FleetScreen forgetting', () => {
    * assume. A registration is not a key, so nothing here loses money: what is
    * lost is the device recognising that quorum's change as its own.
    */
-  it('says-what-forgetting-costs-and-what-it-does-not', async () => {
-    await reachConfirm()
+  it('says-what-forgetting-costs-and-what-it-does-not', () => {
+    reachConfirm()
     const said = screen.getByTestId('fleet-forget-cost').textContent
     expect(said).toContain('does not lose any money')
     expect(said).toContain('A registration is not a key')
