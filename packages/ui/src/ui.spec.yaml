@@ -60,6 +60,7 @@ covers:
   - packages/ui/src/screens/ReceiveScreen.tsx::chunkAddress
   - packages/ui/src/components/Steps.tsx::Steps
   - packages/ui/src/components/IdleBanner.tsx::IdleBanner
+  - packages/ui/src/screens/VerifyMessageScreen.tsx::VerifyMessageScreen
   - packages/ui/src/lib/idle.ts::useIdleLock
   - packages/ui/src/journeys.ts::JOURNEYS
   - packages/ui/src/journeys.ts::journeyById
@@ -957,6 +958,19 @@ invariants:
       - packages/ui/test/idle-banner.test.tsx::announces-itself-rather-than-only-appearing
       - packages/ui/test/idle-banner.test.tsx::offers-a-way-to-stay-open-without-losing-the-screen
       - packages/ui/test/idle-banner.test.tsx::stays-small-enough-for-a-header-that-is-already-full
+
+  - id: INV-UI-86
+    statement: >
+      A verified proof says what it does not prove as well as what it does, a
+      failure points at the message before the other party, a scan fills every
+      field, a result is dropped when a field changes under it, and a check
+      that could not run is distinguished from one that failed.
+    tests:
+      - packages/ui/test/verify-message-screen.test.tsx::says-what-a-pass-does-not-prove
+      - packages/ui/test/verify-message-screen.test.tsx::points-at-the-message-before-the-other-party
+      - packages/ui/test/verify-message-screen.test.tsx::fills-every-field-from-one-scanned-proof
+      - packages/ui/test/verify-message-screen.test.tsx::drops-a-result-when-a-field-is-edited-under-it
+      - packages/ui/test/verify-message-screen.test.tsx::separates-a-check-that-could-not-run-from-one-that-failed
 
 threats:
   - INV-KEY-1

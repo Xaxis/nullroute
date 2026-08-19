@@ -270,7 +270,8 @@ Reached from **More** on the wallet screen.
 | --- | --- |
 | Switch wallet | Open a different wallet on this device. Locks this one first |
 | Check this device | The manifest root and the verification checks, after unlocking |
-| Prove an address | BIP-322 message signing, for segwit addresses |
+| Prove an address | Sign a message with one of your addresses |
+| Check a proof | Verify somebody else's address and signature |
 | Backup | Encrypted backup and restore |
 | Labels | BIP-329 label files in and out |
 | Name or erase this wallet | Rename, recolour, or remove the seed |
@@ -290,6 +291,44 @@ a wallet.
 
 Restoring shows what the file claims about itself before asking for a
 passphrase, and says that everything shown at that point is unverified.
+
+### Proving an address, and checking a proof
+
+**Proving.** Sign a message with one of your addresses to show somebody it is
+yours. Segwit, nested segwit and taproot produce a BIP-322 signature. A legacy
+address produces a signmessage signature instead, which is a different scheme
+committing to different bytes, and the screen says so where you pick the type.
+Almost everything accepts both, including Bitcoin Core.
+
+What leaves is an address, a message and a signature together. A signature
+without the address it is about proves nothing.
+
+**Read the message before you sign it.** A signature is a proof that you agreed
+to a specific string. If somebody else chose that string, and it means something
+elsewhere, you have authorised it. The device shows the message in full and
+refuses one containing characters that could make it display differently from
+what would be signed.
+
+**Checking.** Paste or scan an address, a message and a signature, and the device
+says whether they go together. This needs no key and no wallet open, so it is on
+the wallet picker as well as behind an unlocked wallet: checking a stranger's
+signature should not cost you the passphrase to your money.
+
+A pass means whoever produced that signature held the key for that address, and
+agreed to exactly those bytes. It does not say when they held it, that the
+address holds anything, or that the person who handed it to you is the person
+who made it. A valid signature is evidence about a key, not about a human.
+
+A failure is usually the message rather than the signature. A trailing space, a
+missing line break, or a smart quote where a straight one was signed all produce
+one. Compare the message character for character before concluding anything.
+
+Scanning an armoured block, the `-----BEGIN BITCOIN SIGNED MESSAGE-----` format
+Electrum writes, fills all three fields at once.
+
+**What is not supported.** The BIP-322 full variant, which is what a multisig
+quorum would produce. It is refused by name rather than approximated, because a
+proof some verifiers accept and others reject is worse than no proof.
 
 ### Locking itself
 

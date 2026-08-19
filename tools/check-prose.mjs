@@ -64,8 +64,18 @@ const RULES = [
     // U+FE0F (variation selector) is a combining mark, so listing it in a
     // character class alongside base emoji is flagged as misleading. It is
     // intentional: a bare variation selector in prose is itself a defect.
-    // eslint-disable-next-line no-misleading-character-class
-    test: (line) => line.search(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/u),
+    //
+    // Escaped forms are checked too. A tick written as an escape in a TSX file // prose-check-ignore
+    // renders as a tick on the panel, and a guard that only saw the literal
+    // would pass the one form somebody reaches for precisely because it looks
+    // like code rather than like a glyph. That happened.
+    test: (line) => {
+      // eslint-disable-next-line no-misleading-character-class
+      const literal = line.search(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/u) // prose-check-ignore
+      if (literal !== -1) return literal
+      const escaped = /\\u\{?(1F[0-9A-Fa-f]{3}|2[6-7][0-9A-Fa-f]{2}|FE0F)\}?/.exec(line)
+      return escaped === null ? -1 : escaped.index
+    },
   },
   {
     id: 'overclaim',

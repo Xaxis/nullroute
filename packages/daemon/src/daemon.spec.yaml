@@ -99,6 +99,19 @@ invariants:
       - packages/daemon/test/phase4.ipc.test.ts::refuses-to-sign-a-message-the-review-refuses
       - packages/daemon/test/phase4.ipc.test.ts::refuses-to-sign-with-no-wallet-loaded
 
+  - id: INV-DAEMON-23
+    statement: >
+      The signing scheme is chosen from the script type and the verifying
+      scheme from the address, never from a parameter, so no request can ask
+      for one and receive the other. Verification needs no seed and works with
+      the wallet locked, and a refusal crosses the boundary as a result rather
+      than as a failed request.
+    tests:
+      - packages/daemon/test/phase4.ipc.test.ts::signs-taproot-and-checks-its-own-proof
+      - packages/daemon/test/phase4.ipc.test.ts::routes-a-legacy-address-to-the-older-scheme-and-says-so
+      - packages/daemon/test/phase4.ipc.test.ts::checks-a-proof-with-no-wallet-loaded-at-all
+      - packages/daemon/test/phase4.ipc.test.ts::returns-a-refusal-rather-than-failing-the-request
+
   - id: INV-DAEMON-21
     statement: >
       Labels cross the boundary as text, with the dropped lines reported and a

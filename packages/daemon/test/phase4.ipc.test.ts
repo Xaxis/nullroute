@@ -292,3 +292,95 @@ describe('labels on the review screen', () => {
     expect(session.labels).toHaveLength(0)
   })
 })
+
+/**
+ * Tests for the message boundary after taproot, legacy and verification.
+ *
+ * The schemes are tested in core against independent digests. What is checked
+ * here is that the RIGHT ONE is used: the daemon routes by script type and by
+ * address, never by a flag a caller passes, so there is no request that asks
+ * for one scheme and receives the other.
+ */
+describe('message.verify and scheme routing', () => {
+  it('signs-taproot-and-checks-its-own-proof', async () => {
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+    const signed = (await call('message.sign', {
+      message: 'Hello World',
+      scriptType: 'p2tr',
+      path: "m/86'/0'/0'/0/0",
+    })) as { address: string; signature: string; scheme: string }
+
+    expect(signed.scheme).toBe('bip322')
+    expect(signed.address.startsWith('bc1p')).toBe(true)
+
+    expect(
+      await call('message.verify', {
+        address: signed.address,
+        message: 'Hello World',
+        signature: signed.signature,
+      })
+    ).toEqual({ valid: true, scriptType: 'p2tr' })
+  })
+
+  /**
+   * INV-MSG-12. A legacy address gets the older scheme, and the response says
+   * which one it used. Somebody asked for "a BIP-322 signature" who hands over
+   * a signmessage one will be told it is invalid, so the device has to say.
+   */
+  it('routes-a-legacy-address-to-the-older-scheme-and-says-so', async () => {
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+    const signed = (await call('message.sign', {
+      message: 'Hello World',
+      scriptType: 'p2pkh',
+      path: "m/44'/0'/0'/0/0",
+    })) as { address: string; signature: string; scheme: string }
+
+    expect(signed.scheme).toBe('signmessage')
+    expect(signed.address.startsWith('1')).toBe(true)
+
+    // And the verifier picks the same scheme from the address alone.
+    expect(
+      await call('message.verify', {
+        address: signed.address,
+        message: 'Hello World',
+        signature: signed.signature,
+      })
+    ).toEqual({ valid: true, scriptType: 'p2pkh' })
+  })
+
+  /**
+   * INV-MSG-10. Verification is a public computation and must not need a seed.
+   * Requiring a passphrase to check a stranger's signature would be asking for
+   * the most dangerous thing somebody owns in exchange for arithmetic.
+   */
+  it('checks-a-proof-with-no-wallet-loaded-at-all', async () => {
+    // Signed first, then locked, so the proof is real rather than a fixture.
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+    const signed = (await call('message.sign', {
+      message: 'Hello World',
+      scriptType: 'p2wpkh',
+      path: "m/84'/0'/0'/0/0",
+    })) as { address: string; signature: string }
+    session.lock()
+    expect(session.hasWallet).toBe(false)
+
+    expect(
+      await call('message.verify', {
+        address: signed.address,
+        message: 'Hello World',
+        signature: signed.signature,
+      })
+    ).toEqual({ valid: true, scriptType: 'p2wpkh' })
+  })
+
+  /** INV-MSG-10. A refusal crosses the boundary as a result, not as a throw. */
+  it('returns-a-refusal-rather-than-failing-the-request', async () => {
+    const refused = (await call('message.verify', {
+      address: 'bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l',
+      message: 'Hello World',
+      signature: 'bm90IGEgc2lnbmF0dXJl',
+    })) as { valid: boolean; reason: string }
+    expect(refused.valid).toBe(false)
+    expect(typeof refused.reason).toBe('string')
+  })
+})

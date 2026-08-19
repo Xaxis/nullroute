@@ -60,6 +60,15 @@ export interface WalletsScreenProps {
    */
   readonly onNameDevice?: () => void
   /**
+   * Check a proof, from the picker, with nothing open.
+   *
+   * Here rather than only behind an unlocked wallet, because verification uses
+   * no key. Somebody handed an address and a signature over a coffee should not
+   * have to type the passphrase to the most dangerous thing they own in order
+   * to do arithmetic on a stranger's message.
+   */
+  readonly onCheckProof?: () => void
+  /**
    * Why this list may be wrong or incomplete.
    *
    * Shown ABOVE the rows, because a list that failed to load renders as an
@@ -91,6 +100,7 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
     onForget,
     onCancel,
     onNameDevice,
+    onCheckProof,
     failure,
     steps,
     onHome,
@@ -345,6 +355,15 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
           </p>
         )}
       </div>
+
+      {/* In the body rather than the action bar, which already holds three
+          controls on an 800px panel. This is an occasional thing somebody
+          comes here to do, not a step in opening a wallet. */}
+      {onCheckProof !== undefined && (
+        <Button onClick={onCheckProof} testId="wallets-check-proof">
+          Check somebody&rsquo;s proof
+        </Button>
+      )}
     </Screen>
   )
 }

@@ -39,6 +39,13 @@ export type { ReceiveScreenProps, ReceiveAddress } from './screens/ReceiveScreen
 export type { FinishScreenProps } from './screens/FinishScreen.js'
 export type { StartScreenProps } from './screens/StartScreen.js'
 
+export { VerifyMessageScreen } from './screens/VerifyMessageScreen.js'
+export type {
+  VerifyMessageScreenProps,
+  VerificationView,
+  ScannedProof,
+} from './screens/VerifyMessageScreen.js'
+
 export { IdleBanner } from './components/IdleBanner.js'
 export type { IdleBannerProps } from './components/IdleBanner.js'
 

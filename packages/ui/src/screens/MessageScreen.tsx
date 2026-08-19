@@ -44,10 +44,21 @@ export interface MessageSignatureView {
   readonly path: string
 }
 
-/** Script types this device can sign a message for. */
+/**
+ * Script types this device can sign a message for.
+ *
+ * Taproot and legacy are here now and were not before. Legacy is marked,
+ * because it is not BIP-322: it is the older signmessage scheme, committing to
+ * different bytes, and a person handing the result to somebody who asked for a
+ * BIP-322 proof should know which one they are holding. The device picks the
+ * scheme from the address type rather than offering it as a choice, so the note
+ * is information rather than a decision.
+ */
 export const MESSAGE_SCRIPT_TYPES = [
   { id: 'p2wpkh', label: 'Native segwit', note: 'bc1q. The default.' },
+  { id: 'p2tr', label: 'Taproot', note: 'bc1p. BIP-322, Schnorr.' },
   { id: 'p2sh-p2wpkh', label: 'Nested segwit', note: 'Starts with 3.' },
+  { id: 'p2pkh', label: 'Legacy', note: 'Starts with 1. Older scheme, not BIP-322.' },
 ] as const
 
 export interface MessageScreenProps {
@@ -76,7 +87,21 @@ export function MessageScreen(props: MessageScreenProps): ReactElement {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const path = `m/${scriptType === 'p2wpkh' ? '84' : '49'}'/0'/0'/0/${String(index)}`
+  /**
+   * The account purpose each script type derives under.
+   *
+   * A table rather than a ternary, because there are four now and a chain of
+   * conditionals is where the wrong one gets returned. Signing under the wrong
+   * purpose produces a proof for an address the user does not recognise as
+   * theirs, which reads as the device being broken.
+   */
+  const PURPOSE: Record<string, string> = {
+    p2pkh: '44',
+    'p2sh-p2wpkh': '49',
+    p2wpkh: '84',
+    p2tr: '86',
+  }
+  const path = `m/${PURPOSE[scriptType] ?? '84'}'/0'/0'/0/${String(index)}`
 
   const doReview = useCallback(async (): Promise<void> => {
     setBusy(true)
@@ -305,6 +330,19 @@ export function MessageScreen(props: MessageScreenProps): ReactElement {
               The commitment is what a verifier recomputes from the message. It does not depend on
               your keys, so you can check it against whatever asked you to sign.
             </p>
+
+            {/* Said where the choice is made, not only in a document. Somebody
+                who was asked for "a BIP-322 signature" and hands over a
+                signmessage one will be told it is invalid, and will have no way
+                to know why from anything on this screen otherwise. */}
+            {scriptType === 'p2pkh' && (
+              <p className="nr-note" data-testid="message-legacy-scheme">
+                A legacy address uses the older signmessage scheme rather than BIP-322. It commits
+                to different bytes and produces a different signature, and almost everything
+                accepts it, including Bitcoin Core. If you were asked specifically for a BIP-322
+                proof, use one of the other address types instead.
+              </p>
+            )}
           </div>
         </>
       )}

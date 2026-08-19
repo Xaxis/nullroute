@@ -37,6 +37,7 @@ import {
   ManageWalletScreen,
   MessageScreen,
   MultisigScreen,
+  VerifyMessageScreen,
   StartScreen,
   AttestationScreen,
   DeviceNameScreen,
@@ -110,6 +111,13 @@ const CROWDED_HEADER = (
     <NetworkBanner network={{ id: 'testnet3', label: 'Testnet', isMainnet: false }} />
   </>
 )
+
+/** A whole proof, as one scan of an armoured block delivers it. */
+const SCANNED_PROOF = {
+  address: 'bc1ppv609nr0vr25u07u95waq5lucwfm6tde4nydujnu8npg4q75mr5sxq8lt3',
+  message: 'I control this address as of 2026-08-19.',
+  signature: 'AUDjpClYFHngjnqQ3F0/3dyrLsOHFNEm4rKaaAc9GsfhC5+DngPJmXTeAmz+yfsVRa61PD2k9/CEQnLDvNUn9Qug',
+}
 
 const REVIEW = {
   // False, because a blocking warning is present. core defines signable as
@@ -520,6 +528,32 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     />
   ),
   child: () => <ChildSeedScreen device={DEVICE} onHome={noop} onDerive={never} onBack={noop} />,
+  // Checking somebody else's proof. Measured empty, which is the state with a
+  // full keyboard and three tabs and nothing else, and after a pass and a
+  // failure, which are the two states that add a banner above all of it.
+  'verify-message': () => (
+    <VerifyMessageScreen device={DEVICE} onHome={noop} onScan={noop}
+      // A whole proof from one scan, which is how somebody actually arrives
+      // here: the check button is live and the fields are full.
+      scannedProof={SCANNED_PROOF}
+      onVerify={async () => Promise.resolve({ valid: true, scriptType: 'p2tr' })}
+      onBack={noop}
+    />
+  ),
+  'verify-message-failed': () => (
+    <VerifyMessageScreen device={DEVICE} onHome={noop} onScan={noop}
+      scannedProof={SCANNED_PROOF}
+      onVerify={async () =>
+        Promise.resolve({
+          valid: false,
+          scriptType: 'p2wpkh',
+          reason:
+            'That signature is by a key that does not produce this address, so it proves control of something else.',
+        })
+      }
+      onBack={noop}
+    />
+  ),
   start: () => <StartScreen device={DEVICE} walletOpen={false} onBegin={noop} onSkip={noop} />,
   assemble: () => (
     <AssembleQuorumScreen
@@ -678,6 +712,10 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   // Imported, which is where the rows, the dropped-line banner and the caveat
   // about labels going at the next lock all appear at once.
   labels: [['labels-import']],
+  // Filling each field, and then the result, which is a banner above a screen
+  // that already holds a keyboard.
+  'verify-message': [['verify-tab-message'], ['verify-run']],
+  'verify-message-failed': [['verify-run']],
   // The reviewed quorum, which is where cosigner names appear.
   multisig: [['multisig-review']],
   // Verified, which adds a paragraph under a screen that already holds a QR

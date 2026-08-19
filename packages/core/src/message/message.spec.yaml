@@ -21,6 +21,12 @@ covers:
   - packages/core/src/message/sign.ts::toSpendTxidForBuilder
   - packages/core/src/message/sign.ts::signMessage
   - packages/core/src/message/sign.ts::signMessageWithKey
+  - packages/core/src/message/verify.ts::verifyMessage
+  - packages/core/src/message/legacy.ts::legacyMessageHash
+  - packages/core/src/message/legacy.ts::signLegacyMessage
+  - packages/core/src/message/legacy.ts::signLegacyMessageWithKey
+  - packages/core/src/message/legacy.ts::verifyLegacyMessage
+  - packages/core/src/message/armor.ts::parseSignedMessageBlock
 
 algorithm: >
   The commitment is the BIP-340 style tagged hash under "BIP0322-signed-message":
@@ -115,6 +121,77 @@ invariants:
       - packages/core/test/message.sign.test.ts::commits-to-the-address-as-well-as-the-message
       - packages/core/test/message.sign.test.ts::is-deterministic
 
+  - id: INV-MSG-8
+    statement: >
+      A taproot proof uses the BIP-341 sighash, SIGHASH_DEFAULT, and the
+      TWEAKED key the address commits to, verifies against a digest this module
+      did not compute, and is byte-identical every time.
+    tests:
+      - packages/core/test/message.sign.test.ts::produces-the-published-taproot-address-for-the-vector-key
+      - packages/core/test/message.sign.test.ts::produces-a-taproot-signature-that-verifies-against-an-independent-sighash
+      - packages/core/test/message.sign.test.ts::signs-a-taproot-message-identically-every-time
+
+  - id: INV-MSG-9
+    statement: >
+      Every proof this device produces, it can also check, including one built
+      outside this module, and a signature by a key that does not produce the
+      address is refused however valid the signature itself is.
+    tests:
+      - packages/core/test/message.verify.test.ts::accepts-every-kind-of-proof-this-device-produces
+      - packages/core/test/message.verify.test.ts::accepts-a-taproot-proof-built-outside-this-module
+      - packages/core/test/message.verify.test.ts::refuses-a-valid-signature-by-a-key-that-is-not-this-address
+      - packages/core/test/message.verify.test.ts::refuses-a-proof-of-a-message-that-is-not-the-one-shown
+
+  - id: INV-MSG-10
+    statement: >
+      Verification fails closed on every path, never throws whatever arrives,
+      and names the cause in terms a user can act on rather than reporting a
+      corrupt file.
+    tests:
+      - packages/core/test/message.verify.test.ts::returns-a-refusal-rather-than-throwing-on-anything
+      - packages/core/test/message.verify.test.ts::names-the-scheme-rather-than-calling-a-legacy-address-broken
+      - packages/core/test/message.verify.test.ts::says-which-network-when-the-address-is-for-the-other-one
+
+  - id: INV-MSG-11
+    statement: >
+      The legacy signmessage scheme commits to the bytes an independent
+      implementation hashes, writes a header saying the key was compressed, and
+      is deterministic.
+    tests:
+      - packages/core/test/message.legacy.test.ts::commits-to-the-same-bytes-an-independent-implementation-does
+      - packages/core/test/message.legacy.test.ts::round-trips-a-signature-it-made
+      - packages/core/test/message.legacy.test.ts::writes-a-header-that-says-the-key-was-compressed
+      - packages/core/test/message.legacy.test.ts::signs-the-same-message-identically-every-time
+
+  - id: INV-MSG-12
+    statement: >
+      A recovered key proves nothing until it is checked against the address,
+      and the two schemes are never interchangeable for each other.
+    tests:
+      - packages/core/test/message.legacy.test.ts::refuses-a-real-signature-offered-against-another-address
+      - packages/core/test/message.legacy.test.ts::refuses-a-proof-of-a-different-message
+      - packages/core/test/message.legacy.test.ts::returns-a-refusal-rather-than-throwing-on-anything
+      - packages/core/test/message.legacy.test.ts::is-not-interchangeable-with-a-bip322-proof
+
+  - id: INV-MSG-13
+    statement: >
+      An armoured block yields the message byte for byte, including leading and
+      trailing whitespace, every line, and with no carriage return a signer
+      never signed.
+    tests:
+      - packages/core/test/message.armor.test.ts::reads-the-address-the-message-and-the-signature
+      - packages/core/test/message.armor.test.ts::keeps-the-message-byte-for-byte-including-whitespace
+      - packages/core/test/message.armor.test.ts::keeps-every-line-of-a-multi-line-message
+      - packages/core/test/message.armor.test.ts::strips-carriage-returns-that-no-signer-signed
+      - packages/core/test/message.armor.test.ts::rejoins-a-signature-wrapped-across-lines
+
+  - id: INV-MSG-14
+    statement: >
+      Text that is not an armoured block yields nothing rather than throwing,
+      because a field holding a bare signature is the ordinary case.
+    tests:
+      - packages/core/test/message.armor.test.ts::returns-nothing-rather-than-throwing-on-anything-else
+
 threats:
   - INV-SIG-1
 
@@ -139,6 +216,47 @@ security_notes: >
   agreement. Hence the length bound, which is a reading limit rather than a
   protocol one, and the refusal of an empty message, which commits to nothing
   and whose meaning is supplied entirely by whoever asked for it.
+
+  TAPROOT IS A DIFFERENT SIGNATURE, not a different encoding of the same one:
+  BIP-341 sighash rather than BIP-143, Schnorr rather than ECDSA, the TWEAKED
+  key rather than the derived one, and a witness of one element rather than
+  two. Each is a place to be quietly wrong, and every one of them produces a
+  well formed, deterministic signature that every verifier rejects. Nothing
+  about the output looks incorrect on this device, which is why INV-MSG-8
+  checks against a digest computed by another library rather than against a
+  round trip. `aux_rand` is 32 zero bytes, as INV-SIG-2 requires.
+
+  THE LEGACY SCHEME IS NOT AN OLDER ENCODING and must never be reachable by
+  accident. It commits to a magic string and the message, with no transaction
+  anywhere, so a signature under one scheme means nothing under the other. It
+  lives in its own module, the IPC layer routes to it by script type rather
+  than by a flag a caller passes, and the BIP-322 verifier names a legacy
+  address rather than falling through to it.
+
+  RECOVERY ALWAYS PRODUCES A KEY, which is the trap in the legacy scheme. A
+  signature over any bytes at all recovers some valid public key, so "the
+  signature verifies" means nothing on its own. What proves something is that
+  the recovered key hashes to the address being claimed, and INV-MSG-12 is that
+  check. A verifier that skipped it would accept a proof from anybody.
+
+  VERIFYING NEEDS NO KEY AND NO NETWORK, which is why it is on this device at
+  all and why it is reachable with the wallet locked. The question "is this
+  address really theirs" arrives exactly where an air-gapped device is useful
+  and a networked one is not. Requiring a passphrase to perform a public
+  computation would be asking for the most dangerous thing a user owns in
+  exchange for arithmetic.
+
+  A VALID SIGNATURE IS EVIDENCE ABOUT A KEY, NOT ABOUT A HUMAN. It says whoever
+  produced it held the key and agreed to those bytes. It does not say when, it
+  does not say the address holds money, and it does not say the person handing
+  it over is the person who made it. The screen says so beside every pass,
+  because a green tick that a user reads as "this person is who they say" is a
+  worse outcome than no check at all.
+
+  THE FULL VARIANT IS NOT IMPLEMENTED, and that is a refusal rather than a gap
+  to be filled quietly. It is what a multisig quorum would produce, and a
+  partial implementation would emit proofs that some verifiers accept and
+  others reject. Refused by name.
 
   INV-MSG-2 IS THE SHARP EDGE. The signature commits to bytes and the user
   agrees to pixels. A bidi override reverses rendered order and zero-width

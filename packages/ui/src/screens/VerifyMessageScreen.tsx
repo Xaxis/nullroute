@@ -1,0 +1,241 @@
+import { type ReactElement, useCallback, useEffect, useState } from 'react'
+import { Screen } from '../components/Screen.js'
+import { Button } from '../components/Button.js'
+import { TextKeyboard } from '../components/TextKeyboard.js'
+
+/**
+ * Checking somebody else's proof that they control an address.
+ *
+ * Spec: ui.screens.verify-message
+ *
+ * WHY THIS BELONGS ON AN AIR-GAPPED SIGNER. The device could sign proofs and
+ * never check one, which is what it did. But the question "is this address
+ * really theirs" arrives exactly where this device is useful and nothing else
+ * is: an exchange or a counterparty hands over an address and a signature, and
+ * the machine you would otherwise check it on is the networked one you do not
+ * trust with the answer. Verification needs no key and no network.
+ *
+ * REACHABLE WITH THE WALLET LOCKED, on purpose. This is a public computation.
+ * Making somebody type a passphrase to check a stranger's signature would be
+ * asking for the most dangerous thing they own in exchange for arithmetic.
+ *
+ * WHAT A PASS MEANS, and the screen says it rather than leaving it implied:
+ * whoever produced this signature held the key for this address, and agreed to
+ * exactly these bytes. It does not say when, it does not say the address holds
+ * money, and it does not say the person who handed it over is the person who
+ * made it. A valid signature is evidence about a key, not about a human.
+ *
+ * A FAILURE IS NOT AN ACCUSATION. The commonest cause by far is a message that
+ * differs by a space or a line ending, so the refusal says which part failed
+ * rather than announcing fraud.
+ */
+
+export interface VerificationView {
+  readonly valid: boolean
+  readonly scriptType: string
+  readonly reason?: string | null
+}
+
+/**
+ * A whole proof, when the scanned text was an armoured block.
+ *
+ * Passed in rather than parsed here, so the frontend holds no format knowledge.
+ * The parser is in core, tested against the format Electrum writes, and this
+ * screen only decides where the three strings land.
+ */
+export interface ScannedProof {
+  readonly address: string
+  readonly message: string
+  readonly signature: string
+}
+
+export interface VerifyMessageScreenProps {
+  readonly onVerify: (
+    address: string,
+    message: string,
+    signature: string
+  ) => Promise<VerificationView>
+  readonly onScan?: (() => void) | undefined
+  /** Text the camera already read, if the user arrived that way. */
+  readonly scanned?: string | undefined
+  /**
+   * All three fields, when the scan was an armoured block.
+   *
+   * One QR instead of three fields typed on a panel with no keyboard, which is
+   * the difference between this screen being used and not.
+   */
+  readonly scannedProof?: ScannedProof | undefined
+  readonly onBack: () => void
+  readonly onHome?: (() => void) | undefined
+  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  readonly banner?: ReactElement | null
+}
+
+/**
+ * Which field the keyboard is filling.
+ *
+ * One at a time, because there is no hardware keyboard and the on-screen one
+ * takes most of a 480px panel. Three fields with three keyboards would be a
+ * screen nothing fits on; three fields and one keyboard is a tab bar.
+ */
+type Field = 'address' | 'message' | 'signature'
+
+const FIELDS = [
+  { id: 'address', label: 'Address', hint: 'The address they say is theirs.' },
+  { id: 'message', label: 'Message', hint: 'Exactly what they signed, character for character.' },
+  { id: 'signature', label: 'Signature', hint: 'The base64 they gave you. Scanning is easier.' },
+] as const
+
+export function VerifyMessageScreen(props: VerifyMessageScreenProps): ReactElement {
+  const { onVerify, onScan, scanned, scannedProof, onBack, onHome, device, banner } = props
+
+  const [address, setAddress] = useState('')
+  const [message, setMessage] = useState('')
+  const [signature, setSignature] = useState(scanned ?? '')
+  const [editing, setEditing] = useState<Field>(scannedProof === undefined ? 'address' : 'message')
+  const [result, setResult] = useState<VerificationView | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // A whole proof from one scan. Fills every field, and lands on the message,
+  // which is the one worth reading before deciding anything.
+  useEffect(() => {
+    if (scannedProof === undefined) return
+    setAddress(scannedProof.address)
+    setMessage(scannedProof.message)
+    setSignature(scannedProof.signature)
+    setResult(null)
+  }, [scannedProof])
+
+  const ready = address.trim().length > 0 && signature.trim().length > 0
+
+  const run = useCallback(async (): Promise<void> => {
+    setBusy(true)
+    setError(null)
+    setResult(null)
+    try {
+      setResult(await onVerify(address.trim(), message, signature.trim()))
+    } catch (err) {
+      // Never swallowed. A verification that failed to run is not a
+      // verification that failed, and showing the second for the first is how
+      // somebody rejects a good proof.
+      setError((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }, [onVerify, address, message, signature])
+
+  const values: Record<Field, string> = { address, message, signature }
+  const setters: Record<Field, (next: string) => void> = {
+    address: setAddress,
+    message: setMessage,
+    signature: setSignature,
+  }
+  const active = FIELDS.find((field) => field.id === editing) ?? FIELDS[0]
+
+  return (
+    <Screen
+      title="Check a proof"
+      subtitle="Whether somebody controls the address they say they do."
+      banner={banner}
+      onHome={onHome}
+      device={device}
+      testId="verify-message"
+      actions={
+        <>
+          <Button onClick={onBack} testId="verify-back">
+            Back
+          </Button>
+          <div className="nr-spacer" />
+          <Button
+            variant="primary"
+            disabled={!ready || busy}
+            onClick={() => {
+              void run()
+            }}
+            testId="verify-run"
+          >
+            {busy ? 'Checking' : 'Check it'}
+          </Button>
+        </>
+      }
+    >
+      {result !== null && (
+        <div
+          className={`nr-banner ${result.valid ? 'nr-banner--ok' : 'nr-banner--danger'}`}
+          data-testid="verify-result"
+        >
+          <strong>{result.valid ? 'The proof checks out' : 'That proof does not check out'}</strong>
+          <span>
+            {result.valid
+              ? 'Whoever made this signature held the key for that address, and agreed to exactly ' +
+                'the message above. It does not say when they held it, that the address holds ' +
+                'anything, or that the person who gave it to you is the person who made it.'
+              : (result.reason ??
+                'The signature does not match this address and this message.')}
+          </span>
+        </div>
+      )}
+
+      {result !== null && !result.valid && (
+        <p className="nr-hint" data-testid="verify-usual-cause">
+          The commonest cause is the message, not the signature. A trailing space, a missing line
+          break, or a smart quote where a straight one was signed all produce this. Compare the
+          message character for character before concluding anything about the other party.
+        </p>
+      )}
+
+      {/* Which field the keyboard fills. Each tab shows whether that field has
+          anything in it, because the check button being disabled is otherwise
+          the only clue about which one was missed. */}
+      <div className="nr-tabs">
+        {FIELDS.map((field) => (
+          <button
+            key={field.id}
+            type="button"
+            className="nr-tab"
+            aria-pressed={editing === field.id}
+            onClick={() => {
+              setEditing(field.id)
+            }}
+            data-testid={`verify-tab-${field.id}`}
+          >
+            {values[field.id].length > 0 ? `${field.label} set` : field.label}
+          </button>
+        ))}
+        {onScan !== undefined && (
+          <>
+            <div className="nr-spacer" />
+            <button type="button" className="nr-tab" onClick={onScan} data-testid="verify-scan">
+              Scan
+            </button>
+          </>
+        )}
+      </div>
+
+      <span className="nr-field__label">{active.hint}</span>
+      <TextKeyboard
+        value={values[active.id]}
+        onChange={(next) => {
+          setters[active.id](next)
+          // Cleared, because a result sitting under a changed field is a result
+          // about something that is no longer on the screen.
+          setResult(null)
+        }}
+        testId="verify-keyboard"
+      />
+
+      {error !== null && (
+        <div className="nr-banner nr-banner--danger" data-testid="verify-error">
+          <strong>Could not check it</strong>
+          <span>{error}</span>
+        </div>
+      )}
+
+      <p className="nr-note" data-testid="verify-no-key">
+        This uses no key and needs no wallet open. It is arithmetic on what you typed, which is why
+        it works on a device with no network and why it can be done before unlocking anything.
+      </p>
+    </Screen>
+  )
+}

@@ -13,7 +13,7 @@ import { describe, expect, it } from 'vitest'
 import * as btc from '@scure/btc-signer'
 import { sha256 } from '@noble/hashes/sha2.js'
 import { bytesToHex } from '@noble/hashes/utils.js'
-import { secp256k1 } from '@noble/curves/secp256k1.js'
+import { schnorr, secp256k1 } from '@noble/curves/secp256k1.js'
 import { base64 } from '@scure/base'
 import { MAINNET } from '../src/network/networks.js'
 import { mnemonicToSeed } from '../src/bip39/mnemonic.js'
@@ -192,11 +192,71 @@ describe('core.message.bip322 signing', () => {
    */
   it('refuses-what-it-cannot-sign', () => {
     using seed = mnemonicToSeed(MNEMONIC, '')
-    for (const scriptType of ['p2pkh', 'p2tr'] as const) {
-      expect(() =>
-        signMessage(seed, MAINNET, scriptType, "m/84'/0'/0'/0/0", 'Hello World')
-      ).toThrow(/not one of them/)
-    }
+    // Legacy only. It is not unimplemented, it is a DIFFERENT construction
+    // committing to different bytes, and signLegacyMessage is where it lives.
+    expect(() =>
+      signMessage(seed, MAINNET, 'p2pkh', "m/44'/0'/0'/0/0", 'Hello World')
+    ).toThrow(/not one of them/)
+  })
+
+  /**
+   * INV-MSG-8. The taproot address the BIP-322 test key produces, which is the
+   * one the standard's own vectors use. If this is wrong, everything below it
+   * is signing for somebody else's address.
+   */
+  it('produces-the-published-taproot-address-for-the-vector-key', () => {
+    const key = btc.WIF(btc.NETWORK).decode(VECTOR_WIF)
+    const signed = signMessageWithKey(key, MAINNET, 'p2tr', 'Hello World')
+    expect(signed.address).toBe(
+      'bc1ppv609nr0vr25u07u95waq5lucwfm6tde4nydujnu8npg4q75mr5sxq8lt3'
+    )
+  })
+
+  /**
+   * INV-MSG-8. The same question INV-MSG-6 asks of segwit, asked of taproot:
+   * does the signature verify against a BIP-341 sighash this module did not
+   * compute, for a transaction rebuilt by a different library?
+   *
+   * There are four ways to be quietly wrong here and each produces a well
+   * formed, deterministic signature that no verifier accepts: the wrong
+   * sighash algorithm, the wrong sighash flag, the untweaked key, and the txid
+   * in the wrong byte order. Only an independent digest catches them.
+   */
+  it('produces-a-taproot-signature-that-verifies-against-an-independent-sighash', async () => {
+    const bitcoin = await import('bitcoinjs-lib')
+    const key = btc.WIF(btc.NETWORK).decode(VECTOR_WIF)
+    const message = 'Hello World'
+
+    const signed = signMessageWithKey(key, MAINNET, 'p2tr', message)
+    const script = scriptFor(signed.address)
+
+    // Rebuilt with the other library, which takes the txid in HASHED order.
+    const toSpendId = sha256(sha256(buildToSpend(message, script)))
+    const toSign = new bitcoin.Transaction()
+    toSign.version = 0
+    toSign.addInput(Buffer.from(toSpendId), 0, 0)
+    toSign.addOutput(Buffer.from([0x6a]), 0n)
+    const digest = toSign.hashForWitnessV1(0, [Buffer.from(script)], [0n], 0x00)
+
+    // One element of exactly 64 bytes: SIGHASH_DEFAULT carries no flag byte.
+    const raw = base64.decode(signed.signature)
+    expect(raw[0]).toBe(1)
+    expect(raw[1]).toBe(64)
+    const signature = raw.subarray(2)
+    expect(signature).toHaveLength(64)
+
+    // Verified against the key IN THE ADDRESS, which is the tweaked one. Using
+    // the internal key here would pass while proving nothing.
+    expect(schnorr.verify(signature, Uint8Array.from(digest), script.slice(2))).toBe(true)
+  })
+
+  /** INV-MSG-8. Determinism, for the same reason as everywhere else. */
+  it('signs-a-taproot-message-identically-every-time', () => {
+    using seed = mnemonicToSeed(MNEMONIC, '')
+    const a = signMessage(seed, MAINNET, 'p2tr', "m/86'/0'/0'/0/0", 'Hello World')
+    const b = signMessage(seed, MAINNET, 'p2tr', "m/86'/0'/0'/0/0", 'Hello World')
+    expect(a.signature).toBe(b.signature)
+    expect(a.address.startsWith('bc1p')).toBe(true)
   })
 
   it('refuses-a-message-the-review-would-refuse', () => {

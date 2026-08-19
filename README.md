@@ -252,7 +252,7 @@ and anything involving a cloud.
 | 1 | Spec system, entropy, BIP-39/32, daemon, lock screen, networks | **Complete** |
 | 2 | Descriptors, addresses, PSBT review, signing. **Provisioning tier 0.** | **Complete** |
 | 3 | Encrypted store, passphrase, multisig and cosigner registration done. **Tier 1** outstanding. | In progress |
-| 4 | BIP-322 message signing, BIP-85 child seeds, BIP-329 labels | **Complete** |
+| 4 | BIP-322 message signing and verification, BIP-85 child seeds, BIP-329 labels | **Complete** |
 | 5 | Wallet layer, optional and lower assurance | Not started |
 | 6 | Bridge companion, runs on a networked machine | Not started |
 | 7 | Miniscript, taproot script paths, SeedXOR. **Tier 2.** | Not started |

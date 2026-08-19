@@ -104,6 +104,14 @@ export interface WalletScreenProps {
    * the button is absent rather than dead when there is nowhere to go.
    */
   readonly onProveControl?: () => void
+  /**
+   * Check somebody else's proof.
+   *
+   * Beside proving your own, because they are the two halves of one question
+   * and somebody who has just been shown how to make a proof is the person
+   * most likely to be handed one.
+   */
+  readonly onCheckProof?: () => void
   /** Leaves for encrypted backup and restore. Optional, like the others. */
   readonly onBackup?: () => void
   /**
@@ -215,6 +223,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
     onSignTransaction,
     onMultisig,
     onProveControl,
+    onCheckProof,
     onBackup,
     onManage,
     onQuorum,
@@ -565,6 +574,15 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
               selected={false}
               onSelect={onProveControl}
               testId="wallet-prove"
+            />
+          )}
+          {onCheckProof !== undefined && (
+            <Choice
+              title="Check a proof"
+              description="Somebody sent you an address and a signature. Find out whether it is really theirs."
+              selected={false}
+              onSelect={onCheckProof}
+              testId="wallet-check-proof"
             />
           )}
           {onBackup !== undefined && (

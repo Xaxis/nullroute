@@ -904,6 +904,15 @@ body {
   opacity: 0.85;
 }
 
+/* A banner for something that went right. Rare on this device on purpose: most
+   of what it has to say is a limit. Used where a check passed and saying so
+   plainly is the whole content. */
+.nr-banner--ok {
+  background-color: color-mix(in srgb, var(--color-verify-600) 20%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-verify-500) 45%, transparent);
+  color: var(--color-verify-300);
+}
+
 /* The idle warning, beside the network chip and shaped like it. Danger colours
    rather than caution: this one is about to take the wallet away. */
 .nr-idlechip {

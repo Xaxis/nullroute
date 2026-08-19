@@ -44,6 +44,11 @@ import { Steps } from './components/Steps.js'
 import { journeyById, stepsFor as journeyStepsFor, type JourneyId } from './journeys.js'
 import { LabelsScreen, type ImportedLabels, type LabelRow } from './screens/LabelsScreen.js'
 import {
+  VerifyMessageScreen,
+  type VerificationView,
+} from './screens/VerifyMessageScreen.js'
+import { parseSignedMessageBlock } from '@nullroute/core'
+import {
   ChildSeedScreen,
   type ChildApplication,
   type ChildSeedView,
@@ -124,7 +129,7 @@ type Stage =
    */
   | {
       readonly at: 'scan'
-      readonly forStage: 'psbt' | 'multisig' | 'backup' | 'labels' | 'assemble'
+      readonly forStage: 'psbt' | 'multisig' | 'backup' | 'labels' | 'assemble' | 'verify-message'
     }
   /** A wallet exists on disk and the passphrase has not been given yet. */
   | { readonly at: 'unlock' }
@@ -135,6 +140,7 @@ type Stage =
   | { readonly at: 'assemble'; readonly prefill?: string }
   /** Proving control of an address by signing a message with it. */
   | { readonly at: 'message' }
+  | { readonly at: 'verify-message'; readonly prefill?: string }
   /** Writing or restoring an encrypted backup. */
   | { readonly at: 'backup'; readonly prefill?: string }
   /** Taking one address, big enough to read off the panel. */
@@ -189,7 +195,7 @@ const transport = httpTransport()
  * broken.
  */
 const SCANNING: Record<
-  'psbt' | 'multisig' | 'backup' | 'labels' | 'assemble',
+  'psbt' | 'multisig' | 'backup' | 'labels' | 'assemble' | 'verify-message',
   { readonly title: string; readonly hint: string }
 > = {
   psbt: {
@@ -207,6 +213,10 @@ const SCANNING: Record<
   backup: {
     title: 'Scan a backup',
     hint: 'The encrypted backup file. You will still need its passphrase.',
+  },
+  'verify-message': {
+    title: 'Scan a signature',
+    hint: 'The proof somebody gave you. Nothing here needs a key or a wallet open.',
   },
   labels: {
     title: 'Scan a label file',
@@ -916,6 +926,9 @@ export function App() {
           onProveControl={() => {
             setStage({ at: 'message' })
           }}
+          onCheckProof={() => {
+            setStage({ at: 'verify-message' })
+          }}
           onBackup={() => {
             setStage({ at: 'backup' })
           }}
@@ -1248,6 +1261,9 @@ export function App() {
         onNameDevice={() => {
           setStage({ at: 'device-name' })
         }}
+        onCheckProof={() => {
+          setStage({ at: 'verify-message' })
+        }}
         onForget={async (id: string) => {
           await call(transport, 'wallets.forget', { id })
           await refresh()
@@ -1524,6 +1540,37 @@ export function App() {
         }
         onBack={() => {
           setStage({ at: 'wallet' })
+        }}
+      />
+    )
+  }
+
+  if (stage.at === 'verify-message') {
+    return (
+      <VerifyMessageScreen
+        banner={banner}
+        onHome={goHome}
+        device={headerDevice}
+        scanned={stage.prefill}
+        // An armoured block fills all three fields from one scan. Parsed in
+        // core, which is where the format knowledge belongs, and passed here
+        // as three strings so this screen holds none of it.
+        scannedProof={
+          stage.prefill === undefined
+            ? undefined
+            : (parseSignedMessageBlock(stage.prefill) ?? undefined)
+        }
+        onScan={() => {
+          setStage({ at: 'scan', forStage: 'verify-message' })
+        }}
+        onVerify={async (address: string, message: string, signature: string) =>
+          call<VerificationView>(transport, 'message.verify', { address, message, signature })
+        }
+        onBack={() => {
+          // Back to the picker rather than the wallet, because this is
+          // reachable with nothing unlocked and a wallet screen behind it may
+          // not exist.
+          setStage({ at: activeWallet === null ? 'wallets' : 'wallet' })
         }}
       />
     )
