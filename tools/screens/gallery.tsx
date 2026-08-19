@@ -271,6 +271,9 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   backup: [['backup-choose-create'], ['backup-choose-restore']],
   manage: [['manage-choose-rename'], ['manage-choose-destroy']],
   quorum: [['quorum-branch-change']],
+  // The disclosure adds a textarea to a screen already holding a full
+  // keyboard, which is the tallest this screen ever gets.
+  import: [['import-typed-toggle']],
 }
 
 // Published before rendering. A screen that throws must fail loudly as that

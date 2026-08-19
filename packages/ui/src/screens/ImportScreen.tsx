@@ -98,7 +98,9 @@ export function ImportScreen(props: ImportScreenProps): ReactElement {
           </p>
 
           <details className="nr-details">
-            <summary className="nr-details__summary">Type it out instead</summary>
+            <summary className="nr-details__summary" data-testid="import-typed-toggle">
+              Type it out instead
+            </summary>
             <textarea
               className="nr-input nr-input--area"
               value={mnemonic}

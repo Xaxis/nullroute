@@ -21,8 +21,9 @@
  *      one too many buttons pushes it off rather than wrapping it.
  *   3. Every button and every link is inside the viewport. A button half off
  *      the right edge is a button nobody presses.
- *   4. Nothing overlaps the action bar. Text sliding under a fixed bar is
- *      unreadable in exactly the place a warning would be.
+ *   4. With the body scrolled to its end, no control is left under the action
+ *      bar. The bar is opaque and fixed, so a button still beneath it there is
+ *      not one the user has to scroll to reach, it is one they cannot reach.
  *
  * It renders from tools/screens, a gallery outside packages/ so no fixture is
  * shipped to the device or covered by MANIFEST.lock.
@@ -125,7 +126,31 @@ const MEASURE = `(() => {
     }
   }
 
+  /**
+   * Whether an element is actually on the screen, rather than merely laid out.
+   *
+   * A closed <details> keeps its contents in the layout tree with a stale box:
+   * Chrome hides them with content-visibility rather than display:none, so
+   * getBoundingClientRect returns coordinates for something nobody can see.
+   * Measuring those reported the import screen's hidden textarea as buried
+   * under the action bar, which it was not, because it was not anywhere.
+   */
+  const visible = (el) =>
+    typeof el.checkVisibility === 'function'
+      ? el.checkVisibility({
+          contentVisibilityAuto: true,
+          opacityProperty: true,
+          visibilityProperty: true,
+        })
+      : true
+
+  const label = (el) =>
+    (el.textContent || el.getAttribute('aria-label') || el.getAttribute('placeholder') || '')
+      .trim()
+      .slice(0, 40)
+
   for (const el of document.querySelectorAll('button, a[href], input, textarea')) {
+    if (!visible(el)) continue
     const r = el.getBoundingClientRect()
     if (r.width === 0 && r.height === 0) continue
     // Inside a scroll container is fine: a long address list is meant to
@@ -133,13 +158,45 @@ const MEASURE = `(() => {
     if (r.left >= -1 && r.right <= vw + 1) continue
     problems.push({
       kind: 'control-off-screen',
-      detail: '<' + el.tagName.toLowerCase() + '> "' +
-        (el.textContent || el.getAttribute('aria-label') || '').trim().slice(0, 40) +
+      detail: '<' + el.tagName.toLowerCase() + '> "' + label(el) +
         '" spans ' + Math.round(r.left) + '..' + Math.round(r.right),
     })
   }
 
+  // The body is scrolled to its end before this runs, so anything still under
+  // the action bar is under it permanently. The bar is opaque and fixed, so
+  // that is not a control the user has to scroll to reach, it is one they
+  // cannot reach at all.
+  const body = document.querySelector('.nr-screen__body')
+  if (bar !== null && body !== null) {
+    const barTop = bar.getBoundingClientRect().top
+    for (const el of body.querySelectorAll('button, a[href], input, textarea')) {
+      if (!visible(el)) continue
+      const r = el.getBoundingClientRect()
+      if (r.width === 0 && r.height === 0) continue
+      // Half or more of it hidden. A row whose last pixel row is covered is
+      // legible; one cut through the middle is not, and one entirely beneath
+      // the bar does not exist.
+      if (r.top + r.height / 2 <= barTop) continue
+      problems.push({
+        kind: 'buried-under-action-bar',
+        detail: '<' + el.tagName.toLowerCase() + '> "' + label(el) +
+          '" sits at ' + Math.round(r.top) + '..' + Math.round(r.bottom) +
+          ' with the bar starting at ' + Math.round(barTop) +
+          ', and the body is already scrolled to the end',
+      })
+    }
+  }
+
   return JSON.stringify({ problems: problems.slice(0, 10) })
+})()`
+
+/** Scroll the body to its end, so the last control is measured where it lands. */
+const SCROLL_TO_END = `(() => {
+  const body = document.querySelector('.nr-screen__body')
+  if (body === null) return false
+  body.scrollTop = body.scrollHeight
+  return true
 })()`
 
 async function cdp(ws, method, params, state) {
@@ -266,6 +323,9 @@ async function main() {
       console.error(`    unreachable: no element with data-testid="${unreachable}"`)
       continue
     }
+
+    await cdp(page, 'Runtime.evaluate', { expression: SCROLL_TO_END }, state)
+    await sleep(150)
 
     const { result } = await cdp(
       page,
