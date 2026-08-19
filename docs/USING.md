@@ -88,6 +88,11 @@ are looking at. They catch an accident or a crude substitution. They do not
 catch an attacker who replaced the code that draws them, which is what the tier
 model in [PROVISIONING.md](PROVISIONING.md) is about.
 
+The same values stay reachable after unlocking, under **More** then **Check this
+device**. Checking is not something you do once at boot: it is what you do
+before signing something large, after the device has been out of your sight, or
+when somebody asks you to prove the thing in your hand is the thing you built.
+
 ## Making a wallet
 
 ### Dice
@@ -216,6 +221,8 @@ Reached from **More** on the wallet screen.
 
 | Screen | What it is |
 | --- | --- |
+| Switch wallet | Open a different wallet on this device. Locks this one first |
+| Check this device | The manifest root and the verification checks, after unlocking |
 | Prove an address | BIP-322 message signing, for segwit addresses |
 | Backup | Encrypted backup and restore |
 | Labels | BIP-329 label files in and out |

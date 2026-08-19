@@ -36,6 +36,7 @@ import {
   MessageScreen,
   MultisigScreen,
   StartScreen,
+  AttestationScreen,
   FinishScreen,
   ReceiveScreen,
   PassphraseScreen,
@@ -388,6 +389,35 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   labels: () => <LabelsScreen onHome={noop} onImport={never} onExport={never} onBack={noop} />,
   child: () => <ChildSeedScreen onHome={noop} onDerive={never} onBack={noop} />,
   start: () => <StartScreen walletOpen={false} onBegin={noop} onSkip={noop} />,
+  // The failing case, which is the one that should be impossible and therefore
+  // the one worth looking at: a device open with a check failing.
+  attestation: () => (
+    <AttestationScreen
+      onHome={noop}
+      attestation={{
+        rootHash: '942b6a2b53d02c1bce1ce4e7592d3f13e44f23db8dea4ef02c4aea297081360d',
+        rootHashShort: '942b6a2b...7081360d',
+        specCount: 31,
+        invariantCount: 227,
+        tier: 'Tier 0: reproducible signed image',
+        version: '0.1.0',
+        checks: [
+          { name: 'coverage', status: 'passed', detail: '212 of 212 runtime exports covered' },
+          { name: 'invariants', status: 'passed', detail: '227 invariants bound to 527 tests' },
+          { name: 'vectors', status: 'passed', detail: '4 of 4 vector files match' },
+          { name: 'differential', status: 'not-applicable', detail: '' },
+          {
+            name: 'integrity',
+            status: 'failed',
+            detail: 'packages/core/src/derive/hd.ts does not match MANIFEST.lock.',
+          },
+        ],
+      }}
+      expanded
+      onToggleExpanded={noop}
+      onBack={noop}
+    />
+  ),
   receive: () => (
     <ReceiveScreen onHome={noop}
       walletLabel="Cold storage, three of five"

@@ -108,6 +108,23 @@ export interface WalletScreenProps {
   /** Leaves for the goal hub, for somebody who wants to be walked through. */
   readonly onGuide?: () => void
   /**
+   * Leaves for the wallet picker.
+   *
+   * A device holds up to eight wallets and there was no route between them:
+   * switching meant locking the device and starting again, which is a strange
+   * thing to have to do to look at a different wallet you own.
+   */
+  readonly onSwitchWallet?: () => void
+  /**
+   * Leaves for the device's own attestation.
+   *
+   * The lock screen shows the manifest root once and then it is gone for the
+   * session. "You can check this device" is not something you do only at boot:
+   * it is what you do before signing something large, or after the device has
+   * been out of your sight.
+   */
+  readonly onCheckDevice?: () => void
+  /**
    * Leaves for one address, shown large.
    *
    * The addresses tab is a table, which is right for auditing an account and
@@ -173,6 +190,8 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
     onQuorum,
     onLabels,
     onGuide,
+    onSwitchWallet,
+    onCheckDevice,
     onReceive,
     onChildSeed,
     onLock,
@@ -534,6 +553,24 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
               selected={false}
               onSelect={onManage}
               testId="wallet-manage"
+            />
+          )}
+          {onSwitchWallet !== undefined && (
+            <Choice
+              title="Switch wallet"
+              description="Open a different wallet on this device. Locks this one first."
+              selected={false}
+              onSelect={onSwitchWallet}
+              testId="wallet-switch"
+            />
+          )}
+          {onCheckDevice !== undefined && (
+            <Choice
+              title="Check this device"
+              description="The manifest root and the verification checks, the same ones the lock screen showed."
+              selected={false}
+              onSelect={onCheckDevice}
+              testId="wallet-check-device"
             />
           )}
           {onChildSeed !== undefined && (

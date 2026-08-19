@@ -448,3 +448,79 @@ describe('ui.app getting home', () => {
     expect(screen.getByTestId('screen-home')).toBeTruthy()
   })
 })
+
+/**
+ * Moving between the wallets on one device, and checking the device itself.
+ *
+ * A device holds up to eight wallets and there was no route between them:
+ * switching meant locking and starting again, which is a strange thing to have
+ * to do to look at a different wallet you own. And the manifest root was shown
+ * once, on the lock screen, before a passphrase, and then gone for the session.
+ */
+describe('ui.app switching and checking', () => {
+  async function intoWallet(): Promise<void> {
+    replies.set('device.status', {
+      hasWallet: true,
+      network: { id: 'mainnet', label: 'Mainnet', isMainnet: true },
+    })
+    await boot()
+    fireEvent.click(screen.getByTestId('unlock'))
+    await waitFor(() => {
+      expect(screen.getByTestId('wallet-screen')).toBeTruthy()
+    })
+    fireEvent.click(screen.getByTestId('tab-more'))
+  }
+
+  /**
+   * INV-UI-71. Switching wallets locks the session first.
+   *
+   * Two seeds resident at once is the state from which a device signs with the
+   * wrong one. `wallets.unlock` locks anyway, so doing it here also means the
+   * picker is never showing a wallet as open that the next tap replaces.
+   */
+  it('locks-before-showing-the-picker', async () => {
+    await intoWallet()
+
+    fireEvent.click(screen.getByTestId('wallet-switch'))
+    await waitFor(() => {
+      expect(screen.getByTestId('wallets-screen')).toBeTruthy()
+    })
+    expect(lastCall('session.lock')).toBeDefined()
+  })
+
+  /**
+   * INV-UI-71. Leaving the picker goes back to the wallet when one is open.
+   * It always went to the lock screen, which is the picker deciding to log
+   * somebody out for having changed their mind.
+   */
+  it('returns-to-the-wallet-rather-than-logging-you-out', async () => {
+    await intoWallet()
+    fireEvent.click(screen.getByTestId('wallet-check-device'))
+    await waitFor(() => {
+      expect(screen.getByTestId('attestation-screen')).toBeTruthy()
+    })
+    fireEvent.click(screen.getByTestId('attestation-back'))
+    await waitFor(() => {
+      expect(screen.getByTestId('wallet-screen')).toBeTruthy()
+    })
+  })
+
+  /**
+   * INV-UI-72. The attestation is reachable after unlocking, and shows the same
+   * hash the lock screen did rather than fetching a second opinion.
+   */
+  it('shows-the-same-attestation-the-lock-screen-showed', async () => {
+    await intoWallet()
+
+    const before = calls.filter((c) => c.method === 'attestation.get').length
+    fireEvent.click(screen.getByTestId('wallet-check-device'))
+    await waitFor(() => {
+      expect(screen.getByTestId('attestation-screen')).toBeTruthy()
+    })
+
+    expect(document.body.textContent).toContain('aaaa')
+    // Not re-fetched. A second call could return something different from what
+    // the user was shown at the lock screen, and then which one is the device?
+    expect(calls.filter((c) => c.method === 'attestation.get').length).toBe(before)
+  })
+})

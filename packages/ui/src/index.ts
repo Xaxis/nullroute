@@ -10,6 +10,9 @@
  * because entropy collection happens in the daemon or it does not happen.
  */
 
+export { AttestationScreen } from './screens/AttestationScreen.js'
+export type { AttestationScreenProps } from './screens/AttestationScreen.js'
+
 export { StartScreen } from './screens/StartScreen.js'
 export { FinishScreen } from './screens/FinishScreen.js'
 export { ReceiveScreen, chunkAddress } from './screens/ReceiveScreen.js'

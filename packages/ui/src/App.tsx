@@ -27,6 +27,7 @@ import { ScanScreen, type ScanResult } from './screens/ScanScreen.js'
 import { WalletsScreen, type WalletRow } from './screens/WalletsScreen.js'
 import { ManageWalletScreen } from './screens/ManageWalletScreen.js'
 import { StartScreen } from './screens/StartScreen.js'
+import { AttestationScreen } from './screens/AttestationScreen.js'
 import { FinishScreen } from './screens/FinishScreen.js'
 import { ReceiveScreen, type ReceiveAddress } from './screens/ReceiveScreen.js'
 import { Steps } from './components/Steps.js'
@@ -110,6 +111,8 @@ type Stage =
   | { readonly at: 'backup' }
   /** Taking one address, big enough to read off the panel. */
   | { readonly at: 'receive' }
+  /** The device's own attestation, after it is open. */
+  | { readonly at: 'attestation' }
   /** Reading and writing BIP-329 labels. */
   | { readonly at: 'labels' }
   /** Deriving a BIP-85 child seed. */
@@ -740,6 +743,23 @@ export function App() {
             setJourney(null)
             setStage({ at: 'start' })
           }}
+          onCheckDevice={() => {
+            setStage({ at: 'attestation' })
+          }}
+          onSwitchWallet={() => {
+            // Locks first. Two seeds resident at once is the state from which a
+            // device signs with the wrong one, and `wallets.unlock` locks
+            // anyway, so doing it here means the picker is never showing a
+            // wallet as open that the next tap is about to replace.
+            const go = async (): Promise<void> => {
+              await call(transport, 'session.lock')
+              setActiveWallet(null)
+              setQuorums([])
+              await refresh()
+              setStage({ at: 'wallets' })
+            }
+            void go()
+          }}
           onChildSeed={() => {
             setStage({ at: 'child' })
           }}
@@ -966,7 +986,10 @@ export function App() {
           await refresh()
         }}
         onCancel={() => {
-          setStage({ at: 'lock' })
+          // The lock screen is the right destination only when nothing is
+          // open. Sending somebody who arrived from an open wallet back to a
+          // login is the picker deciding to log them out.
+          setStage({ at: status?.hasWallet === true ? 'wallet' : 'lock' })
         }}
         {...(listFailure === null ? {} : { failure: listFailure })}
       />
@@ -1032,6 +1055,23 @@ export function App() {
           // return to. The picker is the only honest destination.
           await refresh()
           setStage({ at: 'wallets' })
+        }}
+        onBack={() => {
+          setStage({ at: 'wallet' })
+        }}
+      />
+    )
+  }
+
+  if (stage.at === 'attestation' && attestation !== null) {
+    return (
+      <AttestationScreen
+        banner={banner}
+        onHome={goHome}
+        attestation={attestation}
+        expanded={expanded}
+        onToggleExpanded={() => {
+          setExpanded(!expanded)
         }}
         onBack={() => {
           setStage({ at: 'wallet' })

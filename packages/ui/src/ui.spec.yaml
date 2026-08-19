@@ -50,6 +50,7 @@ covers:
   - packages/ui/src/screens/LabelsScreen.tsx::LabelsScreen
   - packages/ui/src/screens/ChildSeedScreen.tsx::ChildSeedScreen
   - packages/ui/src/screens/StartScreen.tsx::StartScreen
+  - packages/ui/src/screens/AttestationScreen.tsx::AttestationScreen
   - packages/ui/src/screens/FinishScreen.tsx::FinishScreen
   - packages/ui/src/screens/ReceiveScreen.tsx::ReceiveScreen
   - packages/ui/src/screens/ReceiveScreen.tsx::chunkAddress
@@ -773,6 +774,41 @@ invariants:
     tests:
       - packages/ui/test/app.test.tsx::ends-the-journey-rather-than-leaving-the-counter-running
       - packages/ui/test/app.test.tsx::offers-no-escape-from-the-screen-showing-the-words
+
+  # --- Checking the device, and moving between wallets ------------------------
+  - id: INV-UI-69
+    statement: >
+      The manifest root and every verification check are reachable after the
+      device is open, with the same caveat the lock screen carries, word for
+      word, and the command to check it independently.
+    tests:
+      - packages/ui/test/attestation-screen.test.tsx::shows-the-root-hash-and-every-check-by-name
+      - packages/ui/test/attestation-screen.test.tsx::repeats-the-lock-screens-caveat-rather-than-rewording-it
+      - packages/ui/test/attestation-screen.test.tsx::expands-the-hash-on-request
+
+  - id: INV-UI-70
+    statement: >
+      That screen fails closed like the lock screen, and states plainly if a
+      device is somehow open while a check is failing.
+    tests:
+      - packages/ui/test/attestation-screen.test.tsx::treats-an-unrecognised-status-as-a-failure
+      - packages/ui/test/attestation-screen.test.tsx::says-plainly-when-a-failing-device-is-somehow-open
+      - packages/ui/test/attestation-screen.test.tsx::does-not-warn-on-a-device-that-is-fine
+
+  - id: INV-UI-71
+    statement: >
+      Switching wallets locks the session before showing the picker, and leaving
+      the picker returns to the open wallet rather than to the lock screen.
+    tests:
+      - packages/ui/test/app.test.tsx::locks-before-showing-the-picker
+      - packages/ui/test/app.test.tsx::returns-to-the-wallet-rather-than-logging-you-out
+
+  - id: INV-UI-72
+    statement: >
+      The attestation shown after unlocking is the one the lock screen showed,
+      not a second opinion fetched later.
+    tests:
+      - packages/ui/test/app.test.tsx::shows-the-same-attestation-the-lock-screen-showed
 
 threats:
   - INV-KEY-1
