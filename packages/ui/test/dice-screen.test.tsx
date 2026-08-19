@@ -183,6 +183,13 @@ describe('ui.screens.dice rolling for you', () => {
       expect(screen.getByTestId('dice-rolls').textContent).toBe('4')
     })
 
+    // Wait for the accounting to catch up before asking for the rest. It is
+    // what supplies rollsRemaining, and clicking before it has loaded asks for
+    // 100 rather than 99: a real race, not a test detail, and one that made
+    // this test fail only under load.
+    await waitFor(() => {
+      expect(screen.getByTestId('dice-remaining').textContent).toContain('99 more')
+    })
     fireEvent.click(screen.getByTestId('dice-roll-rest'))
     await waitFor(() => {
       expect(onRollForMe).toHaveBeenCalledWith(99)

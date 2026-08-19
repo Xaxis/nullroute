@@ -27,6 +27,8 @@ export interface ImportScreenProps {
   readonly steps?: ReactElement | null
   /** Back to the wallet, or the picker. Rendered in the header by Screen. */
   readonly onHome?: (() => void) | undefined
+  /** What this physical device is called. Rendered in the header by Screen. */
+  readonly device?: { readonly name: string; readonly colour: string } | undefined
   readonly banner?: ReactElement | null
 }
 
@@ -34,7 +36,7 @@ export interface ImportScreenProps {
 const VALID_LENGTHS = [12, 15, 18, 21, 24]
 
 export function ImportScreen(props: ImportScreenProps): ReactElement {
-  const { onImport, onCancel, steps, onHome, banner } = props
+  const { onImport, onCancel, steps, onHome, device, banner } = props
   const [words, setWords] = useState<readonly string[]>([])
   const [passphrase, setPassphrase] = useState('')
   const [showPassphrase, setShowPassphrase] = useState(false)
@@ -66,6 +68,7 @@ export function ImportScreen(props: ImportScreenProps): ReactElement {
       subtitle="BIP-39, 12 to 24 words."
       banner={banner}
       onHome={onHome}
+      device={device}
       steps={steps}
       testId="import-screen"
       actions={

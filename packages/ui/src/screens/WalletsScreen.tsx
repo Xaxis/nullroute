@@ -52,6 +52,14 @@ export interface WalletsScreenProps {
   readonly onForget?: (id: string) => Promise<void>
   readonly onCancel?: () => void
   /**
+   * Leaves for naming this physical device.
+   *
+   * Offered here because the picker is where somebody with several devices
+   * most often notices they cannot tell which one they are holding: every
+   * wallet in a quorum has the same name on every device.
+   */
+  readonly onNameDevice?: () => void
+  /**
    * Why this list may be wrong or incomplete.
    *
    * Shown ABOVE the rows, because a list that failed to load renders as an
@@ -61,6 +69,8 @@ export interface WalletsScreenProps {
   readonly failure?: string
   /** Back to the wallet, or the picker. Rendered in the header by Screen. */
   readonly onHome?: (() => void) | undefined
+  /** What this physical device is called. Rendered in the header by Screen. */
+  readonly device?: { readonly name: string; readonly colour: string } | undefined
   /**
    * Where this screen sits in a journey.
    *
@@ -80,9 +90,11 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
     onCreate,
     onForget,
     onCancel,
+    onNameDevice,
     failure,
     steps,
     onHome,
+    device,
     banner,
   } = props
 
@@ -140,6 +152,7 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
         banner={banner}
       steps={steps}
         onHome={onHome}
+        device={device}
         testId="wallets-forget"
         actions={
           <>
@@ -191,6 +204,7 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
         banner={banner}
       steps={steps}
         onHome={onHome}
+        device={device}
         testId="wallet-unlock-screen"
         actions={
           <>
@@ -254,12 +268,18 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
       banner={banner}
       steps={steps}
       onHome={onHome}
+      device={device}
       testId="wallets-screen"
       actions={
         <>
           {onCancel !== undefined && (
             <Button onClick={onCancel} testId="wallets-cancel">
               Back
+            </Button>
+          )}
+          {onNameDevice !== undefined && (
+            <Button onClick={onNameDevice} testId="wallets-name-device">
+              Name this device
             </Button>
           )}
           <div className="nr-spacer" />

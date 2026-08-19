@@ -123,6 +123,27 @@ vendor's device looks identical to the software.
 
 ## Telling the devices apart
 
+**Name each device.** From the wallet picker, or **More** then **Name this
+device**. The name sits in the header of every screen including the lock screen,
+so it answers "which one am I holding" at the moment you pick one up, before any
+passphrase.
+
+This matters more than it sounds. Three devices holding one 2-of-3 hold the
+*same wallet*, so they show the same wallet name, the same colour and the same
+fingerprint. The cosigner position tells them apart only inside a quorum: a
+device with no registrations is anonymous, and a device in two quorums has two
+positions.
+
+The name is **not verified and never will be**. It lives in a plain file beside
+the wallets so it can be read before a passphrase, which is exactly when you
+want it, and that means anyone holding the card can edit it. Nothing on the
+device decides anything from it. It is a label on the outside of a box.
+
+It is deliberately not a "profile" that owns several wallets. Each wallet is
+sealed independently under its own passphrase, so one mistake costs one seed. A
+layer that opened several together would trade that away for tidiness.
+
+
 This is a practical problem and it deserves stating rather than assuming. Three
 identical Raspberry Pis in identical cases, all showing the same wallet name
 because they hold the same wallet, is a way to sign with the wrong key or to

@@ -74,3 +74,11 @@ export {
   EARLY_BOOT_SECONDS,
 } from './entropy/health.js'
 export type { HealthReport, HealthCheck, HealthSources, Verdict } from './entropy/health.js'
+
+export {
+  DeviceIdentityStore,
+  IdentityError,
+  normaliseName,
+  MAX_NAME_LENGTH,
+} from './store/identity.js'
+export type { DeviceIdentity } from './store/identity.js'

@@ -54,11 +54,13 @@ export interface LabelsScreenProps {
   readonly onBack: () => void
   /** Back to the wallet, or the picker. Rendered in the header by Screen. */
   readonly onHome?: (() => void) | undefined
+  /** What this physical device is called. Rendered in the header by Screen. */
+  readonly device?: { readonly name: string; readonly colour: string } | undefined
   readonly banner?: ReactElement | null
 }
 
 export function LabelsScreen(props: LabelsScreenProps): ReactElement {
-  const { onImport, onExport, initialText, onScan, onBack, onHome, banner } = props
+  const { onImport, onExport, initialText, onScan, onBack, onHome, device, banner } = props
 
   const [text, setText] = useState(initialText ?? '')
   const [imported, setImported] = useState<ImportedLabels | null>(null)
@@ -86,6 +88,7 @@ export function LabelsScreen(props: LabelsScreenProps): ReactElement {
         subtitle="The same format other wallets read."
         banner={banner}
         onHome={onHome}
+        device={device}
         testId="labels-exported"
         actions={
           <Button
@@ -128,6 +131,7 @@ export function LabelsScreen(props: LabelsScreenProps): ReactElement {
       subtitle="Notes about transactions and addresses. They decide nothing."
       banner={banner}
       onHome={onHome}
+      device={device}
       testId="labels-screen"
       actions={
         <>

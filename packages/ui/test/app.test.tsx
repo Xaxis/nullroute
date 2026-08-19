@@ -699,3 +699,52 @@ describe('ui.app opening a wallet inside a journey', () => {
     expect(next).toContain('Load the transaction')
   })
 })
+
+/**
+ * Which device is this.
+ *
+ * Three nullroute boxes holding one 2-of-3 hold the same wallet, so they show
+ * the same wallet name, the same colour and the same fingerprint. Nothing on
+ * any screen said which of the three objects was in your hand.
+ */
+describe('ui.app device identity', () => {
+  /**
+   * INV-UI-78. Read and shown BEFORE any passphrase, because the moment
+   * somebody picks a device up is the moment they want to know which one it is.
+   */
+  it('shows-the-device-name-before-any-passphrase', async () => {
+    replies.set('device.identity', {
+      identity: { name: 'The one in the attic', colour: 'teal' },
+      named: true,
+      verified: false,
+      note: 'Not verified.',
+    })
+
+    await boot()
+    // On the lock screen, before anything is unlocked.
+    expect(screen.getByTestId('screen-device').textContent).toContain('The one in the attic')
+  })
+
+  /**
+   * An unnamed device shows no chip rather than a placeholder. A device with
+   * one wallet and no siblings has no use for a name, and "unnamed" in the
+   * header of every screen would be noise claiming a problem.
+   */
+  it('shows-nothing-when-the-device-has-no-name', async () => {
+    replies.set('device.identity', { identity: null, named: false, verified: false, note: '' })
+    await boot()
+    expect(screen.queryByTestId('screen-device')).toBeNull()
+  })
+
+  /**
+   * A daemon too old to know the method, or one without storage, must not stop
+   * the device booting. The name decides nothing, so failing to read it is not
+   * a reason to refuse to start.
+   */
+  it('boots-when-the-daemon-cannot-answer-about-its-name', async () => {
+    replies.delete('device.identity')
+    await boot()
+    expect(screen.getByTestId('lock-screen')).toBeTruthy()
+    expect(screen.queryByTestId('screen-device')).toBeNull()
+  })
+})

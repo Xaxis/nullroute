@@ -44,11 +44,13 @@ export interface MachineEntropyScreenProps {
   readonly onBack: () => void
   readonly steps?: ReactElement | null
   readonly onHome?: (() => void) | undefined
+  /** What this physical device is called. Rendered in the header by Screen. */
+  readonly device?: { readonly name: string; readonly colour: string } | undefined
   readonly banner?: ReactElement | null
 }
 
 export function MachineEntropyScreen(props: MachineEntropyScreenProps): ReactElement {
-  const { onHealth, onGenerate, onBack, steps, onHome, banner } = props
+  const { onHealth, onGenerate, onBack, steps, onHome, device, banner } = props
 
   const [health, setHealth] = useState<HealthReportView | null>(null)
   const [acknowledged, setAcknowledged] = useState(false)
@@ -75,6 +77,7 @@ export function MachineEntropyScreen(props: MachineEntropyScreenProps): ReactEle
       banner={banner}
       steps={steps}
       onHome={onHome}
+      device={device}
       testId="machine-entropy"
       actions={
         <>

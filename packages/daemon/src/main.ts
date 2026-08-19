@@ -27,6 +27,7 @@ import { startIpcServer } from './ipc/socket.js'
 import { createHandler } from './handler.js'
 import { Session } from './session.js'
 import { WalletStore } from './store/store.js'
+import { DeviceIdentityStore } from './store/identity.js'
 import { WalletRegistry } from './store/registry.js'
 
 const REPO_ROOT = process.env['NULLROUTE_ROOT'] ?? fileURLToPath(new URL('../../..', import.meta.url))
@@ -67,7 +68,10 @@ async function main(): Promise<void> {
   // single store is still the legacy location the registry migrates out of, and
   // the old store.* methods keep working against it until nothing calls them.
   const registry = new WalletRegistry(STORE_DIR)
-  const state = { attestation, session: new Session(), store, registry }
+  // Beside the wallets, not inside one. Three devices in a quorum hold the same
+  // wallet and therefore show the same name, so the device needs one of its own.
+  const identity = new DeviceIdentityStore(STORE_DIR)
+  const state = { attestation, session: new Session(), store, registry, identity }
   const server = await startIpcServer({
     socketPath: SOCKET_PATH,
     handler: createHandler(state),

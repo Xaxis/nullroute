@@ -26,6 +26,8 @@ export interface SetupScreenProps {
   readonly steps?: ReactElement | null
   /** Back to the wallet, or the picker. Rendered in the header by Screen. */
   readonly onHome?: (() => void) | undefined
+  /** What this physical device is called. Rendered in the header by Screen. */
+  readonly device?: { readonly name: string; readonly colour: string } | undefined
   readonly banner?: ReactElement | null
 }
 
@@ -45,7 +47,7 @@ const NETWORKS: { id: NetworkChoice; label: string; description: string }[] = [
 ]
 
 export function SetupScreen(props: SetupScreenProps): ReactElement {
-  const { onStart, steps, onHome, banner } = props
+  const { onStart, steps, onHome, device, banner } = props
   const [network, setNetwork] = useState<NetworkChoice>('mainnet')
   const [mode, setMode] = useState<EntropyMode>('dice')
 
@@ -55,6 +57,7 @@ export function SetupScreen(props: SetupScreenProps): ReactElement {
       subtitle="No wallet exists yet."
       banner={banner}
       onHome={onHome}
+      device={device}
       steps={steps}
       testId="setup-screen"
       actions={

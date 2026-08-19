@@ -63,13 +63,15 @@ export interface BackupScreenProps {
   readonly steps?: ReactElement | null
   /** Back to the wallet, or the picker. Rendered in the header by Screen. */
   readonly onHome?: (() => void) | undefined
+  /** What this physical device is called. Rendered in the header by Screen. */
+  readonly device?: { readonly name: string; readonly colour: string } | undefined
   readonly banner?: ReactElement | null
 }
 
 type Mode = 'choose' | 'create' | 'restore'
 
 export function BackupScreen(props: BackupScreenProps): ReactElement {
-  const { onCreate, onDescribe, onRestore, initialText, onScan, onBack, steps, onHome, banner } = props
+  const { onCreate, onDescribe, onRestore, initialText, onScan, onBack, steps, onHome, device, banner } = props
 
   const [mode, setMode] = useState<Mode>('choose')
   const [passphrase, setPassphrase] = useState(initialText ?? '')
@@ -101,6 +103,7 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
         subtitle={written.includesSeed ? 'This file can spend your money.' : 'Watch-only.'}
         banner={banner}
         onHome={onHome}
+        device={device}
         steps={steps}
         testId="backup-written"
         actions={
@@ -145,6 +148,7 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
         subtitle={restored.label}
         banner={banner}
         onHome={onHome}
+        device={device}
         steps={steps}
         testId="backup-restored"
         actions={
@@ -194,6 +198,7 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
         subtitle="Write one, or restore one."
         banner={banner}
         onHome={onHome}
+        device={device}
         steps={steps}
         testId="backup-screen"
         actions={
@@ -236,6 +241,7 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
         subtitle="Encrypted under a passphrase you choose."
         banner={banner}
         onHome={onHome}
+        device={device}
         steps={steps}
         testId="backup-create"
         actions={
@@ -313,6 +319,7 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
       subtitle="Paste or scan the file, then unlock it."
       banner={banner}
       onHome={onHome}
+      device={device}
       steps={steps}
       testId="backup-restore"
       actions={

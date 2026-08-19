@@ -17,6 +17,9 @@ export type {
   HealthCheckView,
 } from './screens/MachineEntropyScreen.js'
 
+export { DeviceNameScreen } from './screens/DeviceNameScreen.js'
+export type { DeviceNameScreenProps } from './screens/DeviceNameScreen.js'
+
 export { AttestationScreen } from './screens/AttestationScreen.js'
 export type { AttestationScreenProps } from './screens/AttestationScreen.js'
 

@@ -39,6 +39,14 @@ export interface UnlockedScreenProps {
   readonly hintCorrected: boolean
   readonly onContinue: () => void
   readonly onLock: () => void
+  /**
+   * What this physical device is called. Rendered in the header by Screen.
+   *
+   * The lock screen is the single most important place for it: it is the first
+   * thing shown when somebody picks a device up, and every device in a quorum
+   * looks identical until one is unlocked.
+   */
+  readonly device?: { readonly name: string; readonly colour: string } | undefined
   readonly banner?: ReactElement | null
 }
 
@@ -54,6 +62,7 @@ export function UnlockedScreen(props: UnlockedScreenProps): ReactElement {
     hintCorrected,
     onContinue,
     onLock,
+    device,
     banner,
   } = props
 
@@ -62,6 +71,7 @@ export function UnlockedScreen(props: UnlockedScreenProps): ReactElement {
       title={label}
       subtitle={`${networkLabel}${isMainnet ? '' : ', a test network'}`}
       banner={banner}
+      device={device}
       testId="unlocked-screen"
       actions={
         <>

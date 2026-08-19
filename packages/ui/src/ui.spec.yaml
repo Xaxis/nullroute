@@ -52,6 +52,7 @@ covers:
   - packages/ui/src/screens/StartScreen.tsx::StartScreen
   - packages/ui/src/screens/AttestationScreen.tsx::AttestationScreen
   - packages/ui/src/screens/MachineEntropyScreen.tsx::MachineEntropyScreen
+  - packages/ui/src/screens/DeviceNameScreen.tsx::DeviceNameScreen
   - packages/ui/src/screens/FinishScreen.tsx::FinishScreen
   - packages/ui/src/screens/ReceiveScreen.tsx::ReceiveScreen
   - packages/ui/src/screens/ReceiveScreen.tsx::chunkAddress
@@ -861,6 +862,18 @@ invariants:
       wallet screen and abandoning the flow.
     tests:
       - packages/ui/test/app.test.tsx::walks-through-opening-a-wallet-and-continues-the-flow
+
+  # --- Which device is this ---------------------------------------------------
+  - id: INV-UI-78
+    statement: >
+      A device can be given a name of its own, shown in the header of every
+      screen including before unlocking, and the screen that sets it says the
+      name is unverified and decides nothing.
+    tests:
+      - packages/ui/test/device-name-screen.test.tsx::names-the-device-and-offers-every-colour
+      - packages/ui/test/device-name-screen.test.tsx::says-the-name-is-unverified-and-decides-nothing
+      - packages/ui/test/device-name-screen.test.tsx::reports-a-refused-name
+      - packages/ui/test/app.test.tsx::shows-the-device-name-before-any-passphrase
 
 threats:
   - INV-KEY-1

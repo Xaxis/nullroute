@@ -49,6 +49,8 @@ export interface ReceiveScreenProps {
   readonly steps?: ReactElement | null
   /** Back to the wallet, or the picker. Rendered in the header by Screen. */
   readonly onHome?: (() => void) | undefined
+  /** What this physical device is called. Rendered in the header by Screen. */
+  readonly device?: { readonly name: string; readonly colour: string } | undefined
   readonly banner?: ReactElement | null
 }
 
@@ -58,7 +60,7 @@ export function chunkAddress(address: string): string {
 }
 
 export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
-  const { walletLabel, onAddress, onVerify, onBack, steps, onHome, banner } = props
+  const { walletLabel, onAddress, onVerify, onBack, steps, onHome, device, banner } = props
 
   const [index, setIndex] = useState(0)
   const [shown, setShown] = useState<ReceiveAddress | null>(null)
@@ -90,6 +92,7 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
       subtitle={walletLabel}
       banner={banner}
       onHome={onHome}
+      device={device}
       steps={steps}
       testId="receive-screen"
       actions={

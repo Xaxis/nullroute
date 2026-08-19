@@ -28,6 +28,7 @@ import { WalletsScreen, type WalletRow } from './screens/WalletsScreen.js'
 import { ManageWalletScreen } from './screens/ManageWalletScreen.js'
 import { StartScreen } from './screens/StartScreen.js'
 import { AttestationScreen } from './screens/AttestationScreen.js'
+import { DeviceNameScreen } from './screens/DeviceNameScreen.js'
 import {
   MachineEntropyScreen,
   type HealthReportView,
@@ -128,6 +129,8 @@ type Stage =
   | { readonly at: 'receive' }
   /** The device's own attestation, after it is open. */
   | { readonly at: 'attestation' }
+  /** Naming this physical device, so it can be told from its siblings. */
+  | { readonly at: 'device-name' }
   /** Reading and writing BIP-329 labels. */
   | { readonly at: 'labels'; readonly prefill?: string }
   /** Deriving a BIP-85 child seed. */
@@ -340,6 +343,15 @@ export function App() {
   // Whether the open wallet's name came out of the ciphertext. False for one
   // migrated from a v1 store, which sealed no name. The unlocked screen says so
   // once; the manage screen is where it gets fixed, so it has to know too.
+  /**
+   * What this physical device is called, or nothing.
+   *
+   * Read before unlocking, because "which of my three devices is this" is the
+   * question you have at the moment you pick one up. Unauthenticated, and every
+   * screen that shows it says so, so it decides nothing.
+   */
+  const [device, setDevice] = useState<{ name: string; colour: string } | null>(null)
+
   const [labelVerified, setLabelVerified] = useState(true)
   const [activeWallet, setActiveWallet] = useState<{
     id: string
@@ -363,7 +375,17 @@ export function App() {
         // whether this device holds a wallet at all, and if it does, how close
         // it is to erasing itself.
         const store = await call<StoreStatus>(transport, 'store.status')
+        // Not fatal. A daemon without storage cannot be named, and a device
+        // that refused to boot because a cosmetic file was missing would be a
+        // bad trade for a name.
+        let named: { identity: { name: string; colour: string } | null } = { identity: null }
+        try {
+          named = await call<typeof named>(transport, 'device.identity')
+        } catch {
+          /* unnamed */
+        }
         if (cancelled) return
+        setDevice(named.identity)
         setAttestation(att)
         setStatus(st)
         setStore(store)
@@ -607,6 +629,7 @@ export function App() {
     return (
       <LockScreen
         attestation={attestation}
+        device={device ?? undefined}
         network={status.network}
         {...(status.fingerprint === null ? {} : { fingerprint: status.fingerprint })}
         expanded={expanded}
@@ -641,6 +664,7 @@ export function App() {
         <FinishScreen
           banner={banner}
           onHome={goHome}
+          device={device ?? undefined}
           journey={finished}
           onDone={() => {
             setCompleted(null)
@@ -654,6 +678,7 @@ export function App() {
     return (
       <StartScreen
         banner={banner}
+        device={device ?? undefined}
         walletOpen={status?.hasWallet === true}
         onBegin={(id: JourneyId) => {
           const chosen = journeyById(id)
@@ -680,6 +705,7 @@ export function App() {
       <SetupScreen
         banner={banner}
         onHome={goHome}
+        device={device ?? undefined}
         steps={stepsFor('setup')}
         onStart={(mode: EntropyMode, network: NetworkChoice) => {
           const go = async (): Promise<void> => {
@@ -705,6 +731,7 @@ export function App() {
       <DiceScreen
         banner={banner}
         onHome={goHome}
+        device={device ?? undefined}
         steps={stepsFor('dice')}
         onAccount={account}
         onRollForMe={async (count: number) =>
@@ -734,6 +761,7 @@ export function App() {
       <MachineEntropyScreen
         banner={banner}
         onHome={goHome}
+        device={device ?? undefined}
         steps={stepsFor('dice')}
         onHealth={async () => call<HealthReportView>(transport, 'entropy.health')}
         onGenerate={async (acknowledged: boolean) => {
@@ -757,6 +785,7 @@ export function App() {
       <ImportScreen
         banner={banner}
         onHome={goHome}
+        device={device ?? undefined}
         steps={stepsFor('import')}
         onCancel={() => {
           setStage({ at: 'setup' })
@@ -779,6 +808,7 @@ export function App() {
     return (
       <SeedScreen
         banner={banner}
+        device={device ?? undefined}
         steps={stepsFor('seed')}
         words={stage.words}
         fingerprint={stage.fingerprint}
@@ -804,6 +834,7 @@ export function App() {
     return (
       <>
         <WalletScreen
+          device={device ?? undefined}
           quorums={quorums}
           onQuorum={(quorum: QuorumView) => {
             setStage({ at: 'quorum', quorum })
@@ -837,6 +868,9 @@ export function App() {
           }}
           onCheckDevice={() => {
             setStage({ at: 'attestation' })
+          }}
+          onNameDevice={() => {
+            setStage({ at: 'device-name' })
           }}
           onSwitchWallet={() => {
             // Locks first. Two seeds resident at once is the state from which a
@@ -929,6 +963,7 @@ export function App() {
         mode="set"
         banner={banner}
         onHome={goHome}
+        device={device ?? undefined}
         steps={stepsFor('protect')}
         onSubmit={async (passphrase) => {
           // wallets.create, NOT store.create. The latter addresses the single
@@ -977,6 +1012,7 @@ export function App() {
       <MultisigScreen
         banner={banner}
         onHome={goHome}
+        device={device ?? undefined}
         initialText={stage.prefill ?? ''}
         onScan={() => {
           setStage({ at: 'scan', forStage: 'multisig' })
@@ -1017,6 +1053,7 @@ export function App() {
       <QuorumAddressesScreen
         banner={banner}
         onHome={goHome}
+        device={device ?? undefined}
         steps={stepsFor('quorum')}
         descriptor={stage.quorum.descriptor}
         position={
@@ -1044,6 +1081,7 @@ export function App() {
       <PsbtScreen
         banner={banner}
         onHome={goHome}
+        device={device ?? undefined}
         steps={stepsFor('psbt')}
         initialPsbt={stage.prefill ?? ''}
         onScan={() => {
@@ -1070,6 +1108,7 @@ export function App() {
     return (
       <WalletsScreen
         banner={banner}
+        device={device ?? undefined}
         steps={stepsFor('wallets')}
         wallets={wallets}
         max={maxWallets}
@@ -1077,6 +1116,9 @@ export function App() {
         onUnlock={unlockWallet}
         onCreate={() => {
           setStage({ at: 'setup' })
+        }}
+        onNameDevice={() => {
+          setStage({ at: 'device-name' })
         }}
         onForget={async (id: string) => {
           await call(transport, 'wallets.forget', { id })
@@ -1097,6 +1139,7 @@ export function App() {
     return (
       <UnlockedScreen
         banner={banner}
+        device={device ?? undefined}
         label={activeWallet.label}
         colour={activeWallet.colour}
         fingerprint={stage.fingerprint}
@@ -1143,6 +1186,7 @@ export function App() {
       <ManageWalletScreen
         banner={banner}
         onHome={goHome}
+        device={device ?? undefined}
         wallet={activeWallet}
         labelVerified={labelVerified}
         onRename={async (label: string, colour: string, passphrase: string) => {
@@ -1174,11 +1218,38 @@ export function App() {
     )
   }
 
+  if (stage.at === 'device-name') {
+    return (
+      <DeviceNameScreen
+        banner={banner}
+        onHome={goHome}
+        device={device ?? undefined}
+        current={device ?? undefined}
+        onSave={async (name: string, colour: string) => {
+          const saved = await call<{ identity: { name: string; colour: string } }>(
+            transport,
+            'device.setIdentity',
+            { name, colour }
+          )
+          // The name that comes back, not the one that was typed: the daemon
+          // strips characters that do not display, so the header and the file
+          // agree rather than the header showing what somebody meant.
+          setDevice(saved.identity)
+          setStage({ at: status?.hasWallet === true ? 'wallet' : 'wallets' })
+        }}
+        onBack={() => {
+          setStage({ at: status?.hasWallet === true ? 'wallet' : 'wallets' })
+        }}
+      />
+    )
+  }
+
   if (stage.at === 'attestation' && attestation !== null) {
     return (
       <AttestationScreen
         banner={banner}
         onHome={goHome}
+        device={device ?? undefined}
         attestation={attestation}
         expanded={expanded}
         onToggleExpanded={() => {
@@ -1196,6 +1267,7 @@ export function App() {
       <ReceiveScreen
         banner={banner}
         onHome={goHome}
+        device={device ?? undefined}
         steps={stepsFor('receive')}
         walletLabel={activeWallet?.label ?? 'This device'}
         onAddress={async (index: number) => {
@@ -1226,6 +1298,7 @@ export function App() {
       <LabelsScreen
         banner={banner}
         onHome={goHome}
+        device={device ?? undefined}
         initialText={stage.prefill ?? ''}
         onScan={() => {
           setStage({ at: 'scan', forStage: 'labels' })
@@ -1248,6 +1321,7 @@ export function App() {
       <ChildSeedScreen
         banner={banner}
         onHome={goHome}
+        device={device ?? undefined}
         onDerive={async (application: ChildApplication, index: number, size: number) =>
           call<ChildSeedView>(transport, 'bip85.derive', {
             application,
@@ -1275,6 +1349,7 @@ export function App() {
       <BackupScreen
         banner={banner}
         onHome={goHome}
+        device={device ?? undefined}
         initialText={stage.prefill ?? ''}
         onScan={() => {
           setStage({ at: 'scan', forStage: 'backup' })
@@ -1310,6 +1385,7 @@ export function App() {
       <MessageScreen
         banner={banner}
         onHome={goHome}
+        device={device ?? undefined}
         onReview={async (message: string) =>
           call<MessageReviewView>(transport, 'message.review', { message })
         }
@@ -1328,6 +1404,7 @@ export function App() {
       <ScanScreen
         banner={banner}
         onHome={goHome}
+        device={device ?? undefined}
         title={SCANNING[stage.forStage].title}
         hint={SCANNING[stage.forStage].hint}
         onCancel={() => {

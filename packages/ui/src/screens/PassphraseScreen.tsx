@@ -41,6 +41,8 @@ export interface PassphraseScreenProps {
   readonly steps?: ReactElement | null
   /** Back to the wallet, or the picker. Rendered in the header by Screen. */
   readonly onHome?: (() => void) | undefined
+  /** What this physical device is called. Rendered in the header by Screen. */
+  readonly device?: { readonly name: string; readonly colour: string } | undefined
   readonly banner?: ReactElement | null
 }
 
@@ -74,7 +76,7 @@ function guessCost(passphrase: string): { label: string; tone: 'warn' | 'ok' } {
 }
 
 export function PassphraseScreen(props: PassphraseScreenProps): ReactElement {
-  const { mode, attemptsRemaining, maxAttempts, onSubmit, onCancel, steps, onHome, banner } = props
+  const { mode, attemptsRemaining, maxAttempts, onSubmit, onCancel, steps, onHome, device, banner } = props
 
   const [value, setValue] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -119,6 +121,7 @@ export function PassphraseScreen(props: PassphraseScreenProps): ReactElement {
       }
       banner={banner}
       onHome={onHome}
+      device={device}
       steps={steps}
       testId="passphrase-screen"
       actions={

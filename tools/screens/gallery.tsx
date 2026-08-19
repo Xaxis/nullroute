@@ -37,6 +37,7 @@ import {
   MultisigScreen,
   StartScreen,
   AttestationScreen,
+  DeviceNameScreen,
   MachineEntropyScreen,
   FinishScreen,
   ReceiveScreen,
@@ -62,6 +63,9 @@ import '../../packages/ui/src/styles.css'
 const never = (): Promise<never> =>
   Promise.reject(new Error('The gallery calls nothing. This is a layout harness.'))
 const noop = (): void => undefined
+
+/** A named device, so the header chip is measured on every screen. */
+const DEVICE = { name: 'The one in the attic', colour: 'teal' }
 
 /** Long enough to be the worst case a real device would meet. */
 const XPUB =
@@ -193,7 +197,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   // matters and the one nobody sees while developing, and it is the longest
   // text this screen ever holds.
   lock: () => (
-    <LockScreen
+    <LockScreen device={DEVICE}
       attestation={{
         rootHash: '942b6a2b53d02c1bce1ce4e7592d3f13e44f23db8dea4ef02c4aea297081360d',
         rootHashShort: '942b6a2b...7081360d',
@@ -220,9 +224,9 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       onToggleExpanded={noop}
     />
   ),
-  setup: () => <SetupScreen onHome={noop} onStart={noop} />,
+  setup: () => <SetupScreen device={DEVICE} onHome={noop} onStart={noop} />,
   dice: () => (
-    <DiceScreen
+    <DiceScreen device={DEVICE}
       onHome={noop}
       onAccount={never}
       onComplete={noop}
@@ -232,7 +236,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   ),
   // Off a real device, which is the state that must refuse rather than pass.
   machine: () => (
-    <MachineEntropyScreen
+    <MachineEntropyScreen device={DEVICE}
       onHome={noop}
       onHealth={async () =>
         Promise.resolve({
@@ -249,15 +253,15 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       onBack={noop}
     />
   ),
-  import: () => <ImportScreen onHome={noop} onImport={never} onCancel={noop} />,
+  import: () => <ImportScreen device={DEVICE} onHome={noop} onImport={never} onCancel={noop} />,
   seed: () => (
-    <SeedScreen words={MNEMONIC.split(' ')} fingerprint="73c5da0a" onConfirm={noop} />
+    <SeedScreen device={DEVICE} words={MNEMONIC.split(' ')} fingerprint="73c5da0a" onConfirm={noop} />
   ),
   passphrase: () => (
-    <PassphraseScreen mode="enter" attemptsRemaining={2} maxAttempts={10} onSubmit={never} onCancel={noop} />
+    <PassphraseScreen device={DEVICE} mode="enter" attemptsRemaining={2} maxAttempts={10} onSubmit={never} onCancel={noop} />
   ),
   wallets: () => (
-    <WalletsScreen
+    <WalletsScreen device={DEVICE}
       max={8}
       wallets={[
         {
@@ -297,7 +301,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     />
   ),
   unlocked: () => (
-    <UnlockedScreen
+    <UnlockedScreen device={DEVICE}
       label="Cold storage, three of five"
       colour="teal"
       fingerprint="73c5da0a"
@@ -311,7 +315,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     />
   ),
   wallet: () => (
-    <WalletScreen
+    <WalletScreen device={DEVICE}
       fingerprint="73c5da0a"
       quorums={[QUORUM]}
       onAddresses={async () =>
@@ -342,13 +346,13 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     />
   ),
   psbt: () => (
-    <PsbtScreen onHome={noop} initialPsbt="" onScan={noop} onReview={never} onSign={never} onBack={noop} />
+    <PsbtScreen device={DEVICE} onHome={noop} initialPsbt="" onScan={noop} onReview={never} onSign={never} onBack={noop} />
   ),
   // Signed, and NOT finished: the state the second device of three lands on,
   // where the next move is another device rather than the machine that built
   // the transaction.
   'psbt-signed-partial': () => (
-    <PsbtScreen onHome={noop}
+    <PsbtScreen device={DEVICE} onHome={noop}
       initialPsbt="cHNidP8BAHUCAAAAAQ=="
       onScan={noop}
       onReview={async () => Promise.resolve({ ...REVIEW, warnings: [], signable: true })}
@@ -370,7 +374,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   ),
   // The screen that authorises spending money, in the state where it does so.
   'psbt-review': () => (
-    <PsbtScreen onHome={noop}
+    <PsbtScreen device={DEVICE} onHome={noop}
       initialPsbt="cHNidP8BAHUCAAAAAQ=="
       onScan={noop}
       onReview={async () => Promise.resolve(REVIEW)}
@@ -379,7 +383,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     />
   ),
   multisig: () => (
-    <MultisigScreen onScan={noop} onHome={noop}
+    <MultisigScreen device={DEVICE} onScan={noop} onHome={noop}
       onOurKey={async () =>
         Promise.resolve({
           xpub: XPUB,
@@ -397,7 +401,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     />
   ),
   quorum: () => (
-    <QuorumAddressesScreen onHome={noop}
+    <QuorumAddressesScreen device={DEVICE} onHome={noop}
       descriptor={DESCRIPTOR}
       position={{ ours: 2, of: 3 }}
       onAddresses={async () =>
@@ -412,15 +416,24 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       onBack={noop}
     />
   ),
-  message: () => <MessageScreen onHome={noop} onReview={never} onSign={never} onBack={noop} />,
-  backup: () => <BackupScreen onScan={noop} onHome={noop} onCreate={never} onDescribe={never} onRestore={never} onBack={noop} />,
-  labels: () => <LabelsScreen onScan={noop} onHome={noop} onImport={never} onExport={never} onBack={noop} />,
-  child: () => <ChildSeedScreen onHome={noop} onDerive={never} onBack={noop} />,
-  start: () => <StartScreen walletOpen={false} onBegin={noop} onSkip={noop} />,
+  message: () => <MessageScreen device={DEVICE} onHome={noop} onReview={never} onSign={never} onBack={noop} />,
+  backup: () => <BackupScreen device={DEVICE} onScan={noop} onHome={noop} onCreate={never} onDescribe={never} onRestore={never} onBack={noop} />,
+  labels: () => <LabelsScreen device={DEVICE} onScan={noop} onHome={noop} onImport={never} onExport={never} onBack={noop} />,
+  child: () => <ChildSeedScreen device={DEVICE} onHome={noop} onDerive={never} onBack={noop} />,
+  start: () => <StartScreen device={DEVICE} walletOpen={false} onBegin={noop} onSkip={noop} />,
+  'device-name': () => (
+    <DeviceNameScreen
+      onHome={noop}
+      current={{ name: 'The one in the attic', colour: 'teal' }}
+      device={{ name: 'The one in the attic', colour: 'teal' }}
+      onSave={never}
+      onBack={noop}
+    />
+  ),
   // The failing case, which is the one that should be impossible and therefore
   // the one worth looking at: a device open with a check failing.
   attestation: () => (
-    <AttestationScreen
+    <AttestationScreen device={DEVICE}
       onHome={noop}
       attestation={{
         rootHash: '942b6a2b53d02c1bce1ce4e7592d3f13e44f23db8dea4ef02c4aea297081360d',
@@ -447,7 +460,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     />
   ),
   receive: () => (
-    <ReceiveScreen onHome={noop}
+    <ReceiveScreen device={DEVICE} onHome={noop}
       walletLabel="Cold storage, three of five"
       onAddress={async (index: number) =>
         Promise.resolve({ address: ADDRESS, path: `m/84'/0'/0'/0/${String(index)}`, index })
@@ -461,10 +474,10 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   finish: () => {
     const multisig = journeyById('multisig')
     if (multisig === undefined) throw new Error('the multisig journey is gone')
-    return <FinishScreen journey={multisig} onDone={noop} />
+    return <FinishScreen device={DEVICE} journey={multisig} onDone={noop} />
   },
   manage: () => (
-    <ManageWalletScreen onHome={noop}
+    <ManageWalletScreen device={DEVICE} onHome={noop}
       wallet={{ label: 'Cold storage, three of five', colour: 'teal' }}
       labelVerified={false}
       onRename={never}

@@ -1,0 +1,72 @@
+id: daemon.store.identity
+version: 1
+title: What this physical device is called
+assurance_tier: standard
+status: implemented
+
+purpose: >
+  Answer "which of my devices am I holding". Three nullroute boxes holding one
+  2-of-3 hold the same wallet, so they show the same wallet name, the same
+  colour and the same fingerprint, and nothing on any screen distinguished the
+  objects. The cosigner position helps only inside a quorum: a device with no
+  registrations is anonymous and a device in two quorums has two positions.
+
+covers:
+  - packages/daemon/src/store/identity.ts::DeviceIdentityStore
+  - packages/daemon/src/store/identity.ts::IdentityError
+  - packages/daemon/src/store/identity.ts::normaliseName
+  - packages/daemon/src/store/identity.ts::MAX_NAME_LENGTH
+
+algorithm: >
+  A name and a colour in a JSON file beside the wallets, written to a temporary
+  path and renamed so an interrupted write leaves the old value rather than half
+  a file. Read and written through the same character stripping wallet labels
+  get, from the same function rather than a copy of it.
+
+security_notes: >
+  This value is NOT AUTHENTICATED and is not meant to be. It has to be readable
+  before any passphrase, because the moment somebody picks a device up is the
+  moment they want to know which one it is, and anything authenticated by a key
+  would be unavailable then. So anyone holding the card can edit it.
+
+  Everything follows from that. It holds a name and a colour, no key material
+  and no identifiers, so there is nothing in it to steal or to correlate. It
+  decides nothing: no derivation, no signing path and no refusal reads it. Every
+  screen showing it says it is unverified. A device that let an editable name
+  influence signing would have turned a convenience into an attack, which is why
+  this is `standard` rather than `critical`: it sits beside key material and
+  never touches it.
+
+  It is deliberately NOT a profile owning several wallets. Wallets are sealed
+  independently under separate passphrases, so one mistake costs one seed; a
+  layer that opened several together would trade that away for organisation.
+
+references:
+  - docs/FLEET.md
+
+invariants:
+  - id: INV-IDENT-1
+    statement: >
+      An unnamed device, and a device whose identity file is damaged or hostile,
+      both read as having no name rather than failing, because this value
+      decides nothing and must never stop the device booting.
+    tests:
+      - packages/daemon/test/identity.test.ts::reads-as-unnamed-before-anything-is-written
+      - packages/daemon/test/identity.test.ts::reads-a-broken-file-as-no-name-rather-than-failing
+      - packages/daemon/test/identity.test.ts::strips-a-hand-edited-file-on-the-way-out-too
+
+  - id: INV-IDENT-2
+    statement: >
+      A name that could render as something other than what it contains is
+      stripped by the same code that strips a wallet label, what was stored is
+      returned rather than what was typed, and the file holds a name and a
+      colour and nothing else.
+    tests:
+      - packages/daemon/test/identity.test.ts::strips-what-cannot-be-displayed-and-returns-what-was-stored
+      - packages/daemon/test/identity.test.ts::refuses-a-name-longer-than-a-header-can-show
+      - packages/daemon/test/identity.test.ts::writes-a-name-and-a-colour-and-nothing-else
+      - packages/daemon/test/identity.test.ts::round-trips-a-name-and-a-colour
+      - packages/daemon/test/identity.test.ts::refuses-a-colour-the-device-cannot-draw
+
+threats:
+  - INV-KEY-1

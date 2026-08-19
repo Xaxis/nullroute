@@ -34,6 +34,8 @@ export interface AttestationScreenProps {
   readonly onToggleExpanded?: () => void
   readonly onBack: () => void
   readonly onHome?: (() => void) | undefined
+  /** What this physical device is called. Rendered in the header by Screen. */
+  readonly device?: { readonly name: string; readonly colour: string } | undefined
   readonly banner?: ReactElement | null
 }
 
@@ -41,7 +43,7 @@ export interface AttestationScreenProps {
 const PASSING = new Set(['passed', 'not-applicable'])
 
 export function AttestationScreen(props: AttestationScreenProps): ReactElement {
-  const { attestation, expanded = false, onToggleExpanded, onBack, onHome, banner } = props
+  const { attestation, expanded = false, onToggleExpanded, onBack, onHome, device, banner } = props
 
   // Fail closed, for the reason the lock screen does: a status this file has
   // not been told about must not read as a pass. See INV-UI-53.
@@ -54,6 +56,7 @@ export function AttestationScreen(props: AttestationScreenProps): ReactElement {
       subtitle={`v${attestation.version}`}
       banner={banner}
       onHome={onHome}
+      device={device}
       testId="attestation-screen"
       actions={
         <>

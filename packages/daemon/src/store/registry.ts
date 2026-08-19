@@ -153,20 +153,20 @@ export interface OpenedWallet extends StoredWallet {
 }
 
 /**
- * Make a label safe to store and to render.
+ * Strip everything that cannot be displayed honestly, and normalise the rest.
  *
- * A label is user input that ends up in a picker row, a header chip, and the
- * sentence on the signing screen naming which wallet is about to sign. It never
- * touches a path, so this is not about traversal. It is about a label that
- * renders as nothing, renders as another wallet's, or renders taller than the
- * row that holds it.
+ * Extracted so the device name in identity.ts uses THIS definition rather than
+ * a copy. Two implementations of "which characters are dangerous in a string we
+ * render" is exactly the drift tools/check-ui-constants.mjs exists to catch, and
+ * a second copy would be one that quietly forgets a bidi override.
  *
- * Rejected rather than silently repaired, because a user who typed something
- * that came out different would not know which of their wallets is which.
+ * Returns the cleaned string, which may be empty. Callers decide what an empty
+ * result means, because the message differs: a wallet name and a device name
+ * are read in different places.
  */
-export function normaliseLabel(raw: string): string {
-  // NFC first, so two labels that look identical cannot differ in storage and
-  // defeat the duplicate check below.
+export function stripUndisplayable(raw: string): string {
+  // NFC first, so two strings that look identical cannot differ in storage and
+  // defeat a duplicate check.
   const composed = raw.normalize('NFC')
 
   // Written as escapes rather than as the characters themselves, because the
@@ -192,7 +192,36 @@ export function normaliseLabel(raw: string): string {
   // of non-breaking spaces survives `trim`, renders as a blank row, and lets
   // two wallets carry names that look identical while differing in storage.
   const spaced = stripped.replace(/\p{White_Space}/gu, ' ').replace(/ {2,}/g, ' ')
-  const trimmed = spaced.trim()
+  return spaced.trim()
+}
+
+/**
+ * Make a label safe to store and to render.
+ *
+ * A label is user input that ends up in a picker row, a header chip, and the
+ * sentence on the signing screen naming which wallet is about to sign. It never
+ * touches a path, so this is not about traversal. It is about a label that
+ * renders as nothing, renders as another wallet's, or renders taller than the
+ * row that holds it.
+ *
+ * REPAIRED, NOT REJECTED, and this docblock said the opposite for a long time.
+ * The dangerous characters are stripped and what is left is stored. That is
+ * only defensible because the repair is not silent: the sealed label is what
+ * comes back from `create` and `rename`, the session takes that one, and every
+ * screen shows it, so a user who typed something that came out different sees
+ * the difference on the next screen rather than being told about it in an
+ * error.
+ *
+ * Empty and over-long are refused, because neither has a repair that preserves
+ * intent: a truncated name is a name for a different wallet.
+ *
+ * The contrast with BIP-329 labels is deliberate. Those are REFUSED, because
+ * they arrive in a file from software this device knows nothing about, and
+ * quietly cleaning one would hide that something tried. A wallet name is typed
+ * by the person holding the device.
+ */
+export function normaliseLabel(raw: string): string {
+  const trimmed = stripUndisplayable(raw)
 
   if (trimmed.length === 0) {
     throw new StoreError(

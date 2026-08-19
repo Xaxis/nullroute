@@ -60,11 +60,13 @@ export interface MessageScreenProps {
   readonly onBack: () => void
   /** Back to the wallet, or the picker. Rendered in the header by Screen. */
   readonly onHome?: (() => void) | undefined
+  /** What this physical device is called. Rendered in the header by Screen. */
+  readonly device?: { readonly name: string; readonly colour: string } | undefined
   readonly banner?: ReactElement | null
 }
 
 export function MessageScreen(props: MessageScreenProps): ReactElement {
-  const { onReview, onSign, onBack, onHome, banner } = props
+  const { onReview, onSign, onBack, onHome, device, banner } = props
 
   const [message, setMessage] = useState('')
   const [review, setReview] = useState<MessageReviewView | null>(null)
@@ -120,6 +122,7 @@ export function MessageScreen(props: MessageScreenProps): ReactElement {
         subtitle="Give all three of these to whoever asked."
         banner={banner}
         onHome={onHome}
+        device={device}
         testId="message-signed"
         actions={
           <>
@@ -185,6 +188,7 @@ export function MessageScreen(props: MessageScreenProps): ReactElement {
       subtitle="Sign a message with one of your keys."
       banner={banner}
       onHome={onHome}
+      device={device}
       testId="message-screen"
       actions={
         <>

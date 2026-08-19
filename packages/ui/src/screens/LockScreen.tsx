@@ -68,6 +68,14 @@ export interface LockScreenProps {
    * wants the device, not a menu asking what they are trying to achieve.
    */
   readonly onGuide?: () => void
+  /**
+   * What this physical device is called. Rendered in the header by Screen.
+   *
+   * The most important place for it. This is the first thing shown when
+   * somebody picks a device up, and three devices in one quorum are identical
+   * on every other screen until one of them is unlocked.
+   */
+  readonly device?: { readonly name: string; readonly colour: string } | undefined
   readonly expanded?: boolean
   readonly onToggleExpanded?: () => void
 }
@@ -87,6 +95,7 @@ export function LockScreen(props: LockScreenProps): ReactElement {
     fingerprint,
     onUnlock,
     onGuide,
+    device,
     expanded = false,
     onToggleExpanded,
   } = props
@@ -108,6 +117,7 @@ export function LockScreen(props: LockScreenProps): ReactElement {
       title="nullroute"
       subtitle={`v${attestation.version}`}
       banner={network.isMainnet ? null : <NetworkBanner network={network} />}
+      device={device}
       testId="lock-screen"
       actions={
         <>

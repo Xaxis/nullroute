@@ -124,6 +124,8 @@ export interface WalletScreenProps {
    * been out of your sight.
    */
   readonly onCheckDevice?: () => void
+  /** Leaves for naming this physical device, so it can be told from its siblings. */
+  readonly onNameDevice?: () => void
   /**
    * Leaves for one address, shown large.
    *
@@ -140,6 +142,14 @@ export interface WalletScreenProps {
    */
   readonly onChildSeed?: () => void
   readonly onLock: () => void
+  /**
+   * What this physical device is called. Rendered in the header by Screen.
+   *
+   * The lock screen is the single most important place for it: it is the first
+   * thing shown when somebody picks a device up, and every device in a quorum
+   * looks identical until one is unlocked.
+   */
+  readonly device?: { readonly name: string; readonly colour: string } | undefined
   readonly banner?: ReactElement | null
 }
 
@@ -192,9 +202,11 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
     onGuide,
     onSwitchWallet,
     onCheckDevice,
+    onNameDevice,
     onReceive,
     onChildSeed,
     onLock,
+    device,
     banner,
   } = props
 
@@ -263,6 +275,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
       title="Wallet"
       subtitle={`Fingerprint ${fingerprint}`}
       banner={banner}
+      device={device}
       testId="wallet-screen"
       actions={
         <>
@@ -571,6 +584,15 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
               selected={false}
               onSelect={onCheckDevice}
               testId="wallet-check-device"
+            />
+          )}
+          {onNameDevice !== undefined && (
+            <Choice
+              title="Name this device"
+              description="So you can tell it from your other ones. Every device in a quorum shows the same wallet name."
+              selected={false}
+              onSelect={onNameDevice}
+              testId="wallet-name-device"
             />
           )}
           {onChildSeed !== undefined && (

@@ -33,6 +33,18 @@ export interface ScreenProps {
    * review. On those, the way out is the action that says what it costs.
    */
   readonly onHome?: (() => void) | undefined
+  /**
+   * What this physical device is called, when it has been named.
+   *
+   * In the header of every screen, because three devices holding one 2-of-3
+   * all show the same wallet name, the same colour and the same fingerprint,
+   * and nothing else on any screen says which object is in your hand.
+   *
+   * Never authenticated. It is read from a file beside the wallets before any
+   * passphrase, which is the moment the question is asked, and it therefore
+   * decides nothing.
+   */
+  readonly device?: { readonly name: string; readonly colour: string } | undefined
   readonly banner?: ReactNode
   readonly children: ReactNode
   readonly actions?: ReactNode
@@ -40,7 +52,7 @@ export interface ScreenProps {
 }
 
 export function Screen(props: ScreenProps): ReactElement {
-  const { title, steps, subtitle, banner, children, actions, onHome, testId } = props
+  const { title, steps, subtitle, banner, children, actions, onHome, device, testId } = props
   return (
     <section className="nr-screen" data-testid={testId}>
       <header className="nr-screen__head">
@@ -50,6 +62,12 @@ export function Screen(props: ScreenProps): ReactElement {
           {subtitle !== undefined && <p className="nr-screen__subtitle">{subtitle}</p>}
         </div>
         <div className="nr-spacer" />
+        {device !== undefined && (
+          <span className="nr-device" data-testid="screen-device" title={device.name}>
+            <span className="nr-device__dot" data-colour={device.colour} />
+            <span className="nr-device__name">{device.name}</span>
+          </span>
+        )}
         {banner}
         {onHome !== undefined && (
           <button

@@ -34,6 +34,8 @@ export interface ScanScreenProps {
   readonly onCancel: () => void
   /** Back to the wallet, or the picker. Rendered in the header by Screen. */
   readonly onHome?: (() => void) | undefined
+  /** What this physical device is called. Rendered in the header by Screen. */
+  readonly device?: { readonly name: string; readonly colour: string } | undefined
   readonly banner?: ReactElement | null
   /**
    * Injected in tests, where there is no camera, no canvas and no wasm.
@@ -95,6 +97,7 @@ export function ScanScreen(props: ScanScreenProps): ReactElement {
     onResult,
     onCancel,
     onHome,
+    device,
     banner,
     openCamera = defaultCamera,
   } = props
@@ -249,6 +252,7 @@ export function ScanScreen(props: ScanScreenProps): ReactElement {
       subtitle={hint ?? 'Hold the other screen inside the frame.'}
       banner={banner}
       onHome={onHome}
+      device={device}
       testId="scan-screen"
       actions={
         <>

@@ -53,6 +53,7 @@ import {
 } from '@nullroute/core'
 import { randomBytes } from 'node:crypto'
 import { checkEntropyHealth } from './entropy/health.js'
+import { DeviceIdentityStore } from './store/identity.js'
 import { type BootAttestation, abbreviateHash } from './boot/attestation.js'
 import { type IpcHandler, type IpcRequest } from './ipc/socket.js'
 import { Session } from './session.js'
@@ -84,6 +85,13 @@ export interface DaemonState {
    * When present it is the only thing that touches persistence.
    */
   readonly registry?: WalletRegistry
+  /**
+   * What this physical device is called.
+   *
+   * Optional, because a daemon started without storage has nowhere to keep it,
+   * and because a device with one wallet and no siblings does not need a name.
+   */
+  readonly identity?: DeviceIdentityStore
 }
 
 function params(request: IpcRequest): Record<string, unknown> {
@@ -298,6 +306,41 @@ export function createHandler(state: DaemonState): IpcHandler {
        * acted on: the screen has to be able to show the user what was and was
        * not observed. See docs/ENTROPY.md.
        */
+      /**
+       * What this device is called, and whether it has been named.
+       *
+       * Safe before unlocking, and deliberately so: "which of my three devices
+       * is this" is the question you have at the moment you pick one up, which
+       * is before any passphrase. Unauthenticated for the same reason, and the
+       * response says so in a field rather than leaving a screen to remember.
+       */
+      case 'device.identity': {
+        const stored = state.identity?.read() ?? null
+        return {
+          identity: stored,
+          named: stored !== null,
+          // Stated in the payload so a screen cannot forget it.
+          verified: false,
+          note:
+            'This name is read from a file beside the wallets and is not verified. It decides ' +
+            'nothing: it exists so you can tell one device from another.',
+        }
+      }
+
+      /** Name this device, or rename it. */
+      case 'device.setIdentity': {
+        if (state.identity === undefined) {
+          throw new Error('This daemon was started without storage, so it cannot be named.')
+        }
+        const colour = requireColour(request)
+        return {
+          identity: state.identity.write({
+            name: requireString(request, 'name'),
+            colour,
+          }),
+        }
+      }
+
       case 'entropy.health':
         return checkEntropyHealth()
 

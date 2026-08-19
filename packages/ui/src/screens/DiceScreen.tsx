@@ -62,13 +62,15 @@ export interface DiceScreenProps {
   readonly steps?: ReactElement | null
   /** Back to the wallet, or the picker. Rendered in the header by Screen. */
   readonly onHome?: (() => void) | undefined
+  /** What this physical device is called. Rendered in the header by Screen. */
+  readonly device?: { readonly name: string; readonly colour: string } | undefined
   readonly banner?: ReactElement | null
 }
 
 const FACES = ['1', '2', '3', '4', '5', '6'] as const
 
 export function DiceScreen(props: DiceScreenProps): ReactElement {
-  const { onAccount, onComplete, onCancel, onRollForMe, steps, onHome, banner } = props
+  const { onAccount, onComplete, onCancel, onRollForMe, steps, onHome, device, banner } = props
 
   const [rolls, setRolls] = useState('')
   const [accounting, setAccounting] = useState<Accounting | null>(null)
@@ -146,6 +148,7 @@ export function DiceScreen(props: DiceScreenProps): ReactElement {
       subtitle="A d6, one roll at a time. 100 rolls."
       banner={banner}
       onHome={onHome}
+      device={device}
       steps={steps}
       testId="dice-screen"
       actions={

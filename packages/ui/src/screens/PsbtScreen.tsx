@@ -120,11 +120,13 @@ export interface PsbtScreenProps {
   /** Back to the wallet. Redundant with Cancel here, and consistent, which on
    *  a device with one screen size matters more than avoiding a second route. */
   readonly onHome?: (() => void) | undefined
+  /** What this physical device is called. Rendered in the header by Screen. */
+  readonly device?: { readonly name: string; readonly colour: string } | undefined
   readonly banner?: ReactElement | null
 }
 
 export function PsbtScreen(props: PsbtScreenProps): ReactElement {
-  const { initialPsbt, onScan, onReview, onSign, onBack, onHome, steps, banner } = props
+  const { initialPsbt, onScan, onReview, onSign, onBack, onHome, device, steps, banner } = props
 
   const [psbt, setPsbt] = useState(initialPsbt ?? '')
   const [review, setReview] = useState<PsbtReviewView | null>(null)
@@ -207,6 +209,7 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
         }
         banner={banner}
       onHome={onHome}
+      device={device}
         steps={steps}
         testId="psbt-signed"
         actions={
@@ -327,6 +330,7 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
       subtitle="Nothing is signed until you have read what is below."
       banner={banner}
       onHome={onHome}
+      device={device}
       steps={steps}
       testId="psbt-screen"
       actions={
