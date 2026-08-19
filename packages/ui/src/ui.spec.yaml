@@ -51,6 +51,8 @@ covers:
   - packages/ui/src/screens/ChildSeedScreen.tsx::ChildSeedScreen
   - packages/ui/src/screens/StartScreen.tsx::StartScreen
   - packages/ui/src/screens/FinishScreen.tsx::FinishScreen
+  - packages/ui/src/screens/ReceiveScreen.tsx::ReceiveScreen
+  - packages/ui/src/screens/ReceiveScreen.tsx::chunkAddress
   - packages/ui/src/components/Steps.tsx::Steps
   - packages/ui/src/journeys.ts::JOURNEYS
   - packages/ui/src/journeys.ts::journeyById
@@ -676,6 +678,28 @@ invariants:
       - packages/ui/test/finish-screen.test.tsx::says-plainly-when-nothing-is-left
       - packages/ui/test/finish-screen.test.tsx::counts-one-leftover-in-the-singular
       - packages/ui/test/finish-screen.test.tsx::recaps-the-steps-that-were-taken
+
+  # --- Taking an address ------------------------------------------------------
+  - id: INV-UI-60
+    statement: >
+      Receiving shows one address at a time with its derivation path, states
+      that this device cannot protect the address after it leaves the screen,
+      and offers a re-derivation whose claim is bounded to the address shown.
+    tests:
+      - packages/ui/test/receive-screen.test.tsx::shows-one-address-with-its-path-and-says-what-it-cannot-protect
+      - packages/ui/test/receive-screen.test.tsx::verifies-by-re-deriving-and-does-not-overclaim
+      - packages/ui/test/receive-screen.test.tsx::refuses-an-address-it-cannot-re-derive
+
+  - id: INV-UI-61
+    statement: >
+      Moving to another address clears the previous verdict, and no control
+      claims to know which addresses have been used, because a device with no
+      network cannot know that.
+    tests:
+      - packages/ui/test/receive-screen.test.tsx::clears-the-verdict-when-the-address-changes
+      - packages/ui/test/receive-screen.test.tsx::does-not-claim-to-know-which-addresses-were-used
+      - packages/ui/test/receive-screen.test.tsx::reports-a-failed-derivation-rather-than-an-empty-screen
+      - packages/ui/test/receive-screen.test.tsx::chunks-an-address-into-fours
 
 threats:
   - INV-KEY-1

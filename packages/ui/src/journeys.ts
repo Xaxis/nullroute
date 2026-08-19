@@ -43,6 +43,7 @@ export type JourneyStage =
   | 'protect'
   | 'wallets'
   | 'wallet'
+  | 'receive'
   | 'multisig'
   | 'quorum'
   | 'psbt'
@@ -149,8 +150,8 @@ export const JOURNEYS: readonly Journey[] = [
       'Get an address, and check on this screen that it is really yours before anyone sends to it.',
     needs: [],
     steps: [
-      { stage: 'wallet', label: 'Take an address' },
-      { stage: 'wallet', label: 'Check it against the sending device' },
+      { stage: 'receive', label: 'Take an address' },
+      { stage: 'receive', label: 'Check it is really yours' },
     ],
     thenWhat: [
       'Read the address off THIS screen, not off the machine you copied it into. Software that swaps an address in the clipboard is the ordinary way this money is lost.',

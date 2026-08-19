@@ -28,6 +28,7 @@ import { WalletsScreen, type WalletRow } from './screens/WalletsScreen.js'
 import { ManageWalletScreen } from './screens/ManageWalletScreen.js'
 import { StartScreen } from './screens/StartScreen.js'
 import { FinishScreen } from './screens/FinishScreen.js'
+import { ReceiveScreen, type ReceiveAddress } from './screens/ReceiveScreen.js'
 import { Steps } from './components/Steps.js'
 import { journeyById, type JourneyId } from './journeys.js'
 import { LabelsScreen, type ImportedLabels, type LabelRow } from './screens/LabelsScreen.js'
@@ -107,6 +108,8 @@ type Stage =
   | { readonly at: 'message' }
   /** Writing or restoring an encrypted backup. */
   | { readonly at: 'backup' }
+  /** Taking one address, big enough to read off the panel. */
+  | { readonly at: 'receive' }
   /** Reading and writing BIP-329 labels. */
   | { readonly at: 'labels' }
   /** Deriving a BIP-85 child seed. */
@@ -708,6 +711,9 @@ export function App() {
           onLabels={() => {
             setStage({ at: 'labels' })
           }}
+          onReceive={() => {
+            setStage({ at: 'receive' })
+          }}
           onGuide={() => {
             setJourney(null)
             setStage({ at: 'start' })
@@ -1001,6 +1007,35 @@ export function App() {
           setStage({ at: 'wallets' })
         }}
         onBack={() => {
+          setStage({ at: 'wallet' })
+        }}
+      />
+    )
+  }
+
+  if (stage.at === 'receive') {
+    return (
+      <ReceiveScreen
+        banner={banner}
+        steps={stepsFor('receive')}
+        walletLabel={activeWallet?.label ?? 'This device'}
+        onAddress={async (index: number) => {
+          const derived = await call<{ addresses: readonly ReceiveAddress[] }>(
+            transport,
+            'wallet.addresses',
+            // One at a time. Deriving twenty to show one would put nineteen
+            // addresses the user did not ask for into the response.
+            { scriptType: 'p2wpkh', change: false, start: index, count: 1 }
+          )
+          const first = derived.addresses[0]
+          if (first === undefined) {
+            throw new Error(`The daemon returned no address at index ${String(index)}.`)
+          }
+          return first
+        }}
+        onVerify={verifyAddress}
+        onBack={() => {
+          advance('receive')
           setStage({ at: 'wallet' })
         }}
       />

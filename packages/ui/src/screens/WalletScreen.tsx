@@ -108,6 +108,14 @@ export interface WalletScreenProps {
   /** Leaves for the goal hub, for somebody who wants to be walked through. */
   readonly onGuide?: () => void
   /**
+   * Leaves for one address, shown large.
+   *
+   * The addresses tab is a table, which is right for auditing an account and
+   * wrong for taking an address: the eye slips a row on a 7 inch panel, and a
+   * row here is a different address.
+   */
+  readonly onReceive?: () => void
+  /**
    * Leaves for deriving a BIP-85 child seed.
    *
    * Optional, and last in the row on purpose. It is the one entry here that
@@ -165,6 +173,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
     onQuorum,
     onLabels,
     onGuide,
+    onReceive,
     onChildSeed,
     onLock,
     banner,
@@ -473,6 +482,15 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
               selected={false}
               onSelect={onGuide}
               testId="wallet-guide"
+            />
+          )}
+          {onReceive !== undefined && (
+            <Choice
+              title="Receive money"
+              description="One address at a time, large enough to read against the screen that is paying you."
+              selected={false}
+              onSelect={onReceive}
+              testId="wallet-receive"
             />
           )}
           <Choice

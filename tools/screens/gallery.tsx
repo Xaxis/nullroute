@@ -37,6 +37,7 @@ import {
   MultisigScreen,
   StartScreen,
   FinishScreen,
+  ReceiveScreen,
   PassphraseScreen,
   PsbtScreen,
   QuorumAddressesScreen,
@@ -244,6 +245,16 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   labels: () => <LabelsScreen onImport={never} onExport={never} onBack={noop} />,
   child: () => <ChildSeedScreen onDerive={never} onBack={noop} />,
   start: () => <StartScreen walletOpen={false} onBegin={noop} onSkip={noop} />,
+  receive: () => (
+    <ReceiveScreen
+      walletLabel="Cold storage, three of five"
+      onAddress={async (index: number) =>
+        Promise.resolve({ address: ADDRESS, path: `m/84'/0'/0'/0/${String(index)}`, index })
+      }
+      onVerify={async () => Promise.resolve({ found: true, path: "m/84'/0'/0'/0/0" })}
+      onBack={noop}
+    />
+  ),
   // The multisig journey, because it has the most left over and is therefore
   // the tallest this screen ever gets.
   finish: () => {
@@ -288,6 +299,9 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   // The preamble for the longest journey: what it needs, its five steps, and
   // what it still does not finish. The most text this screen ever holds.
   start: [['start-goal-multisig']],
+  // Verified, which adds a paragraph under a screen that already holds a QR
+  // code, an address in large type and a warning banner.
+  receive: [['receive-verify']],
 }
 
 // Published before rendering. A screen that throws must fail loudly as that
