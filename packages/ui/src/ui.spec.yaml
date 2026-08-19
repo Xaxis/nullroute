@@ -900,6 +900,18 @@ invariants:
       - packages/ui/test/assemble-quorum-screen.test.tsx::says-the-order-keys-were-collected-in-does-not-matter
       - packages/ui/test/assemble-quorum-screen.test.tsx::reports-a-refused-assembly
 
+  - id: INV-UI-81
+    statement: >
+      A cosigner's name is shown above its key and marked as the user's own
+      rather than as a fact, naming sends the full extended key rather than the
+      abbreviation on screen, and this device is never offered a nickname
+      because it is identified by re-deriving its key.
+    tests:
+      - packages/ui/test/multisig-screen.test.tsx::shows-a-name-above-the-key-and-marks-it-as-the-users-own
+      - packages/ui/test/multisig-screen.test.tsx::names-a-key-by-its-full-value-not-the-abbreviation
+      - packages/ui/test/multisig-screen.test.tsx::does-not-offer-to-name-this-device
+      - packages/ui/test/multisig-screen.test.tsx::shows-no-naming-field-when-there-is-nowhere-to-send-it
+
 threats:
   - INV-KEY-1
   - INV-BUILD-1

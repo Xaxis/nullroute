@@ -90,6 +90,27 @@ invariants:
       - packages/daemon/test/store.test.ts::refuses-a-truncated-store-file
       - packages/daemon/test/store.test.ts::uses-a-fresh-salt-and-nonce-every-time
 
+  - id: INV-COSIGN-1
+    statement: >
+      A name given to another key in a quorum is the user's own, is stripped the
+      same way a wallet name is, is never verified, and replacing or clearing it
+      does not accumulate entries.
+    tests:
+      - packages/daemon/test/cosigner-labels.ipc.test.ts::names-a-key-and-says-the-name-proves-nothing
+      - packages/daemon/test/cosigner-labels.ipc.test.ts::replaces-a-name-rather-than-accumulating-them
+      - packages/daemon/test/cosigner-labels.ipc.test.ts::clears-a-name-when-given-an-empty-one
+      - packages/daemon/test/cosigner-labels.ipc.test.ts::strips-a-name-that-could-render-as-something-else
+
+  - id: INV-COSIGN-2
+    statement: >
+      Cosigner names survive every reseal, including one caused by renaming the
+      wallet, and the response says whether a name was written or only held for
+      this session.
+    tests:
+      - packages/daemon/test/cosigner-labels.ipc.test.ts::survives-a-rename-and-a-reboot
+      - packages/daemon/test/cosigner-labels.ipc.test.ts::says-whether-a-name-was-written-or-only-held
+      - packages/daemon/test/cosigner-labels.ipc.test.ts::refuses-when-no-wallet-is-open
+
 threats:
   - INV-STORE-1
   - INV-STORE-2

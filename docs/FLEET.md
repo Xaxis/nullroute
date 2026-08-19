@@ -139,6 +139,21 @@ vendor's device looks identical to the software.
 
 ## Telling the devices apart
 
+**Name the other cosigners too.** On the quorum review screen every other key
+gets a field: call one "the attic Pi" and another "Dad's Coldcard", and the
+quorum stops being a list of extended keys nobody can tell apart. The names are
+sealed with the wallet, so they survive a reboot and a rename.
+
+They are yours and are never checked. A name says nothing about who controls
+that key: only the key does. The screen labels them as yours for that reason,
+and this device is never given a nickname, because it is identified by
+re-deriving its key, which is a stronger claim than a label.
+
+They are sealed rather than kept beside the file, and the reason is privacy
+rather than integrity. A list mapping extended keys to "Dad's Coldcard" and "the
+one at the office", sitting in plaintext next to an encrypted wallet, would tell
+somebody holding the card who the cosigners are and roughly where they live.
+
 **Name each device.** From the wallet picker, or **More** then **Name this
 device**. The name sits in the header of every screen including the lock screen,
 so it answers "which one am I holding" at the moment you pick one up, before any

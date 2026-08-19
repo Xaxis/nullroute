@@ -449,16 +449,23 @@ async function main() {
         {
           expression: `(() => {
             const el = document.querySelector('[data-testid="${testId}"]')
-            if (el === null) return false
+            if (el === null) return 'missing'
+            // A disabled control accepts .click() and does nothing, so the
+            // harness would go on to measure the screen it was already on and
+            // report the unreached state as fitting. That happened: a reach
+            // list pointed at a submit button that needed a filled field.
+            if (el.disabled === true || el.getAttribute('aria-disabled') === 'true') {
+              return 'disabled'
+            }
             el.click()
-            return true
+            return 'clicked'
           })()`,
           returnByValue: true,
         },
         state
       )
-      if (clicked.result.value !== true) {
-        unreachable = testId
+      if (clicked.result.value !== 'clicked') {
+        unreachable = `${testId} (${String(clicked.result.value)})`
         break
       }
       await sleep(250)
@@ -467,7 +474,7 @@ async function main() {
     if (unreachable !== null) {
       failed += 1
       console.error(`\n${label}:`)
-      console.error(`    unreachable: no element with data-testid="${unreachable}"`)
+      console.error(`    unreachable: ${unreachable}`)
       continue
     }
 
@@ -509,9 +516,10 @@ async function main() {
         `  whatever is beside it, and on several of these screens what is beside\n` +
         `  it erases a wallet. Give it ${String(MIN_TARGET)}px of box and ${String(MIN_GAP)}px of air.\n\n` +
         `  A state reported unreachable: the tap list in tools/screens/gallery.tsx\n` +
-        `  names a testid that is gone. Point it at the new one, or drop it, but\n` +
-        `  do not leave it: a reach list that reaches nowhere reports every state\n` +
-        `  as fitting while measuring only the first.\n`
+        `  names a testid that is gone, or one that is disabled in that state.\n` +
+        `  Either is a state the harness never reached, so what it measured was\n` +
+        `  the screen before it. Fix the list or give the fixture what the\n` +
+        `  control needs to be enabled.\n`
     )
     process.exit(1)
   }

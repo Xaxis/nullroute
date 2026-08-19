@@ -54,6 +54,14 @@ export interface WalletSession {
   readonly mnemonic: string | undefined
   /** Registered multisig descriptors. Empty for a single-signature wallet. */
   registrations: string[]
+  /**
+   * Names the user gave the OTHER keys in their quorums, by extended key.
+   *
+   * In the session because they are sealed with the wallet and have to be
+   * rewritten with it: a rename or a new registration reseals, and dropping
+   * them there would silently lose every name the user had assigned.
+   */
+  cosigners: { xpub: string; label: string }[]
   readonly provenance: SeedProvenance
   readonly fingerprint: string
   /** True until the user confirms they have written the mnemonic down. */
@@ -148,6 +156,7 @@ export class Session {
       mnemonic,
       provenance,
       registrations: [],
+      cosigners: [],
       fingerprint: masterFingerprint(seed, this.#network),
       // A generated seed has not been written down yet. An imported one, by
       // definition, already exists on paper somewhere.
@@ -181,6 +190,7 @@ export class Session {
       mnemonic: undefined,
       provenance: 'loaded',
       registrations: [],
+      cosigners: [],
       fingerprint: masterFingerprint(seed, this.#network),
       // It came off disk, so it existed before this session and its backup is
       // not this session's business to assert either way.
@@ -267,6 +277,31 @@ export class Session {
   /** Registered quorums, in registration order. */
   get registrations(): readonly string[] {
     return this.#wallet?.registrations ?? []
+  }
+
+  /** Names given to the other keys in this wallet's quorums. */
+  get cosigners(): readonly { readonly xpub: string; readonly label: string }[] {
+    return this.#wallet?.cosigners ?? []
+  }
+
+  /**
+   * Name one of the other keys, or clear the name by passing an empty label.
+   *
+   * Keyed by extended key rather than by position: position belongs to one
+   * descriptor, and the same physical device is the same device across every
+   * quorum it is in.
+   */
+  labelCosigner(xpub: string, label: string): void {
+    const wallet = this.#wallet
+    if (wallet === undefined) throw new SessionError('No wallet is loaded.')
+    const without = wallet.cosigners.filter((entry) => entry.xpub !== xpub)
+    wallet.cosigners = label.length === 0 ? without : [...without, { xpub, label }]
+  }
+
+  setCosigners(cosigners: readonly { readonly xpub: string; readonly label: string }[]): void {
+    const wallet = this.#wallet
+    if (wallet === undefined) return
+    wallet.cosigners = cosigners.map((entry) => ({ ...entry }))
   }
 
   /**

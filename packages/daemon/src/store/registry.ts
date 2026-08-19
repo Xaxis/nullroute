@@ -372,6 +372,8 @@ export class WalletRegistry {
     readonly label: string
     readonly colour: WalletColour
     readonly registrations?: readonly string[]
+    /** Names the user gave the other keys in their quorums. */
+    readonly cosigners?: readonly { readonly xpub: string; readonly label: string }[]
     /**
      * True when a BIP-39 passphrase was applied to reach this seed.
      *
@@ -424,11 +426,14 @@ export class WalletRegistry {
     const id = randomBytes(ID_LENGTH / 2).toString('hex')
     const store = this.store(id)
 
-    store.create(options.seed, options.network, options.passphrase, options.registrations ?? [], {
-      label,
-      colour: options.colour,
-      fingerprint,
-    })
+    store.create(
+      options.seed,
+      options.network,
+      options.passphrase,
+      options.registrations ?? [],
+      { label, colour: options.colour, fingerprint },
+      options.cosigners ?? []
+    )
     this.#writeHint(id, {
       label,
       colour: options.colour,
@@ -518,6 +523,15 @@ export class WalletRegistry {
       readonly label: string
       readonly colour: WalletColour
       readonly registrations: readonly string[]
+      /**
+       * Names given to the other keys, carried through the reseal.
+       *
+       * Passed explicitly rather than defaulted, because renaming a wallet
+       * reseals it and a caller that forgot this would silently erase every
+       * cosigner name the user had assigned. Optional only so the legacy
+       * single-wallet path, which has none, does not have to say so.
+       */
+      readonly cosigners?: readonly { readonly xpub: string; readonly label: string }[]
     }
   ): WalletHint {
     const label = normaliseLabel(options.label)
@@ -534,7 +548,8 @@ export class WalletRegistry {
       options.network,
       options.passphrase,
       options.registrations,
-      { label, colour: options.colour, fingerprint }
+      { label, colour: options.colour, fingerprint },
+      options.cosigners ?? []
     )
 
     const hint: WalletHint = {

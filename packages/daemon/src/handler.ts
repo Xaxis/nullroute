@@ -55,6 +55,7 @@ import {
 import { randomBytes } from 'node:crypto'
 import { checkEntropyHealth } from './entropy/health.js'
 import { DeviceIdentityStore } from './store/identity.js'
+import { stripUndisplayable } from './store/registry.js'
 import { type BootAttestation, abbreviateHash } from './boot/attestation.js'
 import { type IpcHandler, type IpcRequest } from './ipc/socket.js'
 import { Session } from './session.js'
@@ -825,7 +826,8 @@ export function createHandler(state: DaemonState): IpcHandler {
           requireString(request, 'descriptor'),
           session.requireSeed(),
           session.network,
-          requireNumber(request, 'account', 0)
+          requireNumber(request, 'account', 0),
+          session.cosigners
         )
       }
 
@@ -843,7 +845,8 @@ export function createHandler(state: DaemonState): IpcHandler {
           requireString(request, 'descriptor'),
           session.requireSeed(),
           session.network,
-          requireNumber(request, 'account', 0)
+          requireNumber(request, 'account', 0),
+          session.cosigners
         )
         // Persisted only when a passphrase is supplied, because re-sealing
         // needs one. A registration made without it lives for this session,
@@ -884,6 +887,7 @@ export function createHandler(state: DaemonState): IpcHandler {
               passphrase,
               label: active.label,
               colour: active.colour as WalletColour,
+              cosigners: session.cosigners,
               registrations: next,
             })
             persisted = true
@@ -923,6 +927,57 @@ export function createHandler(state: DaemonState): IpcHandler {
        * goes through the same review as one from a coordinator, which is what
        * refuses a quorum this device holds no key in.
        */
+      /**
+       * Give one of the other keys in a quorum a name.
+       *
+       * A quorum screen otherwise lists anonymous extended keys, so on the
+       * second device of three you are looking at two strings and trying to
+       * remember which physical object each one is. The name is the user's own
+       * and is never verified: it says nothing about who controls that key, and
+       * both the response and every screen say so.
+       *
+       * Keyed by extended key, because position belongs to one descriptor and
+       * the same device is the same device across every quorum it is in.
+       *
+       * Persisted only when a passphrase is supplied, because sealing needs
+       * one, and reported either way so a screen can say whether it will
+       * survive a reboot.
+       */
+      case 'multisig.labelCosigner': {
+        const xpub = requireString(request, 'xpub')
+        const label = optionalString(request, 'label')
+        // Through the same stripping a wallet name gets, because this string
+        // is rendered beside a key on the screen that agrees to a quorum. An
+        // empty label clears the name rather than storing a blank one.
+        const cleaned = label.trim().length === 0 ? '' : stripUndisplayable(label)
+        session.labelCosigner(xpub, cleaned)
+
+        const passphrase = optionalString(request, 'passphrase')
+        const active = session.active
+        let persisted = false
+        if (passphrase.length > 0 && !session.ephemeral && active !== undefined && state.registry !== undefined) {
+          state.registry.rename(active.id, {
+            seed: session.requireSeed(),
+            network: session.network,
+            passphrase,
+            label: active.label,
+            colour: active.colour as WalletColour,
+            registrations: session.registrations,
+            cosigners: session.cosigners,
+          })
+          persisted = true
+        }
+
+        return {
+          cosigners: session.cosigners,
+          persisted,
+          verified: false,
+          note:
+            'A cosigner name is yours and is never checked. It says nothing about who controls ' +
+            'that key: only the key itself does.',
+        }
+      }
+
       case 'multisig.assemble': {
         const raw = params(request)['keys']
         if (!Array.isArray(raw) || raw.some((key) => typeof key !== 'string')) {
@@ -995,6 +1050,10 @@ export function createHandler(state: DaemonState): IpcHandler {
         const seed = session.requireSeed()
         return {
           descriptors: session.registrations,
+          // The user's own names for the other keys, so a quorum stops being a
+          // list of anonymous extended keys. Never verified: see
+          // multisig.labelCosigner.
+          cosignerLabels: session.cosigners,
           quorums: session.registrations.map((descriptor) => {
             try {
               const review = reviewRegistration(descriptor, seed, session.network)
@@ -1310,6 +1369,7 @@ export function createHandler(state: DaemonState): IpcHandler {
           label: requireString(request, 'label'),
           colour,
           registrations: session.registrations,
+          cosigners: session.cosigners,
           bip39Passphrase: session.bip39Passphrase,
         })
         session.attachTo({ id: created.id, label: created.label, colour })
@@ -1346,6 +1406,9 @@ export function createHandler(state: DaemonState): IpcHandler {
           registry.list().find((entry) => entry.id === id)?.hint.bip39Passphrase === true
         )
         session.setRegistrations(opened.registrations)
+        // Sealed with the wallet, so they arrive with it. Dropping them here
+        // would lose every cosigner name on the next reseal.
+        session.setCosigners(opened.cosigners)
 
         return {
           unlocked: true,
@@ -1397,6 +1460,10 @@ export function createHandler(state: DaemonState): IpcHandler {
           label,
           colour,
           registrations: session.registrations,
+          // Carried through. Renaming a wallet reseals it, and forgetting these
+          // would erase every cosigner name the user had assigned as a side
+          // effect of changing a colour.
+          cosigners: session.cosigners,
         })
         session.relabel(hint.label, hint.colour)
         return { active: activeWallet() }

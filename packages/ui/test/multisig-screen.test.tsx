@@ -289,3 +289,109 @@ describe('ui.screens.multisig coordinator files', () => {
     expect(screen.queryByTestId('multisig-export')).toBeNull()
   })
 })
+
+/**
+ * Naming the other keys.
+ *
+ * The cosigner table was a list of anonymous extended keys. On the second
+ * device of three you were looking at two strings and trying to remember which
+ * physical object each one was, which is the exact question a fleet has and the
+ * one nothing on the device answered.
+ */
+describe('ui.screens.multisig cosigner names', () => {
+  const FULL_XPUB = 'xpub6DwwuunwScQuscvvkT8Q2gRUcvV8DXcnpXhcnVFP6EPq6MTfWSJ9zJdWi1S8mvNMj'
+
+  function named(overrides: Partial<RegistrationView> = {}): RegistrationView {
+    return {
+      ...registration(),
+      cosigners: [
+        {
+          position: 0,
+          name: 'The attic Pi',
+          fullXpub: FULL_XPUB,
+          fingerprint: 'aabbccdd',
+          origin: "m/48'/0'/0'/2'",
+          xpub: 'xpub1...aaaa',
+          isThisDevice: false,
+        },
+        {
+          position: 1,
+          fullXpub: `${FULL_XPUB}b`,
+          fingerprint: '73c5da0a',
+          origin: "m/48'/0'/0'/2'",
+          xpub: 'xpub2...bbbb',
+          isThisDevice: true,
+        },
+      ],
+      ...overrides,
+    }
+  }
+
+  async function reach(onNameCosigner?: (xpub: string, name: string) => Promise<void>) {
+    render(
+      <MultisigScreen
+        onOurKey={vi.fn().mockResolvedValue(OUR_KEY)}
+        onReview={vi.fn().mockResolvedValue(named())}
+        onRegister={vi.fn()}
+        onBack={vi.fn()}
+        {...(onNameCosigner === undefined ? {} : { onNameCosigner })}
+      />
+    )
+    fireEvent.change(screen.getByTestId('multisig-input'), {
+      target: { value: 'wsh(sortedmulti(2,a,b))#checksum' },
+    })
+    fireEvent.click(screen.getByTestId('multisig-review'))
+    await waitFor(() => {
+      expect(screen.getByTestId('multisig-cosigners')).toBeTruthy()
+    })
+  }
+
+  /**
+   * INV-UI-81. A name is shown above the key, and marked as the user's own
+   * rather than presented as a fact. It says nothing about who controls that
+   * key: only the key does.
+   */
+  it('shows-a-name-above-the-key-and-marks-it-as-the-users-own', async () => {
+    await reach()
+    const cell = screen.getByTestId('cosigner-name-0').textContent
+    expect(cell).toContain('The attic Pi')
+    expect(cell).toContain('your name for it')
+    // The unverified line for the key itself is still there. A name does not
+    // upgrade a fingerprint.
+    expect(screen.getByTestId('multisig-cosigners').textContent).toContain('unverified')
+  })
+
+  /**
+   * INV-UI-81. Naming sends the FULL extended key, not the abbreviation on
+   * screen. Two different keys can share their first and last eight
+   * characters, and a name attached to the wrong key is worse than no name.
+   */
+  it('names-a-key-by-its-full-value-not-the-abbreviation', async () => {
+    const onNameCosigner = vi.fn().mockResolvedValue(undefined)
+    await reach(onNameCosigner)
+
+    const field = screen.getByTestId('cosigner-rename-0')
+    fireEvent.change(field, { target: { value: 'Office' } })
+    fireEvent.blur(field)
+
+    await waitFor(() => {
+      expect(onNameCosigner).toHaveBeenCalledWith(FULL_XPUB, 'Office')
+    })
+  })
+
+  /**
+   * This device is not named: it is identified by re-deriving its key, which
+   * is a stronger claim than a nickname, and offering to rename it would
+   * invite treating the two as the same kind of thing.
+   */
+  it('does-not-offer-to-name-this-device', async () => {
+    await reach(vi.fn())
+    expect(screen.queryByTestId('cosigner-rename-1')).toBeNull()
+    expect(screen.getByTestId('multisig-cosigners').textContent).toContain('this device, verified')
+  })
+
+  it('shows-no-naming-field-when-there-is-nowhere-to-send-it', async () => {
+    await reach()
+    expect(screen.queryByTestId('cosigner-rename-0')).toBeNull()
+  })
+})

@@ -112,6 +112,31 @@ interface SealedPayload {
    * beside a seed it does not belong to.
    */
   readonly fingerprint?: string
+  /**
+   * Names the user has given the OTHER keys in their quorums.
+   *
+   * Keyed by extended key rather than by position, because position is a
+   * property of one descriptor and a device is the same device across all of
+   * them. It also survives a descriptor being rewritten in a different order,
+   * which the on-device assembler does deliberately.
+   *
+   * Sealed rather than kept beside the file, and that needs a word because
+   * these decide nothing: they are cosmetic, so the argument is not integrity.
+   * It is privacy. A list mapping extended keys to "Dad's Coldcard" and "the
+   * one at the office" beside an encrypted wallet would tell somebody holding
+   * the card who the cosigners are and roughly where they live, which is
+   * targeting information the ciphertext otherwise withholds.
+   *
+   * Optional, so a store written before this existed reads correctly as having
+   * none.
+   */
+  readonly cosigners?: readonly { readonly xpub: string; readonly label: string }[]
+}
+
+/** A name the user gave one of the other keys in a quorum. */
+export interface CosignerLabel {
+  readonly xpub: string
+  readonly label: string
 }
 
 /** A wallet's name and colour, as sealed. */
@@ -125,6 +150,8 @@ export interface StoredWallet {
   readonly seed: Secret
   readonly network: Network
   readonly registrations: readonly string[]
+  /** Names the user gave the other keys in their quorums. Empty is normal. */
+  readonly cosigners: readonly CosignerLabel[]
   /** Absent for a v1 store, which sealed no identity. */
   readonly label?: string
   readonly colour?: string
@@ -195,7 +222,8 @@ export class WalletStore {
     network: Network,
     passphrase: string,
     registrations: readonly string[] = [],
-    identity?: WalletIdentity
+    identity?: WalletIdentity,
+    cosigners: readonly CosignerLabel[] = []
   ): void {
     if (this.exists()) {
       throw new StoreError(
@@ -224,6 +252,7 @@ export class WalletStore {
             label: identity.label,
             colour: identity.colour,
             fingerprint: identity.fingerprint,
+            ...(cosigners.length > 0 ? { cosigners } : {}),
           }
     using plaintext = Secret.fromBytes(
       new TextEncoder().encode(JSON.stringify(payload)),
@@ -280,7 +309,8 @@ export class WalletStore {
     network: Network,
     passphrase: string,
     registrations: readonly string[],
-    identity?: WalletIdentity
+    identity?: WalletIdentity,
+    cosigners: readonly CosignerLabel[] = []
   ): void {
     if (!this.exists()) {
       throw new StoreError('There is no wallet here to update.')
@@ -294,7 +324,7 @@ export class WalletStore {
     // cosmetic case, where counting would make renaming a wallet a way to
     // destroy it.
     this.unlock(passphrase).seed.dispose()
-    this.#writeSealed(seed, network, passphrase, registrations, identity)
+    this.#writeSealed(seed, network, passphrase, registrations, identity, cosigners)
   }
 
   /**
@@ -311,7 +341,8 @@ export class WalletStore {
     network: Network,
     passphrase: string,
     registrations: readonly string[],
-    identity?: WalletIdentity
+    identity?: WalletIdentity,
+    cosigners: readonly CosignerLabel[] = []
   ): void {
     if (!this.exists()) {
       throw new StoreError('There is no wallet here to update.')
@@ -319,7 +350,7 @@ export class WalletStore {
     // Opened directly rather than through `unlock`, so the sidecar is untouched
     // on both the success and the failure path.
     open(this.#readEnvelope(), passphrase).dispose()
-    this.#writeSealed(seed, network, passphrase, registrations, identity)
+    this.#writeSealed(seed, network, passphrase, registrations, identity, cosigners)
   }
 
   #writeSealed(
@@ -327,7 +358,8 @@ export class WalletStore {
     network: Network,
     passphrase: string,
     registrations: readonly string[],
-    identity?: WalletIdentity
+    identity?: WalletIdentity,
+    cosigners: readonly CosignerLabel[] = []
   ): void {
     // v1 when there is no identity to seal, and only then. A store with no
     // label is byte-compatible with what every earlier build wrote and can
@@ -350,6 +382,11 @@ export class WalletStore {
             label: identity.label,
             colour: identity.colour,
             fingerprint: identity.fingerprint,
+            // Only in a v2 payload. A store with no sealed identity has to stay
+            // byte-compatible with what earlier builds wrote, and an extra key
+            // in a v1 payload would break the downgrade-and-verify workflow in
+            // docs/VERIFICATION.md for a field that is cosmetic.
+            ...(cosigners.length > 0 ? { cosigners } : {}),
           }
     using plaintext = Secret.fromBytes(
       new TextEncoder().encode(JSON.stringify(payload)),
@@ -484,6 +521,24 @@ export class WalletStore {
       colour = payload.colour
     }
 
+    // Cosigner names. Cosmetic, so a malformed list is DROPPED rather than
+    // refused, which is the opposite of how registrations are treated three
+    // blocks up and deliberately so: a half-read registration decides which
+    // outputs count as change, and a half-read name decides nothing. Refusing
+    // to open a wallet because somebody's nickname was the wrong type would
+    // trade a seed for a label.
+    let cosigners: readonly CosignerLabel[] = []
+    const rawCosigners: unknown = payload.cosigners
+    if (Array.isArray(rawCosigners)) {
+      cosigners = rawCosigners.filter(
+        (entry): entry is CosignerLabel =>
+          entry !== null &&
+          typeof entry === 'object' &&
+          typeof (entry as CosignerLabel).xpub === 'string' &&
+          typeof (entry as CosignerLabel).label === 'string'
+      )
+    }
+
     const network = networkById(payload.network)
     const bytes = Uint8Array.from(Buffer.from(payload.seed, 'hex'))
 
@@ -517,6 +572,7 @@ export class WalletStore {
       seed: Secret.fromBytes(bytes, 'stored-seed'),
       network,
       registrations,
+      cosigners,
       ...(label === undefined ? {} : { label }),
       ...(colour === undefined ? {} : { colour }),
     }

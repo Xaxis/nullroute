@@ -385,6 +385,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   ),
   multisig: () => (
     <MultisigScreen device={DEVICE} onScan={noop} onHome={noop}
+      initialText={DESCRIPTOR}
       onOurKey={async () =>
         Promise.resolve({
           xpub: XPUB,
@@ -393,7 +394,45 @@ const SCREENS: Record<string, () => React.ReactElement> = {
           keyExpression: `[73c5da0a/48'/0'/0'/2']${XPUB}`,
         })
       }
-      onReview={never}
+      onReview={async () =>
+        Promise.resolve({
+          descriptor: DESCRIPTOR,
+          threshold: 2,
+          total: 3,
+          sorted: true,
+          kind: 'wsh',
+          ourPosition: 1,
+          cosigners: [
+            {
+              position: 0,
+              name: 'The attic Pi',
+              fullXpub: XPUB,
+              fingerprint: 'aabbccdd',
+              origin: "m/48'/0'/0'/2'",
+              xpub: 'xpub6Bos...T9nMdj',
+              isThisDevice: false,
+            },
+            {
+              position: 1,
+              fullXpub: XPUB,
+              fingerprint: '73c5da0a',
+              origin: "m/48'/0'/0'/2'",
+              xpub: 'xpub6Bos...T9nMdj',
+              isThisDevice: true,
+            },
+            {
+              position: 2,
+              fullXpub: XPUB,
+              fingerprint: '11223344',
+              origin: "m/48'/0'/0'/2'",
+              xpub: 'xpub6Bos...T9nMdj',
+              isThisDevice: false,
+            },
+          ],
+          warnings: [],
+        })
+      }
+      onNameCosigner={never}
       onRegister={never}
       onImportFile={never}
       onExportBundle={never}
@@ -443,6 +482,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       }
       onReview={noop}
       onScan={noop}
+      scanned={`[aabbccdd/48'/0'/0'/2']${XPUB}`}
       onBack={noop}
     />
   ),
@@ -542,12 +582,17 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   start: [['start-goal-multisig'], ['start-goal-sign']],
   // Built, which is where the checksum every device compares is shown.
   assemble: [['assemble-build']],
+  // The reviewed quorum, which is where cosigner names appear.
+  multisig: [['multisig-review']],
   // Verified, which adds a paragraph under a screen that already holds a QR
   // code, an address in large type and a warning banner.
   receive: [['receive-verify']],
   // Straight into the review, which is the state that matters, and then into
   // the confirmation that a blocking warning forces.
-  'psbt-review': [['psbt-review'], ['psbt-review', 'psbt-sign']],
+  // Sign is correctly disabled on the review fixture, which carries a blocking
+  // warning: reaching the signed screen means ticking the override, which is
+  // what a person does.
+  'psbt-review': [['psbt-review'], ['psbt-review', 'psbt-override', 'psbt-sign']],
   'psbt-signed-partial': [['psbt-review'], ['psbt-review', 'psbt-sign']],
 }
 

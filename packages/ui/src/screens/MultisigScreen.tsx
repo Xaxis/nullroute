@@ -27,6 +27,10 @@ import { QrDisplay } from '../components/QrDisplay.js'
 
 export interface CosignerView {
   readonly position: number
+  /** The name the user gave this key. Theirs, never verified. */
+  readonly name?: string
+  /** The full extended key, so a name can be attached to it. */
+  readonly fullXpub?: string
   readonly fingerprint: string | undefined
   readonly origin: string | undefined
   readonly xpub: string
@@ -90,6 +94,14 @@ export interface MultisigScreenProps {
    * builds the transactions.
    */
   readonly onExportBundle?: () => Promise<{ bundle: string }>
+  /**
+   * Give one of the other keys a name.
+   *
+   * Optional. Without it the table reads as a list of extended keys, which is
+   * what it always was: on the second device of three you are looking at two
+   * strings and trying to remember which physical object each one is.
+   */
+  readonly onNameCosigner?: ((xpub: string, name: string) => Promise<void>) | undefined
   /** How many quorums are registered, so the export is offered only when it carries something. */
   readonly registeredCount?: number
   /**
@@ -126,6 +138,7 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
     onRegister,
     onImportFile,
     onExportBundle,
+    onNameCosigner,
     registeredCount = 0,
     onAssemble,
     initialText,
@@ -537,6 +550,17 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
                   <tr key={cosigner.position}>
                     <td className="nr-mono nr-table__index">{cosigner.position + 1}</td>
                     <td>
+                      {/* The user's own name for this key, above the key
+                          itself, because on a device holding one of three it
+                          is the only part anybody can act on. Marked as theirs
+                          rather than presented as a fact: it says nothing
+                          about who controls the key. */}
+                      {cosigner.name !== undefined && (
+                        <div data-testid={`cosigner-name-${String(cosigner.position)}`}>
+                          {cosigner.name}
+                          <span className="nr-hint"> your name for it</span>
+                        </div>
+                      )}
                       <div className="nr-mono nr-break">{cosigner.xpub}</div>
                       <div className="nr-hint">
                         {cosigner.isThisDevice ? (
@@ -549,6 +573,23 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
                           </>
                         )}
                       </div>
+                      {onNameCosigner !== undefined &&
+                        !cosigner.isThisDevice &&
+                        cosigner.fullXpub !== undefined && (
+                          <input
+                            className="nr-input"
+                            defaultValue={cosigner.name ?? ''}
+                            maxLength={32}
+                            placeholder="Name it, for you"
+                            spellCheck={false}
+                            onBlur={(e) => {
+                              const full = cosigner.fullXpub
+                              if (full === undefined) return
+                              void onNameCosigner(full, e.target.value)
+                            }}
+                            data-testid={`cosigner-rename-${String(cosigner.position)}`}
+                          />
+                        )}
                     </td>
                   </tr>
                 ))}

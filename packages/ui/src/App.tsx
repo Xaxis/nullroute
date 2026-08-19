@@ -1079,6 +1079,9 @@ export function App() {
         onImportFile={async (contents: string) =>
           call<ImportedFileView>(transport, 'multisig.importFile', { contents })
         }
+        onNameCosigner={async (xpub: string, name: string) => {
+          await call(transport, 'multisig.labelCosigner', { xpub, label: name })
+        }}
         onExportBundle={async () => {
           const written = await call<{ bundle: string }>(transport, 'multisig.exportBundle', {})
           advance('multisig')

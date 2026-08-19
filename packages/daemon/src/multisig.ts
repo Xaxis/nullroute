@@ -49,12 +49,22 @@ export class MultisigError extends Error {
 
 export interface CosignerView {
   readonly position: number
+  /**
+   * The name the user gave this key, if they gave it one.
+   *
+   * Theirs, never verified, and never used to decide anything. It exists so a
+   * quorum reads as "the attic Pi, this device, the Coldcard" rather than as
+   * three extended keys nobody can tell apart on the second device of three.
+   */
+  readonly name?: string
   /** As written in the descriptor. A hint, never used to decide anything. */
   readonly fingerprint: string | undefined
   readonly origin: string | undefined
   /** Abbreviated, because a full xpub on a 7 inch screen is unreadable. */
   readonly xpub: string
   readonly isThisDevice: boolean
+  /** The full extended key, so a screen can attach a name to it. */
+  readonly fullXpub?: string
 }
 
 export interface Registration {
@@ -96,7 +106,9 @@ export function reviewRegistration(
   body: string,
   seed: Secret,
   network: Network,
-  account = 0
+  account = 0,
+  /** The user's own names for the other keys, by extended key. Never verified. */
+  names: readonly { readonly xpub: string; readonly label: string }[] = []
 ): Registration {
   let descriptor: Descriptor
   try {
@@ -125,13 +137,23 @@ export function reviewRegistration(
     )
   }
 
-  const cosigners: CosignerView[] = shape.keys.map((key, position) => ({
-    position,
-    fingerprint: key.origin?.fingerprint,
-    origin: key.origin?.path,
-    xpub: key.kind === 'extended' ? abbreviate(key.xpub) : `raw key (${key.hex.slice(0, 16)}...)`,
-    isThisDevice: position === found.position,
-  }))
+  const named = new Map(names.map((entry) => [entry.xpub, entry.label]))
+  const cosigners: CosignerView[] = shape.keys.map((key, position) => {
+    // Matched on the FULL extended key, not the abbreviation shown on screen.
+    // Two different keys can share the first and last eight characters, and a
+    // name attached to the wrong key would be worse than no name.
+    const name = key.kind === 'extended' ? named.get(key.xpub) : undefined
+    return {
+      position,
+      fingerprint: key.origin?.fingerprint,
+      origin: key.origin?.path,
+      xpub: key.kind === 'extended' ? abbreviate(key.xpub) : `raw key (${key.hex.slice(0, 16)}...)`,
+      isThisDevice: position === found.position,
+      ...(name === undefined ? {} : { name }),
+      // The full key, so a screen can name it without re-parsing.
+      ...(key.kind === 'extended' ? { fullXpub: key.xpub } : {}),
+    }
+  })
 
   const warnings: { kind: string; message: string }[] = []
 
