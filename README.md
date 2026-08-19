@@ -276,9 +276,22 @@ screen for comparing a quorum's addresses across devices, which is the cheap
 proof they all registered the same descriptor.
 
 *Living with it.* An encrypted store so a wallet survives a reboot, several
-named wallets on one device, encrypted backup and restore, BIP-322 message
-signing for segwit addresses, BIP-329 labels in and out, and guided flows that
-put the screens in order for what you are trying to do.
+named wallets on one device, encrypted backup and restore, BIP-329 labels that
+appear beside the outputs on the screen you read before signing, and guided
+flows that put the screens in order for what you are trying to do. The wallet
+closes itself after ten minutes with nobody touching the screen, which defends
+against the device being left and nothing else.
+
+*Proving.* BIP-322 message signing for segwit and taproot, the older
+signmessage scheme for legacy addresses, and a screen for checking somebody
+else's proof. Verification needs no key and works with the wallet locked:
+checking a stranger's signature should not cost the passphrase to your money.
+
+*Building one.* Nothing yet. `make image` refuses, and what exists instead is
+the contract that build has to satisfy: twelve of the sixteen provisioning
+assertions carry a verifier that executes, including the ones that catch a
+dm-verity salt regenerated per build. `make fixture-image` runs them, and runs
+one that fails on purpose.
 
 **Not working yet, and needed before this is safe for funds:** the dm-verity
 boot attestation of tier 1. The seed is encrypted
