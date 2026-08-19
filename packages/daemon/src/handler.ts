@@ -41,6 +41,8 @@ import {
   parseDescriptor,
   reviewTransaction,
   rootFromSeed,
+  attributeSignatures,
+  describeWaiting,
   signTransaction,
   validateRolls,
   withChecksum,
@@ -159,6 +161,76 @@ export function createHandler(state: DaemonState): IpcHandler {
       throw new Error('This daemon was started without storage, so nothing can be persisted.')
     }
     return state.registry
+  }
+
+  /**
+   * Which cosigner still has to sign a transaction, when the quorum is known.
+   *
+   * The join runs through the PSBT's own derivation records, so it needs the
+   * registered descriptor to know who the cosigners ARE. A device that has not
+   * registered the quorum says so rather than returning an empty list, because
+   * "nobody signed" and "this device cannot tell who signed" are different
+   * things and a screen must not render the second as the first.
+   *
+   * The FIRST registration whose keys the PSBT mentions is used. A device in
+   * two quorums has two lists, and picking by name would be picking by
+   * something nothing verified; picking by whose keys are actually in this
+   * transaction is picking by the transaction.
+   */
+  const whoStillHasToSign = (
+    tx: ReturnType<typeof parsePsbt>,
+    signedBy: readonly string[]
+  ): { cosigners: unknown; unattributed: number; waiting: string } => {
+    const names = new Map<string, string>(
+      session.cosigners.map((entry) => [entry.xpub, entry.label])
+    )
+
+    for (const descriptor of session.registrations) {
+      let review
+      try {
+        review = reviewRegistration(descriptor, session.requireSeed(), session.network)
+      } catch {
+        // A registration this build cannot read leaves the others to answer.
+        // Never swallowed into a pass: the loop simply moves on, and a device
+        // that can read none of them falls through to the unregistered case.
+        continue
+      }
+
+      const quorum = review.cosigners.map((cosigner) => {
+        // A raw key in a quorum has no extended key to look a name up by, and
+        // registration refuses those anyway. Guarded rather than asserted, so
+        // this cannot throw on a descriptor from outside.
+        const name = cosigner.fullXpub === undefined ? undefined : names.get(cosigner.fullXpub)
+        return {
+          position: cosigner.position,
+          // A cosigner written with no fingerprint cannot be matched to a
+          // signature, and the empty string matches nothing, which is the
+          // correct outcome rather than a fallback that matches everything.
+          fingerprint: cosigner.fingerprint ?? '',
+          ...(name === undefined ? {} : { name }),
+          isThisDevice: cosigner.isThisDevice,
+        }
+      })
+
+      const attributed = attributeSignatures(tx, quorum, signedBy)
+      // A quorum none of whose keys this transaction mentions is the wrong
+      // quorum. Skipped rather than reported, so a device in two quorums
+      // answers about the one being spent from.
+      if (attributed.cosigners.some((entry) => entry.signed) || session.registrations.length === 1) {
+        return {
+          cosigners: attributed.cosigners,
+          unattributed: attributed.unattributed,
+          waiting: describeWaiting(attributed),
+        }
+      }
+    }
+
+    const none = attributeSignatures(tx, [], signedBy)
+    return {
+      cosigners: none.cosigners,
+      unattributed: none.unattributed,
+      waiting: describeWaiting(none),
+    }
   }
 
   /** A wallet id from a request, validated before it reaches any path. */
@@ -822,6 +894,17 @@ export function createHandler(state: DaemonState): IpcHandler {
           // does it have to go to another device? Without this the user cannot
           // tell whether to broadcast or keep walking.
           signatures: result.signatures,
+          // WHICH device to walk to next, not just that there is one. On a
+          // fleet of identical Raspberry Pis in different rooms, "carry this
+          // to the next cosigner" is true and is not an answer.
+          // Re-parsed from the encoded output rather than reusing the builder's
+          // object, so what is attributed is the transaction actually handed
+          // back. Attributing a different object than the one returned is how
+          // a screen ends up describing something the user does not have.
+          attribution: whoStillHasToSign(
+            parsePsbt(encodePsbt(result.psbt)),
+            result.signatures.inputs.flatMap((input) => input.signedBy)
+          ),
           wasAlreadySigned: result.wasAlreadySigned,
           // Present only when nothing else has to sign. A coordinator wants the
           // PSBT above; a node wants this. Both are returned rather than making

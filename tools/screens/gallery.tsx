@@ -404,6 +404,18 @@ const SCREENS: Record<string, () => React.ReactElement> = {
             complete: false,
             inputs: [{ index: 0, required: 3, cosigners: 5, present: 2, satisfied: false }],
           },
+          // The state this screen exists for on a fleet: not finished, and the
+          // device says which box to walk to rather than that there is one.
+          attribution: {
+            cosigners: [
+              { position: 0, fingerprint: 'aabbccdd', name: 'The attic Pi', isThisDevice: false, signed: true },
+              { position: 1, fingerprint: '73c5da0a', isThisDevice: true, signed: true },
+              { position: 2, fingerprint: '11223344', name: 'The one at my brother\u2019s', isThisDevice: false, signed: false },
+              { position: 3, fingerprint: '55667788', isThisDevice: false, signed: false },
+            ],
+            unattributed: 1,
+            waiting: 'Still to sign: The one at my brother\u2019s and one cosigner you have not named.',
+          },
         })
       }
       onBack={noop}

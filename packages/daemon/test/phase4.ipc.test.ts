@@ -384,3 +384,72 @@ describe('message.verify and scheme routing', () => {
     expect(typeof refused.reason).toBe('string')
   })
 })
+
+/**
+ * Tests for naming which cosigner still has to sign.
+ *
+ * The join is tested in core against synthetic PSBTs. What is checked here is
+ * that the daemon supplies the right quorum to join against, and that a device
+ * with no registration says it cannot tell rather than returning an empty list
+ * that a screen would render as "nobody else has to sign".
+ */
+describe('who still has to sign', () => {
+  it('says-it-cannot-tell-when-no-quorum-is-registered', async () => {
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+
+    const btc = await import('@scure/btc-signer')
+    const key = btc.WIF(btc.NETWORK).decode(
+      'L3VFeEujGtevx9w18HD1fhRbCH67Az2dpCymeRE1SoPK6XQtaN2k'
+    )
+    const payment = btc.p2wpkh(
+      (await import('@noble/curves/secp256k1.js')).secp256k1.getPublicKey(key, true),
+      btc.NETWORK
+    )
+
+    const tx = new btc.Transaction({ allowUnknownOutputs: true })
+    tx.addInput({
+      txid: new Uint8Array(32).fill(3),
+      index: 0,
+      witnessUtxo: { script: payment.script, amount: 50_000n },
+    })
+    tx.addOutput({ script: Uint8Array.from([0x6a]), amount: 0n })
+
+    // Not this wallet's input, so signing is refused before attribution runs.
+    // What matters is that the refusal is about the inputs rather than a crash
+    // in the attribution path.
+    await expect(
+      call('psbt.sign', { psbt: Buffer.from(tx.toPSBT()).toString('base64') })
+    ).rejects.toThrow(/nothing here for this device to sign/)
+  })
+
+  /**
+   * INV-QUORUM-6. The single-signature case, which is the one most likely to be
+   * rendered wrongly: a device with no quorum must not report cosigners.
+   */
+  it('names-no-cosigners-for-a-single-signature-wallet', async () => {
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+
+    const listed = (await call('wallet.addresses', { scriptType: 'p2wpkh', count: 1 })) as {
+      addresses: { address: string }[]
+    }
+    const address = listed.addresses[0]?.address ?? ''
+
+    const btc = await import('@scure/btc-signer')
+    const script = btc.OutScript.encode(btc.Address(btc.NETWORK).decode(address))
+    const tx = new btc.Transaction({ allowUnknownOutputs: true })
+    tx.addInput({
+      txid: new Uint8Array(32).fill(4),
+      index: 0,
+      witnessUtxo: { script, amount: 50_000n },
+    })
+    tx.addOutputAddress(address, 40_000n, btc.NETWORK)
+
+    const signed = (await call('psbt.sign', {
+      psbt: Buffer.from(tx.toPSBT()).toString('base64'),
+      overrideBlockingWarnings: true,
+    })) as { attribution: { cosigners: unknown[]; waiting: string } }
+
+    expect(signed.attribution.cosigners).toHaveLength(0)
+    expect(signed.attribution.waiting).toMatch(/No quorum is registered/)
+  })
+})

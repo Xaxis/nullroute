@@ -77,6 +77,7 @@ export { WalletScreen } from './screens/WalletScreen.js'
 export type { WalletScreenProps, AddressRow, ScriptType } from './screens/WalletScreen.js'
 
 export { PsbtScreen } from './screens/PsbtScreen.js'
+export type { AttributionView } from './screens/PsbtScreen.js'
 export type {
   PsbtScreenProps,
   PsbtReviewView,

@@ -13,6 +13,8 @@ purpose: >
 
 covers:
   - packages/core/src/psbt/quorum.ts::signatureProgress
+  - packages/core/src/psbt/attribution.ts::attributeSignatures
+  - packages/core/src/psbt/attribution.ts::describeWaiting
   - packages/core/src/psbt/quorum.ts::alreadySignedBy
 
 algorithm: >
@@ -68,11 +70,54 @@ invariants:
       - packages/core/test/psbt.quorum.test.ts::reports-a-single-signature-wallet-as-complete-when-signed
       - packages/core/test/psbt.quorum.test.ts::treats-an-unreadable-requirement-as-unmet-rather-than-guessing
 
+  - id: INV-QUORUM-5
+    statement: >
+      A signature is attributed to a cosigner only through the PSBT's own
+      derivation records, and one that cannot be traced, or that traces to a
+      key the quorum does not contain, is counted as untraced rather than
+      dropped or named.
+    tests:
+      - packages/core/test/psbt.attribution.test.ts::names-the-cosigner-behind-a-signature
+      - packages/core/test/psbt.attribution.test.ts::counts-a-signature-it-cannot-trace-rather-than-dropping-it
+      - packages/core/test/psbt.attribution.test.ts::treats-a-taproot-key-path-signature-as-one-it-cannot-attribute
+      - packages/core/test/psbt.attribution.test.ts::does-not-attribute-a-key-that-is-not-in-this-quorum
+
+  - id: INV-QUORUM-6
+    statement: >
+      A device with no registered quorum says it cannot tell rather than
+      returning an empty list, and the sentence naming who is waited on is
+      correct for a device holding it, for one unnamed cosigner, for several,
+      and for none.
+    tests:
+      - packages/core/test/psbt.attribution.test.ts::says-it-cannot-tell-rather-than-showing-an-empty-list
+      - packages/core/test/psbt.attribution.test.ts::writes-a-sentence-that-agrees-with-itself-about-unnamed-cosigners
+      - packages/core/test/psbt.attribution.test.ts::says-plainly-when-every-cosigner-has-signed
+      - packages/daemon/test/phase4.ipc.test.ts::names-no-cosigners-for-a-single-signature-wallet
+
 threats:
   - INV-PSBT-2
   - INV-SIG-2
 
 security_notes: >
+  ATTRIBUTION DECIDES NOTHING. It produces labels for a screen. Whether a
+  transaction is finished is decided by counting signatures against the
+  script's own threshold, which never consults a name or a fingerprint, and a
+  quorum whose requirement could not be read is treated as unmet.
+
+  A FINGERPRINT IS FOUR BYTES AND IS NOT PROOF. It is the first four bytes of a
+  hash of a public key, written into the descriptor by whoever assembled it,
+  and two distinct keys can collide in it. What it is good for is telling three
+  identical devices apart in a room, which is the question being asked here and
+  is a long way from cryptographic identification. The device's own position,
+  by contrast, is established by re-deriving its key at registration, and that
+  one is proof.
+
+  UNTRACED IS NOT ZERO AND IS NOT ATTRIBUTED. A signature that resolves to no
+  fingerprint, or to one the quorum does not contain, is counted separately and
+  shown separately. Dropping it would make a signed transaction look unsigned;
+  folding it into the count would put two numbers that do not belong together
+  beside each other on the screen that authorises spending money.
+
   THE FLEET PROPERTY IS INV-QUORUM-2 AND IT WAS UNTESTED. Three of these devices
   holding one 2-of-3 is the deployment this project is designed for, and it works
   by walking a PSBT between them. If the second device replaced the first's

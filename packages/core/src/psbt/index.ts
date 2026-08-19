@@ -27,3 +27,6 @@ export type { SignOptions, SignResult } from './sign.js'
 
 export { signatureProgress, alreadySignedBy } from './quorum.js'
 export type { SignatureProgress, InputSignatures } from './quorum.js'
+
+export { attributeSignatures, describeWaiting } from './attribution.js'
+export type { Attribution, CosignerStatus, QuorumKey } from './attribution.js'

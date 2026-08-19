@@ -33,6 +33,20 @@ import { QrDisplay } from '../components/QrDisplay.js'
  *     separate checkbox that says what it does.
  */
 
+/** Who has signed and who has not, when the quorum is registered. */
+export interface AttributionView {
+  readonly cosigners: readonly {
+    readonly position: number
+    readonly fingerprint: string
+    readonly name?: string
+    readonly isThisDevice: boolean
+    readonly signed: boolean
+  }[]
+  readonly unattributed: number
+  /** One sentence, written in core so its awkward cases are tested. */
+  readonly waiting: string
+}
+
 export interface PsbtOutputView {
   readonly index: number
   /**
@@ -121,6 +135,8 @@ export interface PsbtScreenProps {
     inputsSigned: number
     signedWith: readonly string[]
     signatures?: SignatureProgressView
+    /** Who still has to sign, when the quorum is registered on this device. */
+    attribution?: AttributionView
     wasAlreadySigned?: boolean
     finalised?: { hex: string; txid: string }
   }>
@@ -145,6 +161,7 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
   const [progress, setProgress] = useState<SignatureProgressView | null>(null)
   const [finalised, setFinalised] = useState<{ hex: string; txid: string } | null>(null)
   const [wasAlready, setWasAlready] = useState(false)
+  const [attribution, setAttribution] = useState<AttributionView | null>(null)
   const [override, setOverride] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -193,6 +210,7 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
       setSigned(result.psbt)
       setSignedWith(result.signedWith)
       setProgress(result.signatures ?? null)
+      setAttribution(result.attribution ?? null)
       setFinalised(result.finalised ?? null)
       setWasAlready(result.wasAlreadySigned === true)
     } catch (err) {
@@ -282,8 +300,31 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
                 present. This transaction cannot be broadcast yet: carry it to the next cosigner and
                 sign there too.
               </span>
+
+              {/* WHICH cosigner, not just that there is one. On a fleet of
+                  identical devices in different rooms, "the next cosigner" is
+                  true and is not an answer. Built in core so the awkward
+                  phrasings, one unnamed cosigner against three, are tested
+                  rather than concatenated here. */}
+              {attribution !== null && (
+                <span data-testid="psbt-waiting-on">{attribution.waiting}</span>
+              )}
             </div>
           ))}
+
+        {/* A signature nobody in the quorum made, which is worth a second look
+            even though it is usually a taproot key-path spend naming no key.
+            Kept out of the count above rather than added to it: "2 of 3 signed"
+            with one of them unattributed is two numbers that do not belong
+            together. */}
+        {attribution !== null && attribution.unattributed > 0 && (
+          <p className="nr-note" data-testid="psbt-unattributed">
+            {attribution.unattributed} signature
+            {attribution.unattributed === 1 ? '' : 's'} on this transaction could not be traced to
+            a cosigner in your quorum. A taproot key-path signature names no key, so this is
+            expected there. Anywhere else it is worth asking who produced it.
+          </p>
+        )}
 
         {wasAlready && (
           <p className="nr-note" data-testid="psbt-already-signed">

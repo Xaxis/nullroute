@@ -8,6 +8,35 @@ wallet.
 The strongest version of that arrangement, and the one this page is about, is
 several nullroute devices holding one multisig wallet between them.
 
+
+## Knowing which device to walk to next
+
+A 2-of-3 signed on one device is not finished, and the screen used to say so
+without saying which of the other two to pick up. On a shelf of identical
+Raspberry Pis that is the whole difficulty.
+
+After signing, the device names the cosigners still waited on, using the names
+you gave them. It works by tracing each signature back to a master fingerprint
+through the transaction's own derivation records, and comparing that against the
+fingerprints in the descriptor you registered.
+
+**A fingerprint is four bytes and is not proof.** It is the first four bytes of
+a hash of a public key, written into the descriptor by whoever assembled it, and
+two distinct keys can collide in it. It is good for telling three devices apart
+in a room, which is the question being asked, and it is a long way from
+cryptographic identification. This device's own position in a quorum is
+different: that one is established by re-deriving its key, and it is proof.
+
+Nothing about the names decides anything. Whether a transaction is finished is
+decided by counting signatures against the script's own threshold.
+
+A signature that cannot be traced is reported separately rather than added to
+the count. A taproot key-path signature names no key at all, so that is expected
+there; anywhere else it is worth asking who produced it.
+
+A device that has not registered the quorum says it cannot tell, rather than
+showing an empty list that would read as nobody else having to sign.
+
 ## Why more than one device
 
 A 2-of-3 across three nullroutes gives you something no single device can:
