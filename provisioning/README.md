@@ -72,10 +72,17 @@ Mounting or loop-mounting an image needs root, and a verification tool that has
 to run privileged is one people run less often. The build backend already has
 the tree it assembled, so it hands that over.
 
-An assertion whose verifiers are all unwritten prints as `not checked` and is
-never counted as satisfied. That distinction is the point: a summary that
-counted unwritten verifiers as passing would be this system making exactly the
-claim it exists to stop anyone making.
+There are **three** outcomes, not two: satisfied, failed, and could-not-run. An
+assertion whose verifiers are all unwritten, or whose verifier could not run
+because the artifact lacks a dpkg database or the machine lacks
+`systemd-analyze`, prints as `not checked` and is never counted as satisfied.
+
+Collapsing could-not-run into failed prints a red FAIL because a tool is not
+installed, which trains a reader to ignore red, and the pressure to clear that
+red is pressure to make a missing tool return true. Collapsing it into satisfied
+is the false pass this whole document is about. An assertion where one verifier
+agreed and another could not run is not satisfied either: it is only as strong
+as its weakest verifier, and one of them was blind.
 
 ## Status
 
@@ -84,11 +91,14 @@ backend, so that the first backend is written against a contract rather than the
 contract being reverse-engineered from whatever the first backend happened to
 do.
 
-Seven of the sixteen verifiers are written. Three inspect the profiles
-themselves and run on every commit. Four read a root filesystem and are
+Eight of the sixteen verifiers are written. Three inspect the profiles
+themselves and run on every commit. Five read a root filesystem and are
 exercised against a fixture tree in `test/provisioning`, so on the day a backend
-produces a rootfs the only new thing is the artifact. The remaining nine need
-the whole image (two builds to compare, a partition table, a verity superblock)
+produces a rootfs the only new thing is the artifact. One of the five,
+`systemd-exposure`, also needs `systemd-analyze` on the machine running it, and
+reports could-not-run rather than passing when that is absent. The remaining
+eight need the whole image (two builds to compare, a partition table, a verity
+superblock)
 or a booted device (mount options, listening sockets, swap), and the second
 group stays that way on purpose: reading them from an unbooted rootfs is the
 false pass described above.

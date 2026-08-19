@@ -24,6 +24,7 @@ import {
   cmdlineExact,
   matchesGlob,
   noUnitOrdering,
+  systemdExposure,
 } from '../../provisioning/checks/rootfs.mjs'
 
 let root: string
@@ -131,6 +132,10 @@ describe('provisioning.absent-packages', () => {
     const result = absentPackages(root, { packages: ['openssh-server'] })
     expect(result.ok).toBe(false)
     expect(result.detail).toContain('no dpkg database')
+    // And marked as "could not look" rather than as a property of the image.
+    // Collapsing the two prints a failure for a missing artifact, and the
+    // pressure to clear that is pressure to make it return true.
+    expect(result.unavailable).toBe(true)
   })
 
   /**
@@ -182,7 +187,7 @@ describe('provisioning.no-unit-ordering', () => {
   it('fails-rather-than-passing-a-rootfs-with-no-units-at-all', () => {
     const result = noUnitOrdering(root, {})
     expect(result.ok).toBe(false)
-    expect(result.detail).toContain('no systemd units')
+    expect(result.unavailable).toBe(true)
   })
 })
 
@@ -235,5 +240,119 @@ describe('provisioning.cmdline-exact', () => {
     const result = cmdlineExact(root, { cmdline: PINNED })
     expect(result.ok).toBe(false)
     expect(result.detail).toContain('no cmdline.txt')
+    expect(result.unavailable).toBe(true)
+  })
+
+  /**
+   * INV-PROV-21. A cmdline that is present and wrong is a FAILURE, not a
+   * could-not-look. The distinction is the whole point of the third state: if
+   * a wrong artifact and a missing tool report the same way, one of them stops
+   * being read.
+   */
+  it('separates-a-wrong-command-line-from-a-missing-one', () => {
+    put('boot/firmware/cmdline.txt', `${PINNED} init=/bin/sh`)
+    const wrong = cmdlineExact(root, { cmdline: PINNED })
+    expect(wrong.ok).toBe(false)
+    expect(wrong.unavailable).toBeUndefined()
+  })
+})
+
+describe('provisioning.systemd-exposure', () => {
+  const stub = (stdout: string) => () => ({ ok: true as const, stdout })
+
+  /**
+   * INV-PROV-18. A unit within its allowance passes, and the verdict carries
+   * what the number does not mean.
+   *
+   * `systemd-analyze security` reads the unit FILE. It measures declared
+   * directives, not enforced behaviour, and on this hardware three of the most
+   * effective ones are inert or fatal: AppArmor without `lsm=apparmor`,
+   * `lockdown=` on a stock Pi kernel, and MemoryDenyWriteExecute, which crashes
+   * Node outright. A unit can score perfectly with none of it in effect, so a
+   * pass that did not say so would be a number pretending to be a measurement.
+   */
+  it('passes-a-unit-within-its-allowance-and-says-what-the-score-is-not', () => {
+    const result = systemdExposure(
+      root,
+      { unit: 'nullrouted.service', max_exposure: 0.5 },
+      stub('[{"exposure":0.4,"unit":"nullrouted.service"}]')
+    )
+
+    expect(result.ok).toBe(true)
+    expect(result.detail).toContain('0.4')
+    expect(result.limits.join(' ')).toContain('DECLARED')
+    expect(result.limits.join(' ')).toContain('not behaviour enforced at runtime')
+    // The version coupling, because the weights change between releases.
+    expect(result.limits.join(' ')).toContain('systemd version')
+  })
+
+  it('fails-a-unit-over-its-allowance', () => {
+    const result = systemdExposure(
+      root,
+      { unit: 'nullroute-kiosk.service', max_exposure: 3.0 },
+      stub('[{"exposure":6.2}]')
+    )
+
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('6.2')
+    expect(result.detail).toContain('over the 3 allowed')
+  })
+
+  /**
+   * INV-PROV-18. A missing tool is not a pass.
+   *
+   * systemd-analyze is a Linux tool and much of this project is written on
+   * macOS. A verifier reporting success because it could not find its own tool
+   * is the README's false pass with a different cause, and it would be the
+   * easiest one in this file to ship by accident.
+   */
+  it('fails-rather-than-passing-when-the-tool-is-not-there', () => {
+    const result = systemdExposure(
+      root,
+      { unit: 'nullrouted.service', max_exposure: 0.5 },
+      () => ({
+        ok: false,
+        unavailable: true,
+        detail: 'systemd-analyze is not on this machine, so this was NOT checked.',
+      })
+    )
+
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('NOT checked')
+    // Could not look, not a verdict about the unit. A missing tool reported
+    // the same way as an over-exposed unit trains a reader to ignore both.
+    expect(result.unavailable).toBe(true)
+  })
+
+  /** An over-exposed unit is a real failure and must not be softened into one. */
+  it('separates-an-over-exposed-unit-from-a-missing-tool', () => {
+    const result = systemdExposure(
+      root,
+      { unit: 'nullrouted.service', max_exposure: 0.5 },
+      stub('[{"exposure":9.1}]')
+    )
+    expect(result.ok).toBe(false)
+    expect(result.unavailable).toBeUndefined()
+  })
+
+  it('fails-on-output-it-cannot-read', () => {
+    for (const output of ['not json', '[]', '[{"unit":"x"}]', '[{"exposure":"high"}]']) {
+      const result = systemdExposure(
+        root,
+        { unit: 'nullrouted.service', max_exposure: 0.5 },
+        stub(output)
+      )
+      expect(result.ok, output).toBe(false)
+    }
+  })
+
+  it('refuses-an-assertion-that-named-no-unit-or-no-threshold', () => {
+    const call = (params: Record<string, unknown>) =>
+      systemdExposure(root, params, stub('[{"exposure":0}]')) as {
+        ok: boolean
+      }
+    expect(call({}).ok).toBe(false)
+    expect(call({ unit: 'nullrouted.service' }).ok).toBe(false)
+    expect(call({ max_exposure: 0.5 }).ok).toBe(false)
   })
 })

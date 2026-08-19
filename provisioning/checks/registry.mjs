@@ -76,6 +76,11 @@ export const VERIFIERS = {
     status: 'implemented',
     describes: 'no systemd unit declares itself before the signer',
   },
+  'systemd-exposure': {
+    status: 'implemented',
+    describes:
+      'a unit DECLARES hardening within its allowance, which is a configuration lint rather than a measurement of enforced behaviour',
+  },
   'cmdline-exact': {
     status: 'implemented',
     describes:
@@ -83,7 +88,6 @@ export const VERIFIERS = {
   },
   'identifiers-pinned': { status: 'needs-image', describes: 'package versions are pinned to a snapshot' },
   'partition-present': { status: 'needs-image', describes: 'the partition layout matches' },
-  'systemd-exposure': { status: 'needs-image', describes: 'declared unit hardening scores as expected' },
   'verity-salt-pinned': { status: 'needs-image', describes: 'the dm-verity salt is pinned, not random' },
 
   // --- Need a running device. Reading these from an image lies. ------------
@@ -117,4 +121,7 @@ export const NEEDS_ROOTFS = new Set([
   'absent-paths',
   'no-unit-ordering',
   'cmdline-exact',
+  // Also needs `systemd-analyze` on the machine running it, which is a Linux
+  // tool. It fails rather than passing when that is missing.
+  'systemd-exposure',
 ])

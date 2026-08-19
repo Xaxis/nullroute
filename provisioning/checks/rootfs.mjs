@@ -20,18 +20,53 @@
  * testable today, against a fixture, before any image exists.
  */
 
+import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 
 /**
- * A verdict, in the shape every verifier returns.
+ * What every verifier here returns.
  *
  * `limits` is not decoration. Anything measured indirectly says so here, and
- * the reporting tool prints it beside the pass, because a check whose limit is
+ * the reporting tool prints it beside the PASS, because a check whose limit is
  * only in a comment is a check whose limit nobody reads.
+ *
+ * `unavailable` marks the third outcome: could-not-run, as distinct from
+ * failed. It is never a pass.
+ *
+ * @typedef {object} Verdict
+ * @property {string} check
+ * @property {boolean} ok
+ * @property {string} detail
+ * @property {string[]} limits
+ * @property {boolean} [unavailable]
+ */
+
+/**
+ * A verdict about the artifact: it was inspected and it either holds or does not.
+ *
+ * @returns {Verdict}
  */
 function verdict(check, ok, detail, limits = []) {
   return { check, ok, detail, limits }
+}
+
+/**
+ * A verdict for "this verifier could not run at all".
+ *
+ * THREE STATES, NOT TWO, and the third is the one that matters. "The unit is
+ * too exposed" and "systemd-analyze is not installed on this machine" are both
+ * `ok: false`, and collapsing them prints a red FAIL for a missing tool, which
+ * trains a reader to ignore red. Worse, the pressure to clear that red is
+ * pressure to make a missing tool return true, which is the false pass this
+ * whole design exists to stop.
+ *
+ * So it is never a pass, never counted as satisfied, and reported as unchecked
+ * rather than failed.
+ */
+/** @returns {Verdict} */
+function unavailable(check, detail, limits = []) {
+  return { check, ok: false, unavailable: true, detail, limits }
 }
 
 /** Every file under a directory, as paths relative to it, following no links. */
@@ -159,9 +194,8 @@ export function absentPackages(root, params) {
   if (installed === null) {
     // NOT a pass. An image with no dpkg database is one this verifier cannot
     // speak about, and "I could not look" must never render as "it is absent".
-    return verdict(
+    return unavailable(
       'absent-packages',
-      false,
       'no dpkg database at var/lib/dpkg/status, so nothing here was checked'
     )
   }
@@ -219,7 +253,7 @@ export function noUnitOrdering(root, params) {
   const target = params.unit ?? 'nullrouted.service'
   const all = units(root)
   if (all.length === 0) {
-    return verdict('no-unit-ordering', false, 'no systemd units found in the rootfs')
+    return unavailable('no-unit-ordering', 'no systemd units found in the rootfs')
   }
 
   const offenders = []
@@ -270,7 +304,7 @@ export function cmdlineExact(root, params) {
   const candidates = ['boot/firmware/cmdline.txt', 'boot/cmdline.txt']
   const path = candidates.map((c) => join(root, c)).find((c) => existsSync(c))
   if (path === undefined) {
-    return verdict('cmdline-exact', false, `no cmdline.txt at any of: ${candidates.join(', ')}`)
+    return unavailable('cmdline-exact', `no cmdline.txt at any of: ${candidates.join(', ')}`)
   }
 
   const limits = [
@@ -304,10 +338,105 @@ export function cmdlineExact(root, params) {
   )
 }
 
+/**
+ * INV-PROV-18, INV-PROV-19. A unit's declared hardening scores no worse than
+ * the profile allows.
+ *
+ * THE LIMIT IS THE INTERESTING PART and it is stated twice, in the assertion's
+ * `does_not_cover` and again in every verdict this returns. `systemd-analyze
+ * security --offline=true` reads the unit file. It measures DECLARED
+ * directives, not enforced behaviour: it is a configuration linter, and its
+ * number is not a security measurement. It also cannot see that AppArmor is
+ * inert without `lsm=apparmor` on this hardware, or that MemoryDenyWriteExecute
+ * would crash the daemon. A unit could score perfectly and be running with none
+ * of it in effect.
+ *
+ * The score is coupled to the systemd version, whose weights change between
+ * releases, which is why the profile pins that version.
+ *
+ * WHEN THE TOOL IS ABSENT this fails rather than passing. `systemd-analyze` is
+ * not on macOS, where much of this project is written, and a verifier that
+ * reported success because it could not find its own tool would be the
+ * README's false pass with a different cause.
+ */
+export function systemdExposure(root, params, run = defaultRun) {
+  const unit = params.unit
+  const max = params.max_exposure
+  if (typeof unit !== 'string' || typeof max !== 'number') {
+    return verdict('systemd-exposure', false, 'the assertion gave no unit name or no threshold')
+  }
+
+  const limits = [
+    'Measures directives DECLARED in the unit file, not behaviour enforced at runtime. A unit can score well with none of it in effect: on this hardware AppArmor is inert without lsm=apparmor, and MemoryDenyWriteExecute crashes the daemon.',
+    'The score is coupled to the systemd version, whose weights change between releases.',
+  ]
+
+  const outcome = run(root, unit)
+  if (!outcome.ok) {
+    return outcome.unavailable === true
+      ? unavailable('systemd-exposure', outcome.detail, limits)
+      : verdict('systemd-exposure', false, outcome.detail, limits)
+  }
+
+  let exposure
+  try {
+    const parsed = JSON.parse(outcome.stdout)
+    const row = Array.isArray(parsed) ? parsed[0] : parsed
+    exposure = Number(row?.exposure ?? row?.Exposure)
+  } catch {
+    return verdict(
+      'systemd-exposure',
+      false,
+      `systemd-analyze produced output this verifier could not parse as JSON`,
+      limits
+    )
+  }
+
+  if (!Number.isFinite(exposure)) {
+    return verdict('systemd-exposure', false, 'no exposure score in the output', limits)
+  }
+
+  return exposure <= max
+    ? verdict(
+        'systemd-exposure',
+        true,
+        `${unit} declares an exposure of ${String(exposure)}, at or under the ${String(max)} allowed`,
+        limits
+      )
+    : verdict(
+        'systemd-exposure',
+        false,
+        `${unit} declares an exposure of ${String(exposure)}, over the ${String(max)} allowed`,
+        limits
+      )
+}
+
+/** Shell out to systemd-analyze. Injectable so the tests do not need it. */
+function defaultRun(root, unit) {
+  const result = spawnSync(
+    'systemd-analyze',
+    ['security', '--offline=true', `--root=${root}`, '--json=short', unit],
+    { encoding: 'utf8' }
+  )
+  if (result.error !== undefined || result.status === null) {
+    return {
+      ok: false,
+      unavailable: true,
+      detail:
+        'systemd-analyze is not on this machine, so this was NOT checked. It is a Linux tool and much of this project is written on macOS.',
+    }
+  }
+  if (result.status !== 0) {
+    return { ok: false, detail: `systemd-analyze exited ${String(result.status)}: ${(result.stderr ?? '').trim().slice(0, 200)}` }
+  }
+  return { ok: true, stdout: result.stdout }
+}
+
 /** Every rootfs verifier, by the name a profile assertion uses. */
 export const ROOTFS_VERIFIERS = {
   'absent-paths': absentPaths,
   'absent-packages': absentPackages,
   'no-unit-ordering': noUnitOrdering,
   'cmdline-exact': cmdlineExact,
+  'systemd-exposure': systemdExposure,
 }
