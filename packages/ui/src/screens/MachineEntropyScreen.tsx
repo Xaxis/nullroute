@@ -169,7 +169,12 @@ export function MachineEntropyScreen(props: MachineEntropyScreenProps): ReactEle
             </div>
           )}
 
-          {!health.healthy && !health.unknown && (
+          {/* `!== true`, not `!healthy`. This banner is the one that stops
+              somebody generating a seed from sources the device could not
+              vouch for, and a health report whose `healthy` field arrived as
+              anything other than a boolean would have hidden it. See
+              nullroute/no-truthy-verdict. */}
+          {health.healthy !== true && health.unknown !== true && (
             <div className="nr-banner nr-banner--danger" data-testid="machine-unhealthy">
               <strong>This device will not generate a seed from these sources</strong>
               <span>Roll dice instead. That path does not depend on any of this.</span>

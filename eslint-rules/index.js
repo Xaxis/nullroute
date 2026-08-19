@@ -13,6 +13,7 @@
 import { noNetwork } from './no-network.js'
 import { noCrossTierImport } from './no-cross-tier-import.js'
 import { noWeakRandomness } from './no-weak-randomness.js'
+import { noTruthyVerdict } from './no-truthy-verdict.js'
 
 export default {
   meta: { name: 'nullroute-local', version: '1.0.0' },
@@ -20,5 +21,6 @@ export default {
     'no-network': noNetwork,
     'no-cross-tier-import': noCrossTierImport,
     'no-weak-randomness': noWeakRandomness,
+    'no-truthy-verdict': noTruthyVerdict,
   },
 }

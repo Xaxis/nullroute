@@ -166,7 +166,7 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
    * recognises rather than merely not recognising a failure. The override is
    * the user's decision and is the only thing that gets past either.
    */
-  const refused = review !== null && (!review.signable || blocking.length > 0)
+  const refused = review !== null && (review.signable !== true || blocking.length > 0)
   const maySign = review !== null && review.ownedInputs > 0 && (!refused || override)
 
   const doReview = async (): Promise<void> => {
@@ -213,7 +213,7 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
            instruction for the second device of three and contradicted the
            banner further down the same screen. */
         subtitle={
-          progress !== null && !progress.complete
+          progress !== null && progress.complete !== true
             ? 'Not finished. Carry this to the next cosigner.'
             : 'Carry this back to the machine that built it.'
         }
@@ -259,7 +259,10 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
             finished or carrying this onward, and that is more urgent than the
             bytes. */}
         {progress !== null &&
-          (progress.complete ? (
+          // `=== true`, so anything else shows "Not finished". Telling somebody
+          // nothing else has to sign a transaction that is not finished is the
+          // failure that matters on this screen.
+          (progress.complete === true ? (
             <div className="nr-card nr-card--tight" data-testid="psbt-complete">
               <div className="nr-row">
                 <span className="nr-label">Signatures</span>

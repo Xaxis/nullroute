@@ -79,6 +79,7 @@ export default tseslint.config(
         },
       ],
 
+
       // INV-WALLET-1: dependency direction between assurance tiers.
       'nullroute/no-cross-tier-import': 'error',
 
@@ -119,6 +120,29 @@ export default tseslint.config(
     plugins: { nullroute },
     rules: {
       'nullroute/no-weak-randomness': ['error', { banGetRandomValues: true }],
+
+      // INV-UI-53. A verdict from the daemon is compared to true, never tested
+      // for truthiness. This exact bug shipped three times, in three different
+      // screens here, and every one failed open: a device failing verification
+      // would have unlocked, a refused transaction would have been signable,
+      // and an invalid proof would have read as checking out.
+      //
+      // THE FRONTEND ONLY, and the reason is worth stating rather than leaving
+      // to the file list. `call<T>()` CASTS parsed JSON to an interface without
+      // checking a single field, so every boolean here is the daemon's word
+      // for it. The daemon does not have this problem because it validates at
+      // its parse boundary instead: asReport in boot/attestation.ts refuses a
+      // report whose `passed` is not typeof boolean, and by the time anything
+      // reads it, it is one. Validating is the stronger fix and this rule is
+      // the cheaper one, applied where the stronger one is not.
+      'nullroute/no-truthy-verdict': 'error',
+
+      // AND THEREFORE THIS ONE IS OFF, here and nowhere else. The two rules
+      // disagree, and the disagreement is the point: `=== true` on something
+      // TypeScript KNOWS is a boolean is redundant, and across this boundary
+      // TypeScript does not know. The comparison is redundant exactly to the
+      // extent that the type is trusted, which here is not at all.
+      '@typescript-eslint/no-unnecessary-boolean-literal-compare': 'off',
     },
   },
 

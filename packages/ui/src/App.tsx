@@ -21,7 +21,12 @@ import { SetupScreen, type EntropyMode, type NetworkChoice } from './screens/Set
 import { DiceScreen } from './screens/DiceScreen.js'
 import { SeedScreen } from './screens/SeedScreen.js'
 import { ImportScreen } from './screens/ImportScreen.js'
-import { WalletScreen, type QuorumView, type ScriptType } from './screens/WalletScreen.js'
+import {
+  WalletScreen,
+  type AddressRow,
+  type QuorumView,
+  type ScriptType,
+} from './screens/WalletScreen.js'
 import { PsbtScreen, type PsbtReviewView } from './screens/PsbtScreen.js'
 import { ScanScreen, type ScanResult } from './screens/ScanScreen.js'
 import { WalletsScreen, type WalletRow } from './screens/WalletsScreen.js'
@@ -628,11 +633,18 @@ export function App() {
 
   const addresses = useCallback(
     async (scriptType: ScriptType, change: boolean, start: number, count: number) =>
-      call<{ addresses: { address: string; path: string; index: number }[] }>(
-        transport,
-        'wallet.addresses',
-        { scriptType, change, start, count }
-      ),
+      // AddressRow rather than a structural type written out here. The two had
+      // drifted: the daemon started returning a BIP-329 label per address, the
+      // screen started rendering one, and this signature still said there was
+      // no such field. It worked, because call() casts JSON and an extra key
+      // survives, but anybody reading this would have concluded labels do not
+      // reach the screen.
+      call<{ addresses: AddressRow[] }>(transport, 'wallet.addresses', {
+        scriptType,
+        change,
+        start,
+        count,
+      }),
     []
   )
 

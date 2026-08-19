@@ -181,7 +181,11 @@ export function ScanScreen(props: ScanScreenProps): ReactElement {
       setTotal(collectorRef.current.total)
       setMissing(collectorRef.current.missing)
 
-      if (collectorRef.current.complete) {
+      // `=== true`, for the same reason as everywhere else on this device.
+      // The collector is local rather than the daemon, so this is the weaker
+      // case, and assembling a sequence that is not complete would hand the
+      // review screen a truncated transaction.
+      if (collectorRef.current.complete === true) {
         const assembled = await collectorRef.current.assemble()
         doneRef.current = true
         onResult({ kind: 'bbqr', fileType: assembled.fileType, data: assembled.data })

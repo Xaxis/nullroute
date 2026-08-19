@@ -107,6 +107,18 @@ export function VerifyMessageScreen(props: VerifyMessageScreenProps): ReactEleme
     setResult(null)
   }, [scannedProof])
 
+  /**
+   * A pass, and nothing else read as one.
+   *
+   * `=== true`, not truthiness, because this crosses a JSON boundary. The same
+   * class of bug has been found twice on this device: the lock screen treated
+   * an unrecognised attestation status as a pass, and the signing screen
+   * trusted a `signable` flag it received rather than the reasons behind it.
+   * Anything that is not exactly `true` here means the verifier did not say
+   * yes, and the only safe reading of that is no. See INV-UI-53.
+   */
+  const passed = result?.valid === true
+
   const ready = address.trim().length > 0 && signature.trim().length > 0
 
   const run = useCallback(async (): Promise<void> => {
@@ -162,12 +174,12 @@ export function VerifyMessageScreen(props: VerifyMessageScreenProps): ReactEleme
     >
       {result !== null && (
         <div
-          className={`nr-banner ${result.valid ? 'nr-banner--ok' : 'nr-banner--danger'}`}
+          className={`nr-banner ${passed ? 'nr-banner--ok' : 'nr-banner--danger'}`}
           data-testid="verify-result"
         >
-          <strong>{result.valid ? 'The proof checks out' : 'That proof does not check out'}</strong>
+          <strong>{passed ? 'The proof checks out' : 'That proof does not check out'}</strong>
           <span>
-            {result.valid
+            {passed
               ? 'Whoever made this signature held the key for that address, and agreed to exactly ' +
                 'the message above. It does not say when they held it, that the address holds ' +
                 'anything, or that the person who gave it to you is the person who made it.'
@@ -177,7 +189,7 @@ export function VerifyMessageScreen(props: VerifyMessageScreenProps): ReactEleme
         </div>
       )}
 
-      {result !== null && !result.valid && (
+      {result !== null && !passed && (
         <p className="nr-hint" data-testid="verify-usual-cause">
           The commonest cause is the message, not the signature. A trailing space, a missing line
           break, or a smart quote where a straight one was signed all produce this. Compare the
