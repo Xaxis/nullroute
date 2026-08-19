@@ -262,6 +262,10 @@ no-dead-ends: ## No screen traps the user with no way out
 	# screen that renders no exit is a power cycle. SetupScreen shipped that
 	# way: "add a wallet", change your mind, and you were stuck.
 	@node tools/check-no-dead-ends.mjs
+	# A call that changed the device and nothing re-read it. This shipped:
+	# wallets.unlock did not refresh, so status.hasWallet stayed false all
+	# session and the idle lock never armed. Every test passed.
+	@node tools/check-status-refresh.mjs
 
 docs-reachable: ## Every document is registered on the site and linked from the README
 	# A document nobody can find is not a published document. This happened

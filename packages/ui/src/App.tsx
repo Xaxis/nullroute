@@ -586,6 +586,17 @@ export function App() {
     setActiveWallet(opened.active)
     setLabelVerified(opened.labelVerified)
     setError(null)
+    // The device status, refreshed, because opening a wallet is what changes
+    // it. Without this `status.hasWallet` stayed false for the rest of the
+    // session and three things read it: the idle lock never armed, so the
+    // feature that closes the wallet when nobody is there did not run at all;
+    // a journey begun after unlocking prepended "Open a wallet" to a flow
+    // whose wallet was already open; and the lock screen routed a device with
+    // a loaded wallet back to the picker.
+    //
+    // Nothing looked wrong. That is the whole reason this comment is here
+    // rather than a bare call.
+    await refresh()
     // Never straight to the wallet. Everything a user needs in order to
     // notice that the wrong wallet opened is on the next screen, and after
     // that there is nothing left to notice it with.
@@ -596,7 +607,7 @@ export function App() {
       labelVerified: opened.labelVerified,
       hintCorrected: opened.hintCorrected,
     })
-  }, [])
+  }, [refresh])
 
   // --- IPC-backed callbacks ------------------------------------------------
 
@@ -1069,6 +1080,11 @@ export function App() {
             label: created.active.label,
             colour: created.active.colour,
           })
+          // The same reason as the unlock path: creating a wallet is what
+          // changes device.status, and nothing else re-reads it. Found by the
+          // guard written for the unlock bug, which had this second instance
+          // in it from the start.
+          await refresh()
           setStore(await call<StoreStatus>(transport, 'store.status'))
           // Last step of the setup and restore journeys, so this ends them and
           // the wallet screen shows what is still unfinished.
