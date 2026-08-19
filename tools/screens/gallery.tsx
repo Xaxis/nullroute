@@ -218,9 +218,9 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       onToggleExpanded={noop}
     />
   ),
-  setup: () => <SetupScreen onStart={noop} />,
-  dice: () => <DiceScreen onAccount={never} onComplete={noop} onCancel={noop} />,
-  import: () => <ImportScreen onImport={never} onCancel={noop} />,
+  setup: () => <SetupScreen onHome={noop} onStart={noop} />,
+  dice: () => <DiceScreen onHome={noop} onAccount={never} onComplete={noop} onCancel={noop} />,
+  import: () => <ImportScreen onHome={noop} onImport={never} onCancel={noop} />,
   seed: () => (
     <SeedScreen words={MNEMONIC.split(' ')} fingerprint="73c5da0a" onConfirm={noop} />
   ),
@@ -313,13 +313,13 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     />
   ),
   psbt: () => (
-    <PsbtScreen initialPsbt="" onScan={noop} onReview={never} onSign={never} onBack={noop} />
+    <PsbtScreen onHome={noop} initialPsbt="" onScan={noop} onReview={never} onSign={never} onBack={noop} />
   ),
   // Signed, and NOT finished: the state the second device of three lands on,
   // where the next move is another device rather than the machine that built
   // the transaction.
   'psbt-signed-partial': () => (
-    <PsbtScreen
+    <PsbtScreen onHome={noop}
       initialPsbt="cHNidP8BAHUCAAAAAQ=="
       onScan={noop}
       onReview={async () => Promise.resolve({ ...REVIEW, warnings: [], signable: true })}
@@ -341,7 +341,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   ),
   // The screen that authorises spending money, in the state where it does so.
   'psbt-review': () => (
-    <PsbtScreen
+    <PsbtScreen onHome={noop}
       initialPsbt="cHNidP8BAHUCAAAAAQ=="
       onScan={noop}
       onReview={async () => Promise.resolve(REVIEW)}
@@ -350,7 +350,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     />
   ),
   multisig: () => (
-    <MultisigScreen
+    <MultisigScreen onHome={noop}
       onOurKey={async () =>
         Promise.resolve({
           xpub: XPUB,
@@ -368,7 +368,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     />
   ),
   quorum: () => (
-    <QuorumAddressesScreen
+    <QuorumAddressesScreen onHome={noop}
       descriptor={DESCRIPTOR}
       position={{ ours: 2, of: 3 }}
       onAddresses={async () =>
@@ -383,13 +383,13 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       onBack={noop}
     />
   ),
-  message: () => <MessageScreen onReview={never} onSign={never} onBack={noop} />,
-  backup: () => <BackupScreen onCreate={never} onDescribe={never} onRestore={never} onBack={noop} />,
-  labels: () => <LabelsScreen onImport={never} onExport={never} onBack={noop} />,
-  child: () => <ChildSeedScreen onDerive={never} onBack={noop} />,
+  message: () => <MessageScreen onHome={noop} onReview={never} onSign={never} onBack={noop} />,
+  backup: () => <BackupScreen onHome={noop} onCreate={never} onDescribe={never} onRestore={never} onBack={noop} />,
+  labels: () => <LabelsScreen onHome={noop} onImport={never} onExport={never} onBack={noop} />,
+  child: () => <ChildSeedScreen onHome={noop} onDerive={never} onBack={noop} />,
   start: () => <StartScreen walletOpen={false} onBegin={noop} onSkip={noop} />,
   receive: () => (
-    <ReceiveScreen
+    <ReceiveScreen onHome={noop}
       walletLabel="Cold storage, three of five"
       onAddress={async (index: number) =>
         Promise.resolve({ address: ADDRESS, path: `m/84'/0'/0'/0/${String(index)}`, index })
@@ -406,7 +406,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     return <FinishScreen journey={multisig} onDone={noop} />
   },
   manage: () => (
-    <ManageWalletScreen
+    <ManageWalletScreen onHome={noop}
       wallet={{ label: 'Cold storage, three of five', colour: 'teal' }}
       labelVerified={false}
       onRename={never}

@@ -756,6 +756,24 @@ invariants:
     tests:
       - packages/ui/test/app.test.tsx::saves-a-new-wallet-through-the-multi-wallet-api
 
+  # --- Getting out ------------------------------------------------------------
+  - id: INV-UI-67
+    statement: >
+      Every screen offers a way out, in the header or the action bar, and going
+      home lands on the wallet when one is open and on the picker when none is.
+    tests:
+      - packages/ui/test/app.test.tsx::leaves-the-setup-screen-that-used-to-trap-people
+      - packages/ui/test/app.test.tsx::goes-home-from-a-screen-deep-in-a-flow
+
+  - id: INV-UI-68
+    statement: >
+      Going home ends any journey underway rather than leaving a step counter
+      running on an unrelated screen, and the screen showing the seed words
+      deliberately offers no escape but the confirmation.
+    tests:
+      - packages/ui/test/app.test.tsx::ends-the-journey-rather-than-leaving-the-counter-running
+      - packages/ui/test/app.test.tsx::offers-no-escape-from-the-screen-showing-the-words
+
 threats:
   - INV-KEY-1
   - INV-BUILD-1

@@ -18,6 +18,21 @@ export interface ScreenProps {
    * something with an irreversible step at the end" has to come before it.
    */
   readonly steps?: ReactNode
+  /**
+   * Back to the wallet, or to the picker when no wallet is open.
+   *
+   * In the header, on every screen that has one, because a device with no
+   * consistent way home is a device where getting out depends on remembering
+   * which button this particular screen calls it. The setup screen had no way
+   * out at all: tapping "add a wallet" and changing your mind left you there.
+   *
+   * Deliberately ABSENT from the screens where leaving discards something that
+   * cannot be recovered, rather than present and guarded by a dialog. A
+   * confirmation on a 7 inch panel is a second tap in the place the last one
+   * was, and the screens in question are the seed words and the transaction
+   * review. On those, the way out is the action that says what it costs.
+   */
+  readonly onHome?: (() => void) | undefined
   readonly banner?: ReactNode
   readonly children: ReactNode
   readonly actions?: ReactNode
@@ -25,7 +40,7 @@ export interface ScreenProps {
 }
 
 export function Screen(props: ScreenProps): ReactElement {
-  const { title, steps, subtitle, banner, children, actions, testId } = props
+  const { title, steps, subtitle, banner, children, actions, onHome, testId } = props
   return (
     <section className="nr-screen" data-testid={testId}>
       <header className="nr-screen__head">
@@ -36,6 +51,17 @@ export function Screen(props: ScreenProps): ReactElement {
         </div>
         <div className="nr-spacer" />
         {banner}
+        {onHome !== undefined && (
+          <button
+            type="button"
+            className="nr-home"
+            onClick={onHome}
+            aria-label="Back to the wallet"
+            data-testid="screen-home"
+          >
+            Home
+          </button>
+        )}
       </header>
       <div className="nr-screen__body">{children}</div>
       {actions !== undefined && <footer className="nr-screen__actions">{actions}</footer>}

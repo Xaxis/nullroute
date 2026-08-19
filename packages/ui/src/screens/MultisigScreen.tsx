@@ -95,6 +95,8 @@ export interface MultisigScreenProps {
   readonly onBack: () => void
   /** Where this screen sits in a journey, when it is part of one. */
   readonly steps?: ReactElement | null
+  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
+  readonly onHome?: (() => void) | undefined
   readonly banner?: ReactElement | null
 }
 
@@ -108,6 +110,7 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
     registeredCount = 0,
     onBack,
     steps,
+    onHome,
     banner,
   } = props
 
@@ -155,6 +158,7 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
         title="For the coordinator"
         subtitle="Public keys and descriptors. Nothing here can spend."
         banner={banner}
+        onHome={onHome}
         steps={steps}
         testId="multisig-bundle"
         actions={
@@ -203,6 +207,7 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
         title="What that file contains"
         subtitle={`Read as ${imported.format}. Nothing in it is verified yet.`}
         banner={banner}
+        onHome={onHome}
         steps={steps}
         testId="multisig-imported"
         actions={
@@ -287,6 +292,7 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
         title="Quorum registered"
         subtitle={`${String(review.threshold)} of ${String(review.total)}, and this device is one of them.`}
         banner={banner}
+        onHome={onHome}
         steps={steps}
         testId="multisig-registered"
         actions={
@@ -336,6 +342,7 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
       title="Multisig"
       subtitle="Share this device's key, then register the quorum."
       banner={banner}
+      onHome={onHome}
       steps={steps}
       testId="multisig-screen"
       actions={

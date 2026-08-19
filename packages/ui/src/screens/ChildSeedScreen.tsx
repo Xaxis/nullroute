@@ -41,6 +41,8 @@ export interface ChildSeedScreenProps {
     size: number
   ) => Promise<ChildSeedView>
   readonly onBack: () => void
+  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
+  readonly onHome?: (() => void) | undefined
   readonly banner?: ReactElement | null
 }
 
@@ -62,7 +64,7 @@ const APPLICATIONS: {
 ]
 
 export function ChildSeedScreen(props: ChildSeedScreenProps): ReactElement {
-  const { onDerive, onBack, banner } = props
+  const { onDerive, onBack, onHome, banner } = props
 
   const [application, setApplication] = useState<ChildApplication>('mnemonic')
   const [size, setSize] = useState(12)
@@ -80,6 +82,7 @@ export function ChildSeedScreen(props: ChildSeedScreenProps): ReactElement {
         title="Child seed"
         subtitle="Write down the path with it. Without the path this is unrecoverable."
         banner={banner}
+        onHome={onHome}
         testId="child-result"
         actions={
           <Button
@@ -151,6 +154,7 @@ export function ChildSeedScreen(props: ChildSeedScreenProps): ReactElement {
       title="Derive a child seed"
       subtitle="BIP-85. One master, many wallets, all recoverable from it."
       banner={banner}
+      onHome={onHome}
       testId="child-screen"
       actions={
         <>

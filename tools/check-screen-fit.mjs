@@ -174,6 +174,38 @@ const MEASURE = `(() => {
         })
       : true
 
+  /**
+   * Whether an element is inside the visible box of every scroll container
+   * above it.
+   *
+   * checkVisibility does not know about clipping. A keyboard key scrolled up
+   * under the fixed header still reports a rect, and that rect overlaps the
+   * header's own controls, so the adjacency rule fired on two things that are
+   * nowhere near each other on screen: one of them was not on screen at all.
+   *
+   * Half or more of the element has to survive the clip. A row peeking out from
+   * under a header is genuinely on screen and genuinely close to whatever is
+   * above it.
+   */
+  const onScreen = (el, r) => {
+    let clip = { top: 0, bottom: window.innerHeight, left: 0, right: window.innerWidth }
+    for (let node = el.parentElement; node !== null; node = node.parentElement) {
+      const style = getComputedStyle(node)
+      const scrolls = /auto|scroll|hidden/.test(style.overflowY + style.overflowX)
+      if (!scrolls) continue
+      const box = node.getBoundingClientRect()
+      clip = {
+        top: Math.max(clip.top, box.top),
+        bottom: Math.min(clip.bottom, box.bottom),
+        left: Math.max(clip.left, box.left),
+        right: Math.min(clip.right, box.right),
+      }
+    }
+    const height = Math.min(r.bottom, clip.bottom) - Math.max(r.top, clip.top)
+    const width = Math.min(r.right, clip.right) - Math.max(r.left, clip.left)
+    return height >= r.height / 2 && width >= r.width / 2
+  }
+
   const label = (el) =>
     (el.textContent || el.getAttribute('aria-label') || el.getAttribute('placeholder') || '')
       .trim()
@@ -241,6 +273,7 @@ const MEASURE = `(() => {
     if (!visible(el)) continue
     const r = hitBox(el)
     if (r.width === 0 && r.height === 0) continue
+    if (!onScreen(el, r)) continue
     // A field the user types into is sized by its content and is not a target
     // in the same sense: nothing sits beside it to mis-hit.
     const typed = el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && el.type !== 'checkbox')

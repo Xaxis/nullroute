@@ -19,7 +19,7 @@ MANIFEST_ROOTS := packages spec provisioning
         lint ui-classes type-check test test-report test-vectors test-differential test-repro \
         test-recovery-drill \
         prose links profiles sbom sbom-check repro-check clean dev-daemon build-app web web-build web-lint web-type-check \
-        screens screen-fit ui-constants dev-check verify-image docs-reachable \
+        screens screen-fit ui-constants dev-check verify-image docs-reachable no-dead-ends \
         web-isolation web-csp web-responsive web-check web-live-check deploy image
 
 help: ## List available targets
@@ -211,6 +211,12 @@ verify-image: ## Check a built root filesystem against the provisioning profiles
 	}
 	@node tools/verify-image.mjs --root "$(ROOT)"
 
+no-dead-ends: ## No screen traps the user with no way out
+	# The device has no back button, no window to close and no keyboard. A
+	# screen that renders no exit is a power cycle. SetupScreen shipped that
+	# way: "add a wallet", change your mind, and you were stuck.
+	@node tools/check-no-dead-ends.mjs
+
 docs-reachable: ## Every document is registered on the site and linked from the README
 	# A document nobody can find is not a published document. This happened
 	# twice with the same two files: they built, the sitemap listed them, and
@@ -313,6 +319,6 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 
 # --- aggregates --------------------------------------------------------------
 
-check-fast: lint ui-classes ui-constants type-check prose links docs-reachable profiles invariant-claims make-targets ipc-reachable device-csp test manifest-check ## Everything except the slow suites
+check-fast: lint ui-classes ui-constants no-dead-ends type-check prose links docs-reachable profiles invariant-claims make-targets ipc-reachable device-csp test manifest-check ## Everything except the slow suites
 
 check: check-fast build verify test-vectors test-differential repro-check sbom device-ui screen-fit dev-check web-check ## Everything CI runs

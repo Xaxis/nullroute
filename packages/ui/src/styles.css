@@ -1505,3 +1505,24 @@ body {
 .nr-qr--small .nr-qr__code {
   height: min(11rem, 30vh);
 }
+
+/* The way home, in the header of every screen that has one.
+   Sized like every other target on this device: 44px, because it is a finger. */
+.nr-home {
+  flex: 0 0 auto;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  padding: 0 0.75rem;
+  margin-left: 0.625rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--color-line);
+  background-color: var(--color-surface-2);
+  color: var(--color-text-dim);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.nr-home:active {
+  background-color: var(--color-surface-3);
+  color: var(--color-text);
+}

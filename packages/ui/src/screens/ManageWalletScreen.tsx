@@ -53,13 +53,15 @@ export interface ManageWalletScreenProps {
   readonly onRename: (label: string, colour: string, passphrase: string) => Promise<void>
   readonly onDestroy: () => Promise<void>
   readonly onBack: () => void
+  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
+  readonly onHome?: (() => void) | undefined
   readonly banner?: ReactElement | null
 }
 
 type Mode = 'menu' | 'rename' | 'destroy'
 
 export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement {
-  const { wallet, labelVerified = true, onRename, onDestroy, onBack, banner } = props
+  const { wallet, labelVerified = true, onRename, onDestroy, onBack, onHome, banner } = props
 
   const [mode, setMode] = useState<Mode>('menu')
   const [label, setLabel] = useState(labelVerified ? wallet.label : '')
@@ -91,6 +93,7 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
         title="Name this wallet"
         subtitle="The name is sealed with it, so this needs the passphrase."
         banner={banner}
+        onHome={onHome}
         testId="manage-rename"
         actions={
           <>
@@ -186,6 +189,7 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
         title="Erase this wallet"
         subtitle={wallet.label}
         banner={banner}
+        onHome={onHome}
         testId="manage-destroy"
         actions={
           <>
@@ -254,6 +258,7 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
       title="Manage wallet"
       subtitle={wallet.label}
       banner={banner}
+      onHome={onHome}
       testId="manage-screen"
       actions={
         <Button onClick={onBack} testId="manage-back">

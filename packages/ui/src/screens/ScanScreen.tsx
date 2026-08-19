@@ -32,6 +32,8 @@ export interface ScanScreenProps {
   readonly hint?: string
   readonly onResult: (result: ScanResult) => void
   readonly onCancel: () => void
+  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
+  readonly onHome?: (() => void) | undefined
   readonly banner?: ReactElement | null
   /**
    * Injected in tests, where there is no camera, no canvas and no wasm.
@@ -87,7 +89,15 @@ function startPlayback(video: HTMLVideoElement, note: (message: string) => void)
 }
 
 export function ScanScreen(props: ScanScreenProps): ReactElement {
-  const { title = 'Scan', hint, onResult, onCancel, banner, openCamera = defaultCamera } = props
+  const {
+    title = 'Scan',
+    hint,
+    onResult,
+    onCancel,
+    onHome,
+    banner,
+    openCamera = defaultCamera,
+  } = props
 
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -238,6 +248,7 @@ export function ScanScreen(props: ScanScreenProps): ReactElement {
       title={title}
       subtitle={hint ?? 'Hold the other screen inside the frame.'}
       banner={banner}
+      onHome={onHome}
       testId="scan-screen"
       actions={
         <>

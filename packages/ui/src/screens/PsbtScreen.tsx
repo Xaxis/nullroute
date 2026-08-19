@@ -117,11 +117,14 @@ export interface PsbtScreenProps {
   readonly onBack: () => void
   /** Where this screen sits in a journey, when it is part of one. */
   readonly steps?: ReactElement | null
+  /** Back to the wallet. Redundant with Cancel here, and consistent, which on
+   *  a device with one screen size matters more than avoiding a second route. */
+  readonly onHome?: (() => void) | undefined
   readonly banner?: ReactElement | null
 }
 
 export function PsbtScreen(props: PsbtScreenProps): ReactElement {
-  const { initialPsbt, onScan, onReview, onSign, onBack, steps, banner } = props
+  const { initialPsbt, onScan, onReview, onSign, onBack, onHome, steps, banner } = props
 
   const [psbt, setPsbt] = useState(initialPsbt ?? '')
   const [review, setReview] = useState<PsbtReviewView | null>(null)
@@ -203,6 +206,7 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
             : 'Carry this back to the machine that built it.'
         }
         banner={banner}
+      onHome={onHome}
         steps={steps}
         testId="psbt-signed"
         actions={
@@ -322,6 +326,7 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
       title="Sign a transaction"
       subtitle="Nothing is signed until you have read what is below."
       banner={banner}
+      onHome={onHome}
       steps={steps}
       testId="psbt-screen"
       actions={

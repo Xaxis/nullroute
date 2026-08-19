@@ -201,6 +201,24 @@ export function App() {
    * that kept counting after somebody wandered off would be describing a
    * position they are not in.
    */
+  /**
+   * Back to the wallet, or the picker when no wallet is open.
+   *
+   * Passed to every screen that renders it, which is every screen except the
+   * three where leaving discards something: the lock screen (there is nowhere
+   * above it), the seed words (shown once, and leaving loses them), and the
+   * screen that reports which wallet just opened (a gate that has to be read).
+   *
+   * Leaving a journey clears it. A step counter that survived going home would
+   * reappear on an unrelated screen claiming the user is three steps into
+   * something they walked away from.
+   */
+  const goHome = (): void => {
+    setJourney(null)
+    setCompleted(null)
+    setStage({ at: status?.hasWallet === true ? 'wallet' : 'wallets' })
+  }
+
   const stepsFor = (at: Stage['at']): ReactElement | null => {
     if (journey === null) return null
     const current = journeyById(journey.id)
@@ -564,6 +582,7 @@ export function App() {
       return (
         <FinishScreen
           banner={banner}
+          onHome={goHome}
           journey={finished}
           onDone={() => {
             setCompleted(null)
@@ -597,6 +616,7 @@ export function App() {
     return (
       <SetupScreen
         banner={banner}
+        onHome={goHome}
         steps={stepsFor('setup')}
         onStart={(mode: EntropyMode, network: NetworkChoice) => {
           const go = async (): Promise<void> => {
@@ -615,6 +635,7 @@ export function App() {
     return (
       <DiceScreen
         banner={banner}
+        onHome={goHome}
         steps={stepsFor('dice')}
         onAccount={account}
         onCancel={() => {
@@ -640,6 +661,7 @@ export function App() {
     return (
       <ImportScreen
         banner={banner}
+        onHome={goHome}
         steps={stepsFor('import')}
         onCancel={() => {
           setStage({ at: 'setup' })
@@ -794,6 +816,7 @@ export function App() {
       <PassphraseScreen
         mode="set"
         banner={banner}
+        onHome={goHome}
         steps={stepsFor('protect')}
         onSubmit={async (passphrase) => {
           // wallets.create, NOT store.create. The latter addresses the single
@@ -841,6 +864,7 @@ export function App() {
     return (
       <MultisigScreen
         banner={banner}
+        onHome={goHome}
         steps={stepsFor('multisig')}
         onOurKey={ourMultisigKey}
         // Three of the multisig journey's steps happen on this one screen, so
@@ -876,6 +900,7 @@ export function App() {
     return (
       <QuorumAddressesScreen
         banner={banner}
+        onHome={goHome}
         steps={stepsFor('quorum')}
         descriptor={stage.quorum.descriptor}
         position={
@@ -902,6 +927,7 @@ export function App() {
     return (
       <PsbtScreen
         banner={banner}
+        onHome={goHome}
         steps={stepsFor('psbt')}
         initialPsbt={stage.prefill ?? ''}
         onScan={() => {
@@ -982,6 +1008,7 @@ export function App() {
     return (
       <ManageWalletScreen
         banner={banner}
+        onHome={goHome}
         wallet={activeWallet}
         labelVerified={labelVerified}
         onRename={async (label: string, colour: string, passphrase: string) => {
@@ -1017,6 +1044,7 @@ export function App() {
     return (
       <ReceiveScreen
         banner={banner}
+        onHome={goHome}
         steps={stepsFor('receive')}
         walletLabel={activeWallet?.label ?? 'This device'}
         onAddress={async (index: number) => {
@@ -1046,6 +1074,7 @@ export function App() {
     return (
       <LabelsScreen
         banner={banner}
+        onHome={goHome}
         onImport={async (text: string) =>
           call<ImportedLabels>(transport, 'labels.import', { text })
         }
@@ -1063,6 +1092,7 @@ export function App() {
     return (
       <ChildSeedScreen
         banner={banner}
+        onHome={goHome}
         onDerive={async (application: ChildApplication, index: number, size: number) =>
           call<ChildSeedView>(transport, 'bip85.derive', {
             application,
@@ -1089,6 +1119,7 @@ export function App() {
     return (
       <BackupScreen
         banner={banner}
+        onHome={goHome}
         steps={stepsFor('backup')}
         onCreate={async (passphrase: string, includeSeed: boolean, label: string) =>
           call<{ backup: string; includesSeed: boolean }>(transport, 'backup.create', {
@@ -1119,6 +1150,7 @@ export function App() {
     return (
       <MessageScreen
         banner={banner}
+        onHome={goHome}
         onReview={async (message: string) =>
           call<MessageReviewView>(transport, 'message.review', { message })
         }
@@ -1136,6 +1168,7 @@ export function App() {
     return (
       <ScanScreen
         banner={banner}
+        onHome={goHome}
         title="Scan a transaction"
         hint="Point the camera at the QR code your coordinator is showing."
         onCancel={() => {

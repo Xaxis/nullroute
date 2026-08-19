@@ -47,6 +47,8 @@ export interface ReceiveScreenProps {
   readonly onVerify: (address: string) => Promise<{ found: boolean; path?: string }>
   readonly onBack: () => void
   readonly steps?: ReactElement | null
+  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
+  readonly onHome?: (() => void) | undefined
   readonly banner?: ReactElement | null
 }
 
@@ -56,7 +58,7 @@ export function chunkAddress(address: string): string {
 }
 
 export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
-  const { walletLabel, onAddress, onVerify, onBack, steps, banner } = props
+  const { walletLabel, onAddress, onVerify, onBack, steps, onHome, banner } = props
 
   const [index, setIndex] = useState(0)
   const [shown, setShown] = useState<ReceiveAddress | null>(null)
@@ -87,6 +89,7 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
       title="Receive"
       subtitle={walletLabel}
       banner={banner}
+      onHome={onHome}
       steps={steps}
       testId="receive-screen"
       actions={

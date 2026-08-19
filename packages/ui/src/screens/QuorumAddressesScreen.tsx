@@ -42,13 +42,15 @@ export interface QuorumAddressesScreenProps {
   readonly onBack: () => void
   /** Where this screen sits in a journey, when it is part of one. */
   readonly steps?: ReactElement | null
+  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
+  readonly onHome?: (() => void) | undefined
   readonly banner?: ReactElement | null
 }
 
 const PAGE = 10
 
 export function QuorumAddressesScreen(props: QuorumAddressesScreenProps): ReactElement {
-  const { descriptor, position, onAddresses, onBack, steps, banner } = props
+  const { descriptor, position, onAddresses, onBack, steps, onHome, banner } = props
 
   const [change, setChange] = useState(false)
   const [start, setStart] = useState(0)
@@ -83,6 +85,7 @@ export function QuorumAddressesScreen(props: QuorumAddressesScreenProps): ReactE
           : `This device is cosigner ${String(position.ours)} of ${String(position.of)}.`
       }
       banner={banner}
+      onHome={onHome}
       steps={steps}
       testId="quorum-addresses"
       actions={

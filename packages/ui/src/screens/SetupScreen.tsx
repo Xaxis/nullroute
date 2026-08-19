@@ -24,6 +24,8 @@ export interface SetupScreenProps {
   readonly onStart: (mode: EntropyMode, network: NetworkChoice) => void
   /** Where this screen sits in a journey, when it is part of one. */
   readonly steps?: ReactElement | null
+  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
+  readonly onHome?: (() => void) | undefined
   readonly banner?: ReactElement | null
 }
 
@@ -43,7 +45,7 @@ const NETWORKS: { id: NetworkChoice; label: string; description: string }[] = [
 ]
 
 export function SetupScreen(props: SetupScreenProps): ReactElement {
-  const { onStart, steps, banner } = props
+  const { onStart, steps, onHome, banner } = props
   const [network, setNetwork] = useState<NetworkChoice>('mainnet')
   const [mode, setMode] = useState<EntropyMode>('dice')
 
@@ -52,10 +54,19 @@ export function SetupScreen(props: SetupScreenProps): ReactElement {
       title="Set up this device"
       subtitle="No wallet exists yet."
       banner={banner}
+      onHome={onHome}
       steps={steps}
       testId="setup-screen"
       actions={
         <>
+          {/* This screen had no way out at all. Tapping "add a wallet" from the
+              picker and changing your mind left you here, on a device with no
+              browser back and no window to close. */}
+          {onHome !== undefined && (
+            <Button onClick={onHome} testId="setup-cancel">
+              Cancel
+            </Button>
+          )}
           <div className="nr-spacer" />
           <Button
             variant="primary"

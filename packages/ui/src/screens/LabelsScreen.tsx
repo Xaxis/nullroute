@@ -43,11 +43,13 @@ export interface LabelsScreenProps {
   readonly onImport: (text: string) => Promise<ImportedLabels>
   readonly onExport: (labels: readonly LabelRow[]) => Promise<{ text: string }>
   readonly onBack: () => void
+  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
+  readonly onHome?: (() => void) | undefined
   readonly banner?: ReactElement | null
 }
 
 export function LabelsScreen(props: LabelsScreenProps): ReactElement {
-  const { onImport, onExport, onBack, banner } = props
+  const { onImport, onExport, onBack, onHome, banner } = props
 
   const [text, setText] = useState('')
   const [imported, setImported] = useState<ImportedLabels | null>(null)
@@ -74,6 +76,7 @@ export function LabelsScreen(props: LabelsScreenProps): ReactElement {
         title="Labels written"
         subtitle="The same format other wallets read."
         banner={banner}
+        onHome={onHome}
         testId="labels-exported"
         actions={
           <Button
@@ -115,6 +118,7 @@ export function LabelsScreen(props: LabelsScreenProps): ReactElement {
       title="Labels"
       subtitle="Notes about transactions and addresses. They decide nothing."
       banner={banner}
+      onHome={onHome}
       testId="labels-screen"
       actions={
         <>

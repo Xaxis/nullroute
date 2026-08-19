@@ -32,11 +32,13 @@ export interface StartScreenProps {
   readonly walletOpen: boolean
   readonly onBegin: (id: JourneyId) => void
   readonly onSkip: () => void
+  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
+  readonly onHome?: (() => void) | undefined
   readonly banner?: ReactElement | null
 }
 
 export function StartScreen(props: StartScreenProps): ReactElement {
-  const { walletOpen, onBegin, onSkip, banner } = props
+  const { walletOpen, onBegin, onSkip, onHome, banner } = props
   const [chosen, setChosen] = useState<Journey | null>(null)
 
   // --- What this goal needs before it starts --------------------------------
@@ -47,6 +49,7 @@ export function StartScreen(props: StartScreenProps): ReactElement {
         title={chosen.goal}
         subtitle={chosen.summary}
         banner={banner}
+        onHome={onHome}
         testId="start-preamble"
         actions={
           <>
@@ -117,6 +120,7 @@ export function StartScreen(props: StartScreenProps): ReactElement {
       title="What do you want to do?"
       subtitle="Or skip this and use the device directly."
       banner={banner}
+      onHome={onHome}
       testId="start-screen"
       actions={
         <>

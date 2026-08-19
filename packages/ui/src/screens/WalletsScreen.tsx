@@ -59,11 +59,13 @@ export interface WalletsScreenProps {
    * device holds none.
    */
   readonly failure?: string
+  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
+  readonly onHome?: (() => void) | undefined
   readonly banner?: ReactElement | null
 }
 
 export function WalletsScreen(props: WalletsScreenProps): ReactElement {
-  const { wallets, max, active, onUnlock, onCreate, onForget, onCancel, failure, banner } = props
+  const { wallets, max, active, onUnlock, onCreate, onForget, onCancel, failure, onHome, banner } = props
 
   // Only wallets that still hold a seed count against the limit. A row left by
   // a wallet erased through exhausted attempts is a tombstone, and letting
@@ -117,6 +119,7 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
         title="Clear this row"
         subtitle={tombstone.label}
         banner={banner}
+        onHome={onHome}
         testId="wallets-forget"
         actions={
           <>
@@ -166,6 +169,7 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
         title={selected.label}
         subtitle="This name is not confirmed until the wallet opens."
         banner={banner}
+        onHome={onHome}
         testId="wallet-unlock-screen"
         actions={
           <>
@@ -227,6 +231,7 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
       title="Wallets"
       subtitle={`${String(live)} of ${String(max)} on this device`}
       banner={banner}
+      onHome={onHome}
       testId="wallets-screen"
       actions={
         <>

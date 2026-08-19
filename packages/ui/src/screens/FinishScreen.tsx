@@ -31,11 +31,13 @@ export interface FinishScreenProps {
   readonly journey: Journey
   readonly onDone: () => void
   readonly steps?: ReactElement | null
+  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
+  readonly onHome?: (() => void) | undefined
   readonly banner?: ReactElement | null
 }
 
 export function FinishScreen(props: FinishScreenProps): ReactElement {
-  const { journey, onDone, steps, banner } = props
+  const { journey, onDone, steps, onHome, banner } = props
   const outstanding = journey.thenWhat
 
   return (
@@ -43,6 +45,7 @@ export function FinishScreen(props: FinishScreenProps): ReactElement {
       title={outstanding.length === 0 ? 'Done' : 'This device has done its part'}
       subtitle={journey.goal}
       banner={banner}
+      onHome={onHome}
       steps={steps}
       testId="finish-screen"
       actions={

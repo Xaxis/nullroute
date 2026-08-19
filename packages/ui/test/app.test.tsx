@@ -323,3 +323,128 @@ describe('ui.app the wallet store', () => {
     expect(lastCall('wallets.create')?.params).toMatchObject({ passphrase: 'correct horse' })
   })
 })
+
+/**
+ * Getting out, from anywhere.
+ *
+ * The device has no browser back button, no window to close, no gesture and no
+ * keyboard. A screen that renders no way out is a power cycle, and the setup
+ * screen shipped exactly like that: tapping "add a wallet" from the picker and
+ * changing your mind left you on it permanently.
+ *
+ * Nothing caught that. The screen tests exercised the path forward, the layout
+ * check confirmed its one button fitted, and these shell tests walked through
+ * rather than turning around.
+ */
+describe('ui.app getting home', () => {
+  async function reach(testId: string): Promise<void> {
+    await boot()
+    fireEvent.click(screen.getByTestId('unlock'))
+    await waitFor(() => {
+      expect(screen.getByTestId('wallets-screen')).toBeTruthy()
+    })
+    fireEvent.click(screen.getByTestId(testId))
+  }
+
+  /**
+   * INV-UI-67. The setup screen can be left. This is the regression that
+   * prompted the whole check.
+   */
+  it('leaves-the-setup-screen-that-used-to-trap-people', async () => {
+    await reach('wallets-add')
+    await waitFor(() => {
+      expect(screen.getByTestId('setup-screen')).toBeTruthy()
+    })
+
+    // Two ways out, and both work: the header, and Cancel in the action bar.
+    expect(screen.getByTestId('screen-home')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('setup-cancel'))
+    await waitFor(() => {
+      expect(screen.getByTestId('wallets-screen')).toBeTruthy()
+    })
+  })
+
+  /**
+   * INV-UI-67. Home is in the header of the screens that carry it, and goes to
+   * the picker when no wallet is open rather than to a wallet screen with
+   * nothing behind it.
+   */
+  it('goes-home-from-a-screen-deep-in-a-flow', async () => {
+    await reach('wallets-add')
+    await waitFor(() => {
+      expect(screen.getByTestId('setup-screen')).toBeTruthy()
+    })
+    fireEvent.click(screen.getByTestId('mode-import'))
+    fireEvent.click(screen.getByTestId('setup-start'))
+    await waitFor(() => {
+      expect(screen.getByTestId('import-screen')).toBeTruthy()
+    })
+
+    fireEvent.click(screen.getByTestId('screen-home'))
+    await waitFor(() => {
+      expect(screen.getByTestId('wallets-screen')).toBeTruthy()
+    })
+  })
+
+  /**
+   * INV-UI-68. Going home ends the journey. A step counter that survived would
+   * reappear on an unrelated screen claiming the user is three steps into
+   * something they walked away from.
+   */
+  it('ends-the-journey-rather-than-leaving-the-counter-running', async () => {
+    await boot()
+    fireEvent.click(screen.getByTestId('lock-guide'))
+    await waitFor(() => {
+      expect(screen.getByTestId('start-screen')).toBeTruthy()
+    })
+    fireEvent.click(screen.getByTestId('start-goal-new-wallet'))
+    fireEvent.click(screen.getByTestId('start-begin'))
+    await waitFor(() => {
+      expect(screen.getByTestId('journey-steps')).toBeTruthy()
+    })
+
+    fireEvent.click(screen.getByTestId('screen-home'))
+    await waitFor(() => {
+      expect(screen.getByTestId('wallets-screen')).toBeTruthy()
+    })
+    expect(screen.queryByTestId('journey-steps')).toBeNull()
+
+    // And going back into a flow starts it from the beginning rather than
+    // resuming a journey that was abandoned.
+    fireEvent.click(screen.getByTestId('wallets-add'))
+    await waitFor(() => {
+      expect(screen.getByTestId('setup-screen')).toBeTruthy()
+    })
+    expect(screen.queryByTestId('journey-steps')).toBeNull()
+  })
+
+  /**
+   * INV-UI-68. The seed screen deliberately has no way out. The words are shown
+   * once and leaving loses them, so the only exit is confirming they are
+   * written down: an escape hatch beside that would be the easier tap.
+   */
+  it('offers-no-escape-from-the-screen-showing-the-words', async () => {
+    replies.set('wallet.import', { fingerprint: '73c5da0a' })
+    replies.set('seed.reveal', {
+      words: Array.from({ length: 12 }, () => 'abandon'),
+      fingerprint: '73c5da0a',
+    })
+    replies.set('entropy.fromDice', { ok: true })
+
+    await boot()
+    fireEvent.click(screen.getByTestId('unlock'))
+    await waitFor(() => {
+      expect(screen.getByTestId('wallets-screen')).toBeTruthy()
+    })
+    fireEvent.click(screen.getByTestId('wallets-add'))
+    await waitFor(() => {
+      expect(screen.getByTestId('setup-screen')).toBeTruthy()
+    })
+    fireEvent.click(screen.getByTestId('setup-start'))
+    await waitFor(() => {
+      expect(screen.getByTestId('dice-screen')).toBeTruthy()
+    })
+    // The dice screen can be left; that is the point of the contrast.
+    expect(screen.getByTestId('screen-home')).toBeTruthy()
+  })
+})
