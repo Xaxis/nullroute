@@ -1,0 +1,179 @@
+import { type ReactElement } from 'react'
+import { Screen } from '../components/Screen.js'
+import { Button } from '../components/Button.js'
+
+/**
+ * Every quorum this device is in, and what it cannot tell you about them.
+ *
+ * Spec: ui.screens.fleet
+ *
+ * The wallet screen shows a one-line summary per quorum and the multisig screen
+ * shows one quorum at a time, during registration. Neither answers the question
+ * somebody holding the second of three devices actually has: what am I part of,
+ * who else is in it, and is any of it finished.
+ *
+ * THE HONEST HALF IS THE POINT. This device cannot know whether the other
+ * cosigners registered the descriptor, and it cannot know whether the
+ * coordinator ever imported the bundle. Both are facts about other machines,
+ * and this one has no network. A screen that showed a tick beside "all
+ * cosigners registered" would be inventing a status, and the whole reason a
+ * quorum is dangerous is that an unfinished one looks exactly like a finished
+ * one: it receives money either way.
+ *
+ * So the outstanding work is presented as a list of things to confirm yourself,
+ * with the device saying plainly that it is not reporting them. That is less
+ * satisfying than a green tick and it is the only version that is true.
+ */
+
+export interface FleetCosigner {
+  readonly position: number
+  readonly name?: string
+  readonly fingerprint?: string
+  readonly xpub: string
+  readonly isThisDevice: boolean
+}
+
+export interface FleetQuorum {
+  readonly descriptor: string
+  /** The eight characters every device in this quorum compares. */
+  readonly checksum: string
+  readonly threshold: number | null
+  readonly total: number | null
+  /** One-based, so it can be said out loud. */
+  readonly ourPosition: number | null
+  readonly cosigners: readonly FleetCosigner[]
+  /** Why the device could not place itself in this quorum, if it could not. */
+  readonly unreadable: string | null
+}
+
+export interface FleetScreenProps {
+  readonly quorums: readonly FleetQuorum[]
+  /** The name of the device in your hand, so the list has a subject. */
+  readonly deviceName?: string | undefined
+  readonly onAddresses?: ((quorum: FleetQuorum) => void) | undefined
+  readonly onBack: () => void
+  readonly onHome?: (() => void) | undefined
+  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  readonly banner?: ReactElement | null
+}
+
+export function FleetScreen(props: FleetScreenProps): ReactElement {
+  const { quorums, deviceName, onAddresses, onBack, onHome, device, banner } = props
+
+  return (
+    <Screen
+      title="Quorums"
+      subtitle={
+        deviceName === undefined
+          ? `${String(quorums.length)} registered on this device.`
+          : `${String(quorums.length)} registered on ${deviceName}.`
+      }
+      banner={banner}
+      onHome={onHome}
+      device={device}
+      testId="fleet-screen"
+      actions={
+        <Button onClick={onBack} testId="fleet-back">
+          Back
+        </Button>
+      }
+    >
+      {quorums.length === 0 && (
+        <p className="nr-note" data-testid="fleet-empty">
+          This device is not in any quorum yet. Registering one is what makes it recognise that
+          quorum&rsquo;s change as its own, and until then it can sign for a single-signature
+          wallet and nothing else.
+        </p>
+      )}
+
+      {quorums.map((quorum) => (
+        <div className="nr-card" key={quorum.descriptor} data-testid="fleet-quorum">
+          {quorum.unreadable !== null ? (
+            <>
+              <span className="nr-card__label">Cannot be read</span>
+              <p className="nr-hint">{quorum.unreadable}</p>
+            </>
+          ) : (
+            <>
+              <div className="nr-row">
+                <span className="nr-label">Quorum</span>
+                <span className="nr-value">
+                  {quorum.threshold} of {quorum.total} must sign
+                </span>
+              </div>
+              <div className="nr-row">
+                <span className="nr-label">This device</span>
+                <span className="nr-value nr-ok" data-testid="fleet-position">
+                  cosigner {quorum.ourPosition} of {quorum.total}
+                </span>
+              </div>
+              <div className="nr-row">
+                <span className="nr-label">Checksum</span>
+                <span className="nr-value nr-mono" data-testid="fleet-checksum">
+                  {quorum.checksum}
+                </span>
+              </div>
+
+              <table className="nr-table nr-table--dense">
+                <tbody>
+                  {quorum.cosigners.map((cosigner) => (
+                    <tr key={cosigner.position}>
+                      <td className="nr-mono nr-table__index">{cosigner.position + 1}</td>
+                      <td>
+                        {cosigner.isThisDevice ? (
+                          <span className="nr-ok">this device</span>
+                        ) : (
+                          <>
+                            {/* A name if there is one, and an honest gap if
+                                there is not. "Unnamed" is a prompt; inventing
+                                something from the fingerprint would be dressing
+                                up four bytes chosen by whoever wrote the
+                                descriptor. */}
+                            <div>
+                              {cosigner.name ?? (
+                                <span className="nr-hint">not named yet</span>
+                              )}
+                            </div>
+                            <div className="nr-hint nr-mono">
+                              {cosigner.fingerprint ?? 'no fingerprint'}, unverified
+                            </div>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {onAddresses !== undefined && (
+                <Button
+                  onClick={() => {
+                    onAddresses(quorum)
+                  }}
+                  testId="fleet-addresses"
+                >
+                  Compare addresses
+                </Button>
+              )}
+            </>
+          )}
+        </div>
+      ))}
+
+      {/* Last, and not a status. Everything above is something this device
+          knows; everything here is about other machines it cannot see. */}
+      {quorums.length > 0 && (
+        <div className="nr-banner nr-banner--testnet" data-testid="fleet-cannot-know">
+          <strong>What this device cannot tell you</strong>
+          <span>
+            Whether the other cosigners registered the same descriptor, and whether your
+            coordinator ever imported it. Both are facts about other machines, and this one has no
+            network. An unfinished quorum receives money exactly like a finished one, so confirm
+            those yourself: compare the checksum above on every device, and compare an address at
+            the same index.
+          </span>
+        </div>
+      )}
+    </Screen>
+  )
+}

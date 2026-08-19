@@ -38,6 +38,7 @@ import {
   StartScreen,
   AttestationScreen,
   DeviceNameScreen,
+  FleetScreen,
   AssembleQuorumScreen,
   MachineEntropyScreen,
   FinishScreen,
@@ -483,6 +484,36 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       onReview={noop}
       onScan={noop}
       scanned={`[aabbccdd/48'/0'/0'/2']${XPUB}`}
+      onBack={noop}
+    />
+  ),
+  fleet: () => (
+    <FleetScreen
+      device={DEVICE}
+      onHome={noop}
+      deviceName="The one in the attic"
+      quorums={[
+        {
+          descriptor: DESCRIPTOR,
+          checksum: '8rf6pq2t',
+          threshold: 2,
+          total: 3,
+          ourPosition: 2,
+          cosigners: [
+            {
+              position: 0,
+              name: 'The attic Pi',
+              fingerprint: 'aabbccdd',
+              xpub: 'xpub1...aaaa',
+              isThisDevice: false,
+            },
+            { position: 1, fingerprint: '73c5da0a', xpub: 'xpub2...bbbb', isThisDevice: true },
+            { position: 2, fingerprint: '11223344', xpub: 'xpub3...cccc', isThisDevice: false },
+          ],
+          unreadable: null,
+        },
+      ]}
+      onAddresses={noop}
       onBack={noop}
     />
   ),

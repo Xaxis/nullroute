@@ -54,6 +54,7 @@ covers:
   - packages/ui/src/screens/MachineEntropyScreen.tsx::MachineEntropyScreen
   - packages/ui/src/screens/DeviceNameScreen.tsx::DeviceNameScreen
   - packages/ui/src/screens/AssembleQuorumScreen.tsx::AssembleQuorumScreen
+  - packages/ui/src/screens/FleetScreen.tsx::FleetScreen
   - packages/ui/src/screens/FinishScreen.tsx::FinishScreen
   - packages/ui/src/screens/ReceiveScreen.tsx::ReceiveScreen
   - packages/ui/src/screens/ReceiveScreen.tsx::chunkAddress
@@ -911,6 +912,27 @@ invariants:
       - packages/ui/test/multisig-screen.test.tsx::names-a-key-by-its-full-value-not-the-abbreviation
       - packages/ui/test/multisig-screen.test.tsx::does-not-offer-to-name-this-device
       - packages/ui/test/multisig-screen.test.tsx::shows-no-naming-field-when-there-is-nowhere-to-send-it
+
+  # --- Every quorum this device is in ------------------------------------------
+  - id: INV-UI-82
+    statement: >
+      The quorum overview shows each registration with this device's position,
+      the checksum the fleet compares, and each cosigner by the name it was
+      given, and states that the device cannot know whether the other cosigners
+      registered or whether the coordinator imported anything.
+    tests:
+      - packages/ui/test/fleet-screen.test.tsx::shows-each-quorum-with-our-position-and-the-checksum
+      - packages/ui/test/fleet-screen.test.tsx::says-what-it-cannot-know-rather-than-inventing-a-status
+      - packages/ui/test/fleet-screen.test.tsx::leaves-for-the-address-comparison-that-proves-agreement
+
+  - id: INV-UI-83
+    statement: >
+      A quorum this device cannot place itself in is shown with the reason
+      rather than omitted, and a device in no quorum says so plainly without the
+      caveat that has nothing to qualify.
+    tests:
+      - packages/ui/test/fleet-screen.test.tsx::shows-an-unreadable-quorum-with-the-reason
+      - packages/ui/test/fleet-screen.test.tsx::says-plainly-when-there-are-no-quorums
 
 threats:
   - INV-KEY-1

@@ -1056,9 +1056,20 @@ export function createHandler(state: DaemonState): IpcHandler {
           cosignerLabels: session.cosigners,
           quorums: session.registrations.map((descriptor) => {
             try {
-              const review = reviewRegistration(descriptor, seed, session.network)
+              const review = reviewRegistration(
+                descriptor,
+                seed,
+                session.network,
+                0,
+                session.cosigners
+              )
               return {
                 descriptor,
+                // The eight characters every device in this quorum compares.
+                // Split out so a screen does not have to slice them out of a
+                // 300 character line, which is a screen that gets it wrong once.
+                checksum: descriptor.slice(descriptor.lastIndexOf('#') + 1),
+                cosigners: review.cosigners,
                 threshold: review.threshold,
                 total: review.total,
                 // One-based for display. Every screen that shows this says
@@ -1072,6 +1083,8 @@ export function createHandler(state: DaemonState): IpcHandler {
             } catch (err) {
               return {
                 descriptor,
+                checksum: descriptor.slice(descriptor.lastIndexOf('#') + 1),
+                cosigners: [],
                 threshold: null,
                 total: null,
                 ourPosition: null,

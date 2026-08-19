@@ -23,6 +23,9 @@ export type {
   AssembledView,
 } from './screens/AssembleQuorumScreen.js'
 
+export { FleetScreen } from './screens/FleetScreen.js'
+export type { FleetScreenProps, FleetQuorum, FleetCosigner } from './screens/FleetScreen.js'
+
 export { DeviceNameScreen } from './screens/DeviceNameScreen.js'
 export type { DeviceNameScreenProps } from './screens/DeviceNameScreen.js'
 

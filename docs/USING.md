@@ -244,6 +244,16 @@ multisig address is derived from every cosigner's key at once, so two devices
 agreeing on the address at the same index is the cheap proof that all of them
 registered the same descriptor. If they differ, do not send anything.
 
+**Quorums** lists everything this device cosigns: your position in each, the
+checksum to compare with the other devices, and every cosigner by whatever name
+you gave it.
+
+It ends by saying what the device **cannot** tell you: whether the other
+cosigners registered the same descriptor, and whether your coordinator ever
+imported it. Both are facts about other machines and this one has no network. An
+unfinished quorum receives money exactly like a finished one, so those two are a
+list to confirm yourself rather than a status to read.
+
 See [FLEET.md](FLEET.md) for running several of these together.
 
 ## Everything else

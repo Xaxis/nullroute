@@ -29,6 +29,7 @@ import { ManageWalletScreen } from './screens/ManageWalletScreen.js'
 import { StartScreen } from './screens/StartScreen.js'
 import { AttestationScreen } from './screens/AttestationScreen.js'
 import { DeviceNameScreen } from './screens/DeviceNameScreen.js'
+import { FleetScreen, type FleetQuorum } from './screens/FleetScreen.js'
 import {
   AssembleQuorumScreen,
   type AssembledView,
@@ -157,6 +158,8 @@ type Stage =
    * header.
    */
   | { readonly at: 'quorum'; readonly quorum: QuorumView }
+  /** Every quorum this device is in, and what it cannot know about them. */
+  | { readonly at: 'fleet' }
   /**
    * What just opened, before it can be used.
    *
@@ -882,6 +885,9 @@ export function App() {
           onCheckDevice={() => {
             setStage({ at: 'attestation' })
           }}
+          onFleet={() => {
+            setStage({ at: 'fleet' })
+          }}
           onNameDevice={() => {
             setStage({ at: 'device-name' })
           }}
@@ -1086,6 +1092,24 @@ export function App() {
           const written = await call<{ bundle: string }>(transport, 'multisig.exportBundle', {})
           advance('multisig')
           return written
+        }}
+        onBack={() => {
+          setStage({ at: 'wallet' })
+        }}
+      />
+    )
+  }
+
+  if (stage.at === 'fleet') {
+    return (
+      <FleetScreen
+        banner={banner}
+        onHome={goHome}
+        device={device ?? undefined}
+        deviceName={device?.name ?? undefined}
+        quorums={quorums as unknown as readonly FleetQuorum[]}
+        onAddresses={(quorum: FleetQuorum) => {
+          setStage({ at: 'quorum', quorum: quorum as unknown as QuorumView })
         }}
         onBack={() => {
           setStage({ at: 'wallet' })

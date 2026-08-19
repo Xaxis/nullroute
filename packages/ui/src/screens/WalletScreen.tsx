@@ -29,6 +29,15 @@ export interface AddressRow {
 /** A registered quorum, and where this device sits in it. */
 export interface QuorumView {
   readonly descriptor: string
+  /** The eight characters every device in this quorum compares. */
+  readonly checksum?: string
+  readonly cosigners?: readonly {
+    readonly position: number
+    readonly name?: string
+    readonly fingerprint?: string
+    readonly xpub: string
+    readonly isThisDevice: boolean
+  }[]
   readonly threshold: number | null
   readonly total: number | null
   /** One-based, so it can be said out loud to another cosigner. */
@@ -124,6 +133,8 @@ export interface WalletScreenProps {
    * been out of your sight.
    */
   readonly onCheckDevice?: () => void
+  /** Leaves for every quorum this device is in, and what it cannot know. */
+  readonly onFleet?: () => void
   /** Leaves for naming this physical device, so it can be told from its siblings. */
   readonly onNameDevice?: () => void
   /**
@@ -202,6 +213,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
     onGuide,
     onSwitchWallet,
     onCheckDevice,
+    onFleet,
     onNameDevice,
     onReceive,
     onChildSeed,
@@ -566,6 +578,15 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
               selected={false}
               onSelect={onManage}
               testId="wallet-manage"
+            />
+          )}
+          {onFleet !== undefined && quorums.length > 0 && (
+            <Choice
+              title="Quorums"
+              description="Everything this device cosigns, who else is in each, and what it cannot tell you about them."
+              selected={false}
+              onSelect={onFleet}
+              testId="wallet-fleet"
             />
           )}
           {onSwitchWallet !== undefined && (
