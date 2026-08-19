@@ -146,6 +146,30 @@ boot chain in the current design (it is a phase 7 stretch goal), so a
 sufficiently prepared attacker who has had the device unattended can replace the
 software.
 
+### An unlocked device that has been left
+
+The wallet closes itself after ten minutes with nobody touching the screen, and
+the seed is zeroized when it does. Before that existed, a device unlocked to
+check one address stayed unlocked until somebody remembered to lock it or pulled
+the power, and the screen that displays a mnemonic for backup was one of the
+places it could be left.
+
+**What this defends against is the device being left, and nothing else.** It is
+worth nothing against somebody standing at the device, who touches the screen
+and keeps it open. It is worth nothing against an attacker who takes an unlocked
+device and reads its memory in the next few seconds. And it does nothing about
+the window itself: for up to ten minutes after you walk away, the seed is in
+memory on a device you are not looking at.
+
+It is not configurable. A setting that turns a lock off is a setting worth
+attacking, and one stored where it can be read before a passphrase is one an
+attacker with brief access to the card could turn off and hand back.
+
+The countdown appears a minute before the deadline, and any touch clears it. The
+warning exists because a lock that arrives with no warning is indistinguishable
+from a crash, and a security feature that interrupts somebody mid-review is one
+they will find a way around.
+
 ### Malicious QR or SD payloads
 
 Parsers are fuzzed, size-limited, and fail closed, and removable media is
@@ -329,6 +353,9 @@ does not keep.
 | INV-STORE-3 | The key derivation parameters are authenticated, so editing them in the file breaks the open rather than weakening the next guess. |
 | INV-STORE-4 | Consecutive failed unlocks are counted, and passing the limit erases the sealed blob before the error is raised. |
 | INV-STORE-5 | A store is never left half written and an existing wallet is never silently overwritten. |
+| INV-IDLE-1 | Only a touch resets the idle clock. Any other IPC request, however many arrive, leaves the deadline where it was. |
+| INV-IDLE-2 | A request arriving after the deadline finds the wallet locked and the seed zeroized, not merely unreachable. |
+| INV-IDLE-3 | Remaining time never reads as more than the window and never reads as negative, whatever the system clock does. |
 | INV-DURESS-1 | *Planned, phase 7, not enforced today.* The encrypted store does not reveal how many profiles exist or which slots are in use. |
 | INV-DURESS-2 | *Planned, phase 7, not enforced today.* Unlock latency is independent of which PIN was entered and whether it was correct. |
 

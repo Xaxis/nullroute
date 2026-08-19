@@ -904,6 +904,43 @@ body {
   opacity: 0.85;
 }
 
+/* The idle warning, beside the network chip and shaped like it. Danger colours
+   rather than caution: this one is about to take the wallet away. */
+.nr-idlechip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.375rem 0.25rem 0.75rem;
+  border-radius: 999px;
+  background-color: color-mix(in srgb, var(--color-danger-700) 44%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-danger-500) 50%, transparent);
+  white-space: nowrap;
+}
+
+.nr-idlechip__count {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-danger-300);
+  letter-spacing: 0.02em;
+}
+
+/* 44px of box, because it is a control on a panel operated by a finger and the
+   fit harness holds every control to that whether or not it is in a header. */
+.nr-idlechip__stay {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 0.875rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-danger-500) 60%, transparent);
+  background-color: color-mix(in srgb, var(--color-danger-700) 62%, transparent);
+  color: var(--color-ink-100);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
 /* Address rows: the wallet screen exists to show these, so more than two
    should fit on a 480px panel. */
 .nr-table--dense td {

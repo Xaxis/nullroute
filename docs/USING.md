@@ -291,6 +291,21 @@ a wallet.
 Restoring shows what the file claims about itself before asking for a
 passphrase, and says that everything shown at that point is unverified.
 
+### Locking itself
+
+After ten minutes with nobody touching the screen, the device closes the wallet
+and forgets the seed. A countdown appears in the header a minute before, and any
+touch anywhere clears it.
+
+Nothing is lost but the screen you were on. A transaction you had loaded has to
+be scanned again, and a wallet you were browsing has to be unlocked again. No
+key, no registration and no name goes with it.
+
+This protects you against leaving the device, and against nothing else. Somebody
+standing at it simply touches the screen. Somebody who takes an unlocked device
+has whatever was in memory. The window is not adjustable, because a setting that
+turns a lock off is a setting worth attacking.
+
 ### Labels
 
 A BIP-329 file carries the part of a wallet that no seed recreates: which output

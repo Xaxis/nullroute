@@ -1,0 +1,88 @@
+id: daemon.idle
+version: 1
+title: Locking the wallet when nobody is at the device
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Take the seed back out of memory when the device has been left. An unlocked
+  wallet held a seed for as long as the process ran, and a device unlocked to
+  check one address and then put down stayed that way until somebody remembered
+  to lock it or pulled the power.
+
+covers:
+  - packages/daemon/src/idle.ts::IdleClock
+  - packages/daemon/src/idle.ts::IDLE_LOCK_SECONDS
+  - packages/daemon/src/idle.ts::IDLE_WARN_SECONDS
+
+algorithm: >
+  A clock records the time of the last `session.heartbeat`, which the frontend
+  sends on a touch or a key and nothing else sends. Remaining time is the window
+  minus the elapsed time, floored at zero.
+
+  The daemon checks it in two places. Before dispatching any request, so a
+  request arriving after the deadline finds a locked wallet rather than being
+  served by one that should already be shut. And on a ten second sweep, because
+  a frontend that has crashed sends no requests at all and the seed must not
+  outlive it.
+
+  The window is ten minutes and is not configurable.
+
+invariants:
+  - id: INV-IDLE-1
+    statement: >
+      Only a heartbeat resets the clock. Any other request, however many of
+      them arrive, leaves the deadline where it was.
+    tests:
+      - packages/daemon/test/idle.test.ts::counts-only-a-heartbeat-as-somebody-being-there
+      - packages/daemon/test/idle.test.ts::does-not-reset-when-other-requests-arrive
+
+  - id: INV-IDLE-2
+    statement: >
+      A request arriving after the deadline finds the wallet locked, and the
+      seed is gone rather than merely unreachable.
+    tests:
+      - packages/daemon/test/idle.test.ts::locks-the-wallet-before-serving-a-late-request
+      - packages/daemon/test/idle.test.ts::reports-the-window-so-a-screen-need-not-copy-it
+
+  - id: INV-IDLE-3
+    statement: >
+      Remaining time never reads as more than the window and never reads as
+      negative, whatever the system clock does.
+    tests:
+      - packages/daemon/test/idle.test.ts::floors-at-zero-rather-than-going-negative
+      - packages/daemon/test/idle.test.ts::warns-before-the-deadline-not-at-it
+
+threats:
+  - INV-KEY-1
+
+security_notes: >
+  WHAT THIS DEFENDS AGAINST IS THE DEVICE BEING LEFT, and nothing else. It is
+  worth nothing against somebody standing at the device, who touches the screen
+  and keeps it open, and nothing against an attacker who takes an unlocked
+  device and reads its memory in the next few seconds. Both limits belong in
+  docs/THREAT-MODEL.md rather than in a claim that the device locks itself and
+  is therefore safe to leave.
+
+  ACTIVITY IS A PERSON, NOT A REQUEST. Counting every IPC request would mean a
+  screen that polls holds the seed open indefinitely, which is the failure this
+  exists to prevent wearing the costume of a feature. Only `session.heartbeat`
+  touches the clock.
+
+  THE INVERSE CASE IS THE DANGEROUS ONE. Somebody reading a transaction for ten
+  minutes before signing sends no requests at all, and locking them out
+  mid-review is how a security feature teaches people to work around it. The
+  frontend warns a minute before the deadline rather than at it, and a single
+  touch is enough to clear it.
+
+  NOT CONFIGURABLE, deliberately. A setting that turns a lock off is a setting
+  worth attacking, and one stored where it can be read before a passphrase is
+  one an attacker with brief access to the card could turn off and hand back.
+
+  THE CLOCK IS NOT TRUSTED FOR ANYTHING ELSE. `now` is injected, so a wrong
+  system clock costs an early or a late lock and nothing more. No key, no
+  signature and no derivation depends on it.
+
+references:
+  - docs/THREAT-MODEL.md
+  - docs/USING.md

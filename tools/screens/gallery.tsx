@@ -28,6 +28,8 @@ import { createRoot } from 'react-dom/client'
 import {
   BackupScreen,
   ChildSeedScreen,
+  IdleBanner,
+  NetworkBanner,
   DiceScreen,
   ImportScreen,
   LabelsScreen,
@@ -69,6 +71,7 @@ const noop = (): void => undefined
 /** A named device, so the header chip is measured on every screen. */
 const DEVICE = { name: 'The one in the attic', colour: 'teal' }
 
+
 /** Long enough to be the worst case a real device would meet. */
 const XPUB =
   'xpub6BosfCnifzxcFwrSzQiqu2DBVTshkCXacvNsWGYJVVhhawA7d4R5WSWGFNbi8Aw6ZRc1brxMyWMzG3DSSSSoekkudhUd9yLb6qx39T9nMdj'
@@ -91,6 +94,23 @@ const MNEMONIC =
  * the quorum arithmetic is on screen, and both a blocking and a non-blocking
  * warning at once.
  */
+/**
+ * The header a minute before the device locks itself, composed exactly as
+ * App.tsx composes it: the countdown and the network tag, with the wallet chip
+ * and the device name displaced to make room. Four chips beside a title do not
+ * fit in 800px, and this harness is what proved it.
+ *
+ * Measured on the review screen, because that is the one with the least room
+ * left and the one somebody is most likely to be reading quietly when the
+ * countdown starts.
+ */
+const CROWDED_HEADER = (
+  <>
+    <IdleBanner remaining={42} onStayOpen={noop} />
+    <NetworkBanner network={{ id: 'testnet3', label: 'Testnet', isMainnet: false }} />
+  </>
+)
+
 const REVIEW = {
   // False, because a blocking warning is present. core defines signable as
   // exactly that, and a fixture that broke the coupling would be exercising a
@@ -381,6 +401,19 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       onBack={noop}
     />
   ),
+  // The same screen a minute before the device locks itself: an idle warning,
+  // a testnet banner and the wallet chip all in a header that has to leave room
+  // for a transaction underneath.
+  'psbt-idle': () => (
+    <PsbtScreen onHome={noop}
+      banner={CROWDED_HEADER}
+      initialPsbt="cHNidP8BAHUCAAAAAQ=="
+      onScan={noop}
+      onReview={async () => Promise.resolve(REVIEW)}
+      onSign={never}
+      onBack={noop}
+    />
+  ),
   // The screen that authorises spending money, in the state where it does so.
   'psbt-review': () => (
     <PsbtScreen device={DEVICE} onHome={noop}
@@ -657,6 +690,8 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   // what a person does.
   'psbt-review': [['psbt-review'], ['psbt-review', 'psbt-override', 'psbt-sign']],
   'psbt-signed-partial': [['psbt-review'], ['psbt-review', 'psbt-sign']],
+  // Into the review, which is where the header has the least room to spare.
+  'psbt-idle': [['psbt-review']],
 }
 
 // Published before rendering. A screen that throws must fail loudly as that

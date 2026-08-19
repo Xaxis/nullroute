@@ -59,6 +59,8 @@ covers:
   - packages/ui/src/screens/ReceiveScreen.tsx::ReceiveScreen
   - packages/ui/src/screens/ReceiveScreen.tsx::chunkAddress
   - packages/ui/src/components/Steps.tsx::Steps
+  - packages/ui/src/components/IdleBanner.tsx::IdleBanner
+  - packages/ui/src/lib/idle.ts::useIdleLock
   - packages/ui/src/journeys.ts::JOURNEYS
   - packages/ui/src/journeys.ts::journeyById
   - packages/ui/src/journeys.ts::stepOf
@@ -944,6 +946,17 @@ invariants:
       - packages/ui/test/fleet-screen.test.tsx::says-what-forgetting-costs-and-what-it-does-not
       - packages/ui/test/fleet-screen.test.tsx::reports-a-refusal-rather-than-claiming-it-went
       - packages/ui/test/fleet-screen.test.tsx::offers-nothing-when-there-is-nowhere-to-send-it
+
+  - id: INV-UI-85
+    statement: >
+      The wallet locking itself is announced before it happens, with the
+      seconds left and a way to stay open, in a chip small enough that the
+      warning does not push what somebody is reading off the panel.
+    tests:
+      - packages/ui/test/idle-banner.test.tsx::says-how-long-is-left-and-what-happens
+      - packages/ui/test/idle-banner.test.tsx::announces-itself-rather-than-only-appearing
+      - packages/ui/test/idle-banner.test.tsx::offers-a-way-to-stay-open-without-losing-the-screen
+      - packages/ui/test/idle-banner.test.tsx::stays-small-enough-for-a-header-that-is-already-full
 
 threats:
   - INV-KEY-1

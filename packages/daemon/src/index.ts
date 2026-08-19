@@ -48,6 +48,9 @@ export type { BackupContents, RestoredBackup } from './store/backup.js'
 export { MAX_ATTEMPTS, WalletStore } from './store/store.js'
 export type { StoreStatus } from './store/store.js'
 
+export { IdleClock, IDLE_LOCK_SECONDS, IDLE_WARN_SECONDS } from './idle.js'
+export type { IdleClockOptions } from './idle.js'
+
 export { Session, SessionError } from './session.js'
 export type { WalletSession, SeedProvenance } from './session.js'
 

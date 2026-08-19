@@ -54,6 +54,7 @@ import {
 } from '@nullroute/core'
 import { randomBytes } from 'node:crypto'
 import { checkEntropyHealth } from './entropy/health.js'
+import { IdleClock, IDLE_WARN_SECONDS } from './idle.js'
 import { DeviceIdentityStore } from './store/identity.js'
 import { stripUndisplayable } from './store/registry.js'
 import { type BootAttestation, abbreviateHash } from './boot/attestation.js'
@@ -94,6 +95,14 @@ export interface DaemonState {
    * and because a device with one wallet and no siblings does not need a name.
    */
   readonly identity?: DeviceIdentityStore
+  /**
+   * When the wallet closes itself because nobody is at the device.
+   *
+   * Optional so a daemon can be run without one, which is what a unit test
+   * calling a single method wants. Absent means no idle lock, and the status
+   * method says so rather than reporting a window that does not exist.
+   */
+  readonly idle?: IdleClock
 }
 
 function params(request: IpcRequest): Record<string, unknown> {
@@ -205,6 +214,14 @@ export function createHandler(state: DaemonState): IpcHandler {
 
   return async (request: IpcRequest): Promise<unknown> => {
     await Promise.resolve()
+
+    // Checked before dispatch, so a request arriving after the deadline finds
+    // a locked wallet rather than being served by one that should already be
+    // shut. The daemon also sweeps on a timer, because a frontend that has
+    // crashed sends nothing at all and the seed must not outlive it either.
+    if (state.idle?.expired() === true && session.hasWallet) {
+      session.lock()
+    }
 
     switch (request.method) {
       // --- Attestation and device state --------------------------------
@@ -1664,6 +1681,26 @@ export function createHandler(state: DaemonState): IpcHandler {
       case 'session.lock': {
         session.lock()
         return { unlocked: false }
+      }
+
+      /**
+       * A person touched the screen.
+       *
+       * The ONLY thing that resets the idle clock. Every other method is a
+       * screen doing its work, and counting those would let a screen that
+       * refreshes hold a seed in memory indefinitely, which is the exact
+       * failure the idle lock exists to end.
+       *
+       * Returns the window so the frontend counts down from a number the
+       * daemon owns rather than a copy of it, and so a change here cannot
+       * leave a screen warning at the wrong moment.
+       */
+      case 'session.heartbeat': {
+        state.idle?.touch()
+        return {
+          idle: state.idle === undefined ? null : { seconds: state.idle.seconds, warnAt: IDLE_WARN_SECONDS },
+          unlocked: session.hasWallet,
+        }
       }
 
       default:

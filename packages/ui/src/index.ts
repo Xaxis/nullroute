@@ -39,6 +39,12 @@ export type { ReceiveScreenProps, ReceiveAddress } from './screens/ReceiveScreen
 export type { FinishScreenProps } from './screens/FinishScreen.js'
 export type { StartScreenProps } from './screens/StartScreen.js'
 
+export { IdleBanner } from './components/IdleBanner.js'
+export type { IdleBannerProps } from './components/IdleBanner.js'
+
+export { useIdleLock } from './lib/idle.js'
+export type { IdleState, IdleWindow, UseIdleLockOptions } from './lib/idle.js'
+
 export { Steps } from './components/Steps.js'
 export type { StepsProps } from './components/Steps.js'
 

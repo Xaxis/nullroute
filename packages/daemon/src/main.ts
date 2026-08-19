@@ -25,6 +25,7 @@ import { join } from 'node:path'
 import { requirePassingVerification, abbreviateHash } from './boot/attestation.js'
 import { startIpcServer } from './ipc/socket.js'
 import { createHandler } from './handler.js'
+import { IdleClock, IDLE_LOCK_SECONDS } from './idle.js'
 import { Session } from './session.js'
 import { WalletStore } from './store/store.js'
 import { DeviceIdentityStore } from './store/identity.js'
@@ -71,7 +72,26 @@ async function main(): Promise<void> {
   // Beside the wallets, not inside one. Three devices in a quorum hold the same
   // wallet and therefore show the same name, so the device needs one of its own.
   const identity = new DeviceIdentityStore(STORE_DIR)
-  const state = { attestation, session: new Session(), store, registry, identity }
+  // Closes the wallet when nobody is at the device. Only a touch resets it:
+  // see packages/daemon/src/idle.ts for why every other request must not.
+  const idle = new IdleClock()
+  const session = new Session()
+  const state = { attestation, session, store, registry, identity, idle }
+
+  // A sweep as well as the check on each request, because a frontend that has
+  // crashed sends no requests at all and the seed must not outlive it. Ten
+  // seconds is far below the window, so the lock is never late by anything a
+  // person would notice, and the work is one subtraction.
+  const sweep = setInterval(() => {
+    if (idle.expired() && session.hasWallet) {
+      session.lock()
+      console.log(`nullrouted: locked after ${String(IDLE_LOCK_SECONDS)}s with nobody at the device`)
+    }
+  }, 10_000)
+  // Never a reason to hold the process open. A device with no wallet loaded has
+  // nothing for this timer to do, and it must not be what keeps the daemon up.
+  sweep.unref()
+
   const server = await startIpcServer({
     socketPath: SOCKET_PATH,
     handler: createHandler(state),
@@ -90,6 +110,7 @@ async function main(): Promise<void> {
   )
 
   const shutdown = (): void => {
+    clearInterval(sweep)
     server.close(() => {
       process.exit(0)
     })
