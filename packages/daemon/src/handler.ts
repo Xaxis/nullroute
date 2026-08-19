@@ -26,6 +26,7 @@ import {
   deriveAddresses,
   deriveMultisigAddresses,
   encodePsbt,
+  assembleQuorum,
   exportBundle,
   importCoordinatorFile,
   formatBtc,
@@ -909,6 +910,32 @@ export function createHandler(state: DaemonState): IpcHandler {
        * agreeing to a quorum are different acts and the membership check
        * belongs to the second one.
        */
+      /**
+       * Build a quorum descriptor from a set of keys, here on the device.
+       *
+       * The piece that makes coordinator software optional. Until this existed
+       * the device could hand out its own key and swallow a finished
+       * descriptor, and nothing in between, so a fleet of air-gapped devices
+       * needed a networked machine to CREATE the wallet they would then use
+       * without one.
+       *
+       * Registers nothing. It returns a descriptor, and that descriptor still
+       * goes through the same review as one from a coordinator, which is what
+       * refuses a quorum this device holds no key in.
+       */
+      case 'multisig.assemble': {
+        const raw = params(request)['keys']
+        if (!Array.isArray(raw) || raw.some((key) => typeof key !== 'string')) {
+          throw new Error('Parameter "keys" is required and must be an array of key expressions.')
+        }
+        const script = params(request)['script']
+        return assembleQuorum({
+          threshold: requireNumber(request, 'threshold', 2),
+          keys: raw as string[],
+          ...(script === 'sh-wsh' ? { script: 'sh-wsh' as const } : {}),
+        })
+      }
+
       case 'multisig.importFile': {
         const imported = importCoordinatorFile(requireString(request, 'contents'))
         return {

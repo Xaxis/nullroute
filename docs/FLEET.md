@@ -50,10 +50,26 @@ therefore a round of exporting, then a round of registering.
    xpub, deliberately a different branch from the single-signature one so that
    using a seed both alone and in a quorum does not link the two on chain.
 
-3. **Assemble the descriptor.** Any coordinator that speaks descriptors will do
-   this, and so will several that ship their own file formats. The device reads
-   Coldcard setup files, BSMS round-two files, Sparrow and Specter JSON, and
-   Bitcoin Core `importdescriptors` arrays.
+3. **Assemble the descriptor.** Two ways, and the first needs no other computer.
+
+   **On a device.** Multisig, then **I have the other keys, build it here**.
+   Collect each other device's key by camera or paste, choose the threshold, and
+   the device builds the descriptor. Its own key is filled in for you. This is
+   the option that makes a fleet of air-gapped devices self-sufficient: three
+   Pis in a room can agree on a wallet without a fourth machine.
+
+   The order you collect the keys in does not matter. Every device given the
+   same keys produces a byte-identical descriptor, so the checksum you compare
+   in step 5 differs only when the KEYS differ.
+
+   **With a coordinator.** Any software that speaks descriptors, and several
+   that ship their own formats. The device reads Coldcard setup files, BSMS
+   round-two files, Sparrow and Specter JSON, and Bitcoin Core
+   `importdescriptors` arrays. Still the right choice when the other cosigners
+   are other vendors' hardware, or when you want a watching wallet anyway.
+
+   Building is not registering either way. What comes out is a descriptor, and
+   it still goes through the review in step 4.
 
 4. **Register the descriptor on every device.** This is the step people skip and
    it is the one that matters. A registered descriptor is how a device knows

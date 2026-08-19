@@ -53,6 +53,7 @@ covers:
   - packages/ui/src/screens/AttestationScreen.tsx::AttestationScreen
   - packages/ui/src/screens/MachineEntropyScreen.tsx::MachineEntropyScreen
   - packages/ui/src/screens/DeviceNameScreen.tsx::DeviceNameScreen
+  - packages/ui/src/screens/AssembleQuorumScreen.tsx::AssembleQuorumScreen
   - packages/ui/src/screens/FinishScreen.tsx::FinishScreen
   - packages/ui/src/screens/ReceiveScreen.tsx::ReceiveScreen
   - packages/ui/src/screens/ReceiveScreen.tsx::chunkAddress
@@ -874,6 +875,30 @@ invariants:
       - packages/ui/test/device-name-screen.test.tsx::says-the-name-is-unverified-and-decides-nothing
       - packages/ui/test/device-name-screen.test.tsx::reports-a-refused-name
       - packages/ui/test/app.test.tsx::shows-the-device-name-before-any-passphrase
+
+  # --- Building a quorum without a coordinator ---------------------------------
+  - id: INV-UI-79
+    statement: >
+      This device's own key is filled in rather than typed, and building sends
+      every collected key with the chosen threshold and shows the checksum
+      prominently, because it is what every device in the quorum compares.
+    tests:
+      - packages/ui/test/assemble-quorum-screen.test.tsx::fills-in-this-devices-own-key
+      - packages/ui/test/assemble-quorum-screen.test.tsx::builds-from-the-collected-keys-and-shows-the-checksum
+      - packages/ui/test/assemble-quorum-screen.test.tsx::adds-a-slot-and-drops-a-scanned-key-into-the-first-empty-one
+      - packages/ui/test/assemble-quorum-screen.test.tsx::will-not-build-from-one-key
+      - packages/ui/test/assemble-quorum-screen.test.tsx::never-shows-a-threshold-larger-than-the-keys-collected
+      - packages/ui/test/assemble-quorum-screen.test.tsx::builds-with-the-clamped-threshold-not-the-stored-one
+
+  - id: INV-UI-80
+    statement: >
+      Building registers nothing and says so, hands the descriptor to the same
+      review a coordinator's would go through, and states that the order keys
+      were collected in does not affect the result.
+    tests:
+      - packages/ui/test/assemble-quorum-screen.test.tsx::does-not-register-and-says-so
+      - packages/ui/test/assemble-quorum-screen.test.tsx::says-the-order-keys-were-collected-in-does-not-matter
+      - packages/ui/test/assemble-quorum-screen.test.tsx::reports-a-refused-assembly
 
 threats:
   - INV-KEY-1

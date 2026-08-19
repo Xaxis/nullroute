@@ -38,6 +38,7 @@ import {
   StartScreen,
   AttestationScreen,
   DeviceNameScreen,
+  AssembleQuorumScreen,
   MachineEntropyScreen,
   FinishScreen,
   ReceiveScreen,
@@ -421,6 +422,30 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   labels: () => <LabelsScreen device={DEVICE} onScan={noop} onHome={noop} onImport={never} onExport={never} onBack={noop} />,
   child: () => <ChildSeedScreen device={DEVICE} onHome={noop} onDerive={never} onBack={noop} />,
   start: () => <StartScreen device={DEVICE} walletOpen={false} onBegin={noop} onSkip={noop} />,
+  assemble: () => (
+    <AssembleQuorumScreen
+      device={DEVICE}
+      onHome={noop}
+      onOurKey={async () =>
+        Promise.resolve({
+          keyExpression: `[73c5da0a/48'/0'/0'/2']${XPUB}`,
+          masterFingerprint: '73c5da0a',
+        })
+      }
+      onAssemble={async (threshold: number, keys: readonly string[]) =>
+        Promise.resolve({
+          descriptor: DESCRIPTOR,
+          checksum: '8rf6pq2t',
+          threshold,
+          total: keys.length,
+          keys,
+        })
+      }
+      onReview={noop}
+      onScan={noop}
+      onBack={noop}
+    />
+  ),
   'device-name': () => (
     <DeviceNameScreen
       onHome={noop}
@@ -515,6 +540,8 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   // Chosen with no wallet open, which is the state that used to be refused and
   // now gains a step.
   start: [['start-goal-multisig'], ['start-goal-sign']],
+  // Built, which is where the checksum every device compares is shown.
+  assemble: [['assemble-build']],
   // Verified, which adds a paragraph under a screen that already holds a QR
   // code, an address in large type and a warning banner.
   receive: [['receive-verify']],

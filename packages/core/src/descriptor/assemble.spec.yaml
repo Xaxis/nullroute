@@ -1,0 +1,90 @@
+id: core.descriptor.assemble
+version: 1
+title: Building a multisig descriptor on the device
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Let a fleet of air-gapped devices agree on a wallet between themselves.
+  Forming a quorum previously required coordinator software: the device could
+  export its own key and import a finished descriptor, and nothing in between,
+  so three Pis in a room needed a fourth computer to create the wallet they
+  would then use without one.
+
+covers:
+  - packages/core/src/descriptor/assemble.ts::assembleQuorum
+  - packages/core/src/descriptor/assemble.ts::AssembleError
+
+algorithm: >
+  Parse every key expression, refuse the ones a quorum cannot use, sort by
+  extended key, join into `sortedmulti(m, ...)`, wrap in `wsh(...)` or
+  `sh(wsh(...))`, and append the BIP-380 checksum.
+
+  Two separate sorts are involved and only one of them is BIP-67. `sortedmulti`
+  sorts the derived public keys at DERIVATION time, which is what makes the
+  addresses independent of the order the keys were written. This module also
+  sorts the WRITTEN order, which BIP-67 says nothing about, so that the
+  descriptor string and therefore the checksum are independent of it too.
+
+security_notes: >
+  Assembling is string construction. It signs nothing, derives nothing and
+  registers nothing, and the descriptor it produces still goes through the same
+  review as one from a coordinator, which is where a quorum this device holds no
+  key in is refused.
+
+  The refusals here are all cases that produce a descriptor which parses,
+  derives addresses, receives money, and is then unspendable or weaker than it
+  appears, with nothing on any screen looking wrong. A key listed twice is a
+  2-of-3 that is really a 2-of-2. A key with no origin cannot be traced to a
+  seed, so a device restoring later cannot tell whether it can sign. Mismatched
+  derivation suffixes give a wallet that receives on one branch and never
+  recognises its own change.
+
+  Canonical written order is a security property rather than tidiness.
+  docs/FLEET.md instructs people to compare the eight checksum characters across
+  devices and treat a difference as proof that one has a different wallet.
+  Without it, that check fires on three devices that agree perfectly because
+  somebody scanned the keys in a different sequence, and a check that cries wolf
+  is a check people learn to wave through. It is the check standing between a
+  fleet and a wallet they cannot spend from.
+
+references:
+  - https://github.com/bitcoin/bips/blob/master/bip-0067.mediawiki
+  - https://github.com/bitcoin/bips/blob/master/bip-0380.mediawiki
+  - docs/FLEET.md
+
+invariants:
+  - id: INV-ASM-1
+    statement: >
+      The result parses back to the requested shape with a valid checksum, uses
+      sortedmulti rather than multi, and is byte-identical whatever order the
+      keys were supplied in.
+    tests:
+      - packages/core/test/descriptor.assemble.test.ts::builds-a-descriptor-the-parser-agrees-with
+      - packages/core/test/descriptor.assemble.test.ts::always-sorts-at-derivation-rather-than-trusting-key-order
+      - packages/core/test/descriptor.assemble.test.ts::produces-the-same-checksum-whatever-order-the-keys-arrive-in
+      - packages/core/test/descriptor.assemble.test.ts::builds-nested-segwit-when-asked
+
+  - id: INV-ASM-2
+    statement: >
+      A key listed twice, compared by extended key rather than by expression,
+      and a key with no origin, are both refused.
+    tests:
+      - packages/core/test/descriptor.assemble.test.ts::refuses-the-same-key-twice
+      - packages/core/test/descriptor.assemble.test.ts::refuses-a-key-with-no-origin
+      - packages/core/test/descriptor.assemble.test.ts::names-which-key-it-could-not-read
+
+  - id: INV-ASM-3
+    statement: >
+      A threshold nothing could satisfy, a key count outside what a script can
+      hold, and keys whose derivation suffixes disagree are all refused, while
+      degenerate but legitimate thresholds are built and left for review to warn
+      about.
+    tests:
+      - packages/core/test/descriptor.assemble.test.ts::refuses-a-threshold-nothing-could-satisfy
+      - packages/core/test/descriptor.assemble.test.ts::refuses-fewer-than-two-keys-and-more-than-the-consensus-limit
+      - packages/core/test/descriptor.assemble.test.ts::refuses-keys-whose-branches-do-not-match
+      - packages/core/test/descriptor.assemble.test.ts::builds-the-degenerate-thresholds-and-leaves-the-warning-to-review
+
+threats:
+  - INV-MULTI-6

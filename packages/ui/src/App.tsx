@@ -30,6 +30,10 @@ import { StartScreen } from './screens/StartScreen.js'
 import { AttestationScreen } from './screens/AttestationScreen.js'
 import { DeviceNameScreen } from './screens/DeviceNameScreen.js'
 import {
+  AssembleQuorumScreen,
+  type AssembledView,
+} from './screens/AssembleQuorumScreen.js'
+import {
   MachineEntropyScreen,
   type HealthReportView,
 } from './screens/MachineEntropyScreen.js'
@@ -115,12 +119,17 @@ type Stage =
    * same way and all took pasted text only, which on a machine with no keyboard
    * means an on-screen keyboard and a 200 character descriptor.
    */
-  | { readonly at: 'scan'; readonly forStage: 'psbt' | 'multisig' | 'backup' | 'labels' }
+  | {
+      readonly at: 'scan'
+      readonly forStage: 'psbt' | 'multisig' | 'backup' | 'labels' | 'assemble'
+    }
   /** A wallet exists on disk and the passphrase has not been given yet. */
   | { readonly at: 'unlock' }
   /** A wallet has just been created and can be saved to this device. */
   | { readonly at: 'protect' }
   | { readonly at: 'multisig'; readonly prefill?: string }
+  /** Building a quorum on the device, with no coordinator. */
+  | { readonly at: 'assemble'; readonly prefill?: string }
   /** Proving control of an address by signing a message with it. */
   | { readonly at: 'message' }
   /** Writing or restoring an encrypted backup. */
@@ -175,7 +184,7 @@ const transport = httpTransport()
  * broken.
  */
 const SCANNING: Record<
-  'psbt' | 'multisig' | 'backup' | 'labels',
+  'psbt' | 'multisig' | 'backup' | 'labels' | 'assemble',
   { readonly title: string; readonly hint: string }
 > = {
   psbt: {
@@ -185,6 +194,10 @@ const SCANNING: Record<
   multisig: {
     title: 'Scan a descriptor',
     hint: 'The quorum descriptor, or a setup file your coordinator exported.',
+  },
+  assemble: {
+    title: 'Scan a cosigner key',
+    hint: 'The key another device shows under Multisig. It cannot spend anything.',
   },
   backup: {
     title: 'Scan a backup',
@@ -1007,6 +1020,33 @@ export function App() {
     )
   }
 
+  if (stage.at === 'assemble') {
+    return (
+      <AssembleQuorumScreen
+        banner={banner}
+        onHome={goHome}
+        device={device ?? undefined}
+        onOurKey={ourMultisigKey}
+        scanned={stage.prefill ?? undefined}
+        onScan={() => {
+          setStage({ at: 'scan', forStage: 'assemble' })
+        }}
+        onAssemble={async (threshold: number, keys: readonly string[]) =>
+          call<AssembledView>(transport, 'multisig.assemble', { threshold, keys })
+        }
+        onReview={(descriptor: string) => {
+          // Straight into the normal review, which is what refuses a quorum
+          // this device holds no key in. Building and agreeing stay separate:
+          // the dangerous act is agreeing.
+          setStage({ at: 'multisig', prefill: descriptor })
+        }}
+        onBack={() => {
+          setStage({ at: 'multisig' })
+        }}
+      />
+    )
+  }
+
   if (stage.at === 'multisig') {
     return (
       <MultisigScreen
@@ -1033,6 +1073,9 @@ export function App() {
           advance('multisig')
         }}
         registeredCount={quorums.length}
+        onAssemble={() => {
+          setStage({ at: 'assemble' })
+        }}
         onImportFile={async (contents: string) =>
           call<ImportedFileView>(transport, 'multisig.importFile', { contents })
         }

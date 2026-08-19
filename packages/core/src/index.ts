@@ -21,3 +21,6 @@ export * from './qr/index.js'
 export * from './bip85/index.js'
 export * from './labels/index.js'
 export * from './message/index.js'
+
+export { assembleQuorum, AssembleError } from './descriptor/assemble.js'
+export type { AssembleOptions, AssembledQuorum, QuorumScript } from './descriptor/assemble.js'

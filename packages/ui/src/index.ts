@@ -17,6 +17,12 @@ export type {
   HealthCheckView,
 } from './screens/MachineEntropyScreen.js'
 
+export { AssembleQuorumScreen } from './screens/AssembleQuorumScreen.js'
+export type {
+  AssembleQuorumScreenProps,
+  AssembledView,
+} from './screens/AssembleQuorumScreen.js'
+
 export { DeviceNameScreen } from './screens/DeviceNameScreen.js'
 export type { DeviceNameScreenProps } from './screens/DeviceNameScreen.js'
 

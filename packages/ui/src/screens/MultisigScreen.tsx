@@ -93,6 +93,14 @@ export interface MultisigScreenProps {
   /** How many quorums are registered, so the export is offered only when it carries something. */
   readonly registeredCount?: number
   /**
+   * Leaves for building a quorum here rather than importing one.
+   *
+   * Optional, and offered beside the descriptor field rather than instead of
+   * it: importing a descriptor a coordinator built is still the common case
+   * when the other cosigners are other vendors' hardware.
+   */
+  readonly onAssemble?: (() => void) | undefined
+  /**
    * Text the camera already read, if the user arrived that way.
    *
    * A descriptor is 200 characters and this device has no keyboard, so typing
@@ -119,6 +127,7 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
     onImportFile,
     onExportBundle,
     registeredCount = 0,
+    onAssemble,
     initialText,
     onScan,
     onBack,
@@ -459,6 +468,11 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
           {/* The same field. A coordinator export is usually a wrapper around
               the descriptor above, and pasting either into one box is fewer
               decisions than choosing which box to paste into. */}
+          {onAssemble !== undefined && (
+            <Button onClick={onAssemble} testId="multisig-assemble">
+              I have the other keys, build it here
+            </Button>
+          )}
           {onImportFile !== undefined && (
             <Button
               disabled={descriptor.trim().length === 0 || busy}
