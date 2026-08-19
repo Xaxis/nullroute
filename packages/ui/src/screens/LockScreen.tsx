@@ -65,10 +65,27 @@ export interface LockScreenProps {
   readonly onToggleExpanded?: () => void
 }
 
+/**
+ * The statuses that count as a pass, and no others.
+ *
+ * `not-applicable` is a pass: a spec with no vectors declared has nothing to
+ * verify, and calling that a failure would mean no device ever boots.
+ */
+const PASSING = new Set(['passed', 'not-applicable'])
+
 export function LockScreen(props: LockScreenProps): ReactElement {
   const { attestation, network, fingerprint, onUnlock, expanded = false, onToggleExpanded } = props
 
-  const failing = attestation.checks.filter((c) => c.status === 'failed')
+  // A check passes only if it says so, in a word this screen knows. Everything
+  // else is a failure.
+  //
+  // This used to read `status === 'failed'`, which is fail-open on the one
+  // screen where that is unaffordable: any status the daemon might emit that
+  // this file had not been told about, a rename, a new outcome, a typo on
+  // either side, produced "Verification passed" in green with Unlock enabled.
+  // The value crosses a JSON boundary, so TypeScript guarantees nothing about
+  // it, and the check names are drawn from the same payload.
+  const failing = attestation.checks.filter((c) => !PASSING.has(c.status))
   const verified = failing.length === 0
 
   return (
@@ -91,7 +108,14 @@ export function LockScreen(props: LockScreenProps): ReactElement {
                 the user has just read. */}
             {verified
               ? 'Verification passed'
-              : `Verification FAILED: ${failing.map((c) => c.name).join(', ')}`}
+              : `Verification FAILED: ${failing
+                  .map((c) =>
+                    // An unrecognised status is named, because "integrity
+                    // failed" and "nobody here knows what integrity said" are
+                    // different problems and the second one is worse.
+                    c.status === 'failed' ? c.name : `${c.name} (status: ${c.status})`
+                  )
+                  .join(', ')}`}
           </span>
           <div className="nr-spacer" />
           {/* Not autofocused. A security-relevant confirmation is never the
@@ -102,8 +126,26 @@ export function LockScreen(props: LockScreenProps): ReactElement {
         </>
       }
     >
+      {/* FIRST when it applies, above the hero, because 480px of panel holds
+          the hash card and the facts and nothing else. This banner used to sit
+          below both, which put the most important sentence a failing device
+          ever says off the bottom of the screen: a user reading top to bottom
+          saw a manifest root, some counts, and had to scroll to be told not to
+          proceed. On a device that has just failed verification, nothing
+          outranks this. */}
+      {!verified && (
+        <div className="nr-banner nr-banner--danger" data-testid="blocked">
+          <strong>Do not enter your PIN</strong>
+          <span>
+            Verification failed, so the wallet will not load. This device is not running the code
+            it was built from. {failing.map((c) => c.detail).filter(Boolean).join(' ')}
+          </span>
+        </div>
+      )}
+
       {/* The hero. This is the value being compared against another screen, so
-          it gets the space and the type size, and nothing sits above it. */}
+          it gets the space and the type size, and nothing sits above it when
+          verification passed. */}
       <div className="nr-attest" data-testid="attestation">
         <div className="nr-attest__label">Manifest root</div>
         <Hash
@@ -153,16 +195,6 @@ export function LockScreen(props: LockScreenProps): ReactElement {
           </div>
         )}
       </div>
-
-      {!verified && (
-        <div className="nr-banner nr-banner--danger" data-testid="blocked">
-          <strong>Do not enter your PIN</strong>
-          <span>
-            Verification failed, so the wallet will not load. This device is not running the code
-            it was built from.
-          </span>
-        </div>
-      )}
 
       {/* Tightened to fit 480px without scrolling. The caveat is the most
           skippable thing on this screen and the least affordable to have

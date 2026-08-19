@@ -598,6 +598,28 @@ invariants:
       - packages/ui/test/wallet-screen.test.tsx::leaves-out-a-destination-with-nowhere-to-go
       - packages/ui/test/wallet-screen.test.tsx::keeps-the-action-bar-to-the-way-out-and-the-primary-action
 
+  # --- The verdict fails closed ----------------------------------------------
+  - id: INV-UI-53
+    statement: >
+      The lock screen counts a verification check as passing only when its
+      status is one it recognises as a pass, treats every other value as a
+      failure, and names an unrecognised status rather than only the check.
+    tests:
+      - packages/ui/test/lock-screen.test.tsx::treats-an-unrecognised-status-as-a-failure
+      - packages/ui/test/lock-screen.test.tsx::names-an-unrecognised-status-rather-than-just-the-check
+      - packages/ui/test/lock-screen.test.tsx::still-passes-a-check-that-had-nothing-to-do
+      - packages/ui/test/lock-screen.test.tsx::agrees-with-the-verifier-about-what-a-status-can-be
+
+  - id: INV-UI-54
+    statement: >
+      On a device that failed verification the refusal is the first thing in the
+      body, above the hash it would otherwise ask you to compare, and it names
+      the check that failed and why.
+    tests:
+      - packages/ui/test/lock-screen.test.tsx::puts-the-refusal-above-everything-else
+      - packages/ui/test/lock-screen.test.tsx::says-what-actually-failed
+      - packages/ui/test/lock-screen.test.tsx::is-absent-when-there-is-nothing-to-refuse
+
 threats:
   - INV-KEY-1
   - INV-BUILD-1

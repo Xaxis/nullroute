@@ -24,8 +24,16 @@
       bundled and served from this origin, and packages/ui/src/lib/scanner.ts
       refuses to load it from anywhere else.
 
-      No 'unsafe-inline' anywhere. Vite emits external script and style files for
-      the production build, so nothing here needs it.
+      No 'unsafe-inline' anywhere. Vite emits external script and style files
+      for the production build, so nothing here needs it.
+
+      The DEV SERVER is a different matter and this caught nobody for a while.
+      `vite dev` injects CSS as inline <style> elements and opens a WebSocket for
+      hot reload, and this policy blocks both, so `make dev` rendered every
+      screen with no stylesheet: structurally correct, visually destroyed. The
+      devCsp plugin in vite.config.ts relaxes exactly those two directives for
+      the dev server and nothing else. This file, and the build it produces, are
+      untouched by it.
 
       frame-ancestors is deliberately ABSENT. A meta-delivered policy cannot set
       it, and browsers log that they are ignoring it. Listing a directive that

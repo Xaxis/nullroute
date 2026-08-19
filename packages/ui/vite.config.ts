@@ -72,8 +72,58 @@ function daemonProxy(): Plugin {
   }
 }
 
+/**
+ * Relax the document's CSP for the dev server, and only for the dev server.
+ *
+ * packages/ui/index.html carries the device's real policy, and it is strict on
+ * purpose: `default-src 'none'`, no `unsafe-inline` anywhere. That works for the
+ * production build, where Vite emits external script and style files.
+ *
+ * It does not work for `vite dev`, which injects CSS as inline <style> elements
+ * and opens a WebSocket for hot reload. Under the shipped policy both are
+ * blocked, so `make dev` rendered the whole device UI with no stylesheet at all:
+ * black text on a transparent background, every screen structurally correct and
+ * visually broken. The console said so and nothing else did, because every CSP
+ * check in this repository reads the PRODUCTION build.
+ *
+ * WHAT THIS TRADES. Dev now differs from the device in one specific way, which
+ * means a component that used an inline style would work here and be blocked
+ * there. That is why tools/check-device-ui.mjs loads the built bundle under the
+ * real policy and fails on any violation: this relaxation is invisible to it.
+ *
+ * The replacement is deliberately narrow and deliberately noisy. It rewrites the
+ * two directives Vite needs and leaves the rest of the policy exactly as
+ * shipped, so a directive that gets weakened in index.html is weakened in dev
+ * too rather than being masked here.
+ */
+function devCsp(): Plugin {
+  const DEV_ORIGIN = `ws://127.0.0.1:${String(5180)}`
+  return {
+    name: 'nullroute-dev-csp',
+    // Serve only. The production HTML is emitted untouched.
+    apply: 'serve',
+    transformIndexHtml(html) {
+      const relaxed = html
+        // Vite injects <style> elements for every CSS module in dev.
+        .replace("style-src 'self'", "style-src 'self' 'unsafe-inline'")
+        // The hot reload socket. A different scheme, so 'self' does not cover it.
+        .replace("connect-src 'self'", `connect-src 'self' ${DEV_ORIGIN}`)
+      if (relaxed === html) {
+        // The directives moved or were renamed. Failing here is right: the
+        // alternative is a dev server that silently renders unstyled again.
+        throw new Error(
+          'nullroute-dev-csp: could not find the style-src and connect-src directives in ' +
+            'packages/ui/index.html. The dev server needs both relaxed, and the device needs ' +
+            'neither, so fix this rather than deleting it.'
+        )
+      }
+      return relaxed
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss(), daemonProxy()],
+  plugins: [react(), tailwindcss(), daemonProxy(), devCsp()],
   server: {
     // Loopback only. The device UI is never served to anything but itself, and
     // a dev server listening on 0.0.0.0 in a project like this would be an

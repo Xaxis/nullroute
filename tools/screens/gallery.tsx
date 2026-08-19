@@ -87,13 +87,13 @@ const SCREENS: Record<string, () => React.ReactElement> = {
         tier: 'Tier 0: reproducible signed image',
         version: '0.1.0',
         checks: [
-          { name: 'coverage', status: 'ok', detail: '204 of 204 runtime exports covered' },
-          { name: 'invariants', status: 'ok', detail: '210 invariants bound to 475 tests' },
-          { name: 'vectors', status: 'ok', detail: '4 of 4 vector files match' },
-          { name: 'differential', status: 'ok', detail: '1 module cross-checked' },
+          { name: 'coverage', status: 'passed', detail: '204 of 204 runtime exports covered' },
+          { name: 'invariants', status: 'passed', detail: '210 invariants bound to 475 tests' },
+          { name: 'vectors', status: 'passed', detail: '4 of 4 vector files match' },
+          { name: 'differential', status: 'passed', detail: '1 module cross-checked' },
           {
             name: 'integrity',
-            status: 'fail',
+            status: 'failed',
             detail: 'packages/core/src/derive/hd.ts does not match MANIFEST.lock',
           },
         ],
