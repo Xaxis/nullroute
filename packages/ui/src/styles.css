@@ -1399,3 +1399,57 @@ body {
   text-transform: uppercase;
   color: var(--color-danger-300, var(--color-text-dim));
 }
+
+/* --- Where you are in a journey ---------------------------------------------
+   Above the title, small, and always two parts: the count so it can be read
+   aloud, the name so it means something. */
+
+.nr-steps {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  margin-bottom: 0.125rem;
+}
+
+.nr-steps__count {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-accent-400);
+  flex: 0 0 auto;
+}
+
+.nr-steps__label {
+  color: var(--color-text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- Lists inside a card ---------------------------------------------------
+   Used by the goal preamble for "what you need" and "the steps". Wide leading
+   because these are read once, carefully, before committing to something with
+   an irreversible step in it. */
+
+.nr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4375rem;
+  margin: 0;
+  padding-left: 1.125rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--color-text-dim);
+  list-style: disc;
+}
+
+.nr-list--numbered {
+  list-style: decimal;
+}
+
+.nr-list li::marker {
+  color: var(--color-text-dim);
+}

@@ -47,13 +47,15 @@ export interface DiceScreenProps {
   }>
   readonly onComplete: (rolls: string, mixMachine: boolean) => void
   readonly onCancel: () => void
+  /** Where this screen sits in a journey, when it is part of one. */
+  readonly steps?: ReactElement | null
   readonly banner?: ReactElement | null
 }
 
 const FACES = ['1', '2', '3', '4', '5', '6'] as const
 
 export function DiceScreen(props: DiceScreenProps): ReactElement {
-  const { onAccount, onComplete, onCancel, banner } = props
+  const { onAccount, onComplete, onCancel, steps, banner } = props
 
   const [rolls, setRolls] = useState('')
   const [accounting, setAccounting] = useState<Accounting | null>(null)
@@ -108,6 +110,7 @@ export function DiceScreen(props: DiceScreenProps): ReactElement {
       title="Roll the dice"
       subtitle="A d6, one roll at a time. 100 rolls."
       banner={banner}
+      steps={steps}
       testId="dice-screen"
       actions={
         <>

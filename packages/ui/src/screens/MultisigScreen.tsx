@@ -93,6 +93,8 @@ export interface MultisigScreenProps {
   /** How many quorums are registered, so the export is offered only when it carries something. */
   readonly registeredCount?: number
   readonly onBack: () => void
+  /** Where this screen sits in a journey, when it is part of one. */
+  readonly steps?: ReactElement | null
   readonly banner?: ReactElement | null
 }
 
@@ -105,6 +107,7 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
     onExportBundle,
     registeredCount = 0,
     onBack,
+    steps,
     banner,
   } = props
 
@@ -152,6 +155,7 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
         title="For the coordinator"
         subtitle="Public keys and descriptors. Nothing here can spend."
         banner={banner}
+        steps={steps}
         testId="multisig-bundle"
         actions={
           <Button
@@ -199,6 +203,7 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
         title="What that file contains"
         subtitle={`Read as ${imported.format}. Nothing in it is verified yet.`}
         banner={banner}
+        steps={steps}
         testId="multisig-imported"
         actions={
           <Button
@@ -227,9 +232,9 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
           <div className="nr-banner nr-banner--testnet" data-testid="multisig-imported-claims">
             <strong>The file also says this, and the device does not check it</strong>
             <span>
-              {imported.unverifiedClaims.join('. ')}. Only the descriptor decides an address. If
-              one of those lines disagrees with what you were told, stop and ask the coordinator
-              before registering anything.
+              {imported.unverifiedClaims.join('. ')}. Only the descriptor decides an address. If one
+              of those lines disagrees with what you were told, stop and ask the coordinator before
+              registering anything.
             </span>
           </div>
         )}
@@ -282,6 +287,7 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
         title="Quorum registered"
         subtitle={`${String(review.threshold)} of ${String(review.total)}, and this device is one of them.`}
         banner={banner}
+        steps={steps}
         testId="multisig-registered"
         actions={
           <>
@@ -330,6 +336,7 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
       title="Multisig"
       subtitle="Share this device's key, then register the quorum."
       banner={banner}
+      steps={steps}
       testId="multisig-screen"
       actions={
         <>
@@ -340,7 +347,11 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
           {review === null ? (
             <Button
               disabled={descriptor.trim().length === 0 || busy}
-              onClick={() => void run(async () => { setReview(await onReview(descriptor)) })}
+              onClick={() =>
+                void run(async () => {
+                  setReview(await onReview(descriptor))
+                })
+              }
               testId="multisig-review"
             >
               {busy ? 'Checking' : 'Check quorum'}
@@ -411,8 +422,8 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
             data-testid="multisig-input"
           />
           <p className="nr-hint">
-            The checksum is required. It is the only thing standing between a mistyped character
-            and a valid descriptor for a completely different wallet.
+            The checksum is required. It is the only thing standing between a mistyped character and
+            a valid descriptor for a completely different wallet.
           </p>
 
           {/* The same field. A coordinator export is usually a wrapper around
@@ -489,8 +500,8 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
                         ) : (
                           <>
                             {cosigner.fingerprint ?? 'no fingerprint'}
-                            {cosigner.origin === undefined ? '' : ` at ${cosigner.origin}`}
-                            , unverified
+                            {cosigner.origin === undefined ? '' : ` at ${cosigner.origin}`},
+                            unverified
                           </>
                         )}
                       </div>
@@ -500,9 +511,9 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
               </tbody>
             </table>
             <p className="nr-hint">
-              Read these against what the other cosigners see. Only the entry marked as this
-              device has been verified: a fingerprint is four bytes chosen by whoever wrote the
-              descriptor, so it is shown and not believed.
+              Read these against what the other cosigners see. Only the entry marked as this device
+              has been verified: a fingerprint is four bytes chosen by whoever wrote the descriptor,
+              so it is shown and not believed.
             </p>
           </div>
 

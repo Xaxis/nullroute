@@ -214,8 +214,8 @@ export function MessageScreen(props: MessageScreenProps): ReactElement {
           <span className="nr-field__label">The message</span>
           <TextKeyboard value={message} onChange={setMessage} testId="message-keyboard" />
           <p className="nr-hint">
-            Type exactly what you were asked to sign. A signature is a proof that you agreed to
-            this specific text, so if somebody else chose the wording, read it twice.
+            Type exactly what you were asked to sign. A signature is a proof that you agreed to this
+            specific text, so if somebody else chose the wording, read it twice.
           </p>
         </>
       )}
@@ -238,7 +238,11 @@ export function MessageScreen(props: MessageScreenProps): ReactElement {
           </div>
 
           {review.refusals.map((refusal) => (
-            <div className="nr-banner nr-banner--danger" key={refusal} data-testid="message-refusal">
+            <div
+              className="nr-banner nr-banner--danger"
+              key={refusal}
+              data-testid="message-refusal"
+            >
               <strong>Will not sign this</strong>
               <span>{refusal}</span>
             </div>

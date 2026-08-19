@@ -50,13 +50,15 @@ export interface BackupScreenProps {
   readonly onDescribe: (backup: string) => Promise<BackupDescription>
   readonly onRestore: (backup: string, passphrase: string) => Promise<RestoredView>
   readonly onBack: () => void
+  /** Where this screen sits in a journey, when it is part of one. */
+  readonly steps?: ReactElement | null
   readonly banner?: ReactElement | null
 }
 
 type Mode = 'choose' | 'create' | 'restore'
 
 export function BackupScreen(props: BackupScreenProps): ReactElement {
-  const { onCreate, onDescribe, onRestore, onBack, banner } = props
+  const { onCreate, onDescribe, onRestore, onBack, steps, banner } = props
 
   const [mode, setMode] = useState<Mode>('choose')
   const [passphrase, setPassphrase] = useState('')
@@ -87,6 +89,7 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
         title="Backup written"
         subtitle={written.includesSeed ? 'This file can spend your money.' : 'Watch-only.'}
         banner={banner}
+        steps={steps}
         testId="backup-written"
         actions={
           <Button onClick={onBack} testId="backup-done">
@@ -98,8 +101,8 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
           <div className="nr-banner nr-banner--danger" data-testid="backup-carries-seed">
             <strong>This file is a copy of your wallet</strong>
             <span>
-              It holds your seed. Anyone who has it and its passphrase can spend everything. Keep
-              it the way you keep the words you wrote down, not the way you keep a settings file.
+              It holds your seed. Anyone who has it and its passphrase can spend everything. Keep it
+              the way you keep the words you wrote down, not the way you keep a settings file.
             </span>
           </div>
         )}
@@ -129,6 +132,7 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
         title="Restored"
         subtitle={restored.label}
         banner={banner}
+        steps={steps}
         testId="backup-restored"
         actions={
           <Button onClick={onBack} testId="backup-restored-done">
@@ -159,9 +163,9 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
           <div className="nr-banner nr-banner--testnet" data-testid="backup-restored-watching">
             <strong>Watch-only</strong>
             <span>
-              This backup carried no seed. The device can derive addresses, recognise its own
-              change and check what belongs to it, and cannot sign anything. Import the mnemonic
-              to make it a spending wallet again.
+              This backup carried no seed. The device can derive addresses, recognise its own change
+              and check what belongs to it, and cannot sign anything. Import the mnemonic to make it
+              a spending wallet again.
             </span>
           </div>
         )}
@@ -176,6 +180,7 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
         title="Backup"
         subtitle="Write one, or restore one."
         banner={banner}
+        steps={steps}
         testId="backup-screen"
         actions={
           <Button onClick={onBack} testId="backup-cancel">
@@ -216,6 +221,7 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
         title="Write a backup"
         subtitle="Encrypted under a passphrase you choose."
         banner={banner}
+        steps={steps}
         testId="backup-create"
         actions={
           <>
@@ -263,8 +269,8 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
             <strong>This will be a second copy of your money</strong>
             <span>
               The file will hold your seed, protected by the passphrase above and nothing else.
-              Anyone who gets both can spend everything. This is a real thing to want and it is
-              not the default.
+              Anyone who gets both can spend everything. This is a real thing to want and it is not
+              the default.
             </span>
           </div>
         ) : (
@@ -291,6 +297,7 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
       title="Restore a backup"
       subtitle="Paste or scan the file, then unlock it."
       banner={banner}
+      steps={steps}
       testId="backup-restore"
       actions={
         <>

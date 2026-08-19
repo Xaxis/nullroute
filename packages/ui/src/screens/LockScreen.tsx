@@ -61,6 +61,13 @@ export interface LockScreenProps {
   /** Shown once a wallet exists, so a mistyped passphrase is visible. */
   readonly fingerprint?: string
   readonly onUnlock: () => void
+  /**
+   * Leaves for the goal hub instead of straight into the device.
+   *
+   * Optional, and never the primary action. Somebody who has used this before
+   * wants the device, not a menu asking what they are trying to achieve.
+   */
+  readonly onGuide?: () => void
   readonly expanded?: boolean
   readonly onToggleExpanded?: () => void
 }
@@ -74,7 +81,15 @@ export interface LockScreenProps {
 const PASSING = new Set(['passed', 'not-applicable'])
 
 export function LockScreen(props: LockScreenProps): ReactElement {
-  const { attestation, network, fingerprint, onUnlock, expanded = false, onToggleExpanded } = props
+  const {
+    attestation,
+    network,
+    fingerprint,
+    onUnlock,
+    onGuide,
+    expanded = false,
+    onToggleExpanded,
+  } = props
 
   // A check passes only if it says so, in a word this screen knows. Everything
   // else is a failure.
@@ -118,6 +133,14 @@ export function LockScreen(props: LockScreenProps): ReactElement {
                   .join(', ')}`}
           </span>
           <div className="nr-spacer" />
+          {/* Behind Unlock, and only when verification passed. A device that
+              just failed its own integrity check must not offer a friendly
+              menu beside the reason not to proceed. */}
+          {onGuide !== undefined && verified && (
+            <Button onClick={onGuide} testId="lock-guide">
+              Guide me
+            </Button>
+          )}
           {/* Not autofocused. A security-relevant confirmation is never the
               default action, so a stray tap cannot carry you past this screen. */}
           <Button variant="primary" onClick={onUnlock} disabled={!verified} testId="unlock">
@@ -137,8 +160,12 @@ export function LockScreen(props: LockScreenProps): ReactElement {
         <div className="nr-banner nr-banner--danger" data-testid="blocked">
           <strong>Do not enter your PIN</strong>
           <span>
-            Verification failed, so the wallet will not load. This device is not running the code
-            it was built from. {failing.map((c) => c.detail).filter(Boolean).join(' ')}
+            Verification failed, so the wallet will not load. This device is not running the code it
+            was built from.{' '}
+            {failing
+              .map((c) => c.detail)
+              .filter(Boolean)
+              .join(' ')}
           </span>
         </div>
       )}
@@ -201,8 +228,8 @@ export function LockScreen(props: LockScreenProps): ReactElement {
           scrolled off, so it earns its brevity rather than its length. */}
       <p className="nr-hint">
         Compare this hash against the published release before entering your PIN. These values are
-        reported by the software you are looking at: they catch an accident or a crude
-        substitution, not an attacker who replaced the code that draws them.
+        reported by the software you are looking at: they catch an accident or a crude substitution,
+        not an attacker who replaced the code that draws them.
       </p>
     </Screen>
   )

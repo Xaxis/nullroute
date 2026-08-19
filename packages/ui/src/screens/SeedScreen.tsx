@@ -20,11 +20,13 @@ export interface SeedScreenProps {
   readonly words: readonly string[]
   readonly fingerprint: string
   readonly onConfirm: () => void
+  /** Where this screen sits in a journey, when it is part of one. */
+  readonly steps?: ReactElement | null
   readonly banner?: ReactElement | null
 }
 
 export function SeedScreen(props: SeedScreenProps): ReactElement {
-  const { words, fingerprint, onConfirm, banner } = props
+  const { words, fingerprint, onConfirm, steps, banner } = props
   const [acknowledged, setAcknowledged] = useState(false)
 
   return (
@@ -32,6 +34,7 @@ export function SeedScreen(props: SeedScreenProps): ReactElement {
       title="Write these down"
       subtitle={`${String(words.length)} words, in order. This is the only time they are shown.`}
       banner={banner}
+      steps={steps}
       testId="seed-screen"
       actions={
         <>
@@ -80,8 +83,8 @@ export function SeedScreen(props: SeedScreenProps): ReactElement {
         </div>
         <p className="nr-hint">
           Write this down too. If you use a passphrase, a mistyped one produces a valid but
-          different and empty wallet with no error, and this number is the only thing that will
-          tell you.
+          different and empty wallet with no error, and this number is the only thing that will tell
+          you.
         </p>
       </div>
 

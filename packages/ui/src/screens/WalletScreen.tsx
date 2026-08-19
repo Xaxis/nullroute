@@ -105,6 +105,8 @@ export interface WalletScreenProps {
   readonly onQuorum?: (quorum: QuorumView) => void
   /** Leaves for BIP-329 labels. Optional, like the others. */
   readonly onLabels?: () => void
+  /** Leaves for the goal hub, for somebody who wants to be walked through. */
+  readonly onGuide?: () => void
   /**
    * Leaves for deriving a BIP-85 child seed.
    *
@@ -162,6 +164,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
     onManage,
     onQuorum,
     onLabels,
+    onGuide,
     onChildSeed,
     onLock,
     banner,
@@ -172,7 +175,9 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
   const [change, setChange] = useState(false)
   const [start, setStart] = useState(0)
   const [rows, setRows] = useState<readonly AddressRow[]>([])
-  const [descriptor, setDescriptor] = useState<{ descriptor: string; checksum: string } | null>(null)
+  const [descriptor, setDescriptor] = useState<{ descriptor: string; checksum: string } | null>(
+    null
+  )
   const [xpub, setXpub] = useState<{
     xpub: string
     path: string
@@ -318,40 +323,40 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
       </div>
 
       {tab !== 'more' && tab !== 'verify' && (
-      <div className="nr-tabs">
-        {SCRIPT_TYPES.map((s) => (
+        <div className="nr-tabs">
+          {SCRIPT_TYPES.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className="nr-tab"
+              aria-pressed={scriptType === s.id}
+              onClick={() => {
+                setScriptType(s.id)
+                setStart(0)
+                // The xpub on screen belongs to the previous script type, and an
+                // xpub read under the wrong heading is exactly the mistake the
+                // note beneath it warns about.
+                setXpub(null)
+              }}
+              data-testid={`script-${s.id}`}
+            >
+              {s.label}
+            </button>
+          ))}
+          <div className="nr-spacer" />
           <button
-            key={s.id}
             type="button"
             className="nr-tab"
-            aria-pressed={scriptType === s.id}
+            aria-pressed={change}
             onClick={() => {
-              setScriptType(s.id)
+              setChange(!change)
               setStart(0)
-              // The xpub on screen belongs to the previous script type, and an
-              // xpub read under the wrong heading is exactly the mistake the
-              // note beneath it warns about.
-              setXpub(null)
             }}
-            data-testid={`script-${s.id}`}
+            data-testid="toggle-change"
           >
-            {s.label}
+            {change ? 'Change' : 'Receive'}
           </button>
-        ))}
-        <div className="nr-spacer" />
-        <button
-          type="button"
-          className="nr-tab"
-          aria-pressed={change}
-          onClick={() => {
-            setChange(!change)
-            setStart(0)
-          }}
-          data-testid="toggle-change"
-        >
-          {change ? 'Change' : 'Receive'}
-        </button>
-      </div>
+        </div>
       )}
 
       {tab === 'addresses' && (
@@ -366,9 +371,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
             <tbody data-testid="address-rows">
               {rows.map((row) => (
                 <tr key={row.path}>
-                  <td className="nr-mono nr-table__index">
-                    {row.index}
-                  </td>
+                  <td className="nr-mono nr-table__index">{row.index}</td>
                   <td>
                     <span className="nr-address">{row.address}</span>
                     <div className="nr-hint nr-mono">{row.path}</div>
@@ -445,10 +448,10 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
                   </div>
                   <p className="nr-note" data-testid="xpub-note">
                     An xpub does not say which kind of address it makes. Software that guesses a
-                    different script type from the one above builds a watch-only wallet with a
-                    zero balance for a wallet that has coins in it, and nothing about that looks
-                    like an error. Give the descriptor instead wherever it is accepted, and give
-                    the origin in brackets alongside this wherever it is not.
+                    different script type from the one above builds a watch-only wallet with a zero
+                    balance for a wallet that has coins in it, and nothing about that looks like an
+                    error. Give the descriptor instead wherever it is accepted, and give the origin
+                    in brackets alongside this wherever it is not.
                   </p>
                 </>
               )}
@@ -463,6 +466,15 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
           of the panel entirely. */}
       {tab === 'more' && (
         <div className="nr-wlist" data-testid="wallet-more">
+          {onGuide !== undefined && (
+            <Choice
+              title="Walk me through something"
+              description="Pick what you are trying to achieve and the device puts the steps in order."
+              selected={false}
+              onSelect={onGuide}
+              testId="wallet-guide"
+            />
+          )}
           <Choice
             title="Multisig"
             description="Hand this device's key to a coordinator, and agree to the quorum that comes back."

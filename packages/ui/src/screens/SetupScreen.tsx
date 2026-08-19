@@ -22,6 +22,8 @@ export type NetworkChoice = 'mainnet' | 'testnet4' | 'signet' | 'regtest'
 
 export interface SetupScreenProps {
   readonly onStart: (mode: EntropyMode, network: NetworkChoice) => void
+  /** Where this screen sits in a journey, when it is part of one. */
+  readonly steps?: ReactElement | null
   readonly banner?: ReactElement | null
 }
 
@@ -41,7 +43,7 @@ const NETWORKS: { id: NetworkChoice; label: string; description: string }[] = [
 ]
 
 export function SetupScreen(props: SetupScreenProps): ReactElement {
-  const { onStart, banner } = props
+  const { onStart, steps, banner } = props
   const [network, setNetwork] = useState<NetworkChoice>('mainnet')
   const [mode, setMode] = useState<EntropyMode>('dice')
 
@@ -50,6 +52,7 @@ export function SetupScreen(props: SetupScreenProps): ReactElement {
       title="Set up this device"
       subtitle="No wallet exists yet."
       banner={banner}
+      steps={steps}
       testId="setup-screen"
       actions={
         <>

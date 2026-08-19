@@ -35,6 +35,7 @@ import {
   ManageWalletScreen,
   MessageScreen,
   MultisigScreen,
+  StartScreen,
   PassphraseScreen,
   PsbtScreen,
   QuorumAddressesScreen,
@@ -240,6 +241,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   backup: () => <BackupScreen onCreate={never} onDescribe={never} onRestore={never} onBack={noop} />,
   labels: () => <LabelsScreen onImport={never} onExport={never} onBack={noop} />,
   child: () => <ChildSeedScreen onDerive={never} onBack={noop} />,
+  start: () => <StartScreen walletOpen={false} onBegin={noop} onSkip={noop} />,
   manage: () => (
     <ManageWalletScreen
       wallet={{ label: 'Cold storage, three of five', colour: 'teal' }}
@@ -274,6 +276,9 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   // The disclosure adds a textarea to a screen already holding a full
   // keyboard, which is the tallest this screen ever gets.
   import: [['import-typed-toggle']],
+  // The preamble for the longest journey: what it needs, its five steps, and
+  // what it still does not finish. The most text this screen ever holds.
+  start: [['start-goal-multisig']],
 }
 
 // Published before rendering. A screen that throws must fail loudly as that

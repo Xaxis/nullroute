@@ -145,8 +145,8 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
       >
         <p className="nr-note" data-testid="wallets-forget-note">
           This wallet was erased when its attempt counter ran out. Its seed is already gone and
-          clearing the row does not remove anything else. Your mnemonic still recovers it. If you
-          do not have one, this row is not what is standing between you and the money.
+          clearing the row does not remove anything else. Your mnemonic still recovers it. If you do
+          not have one, this row is not what is standing between you and the money.
         </p>
 
         {error !== null && (
@@ -213,9 +213,9 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
         )}
 
         <p className="nr-note">
-          Ten wrong attempts in a row erase this wallet from the device. That counter stops
-          somebody guessing at a device they picked up. It does not stop anyone who copied the
-          card first, so the passphrase is what is really protecting this.
+          Ten wrong attempts in a row erase this wallet from the device. That counter stops somebody
+          guessing at a device they picked up. It does not stop anyone who copied the card first, so
+          the passphrase is what is really protecting this.
         </p>
       </Screen>
     )
@@ -236,12 +236,7 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
             </Button>
           )}
           <div className="nr-spacer" />
-          <Button
-            variant="primary"
-            disabled={live >= max}
-            onClick={onCreate}
-            testId="wallets-add"
-          >
+          <Button variant="primary" disabled={live >= max} onClick={onCreate} testId="wallets-add">
             {live >= max ? 'Device is full' : 'Add a wallet'}
           </Button>
         </>

@@ -10,6 +10,15 @@
  * because entropy collection happens in the daemon or it does not happen.
  */
 
+export { StartScreen } from './screens/StartScreen.js'
+export type { StartScreenProps } from './screens/StartScreen.js'
+
+export { Steps } from './components/Steps.js'
+export type { StepsProps } from './components/Steps.js'
+
+export { JOURNEYS, journeyById, stepOf } from './journeys.js'
+export type { Journey, JourneyId, JourneyStage, JourneyStep } from './journeys.js'
+
 export { LockScreen } from './screens/LockScreen.js'
 export type { LockScreenProps, AttestationView } from './screens/LockScreen.js'
 
@@ -74,11 +83,7 @@ export { ManageWalletScreen, WALLET_COLOUR_NAMES } from './screens/ManageWalletS
 export type { ManageWalletScreenProps, WalletColourName } from './screens/ManageWalletScreen.js'
 
 export { BackupScreen } from './screens/BackupScreen.js'
-export type {
-  BackupScreenProps,
-  BackupDescription,
-  RestoredView,
-} from './screens/BackupScreen.js'
+export type { BackupScreenProps, BackupDescription, RestoredView } from './screens/BackupScreen.js'
 
 export { MessageScreen, MESSAGE_SCRIPT_TYPES } from './screens/MessageScreen.js'
 export type {
@@ -113,7 +118,13 @@ export type { HashProps } from './components/Hash.js'
 export { NetworkBanner } from './components/NetworkBanner.js'
 export type { NetworkBannerProps } from './components/NetworkBanner.js'
 
-export { prepareScanner, decodeFrame, assertSameOrigin, wasmLocation, ScannerError } from './lib/scanner.js'
+export {
+  prepareScanner,
+  decodeFrame,
+  assertSameOrigin,
+  wasmLocation,
+  ScannerError,
+} from './lib/scanner.js'
 
 export { call, IpcCallError } from './lib/client.js'
 export type { IpcTransport, IpcFailure } from './lib/client.js'

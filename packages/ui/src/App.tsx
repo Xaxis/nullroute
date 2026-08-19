@@ -15,7 +15,7 @@
  * they came to check.
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { type ReactElement, useCallback, useEffect, useState } from 'react'
 import { LockScreen, type AttestationView } from './screens/LockScreen.js'
 import { SetupScreen, type EntropyMode, type NetworkChoice } from './screens/SetupScreen.js'
 import { DiceScreen } from './screens/DiceScreen.js'
@@ -26,27 +26,23 @@ import { PsbtScreen, type PsbtReviewView } from './screens/PsbtScreen.js'
 import { ScanScreen, type ScanResult } from './screens/ScanScreen.js'
 import { WalletsScreen, type WalletRow } from './screens/WalletsScreen.js'
 import { ManageWalletScreen } from './screens/ManageWalletScreen.js'
+import { StartScreen } from './screens/StartScreen.js'
+import { Steps } from './components/Steps.js'
+import { journeyById, type JourneyId } from './journeys.js'
 import { LabelsScreen, type ImportedLabels, type LabelRow } from './screens/LabelsScreen.js'
 import {
   ChildSeedScreen,
   type ChildApplication,
   type ChildSeedView,
 } from './screens/ChildSeedScreen.js'
-import {
-  QuorumAddressesScreen,
-  type QuorumAddressRow,
-} from './screens/QuorumAddressesScreen.js'
+import { QuorumAddressesScreen, type QuorumAddressRow } from './screens/QuorumAddressesScreen.js'
 import { UnlockedScreen } from './screens/UnlockedScreen.js'
 import {
   MessageScreen,
   type MessageReviewView,
   type MessageSignatureView,
 } from './screens/MessageScreen.js'
-import {
-  BackupScreen,
-  type BackupDescription,
-  type RestoredView,
-} from './screens/BackupScreen.js'
+import { BackupScreen, type BackupDescription, type RestoredView } from './screens/BackupScreen.js'
 import { WalletChip } from './components/WalletChip.js'
 import { PassphraseScreen } from './screens/PassphraseScreen.js'
 import {
@@ -83,6 +79,8 @@ interface DeviceStatus {
 }
 
 type Stage =
+  /** The goal hub. Where a person who has not used this before starts. */
+  | { readonly at: 'start' }
   | { readonly at: 'loading' }
   | { readonly at: 'unreachable'; readonly message: string }
   | { readonly at: 'lock' }
@@ -161,6 +159,61 @@ function toBase64(bytes: Uint8Array): string {
 
 export function App() {
   const [stage, setStage] = useState<Stage>({ at: 'loading' })
+
+  /**
+   * The journey underway, if there is one, and how far into it.
+   *
+   * Held beside the stage rather than inside it, because a journey outlives any
+   * one stage and a stage has to work identically whether or not it is part of
+   * one. Every screen in a journey is reachable directly, and the only thing
+   * this adds is the header saying where you are.
+   *
+   * The step is tracked here rather than derived from the stage: the signing
+   * journey is three steps on one screen, so a stage does not identify a step.
+   */
+  const [journey, setJourney] = useState<{ id: JourneyId; step: number } | null>(null)
+
+  /**
+   * The header for the current step, or nothing.
+   *
+   * Nothing when the stage is not one this journey visits, which happens the
+   * moment a user leaves the path. That is the honest outcome: a step counter
+   * that kept counting after somebody wandered off would be describing a
+   * position they are not in.
+   */
+  const stepsFor = (at: Stage['at']): ReactElement | null => {
+    if (journey === null) return null
+    const current = journeyById(journey.id)
+    if (current === undefined) return null
+    const step = current.steps[journey.step]
+    if (step?.stage !== at) return null
+    return (
+      <Steps
+        current={journey.step + 1}
+        total={current.steps.length}
+        label={step.label}
+        testId="journey-steps"
+      />
+    )
+  }
+
+  /**
+   * Move to the next step of the journey, if this stage was part of one.
+   *
+   * Called by the screens as they hand off. A stage that is not the current
+   * step leaves the journey where it is rather than guessing, since guessing is
+   * how a counter ends up ahead of the user.
+   */
+  const advance = (from: Stage['at']): void => {
+    setJourney((held) => {
+      if (held === null) return held
+      const current = journeyById(held.id)
+      if (current === undefined) return held
+      if (current.steps[held.step]?.stage !== from) return held
+      if (held.step + 1 >= current.steps.length) return null
+      return { id: held.id, step: held.step + 1 }
+    })
+  }
   const [attestation, setAttestation] = useState<AttestationView | null>(null)
   const [status, setStatus] = useState<DeviceStatus | null>(null)
   const [store, setStore] = useState<StoreStatus | null>(null)
@@ -321,38 +374,35 @@ export function App() {
     }
   }, [stage.at])
 
-  const unlockWallet = useCallback(
-    async (id: string, passphrase: string): Promise<void> => {
-      // Cleared BEFORE the call. wallets.unlock locks the session first, so
-      // from the moment it is issued nothing is open; leaving the old value in
-      // place means a failed unlock returns to a picker whose header still
-      // names, and whose list still marks as open, a wallet the daemon has
-      // already closed.
-      setActiveWallet(null)
+  const unlockWallet = useCallback(async (id: string, passphrase: string): Promise<void> => {
+    // Cleared BEFORE the call. wallets.unlock locks the session first, so
+    // from the moment it is issued nothing is open; leaving the old value in
+    // place means a failed unlock returns to a picker whose header still
+    // names, and whose list still marks as open, a wallet the daemon has
+    // already closed.
+    setActiveWallet(null)
 
-      const opened = await call<{
-        active: { id: string; label: string; colour: string }
-        fingerprint: string
-        hintCorrected: boolean
-        labelVerified: boolean
-        bip39Passphrase: boolean
-      }>(transport, 'wallets.unlock', { id, passphrase })
-      setActiveWallet(opened.active)
-      setLabelVerified(opened.labelVerified)
-      setError(null)
-      // Never straight to the wallet. Everything a user needs in order to
-      // notice that the wrong wallet opened is on the next screen, and after
-      // that there is nothing left to notice it with.
-      setStage({
-        at: 'unlocked',
-        fingerprint: opened.fingerprint,
-        usedPassphrase: opened.bip39Passphrase,
-        labelVerified: opened.labelVerified,
-        hintCorrected: opened.hintCorrected,
-      })
-    },
-    []
-  )
+    const opened = await call<{
+      active: { id: string; label: string; colour: string }
+      fingerprint: string
+      hintCorrected: boolean
+      labelVerified: boolean
+      bip39Passphrase: boolean
+    }>(transport, 'wallets.unlock', { id, passphrase })
+    setActiveWallet(opened.active)
+    setLabelVerified(opened.labelVerified)
+    setError(null)
+    // Never straight to the wallet. Everything a user needs in order to
+    // notice that the wrong wallet opened is on the next screen, and after
+    // that there is nothing left to notice it with.
+    setStage({
+      at: 'unlocked',
+      fingerprint: opened.fingerprint,
+      usedPassphrase: opened.bip39Passphrase,
+      labelVerified: opened.labelVerified,
+      hintCorrected: opened.hintCorrected,
+    })
+  }, [])
 
   // --- IPC-backed callbacks ------------------------------------------------
 
@@ -405,10 +455,7 @@ export function App() {
     []
   )
 
-  const ourMultisigKey = useCallback(
-    async () => call<OurKeyView>(transport, 'multisig.ourKey'),
-    []
-  )
+  const ourMultisigKey = useCallback(async () => call<OurKeyView>(transport, 'multisig.ourKey'), [])
 
   const reviewQuorum = useCallback(
     async (descriptor: string) =>
@@ -448,8 +495,8 @@ export function App() {
         <div className="nr-banner nr-banner--testnet">
           <strong>Not running</strong>
           <span>
-            The signing daemon is not reachable, so there is no attestation to show and no wallet
-            to unlock. Start it with <span className="nr-mono">make dev</span>.
+            The signing daemon is not reachable, so there is no attestation to show and no wallet to
+            unlock. Start it with <span className="nr-mono">make dev</span>.
           </span>
         </div>
         <p className="nr-hint nr-mono">{stage.message}</p>
@@ -478,6 +525,30 @@ export function App() {
           if (status.hasWallet) setStage({ at: 'wallet' })
           else setStage({ at: 'wallets' })
         }}
+        onGuide={() => {
+          setJourney(null)
+          setStage({ at: 'start' })
+        }}
+      />
+    )
+  }
+
+  if (stage.at === 'start') {
+    return (
+      <StartScreen
+        banner={banner}
+        walletOpen={status?.hasWallet === true}
+        onBegin={(id: JourneyId) => {
+          const chosen = journeyById(id)
+          if (chosen === undefined) return
+          setJourney({ id, step: 0 })
+          const first = chosen.steps[0]
+          if (first !== undefined) setStage({ at: first.stage } as Stage)
+        }}
+        onSkip={() => {
+          setJourney(null)
+          setStage({ at: status?.hasWallet === true ? 'wallet' : 'wallets' })
+        }}
       />
     )
   }
@@ -486,10 +557,12 @@ export function App() {
     return (
       <SetupScreen
         banner={banner}
+        steps={stepsFor('setup')}
         onStart={(mode: EntropyMode, network: NetworkChoice) => {
           const go = async (): Promise<void> => {
             await call(transport, 'network.set', { id: network })
             await refresh()
+            advance('setup')
             setStage(mode === 'dice' ? { at: 'dice' } : { at: 'import' })
           }
           void go()
@@ -502,6 +575,7 @@ export function App() {
     return (
       <DiceScreen
         banner={banner}
+        steps={stepsFor('dice')}
         onAccount={account}
         onCancel={() => {
           setStage({ at: 'setup' })
@@ -513,6 +587,7 @@ export function App() {
               transport,
               'seed.reveal'
             )
+            advance('dice')
             setStage({ at: 'seed', words: revealed.words, fingerprint: revealed.fingerprint })
           }
           void go()
@@ -525,6 +600,7 @@ export function App() {
     return (
       <ImportScreen
         banner={banner}
+        steps={stepsFor('import')}
         onCancel={() => {
           setStage({ at: 'setup' })
         }}
@@ -535,6 +611,7 @@ export function App() {
           // definition already written down somewhere. It still has to be
           // offered the chance to persist, or importing would be the one route
           // into the device that cannot produce a wallet surviving a reboot.
+          advance('import')
           setStage({ at: 'protect' })
         }}
       />
@@ -545,6 +622,7 @@ export function App() {
     return (
       <SeedScreen
         banner={banner}
+        steps={stepsFor('seed')}
         words={stage.words}
         fingerprint={stage.fingerprint}
         onConfirm={() => {
@@ -556,6 +634,7 @@ export function App() {
             // wallet whose mnemonic has not been confirmed, because a device
             // holding the only copy of a seed is one dead SD card away from a
             // total loss.
+            advance('seed')
             setStage({ at: 'protect' })
           }
           void go()
@@ -591,6 +670,10 @@ export function App() {
           }}
           onLabels={() => {
             setStage({ at: 'labels' })
+          }}
+          onGuide={() => {
+            setJourney(null)
+            setStage({ at: 'start' })
           }}
           onChildSeed={() => {
             setStage({ at: 'child' })
@@ -668,6 +751,7 @@ export function App() {
       <PassphraseScreen
         mode="set"
         banner={banner}
+        steps={stepsFor('protect')}
         onSubmit={async (passphrase) => {
           // wallets.create, NOT store.create. The latter addresses the single
           // blob at the root of the store directory and is refused outright
@@ -682,7 +766,11 @@ export function App() {
           const created = await call<{ id: string; active: { label: string; colour: string } }>(
             transport,
             'wallets.create',
-            { passphrase, label: `Wallet ${new Date().toISOString().slice(0, 10)}`, colour: 'slate' }
+            {
+              passphrase,
+              label: `Wallet ${new Date().toISOString().slice(0, 10)}`,
+              colour: 'slate',
+            }
           )
           setActiveWallet({
             id: created.id,
@@ -690,12 +778,16 @@ export function App() {
             colour: created.active.colour,
           })
           setStore(await call<StoreStatus>(transport, 'store.status'))
+          // Last step of the setup and restore journeys, so this ends them and
+          // the wallet screen shows what is still unfinished.
+          advance('protect')
           setStage({ at: 'wallet' })
         }}
         onCancel={() => {
           // Skipping is allowed and says what it costs. A wallet held only in
           // memory is gone at the next reboot, which is a legitimate choice for
           // a one-off signing session and a bad surprise otherwise.
+          advance('protect')
           setStage({ at: 'wallet' })
         }}
       />
@@ -706,16 +798,30 @@ export function App() {
     return (
       <MultisigScreen
         banner={banner}
+        steps={stepsFor('multisig')}
         onOurKey={ourMultisigKey}
-        onReview={reviewQuorum}
-        onRegister={registerQuorum}
+        // Three of the multisig journey's steps happen on this one screen, so
+        // the counter moves on the action rather than on a change of screen.
+        // Both go through `advance`, which refuses to move unless the step it
+        // is leaving is the one the user is actually on.
+        onReview={async (descriptor: string) => {
+          const reviewed = await reviewQuorum(descriptor)
+          advance('multisig')
+          return reviewed
+        }}
+        onRegister={async (descriptor: string) => {
+          await registerQuorum(descriptor)
+          advance('multisig')
+        }}
         registeredCount={quorums.length}
         onImportFile={async (contents: string) =>
           call<ImportedFileView>(transport, 'multisig.importFile', { contents })
         }
-        onExportBundle={async () =>
-          call<{ bundle: string }>(transport, 'multisig.exportBundle', {})
-        }
+        onExportBundle={async () => {
+          const written = await call<{ bundle: string }>(transport, 'multisig.exportBundle', {})
+          advance('multisig')
+          return written
+        }}
         onBack={() => {
           setStage({ at: 'wallet' })
         }}
@@ -727,6 +833,7 @@ export function App() {
     return (
       <QuorumAddressesScreen
         banner={banner}
+        steps={stepsFor('quorum')}
         descriptor={stage.quorum.descriptor}
         position={
           stage.quorum.ourPosition === null || stage.quorum.total === null
@@ -741,6 +848,7 @@ export function App() {
           )
         }
         onBack={() => {
+          advance('quorum')
           setStage({ at: 'wallet' })
         }}
       />
@@ -751,12 +859,21 @@ export function App() {
     return (
       <PsbtScreen
         banner={banner}
+        steps={stepsFor('psbt')}
         initialPsbt={stage.prefill ?? ''}
         onScan={() => {
           setStage({ at: 'scan', forStage: 'psbt' })
         }}
-        onReview={reviewPsbt}
-        onSign={signPsbt}
+        onReview={async (psbt: string) => {
+          const reviewed = await reviewPsbt(psbt)
+          advance('psbt')
+          return reviewed
+        }}
+        onSign={async (psbt: string, override: boolean) => {
+          const signed = await signPsbt(psbt, override)
+          advance('psbt')
+          return signed
+        }}
         onBack={() => {
           setStage({ at: 'wallet' })
         }}
@@ -900,6 +1017,7 @@ export function App() {
     return (
       <BackupScreen
         banner={banner}
+        steps={stepsFor('backup')}
         onCreate={async (passphrase: string, includeSeed: boolean, label: string) =>
           call<{ backup: string; includesSeed: boolean }>(transport, 'backup.create', {
             passphrase,

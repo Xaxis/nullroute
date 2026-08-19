@@ -40,13 +40,15 @@ export interface QuorumAddressesScreenProps {
     count: number
   ) => Promise<{ addresses: readonly QuorumAddressRow[]; change: boolean }>
   readonly onBack: () => void
+  /** Where this screen sits in a journey, when it is part of one. */
+  readonly steps?: ReactElement | null
   readonly banner?: ReactElement | null
 }
 
 const PAGE = 10
 
 export function QuorumAddressesScreen(props: QuorumAddressesScreenProps): ReactElement {
-  const { descriptor, position, onAddresses, onBack, banner } = props
+  const { descriptor, position, onAddresses, onBack, steps, banner } = props
 
   const [change, setChange] = useState(false)
   const [start, setStart] = useState(0)
@@ -81,6 +83,7 @@ export function QuorumAddressesScreen(props: QuorumAddressesScreenProps): ReactE
           : `This device is cosigner ${String(position.ours)} of ${String(position.of)}.`
       }
       banner={banner}
+      steps={steps}
       testId="quorum-addresses"
       actions={
         <>
@@ -154,9 +157,9 @@ export function QuorumAddressesScreen(props: QuorumAddressesScreenProps): ReactE
       <p className="nr-note" data-testid="quorum-compare">
         Read one of these aloud against the same index on another device in this quorum. They are
         derived from every cosigner&apos;s key at once, so two devices agreeing here is the proof
-        that every one of them registered the same descriptor. If they differ, do not send
-        anything: one of the devices has a descriptor that is off by a character, and coins sent
-        to the wrong address are spendable only by whoever holds that other quorum.
+        that every one of them registered the same descriptor. If they differ, do not send anything:
+        one of the devices has a descriptor that is off by a character, and coins sent to the wrong
+        address are spendable only by whoever holds that other quorum.
       </p>
     </Screen>
   )

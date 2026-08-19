@@ -69,10 +69,7 @@ async function defaultCamera(): Promise<MediaStream> {
  *
  * Nothing is swallowed: every path sets a note the screen displays.
  */
-function startPlayback(
-  video: HTMLVideoElement,
-  note: (message: string) => void
-): void {
+function startPlayback(video: HTMLVideoElement, note: (message: string) => void): void {
   let result: unknown
   try {
     result = video.play()
@@ -90,14 +87,7 @@ function startPlayback(
 }
 
 export function ScanScreen(props: ScanScreenProps): ReactElement {
-  const {
-    title = 'Scan',
-    hint,
-    onResult,
-    onCancel,
-    banner,
-    openCamera = defaultCamera,
-  } = props
+  const { title = 'Scan', hint, onResult, onCancel, banner, openCamera = defaultCamera } = props
 
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -264,7 +254,13 @@ export function ScanScreen(props: ScanScreenProps): ReactElement {
       <div className="nr-scan">
         <div className="nr-scan__viewport">
           {/* Muted and inline, or mobile browsers refuse to autoplay. */}
-          <video ref={videoRef} className="nr-scan__video" muted playsInline data-testid="scan-video" />
+          <video
+            ref={videoRef}
+            className="nr-scan__video"
+            muted
+            playsInline
+            data-testid="scan-video"
+          />
           <div className="nr-scan__reticle" />
         </div>
         <canvas ref={canvasRef} className="nr-scan__canvas" />

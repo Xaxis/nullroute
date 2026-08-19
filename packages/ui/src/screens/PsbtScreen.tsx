@@ -115,11 +115,13 @@ export interface PsbtScreenProps {
     finalised?: { hex: string; txid: string }
   }>
   readonly onBack: () => void
+  /** Where this screen sits in a journey, when it is part of one. */
+  readonly steps?: ReactElement | null
   readonly banner?: ReactElement | null
 }
 
 export function PsbtScreen(props: PsbtScreenProps): ReactElement {
-  const { initialPsbt, onScan, onReview, onSign, onBack, banner } = props
+  const { initialPsbt, onScan, onReview, onSign, onBack, steps, banner } = props
 
   const [psbt, setPsbt] = useState(initialPsbt ?? '')
   const [review, setReview] = useState<PsbtReviewView | null>(null)
@@ -174,6 +176,7 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
         title="Signed"
         subtitle="Carry this back to the machine that built it."
         banner={banner}
+        steps={steps}
         testId="psbt-signed"
         actions={
           <>
@@ -229,16 +232,16 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
               <strong>Not finished</strong>
               <span>
                 {progress.present} of {progress.required ?? 'an unknown number of'} signatures are
-                present. This transaction cannot be broadcast yet: carry it to the next cosigner
-                and sign there too.
+                present. This transaction cannot be broadcast yet: carry it to the next cosigner and
+                sign there too.
               </span>
             </div>
           ))}
 
         {wasAlready && (
           <p className="nr-note" data-testid="psbt-already-signed">
-            This device had already signed this transaction. Signing again produced exactly the
-            same bytes, which is why doing it twice is safe rather than merely tolerated.
+            This device had already signed this transaction. Signing again produced exactly the same
+            bytes, which is why doing it twice is safe rather than merely tolerated.
           </p>
         )}
 
@@ -292,6 +295,7 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
       title="Sign a transaction"
       subtitle="Nothing is signed until you have read what is below."
       banner={banner}
+      steps={steps}
       testId="psbt-screen"
       actions={
         <>
@@ -400,7 +404,9 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
                   <tr key={o.index} data-testid={`psbt-output-${String(o.index)}`}>
                     <td className="nr-mono">{o.amountBtc}</td>
                     <td>
-                      <div className="nr-mono nr-break">{o.address ?? 'no address (raw script)'}</div>
+                      <div className="nr-mono nr-break">
+                        {o.address ?? 'no address (raw script)'}
+                      </div>
                       {o.kind === 'change' ? (
                         <div className="nr-hint nr-ok">
                           Change, re-derived at {o.changePath}. Verified against your seed, not
@@ -505,8 +511,8 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
                   data-testid="psbt-override"
                 />
                 <span className="nr-hint">
-                  Sign anyway, this once. Applies to this signature only and is not remembered.
-                  Do not tick this because a coordinator told you to.
+                  Sign anyway, this once. Applies to this signature only and is not remembered. Do
+                  not tick this because a coordinator told you to.
                 </span>
               </label>
             </div>

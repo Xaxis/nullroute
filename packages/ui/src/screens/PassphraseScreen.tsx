@@ -37,6 +37,8 @@ export interface PassphraseScreenProps {
   readonly onSubmit: (passphrase: string) => Promise<void>
   /** Absent in `enter` mode: there is nowhere to go back to from a locked device. */
   readonly onCancel?: (() => void) | undefined
+  /** Where this screen sits in a journey, when it is part of one. */
+  readonly steps?: ReactElement | null
   readonly banner?: ReactElement | null
 }
 
@@ -70,7 +72,7 @@ function guessCost(passphrase: string): { label: string; tone: 'warn' | 'ok' } {
 }
 
 export function PassphraseScreen(props: PassphraseScreenProps): ReactElement {
-  const { mode, attemptsRemaining, maxAttempts, onSubmit, onCancel, banner } = props
+  const { mode, attemptsRemaining, maxAttempts, onSubmit, onCancel, steps, banner } = props
 
   const [value, setValue] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -114,6 +116,7 @@ export function PassphraseScreen(props: PassphraseScreenProps): ReactElement {
           : 'Enter the passphrase for the wallet stored here.'
       }
       banner={banner}
+      steps={steps}
       testId="passphrase-screen"
       actions={
         <>
@@ -226,8 +229,8 @@ export function PassphraseScreen(props: PassphraseScreenProps): ReactElement {
       {setting ? (
         <div className="nr-card nr-card--tight">
           <p className="nr-hint">
-            This encrypts the seed on this device so the card is useless to whoever picks it up.
-            It is not a second backup. If you forget it, the words you wrote down are the only way
+            This encrypts the seed on this device so the card is useless to whoever picks it up. It
+            is not a second backup. If you forget it, the words you wrote down are the only way
             back, and there is no reset.
           </p>
           <p className="nr-hint">
@@ -238,8 +241,8 @@ export function PassphraseScreen(props: PassphraseScreenProps): ReactElement {
       ) : (
         <div className="nr-card nr-card--tight">
           <p className="nr-hint">
-            After {maxAttempts ?? 10} wrong attempts this device erases the wallet, and your
-            written mnemonic is what restores it.
+            After {maxAttempts ?? 10} wrong attempts this device erases the wallet, and your written
+            mnemonic is what restores it.
           </p>
           <p className="nr-hint">
             That counter only stops someone guessing at this screen. Anyone who takes the card can

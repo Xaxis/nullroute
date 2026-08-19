@@ -10,6 +10,14 @@ import { type ReactElement, type ReactNode } from 'react'
 export interface ScreenProps {
   readonly title: string
   readonly subtitle?: string
+  /**
+   * Where this screen sits in a journey, when it is part of one.
+   *
+   * Above the title rather than below it. A user scanning a screen reads the
+   * title first and stops, so the thing that says "you are three steps into
+   * something with an irreversible step at the end" has to come before it.
+   */
+  readonly steps?: ReactNode
   readonly banner?: ReactNode
   readonly children: ReactNode
   readonly actions?: ReactNode
@@ -17,11 +25,12 @@ export interface ScreenProps {
 }
 
 export function Screen(props: ScreenProps): ReactElement {
-  const { title, subtitle, banner, children, actions, testId } = props
+  const { title, steps, subtitle, banner, children, actions, testId } = props
   return (
     <section className="nr-screen" data-testid={testId}>
       <header className="nr-screen__head">
         <div>
+          {steps}
           <h1 className="nr-screen__title">{title}</h1>
           {subtitle !== undefined && <p className="nr-screen__subtitle">{subtitle}</p>}
         </div>

@@ -132,8 +132,8 @@ export function ChildSeedScreen(props: ChildSeedScreenProps): ReactElement {
           <span>
             Anyone holding this device&apos;s mnemonic can derive this child and every other one it
             has ever produced. Giving this to somebody else does not give them something separate:
-            it gives them something your seed still controls. If you need a wallet that is
-            genuinely separate, roll dice for it.
+            it gives them something your seed still controls. If you need a wallet that is genuinely
+            separate, roll dice for it.
           </span>
         </div>
 

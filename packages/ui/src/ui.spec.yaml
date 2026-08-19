@@ -49,6 +49,11 @@ covers:
   - packages/ui/src/screens/QuorumAddressesScreen.tsx::QuorumAddressesScreen
   - packages/ui/src/screens/LabelsScreen.tsx::LabelsScreen
   - packages/ui/src/screens/ChildSeedScreen.tsx::ChildSeedScreen
+  - packages/ui/src/screens/StartScreen.tsx::StartScreen
+  - packages/ui/src/components/Steps.tsx::Steps
+  - packages/ui/src/journeys.ts::JOURNEYS
+  - packages/ui/src/journeys.ts::journeyById
+  - packages/ui/src/journeys.ts::stepOf
 
 algorithm: >
   Renders the manifest root hash, the verification status with spec and
@@ -619,6 +624,46 @@ invariants:
       - packages/ui/test/lock-screen.test.tsx::puts-the-refusal-above-everything-else
       - packages/ui/test/lock-screen.test.tsx::says-what-actually-failed
       - packages/ui/test/lock-screen.test.tsx::is-absent-when-there-is-nothing-to-refuse
+
+  # --- Journeys ---------------------------------------------------------------
+  # The device is organised by feature. Nobody arrives thinking in features.
+  - id: INV-UI-55
+    statement: >
+      Choosing a goal shows what it needs and what it will not finish, in plain
+      language, before it starts, and does not start it.
+    tests:
+      - packages/ui/test/start-screen.test.tsx::shows-what-a-goal-needs-before-starting-it
+      - packages/ui/test/start-screen.test.tsx::says-up-front-what-the-journey-does-not-finish
+      - packages/ui/test/start-screen.test.tsx::goes-back-to-the-list-without-starting-anything
+
+  - id: INV-UI-56
+    statement: >
+      A journey that needs a wallet says so on the list and cannot be started
+      without one, and the hub is always a route in rather than the only one.
+    tests:
+      - packages/ui/test/start-screen.test.tsx::will-not-start-a-journey-that-needs-a-wallet-nobody-has-opened
+      - packages/ui/test/start-screen.test.tsx::lets-that-same-journey-start-once-a-wallet-is-open
+      - packages/ui/test/start-screen.test.tsx::can-be-walked-past
+
+  - id: INV-UI-57
+    statement: >
+      Every journey has a goal, a summary and at least one named step, ids are
+      unique, and any journey that takes more than this device to finish says
+      what is left.
+    tests:
+      - packages/ui/test/start-screen.test.tsx::every-journey-has-steps-a-goal-and-a-summary
+      - packages/ui/test/start-screen.test.tsx::says-what-is-unfinished-for-anything-that-needs-another-device
+      - packages/ui/test/start-screen.test.tsx::offers-every-journey-that-exists
+      - packages/ui/test/start-screen.test.tsx::finds-nothing-for-a-goal-that-does-not-exist
+
+  - id: INV-UI-58
+    statement: >
+      The step indicator counts from one, names the step, sits above the screen
+      title, and is absent from a screen that is not part of a journey.
+    tests:
+      - packages/ui/test/steps.test.tsx::counts-from-one-and-names-the-step
+      - packages/ui/test/steps.test.tsx::sits-above-the-screen-title
+      - packages/ui/test/steps.test.tsx::is-absent-from-a-screen-that-is-not-part-of-a-journey
 
 threats:
   - INV-KEY-1

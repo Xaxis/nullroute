@@ -118,19 +118,75 @@ function customProperties(css) {
   }
 }
 
+/**
+ * Every stage a journey routes to is a stage the shell actually handles.
+ *
+ * A journey is data the shell trusts: it reads a step's stage and calls
+ * setStage with it. A stage name that App.tsx does not handle sends the user to
+ * a blank screen, and nothing else would notice, because journeys.ts has no
+ * imports on purpose and TypeScript cannot relate a string union in one file to
+ * a set of comparisons in another.
+ *
+ * Read out of the source rather than executed, for the same reason
+ * check-ipc-reachable is: this runs as plain Node with no build step.
+ */
+{
+  const journeys = readFileSync(join(ROOT, 'packages/ui/src/journeys.ts'), 'utf8')
+  const app = readFileSync(join(ROOT, 'packages/ui/src/App.tsx'), 'utf8')
+
+  const routed = new Set(
+    [...journeys.matchAll(/\{\s*stage:\s*'([a-z-]+)'/g)].map((match) => match[1])
+  )
+  if (routed.size === 0) {
+    console.error('check-ui-constants: no journey steps parsed, so this check is blind.')
+    process.exit(1)
+  }
+
+  const handled = new Set(
+    [...app.matchAll(/stage\.at === '([a-z-]+)'/g)].map((match) => match[1])
+  )
+  if (handled.size === 0) {
+    console.error('check-ui-constants: no stages parsed from App.tsx, so this check is blind.')
+    process.exit(1)
+  }
+
+  for (const stage of [...routed].sort()) {
+    if (!handled.has(stage)) {
+      failures.push(`  a journey routes to the stage '${stage}', which App.tsx does not handle`)
+    }
+  }
+
+  // A stage declared in the JourneyStage union and never used is not an error,
+  // but one that names a stage nothing handles is a trap for the next author.
+  const declared = new Set(
+    [...(/export type JourneyStage =([\s\S]*?)\n\n/.exec(journeys)?.[1] ?? '').matchAll(
+      /'([a-z-]+)'/g
+    )].map((match) => match[1])
+  )
+  for (const stage of [...declared].sort()) {
+    if (!handled.has(stage)) {
+      failures.push(`  JourneyStage offers '${stage}', which App.tsx does not handle`)
+    }
+  }
+}
+
 if (failures.length > 0) {
   console.error('check-ui-constants: the frontend disagrees with itself or with the daemon.\n')
   for (const failure of failures) console.error(failure)
   console.error(
     '\n  A list exists twice because the UI may not import from the daemon: change\n' +
-      '  both, or the screen offers something the daemon refuses. An undefined\n' +
-      '  custom property renders as an empty value rather than an error, so the\n' +
-      '  screen draws wrong and nothing anywhere reports it.'
+      '  both, or the screen offers something the daemon refuses.\n\n' +
+      '  An undefined custom property renders as an empty value rather than an\n' +
+      '  error, so the screen draws wrong and nothing anywhere reports it.\n\n' +
+      '  A journey routing to a stage nothing handles sends the user to a blank\n' +
+      '  screen. journeys.ts has no imports on purpose, so TypeScript cannot\n' +
+      '  relate its stage names to the comparisons in App.tsx.'
   )
   process.exit(1)
 }
 
 console.log(
   `check-ui-constants: ${String(pairs.length)} constant(s) restated in the frontend agree with ` +
-    `the daemon, every custom property the stylesheet reads is defined and emitted`
+    `the daemon, every custom property the stylesheet reads is defined and emitted, ` +
+    `every journey routes to a stage that exists`
 )

@@ -86,19 +86,19 @@ export function UnlockedScreen(props: UnlockedScreenProps): ReactElement {
       </div>
 
       <p className="nr-note">
-        Compare this with what you wrote down when you made this wallet. It is
-        computed from the keys that just loaded, so it is the one thing on this device
-        that cannot be faked by editing a file.
+        Compare this with what you wrote down when you made this wallet. It is computed from the
+        keys that just loaded, so it is the one thing on this device that cannot be faked by editing
+        a file.
       </p>
 
       {usedPassphrase && (
         <div className="nr-banner nr-banner--testnet" data-testid="unlocked-passphrase-warning">
           <strong>This wallet uses a passphrase</strong>
           <span>
-            A wrong passphrase does not produce an error. It opens a different, valid, empty
-            wallet, and every screen after this one will look normal. If the fingerprint above is
-            not the one you recorded, lock now and try again. The mnemonic alone will not recover
-            this wallet.
+            A wrong passphrase does not produce an error. It opens a different, valid, empty wallet,
+            and every screen after this one will look normal. If the fingerprint above is not the
+            one you recorded, lock now and try again. The mnemonic alone will not recover this
+            wallet.
           </span>
         </div>
       )}
@@ -107,9 +107,9 @@ export function UnlockedScreen(props: UnlockedScreenProps): ReactElement {
         <div className="nr-banner nr-banner--testnet" data-testid="unlocked-unverified-name">
           <strong>This wallet has no confirmed name</strong>
           <span>
-            It was made before this device could name wallets, so the only name it has is one
-            stored beside it, which anyone holding the card could change. Rename it to give it a
-            name that travels inside the encryption.
+            It was made before this device could name wallets, so the only name it has is one stored
+            beside it, which anyone holding the card could change. Rename it to give it a name that
+            travels inside the encryption.
           </span>
         </div>
       )}

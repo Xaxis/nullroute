@@ -23,6 +23,8 @@ import { TextKeyboard } from '../components/TextKeyboard.js'
 export interface ImportScreenProps {
   readonly onImport: (mnemonic: string, passphrase: string) => Promise<void>
   readonly onCancel: () => void
+  /** Where this screen sits in a journey, when it is part of one. */
+  readonly steps?: ReactElement | null
   readonly banner?: ReactElement | null
 }
 
@@ -30,7 +32,7 @@ export interface ImportScreenProps {
 const VALID_LENGTHS = [12, 15, 18, 21, 24]
 
 export function ImportScreen(props: ImportScreenProps): ReactElement {
-  const { onImport, onCancel, banner } = props
+  const { onImport, onCancel, steps, banner } = props
   const [words, setWords] = useState<readonly string[]>([])
   const [passphrase, setPassphrase] = useState('')
   const [showPassphrase, setShowPassphrase] = useState(false)
@@ -61,6 +63,7 @@ export function ImportScreen(props: ImportScreenProps): ReactElement {
       title="Import a mnemonic"
       subtitle="BIP-39, 12 to 24 words."
       banner={banner}
+      steps={steps}
       testId="import-screen"
       actions={
         <>

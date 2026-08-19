@@ -53,9 +53,7 @@ export function QrDisplay(props: QrDisplayProps): ReactElement {
     } catch {
       try {
         const bytes = new TextEncoder().encode(text)
-        return splitBbqr(bytes, fileType).map((part) =>
-          encodeQrText(part.text, { level: 'M' })
-        )
+        return splitBbqr(bytes, fileType).map((part) => encodeQrText(part.text, { level: 'M' }))
       } catch (err) {
         setError((err as Error).message)
         return []
@@ -167,8 +165,8 @@ export function QrDisplay(props: QrDisplayProps): ReactElement {
 
       {codes.length > 1 && (
         <p className="nr-hint">
-          This is a BBQr sequence. Keep the camera on it until your wallet has all{' '}
-          {codes.length} frames. They can arrive in any order.
+          This is a BBQr sequence. Keep the camera on it until your wallet has all {codes.length}{' '}
+          frames. They can arrive in any order.
         </p>
       )}
     </div>

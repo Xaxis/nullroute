@@ -36,7 +36,9 @@ export function abbreviate(value: string): string {
 
 export function Hash(props: HashProps): ReactElement {
   const { value, expanded = false, onToggle, testId } = props
-  const shown = expanded ? chunk(value) : chunk(value.slice(0, 8)) + ' ... ' + chunk(value.slice(-8))
+  const shown = expanded
+    ? chunk(value)
+    : chunk(value.slice(0, 8)) + ' ... ' + chunk(value.slice(-8))
 
   if (onToggle === undefined) {
     return (

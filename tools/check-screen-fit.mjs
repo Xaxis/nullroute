@@ -291,11 +291,25 @@ const MEASURE = `(() => {
   return JSON.stringify({ problems: problems.slice(0, 10) })
 })()`
 
-/** Scroll the body to its end, so the last control is measured where it lands. */
+/**
+ * Scroll everything scrollable to its end, so the last control is measured
+ * where it actually lands.
+ *
+ * Every container, not just the screen body: a list with its own overflow is
+ * still a way to reach a control, and only scrolling the body would report the
+ * contents of a nested scroller as unreachable when they are one swipe away.
+ *
+ * Twice, because scrolling one container can change what fits in another.
+ *
+ * After this, an element still below the action bar is below it permanently:
+ * anything reachable by scrolling has been scrolled to.
+ */
 const SCROLL_TO_END = `(() => {
-  const body = document.querySelector('.nr-screen__body')
-  if (body === null) return false
-  body.scrollTop = body.scrollHeight
+  for (let pass = 0; pass < 2; pass += 1) {
+    for (const el of document.querySelectorAll('*')) {
+      if (el.scrollHeight > el.clientHeight) el.scrollTop = el.scrollHeight
+    }
+  }
   return true
 })()`
 

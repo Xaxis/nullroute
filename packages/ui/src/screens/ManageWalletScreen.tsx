@@ -219,8 +219,8 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
           <strong>This removes the seed from this device</strong>
           <span>
             Nothing on this device recovers it afterwards. If you wrote the mnemonic down, that
-            paper is now the only copy and it still works. If you did not, the money in this
-            wallet is gone.
+            paper is now the only copy and it still works. If you did not, the money in this wallet
+            is gone.
           </span>
         </div>
 
