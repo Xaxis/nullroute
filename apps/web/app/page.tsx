@@ -1,6 +1,64 @@
 import Link from 'next/link'
 import { DOCS } from '../lib/docs'
 import { readFacts } from '../lib/facts'
+
+/**
+ * What the device can do, and the specs that have to exist for each claim.
+ *
+ * A row appears only when every spec it names is implemented, so this list can
+ * describe things that are not built yet without ever asserting them. Removing
+ * a module removes its row rather than leaving a sentence behind.
+ */
+const WORKING: readonly { term: string; specs: readonly string[]; detail: string }[] = [
+  {
+    term: 'Dice into a seed, checkable by hand',
+    specs: ['core.entropy.dice', 'core.bip39.mnemonic', 'core.derive.hd'],
+    detail:
+      'One hundred rolls, hashed by a rule published with a worked example you reproduce with sha256sum. The device will roll for you if you insist, and says you did not watch those land.',
+  },
+  {
+    term: 'Addresses and descriptors other software understands',
+    specs: ['core.address.derive', 'core.descriptor.parse', 'core.descriptor.checksum'],
+    detail:
+      'All four address types, and canonical BIP-380 descriptors with checksums. A wallet made here restores in Bitcoin Core, which CI proves on every commit against a real regtest node.',
+  },
+  {
+    term: 'Transactions reviewed before they are signed',
+    specs: ['core.psbt.review', 'core.psbt.sign'],
+    detail:
+      'Where the money goes, which outputs are change, the fee three ways, and the sighash. Signatures are deterministic, so anyone with the seed can recompute them and confirm nothing was hidden inside.',
+  },
+  {
+    term: 'Multisig across several devices',
+    specs: ['core.descriptor.multisig', 'daemon.multisig', 'core.psbt.quorum'],
+    detail:
+      'Cosigner registration that refuses a quorum this device holds no key in, coordinator file import, a bundle for the coordinator, and a screen for comparing a quorum\u2019s addresses between devices.',
+  },
+  {
+    term: 'Several wallets, encrypted at rest',
+    specs: ['daemon.store', 'daemon.store.registry'],
+    detail:
+      'Up to eight named wallets on one card, each sealed under its own passphrase with Argon2id and AES-256-GCM, and a picker that refuses to present an unopened wallet\u2019s name as a fact.',
+  },
+  {
+    term: 'Backups, labels and child seeds',
+    specs: ['daemon.store.backup', 'core.labels', 'core.bip85'],
+    detail:
+      'Encrypted backup that is seedless unless you say otherwise, BIP-329 labels in and out, and BIP-85 children shown with the path that produced them.',
+  },
+  {
+    term: 'Proving you control an address',
+    specs: ['core.message.bip322'],
+    detail:
+      'BIP-322 message signing for segwit addresses, verified against a digest computed by a different library. Taproot and the legacy scheme are refused by name rather than approximated.',
+  },
+  {
+    term: 'Data across the gap by camera',
+    specs: ['core.qr.encode', 'core.qr.bbqr'],
+    detail:
+      'An in-tree QR encoder and BBQr for payloads too large for one code. Transactions, descriptors, backups and label files all arrive this way.',
+  },
+]
 import { Hero } from '../components/hero/Hero'
 import { Row, Rows, Section } from '../components/Section'
 import { MARK, Terminal } from '../components/Terminal'
@@ -234,8 +292,43 @@ export default function HomePage() {
         </div>
       </Section>
 
-      {/* --- 03 Leave ------------------------------------------------------ */}
-      <Section index="03" label="Figure it out yourself">
+      {/* --- 03 What works ------------------------------------------------- */}
+      {/*
+        Derived from which specs the verification report says are implemented,
+        never hand-written. A list of features typed into a marketing page is
+        true on the day it is written and wrong within a month, and this is a
+        site whose whole argument is that its claims are machine-checked. It
+        would be strange for the page's own claims not to be.
+
+        The page carried no such list at all for a long time, so a visitor could
+        read the reasons not to use it and the method for checking it, and leave
+        without learning what the thing does.
+      */}
+      <Section index="03" label="What works today">
+        <p className="text-lg text-ink-200 max-w-2xl leading-relaxed">
+          Every row below is present because the module behind it has a specification the verifier
+          reports as implemented. Nothing here is typed in by hand.
+        </p>
+
+        <div className="mt-8">
+          <Rows>
+            {WORKING.filter((entry) => entry.specs.every((id) => facts.has(id))).map((entry) => (
+              <Row key={entry.term} term={entry.term}>
+                {entry.detail}
+              </Row>
+            ))}
+          </Rows>
+        </div>
+
+        <p className="mt-8 text-base text-ink-400 max-w-2xl leading-relaxed">
+          Not here, and needed before this is safe for funds: the dm-verity boot attestation, and a
+          taproot recovery drill. The recovery drill covers three script types against a real
+          Bitcoin Core on every commit, and taproot is not one of them.
+        </p>
+      </Section>
+
+      {/* --- 04 Leave ------------------------------------------------------ */}
+      <Section index="04" label="Figure it out yourself">
         <p className="text-lg text-ink-200 max-w-2xl leading-relaxed">
           The useful thing here is not the device. It is the method: specifications a machine can
           check, invariants bound to named tests, and a build that fails when a claim stops being
