@@ -19,9 +19,15 @@
  * run so the number is visible rather than discovered.
  *
  * STATUS VALUES.
- *   implemented  the verifier runs and returns a verdict.
+ *   implemented  the verifier runs and returns a verdict. Some of these need an
+ *                artifact to point at and are still implemented: they take a
+ *                root filesystem DIRECTORY rather than an image, so they are
+ *                exercised against a fixture tree today and the only thing
+ *                missing on the day an image exists is the image.
  *   needs-image  it cannot run until there is a built image to inspect, which
- *                is blocked on the build system itself.
+ *                is blocked on the build system itself. What is left here
+ *                genuinely needs the whole artifact: two builds to compare, a
+ *                partition table, a verity superblock.
  *   needs-device it can only be observed on a running device, because reading
  *                it from an unbooted rootfs produces confident false passes.
  *                See provisioning/README.md.
@@ -52,13 +58,32 @@ export const VERIFIERS = {
 
   // --- Need a built image to inspect. Blocked on the build system. ---------
   'rebuild-identical': { status: 'needs-image', describes: 'two clean builds are byte-identical' },
-  'absent-packages': { status: 'needs-image', describes: 'named packages are not installed' },
-  'absent-paths': { status: 'needs-image', describes: 'named paths do not exist in the rootfs' },
-  'cmdline-exact': { status: 'needs-image', describes: 'the kernel command line is exactly as pinned' },
+  // --- Read a root filesystem. Implemented, and take a directory. ----------
+  // Whether a file is in a filesystem, what the package database says, what a
+  // unit declares and what the bootloader is configured to pass are properties
+  // OF THE ARTIFACT. Reading them from the artifact is the whole claim rather
+  // than a proxy for a runtime property, which is what separates these from the
+  // needs-device three below.
+  'absent-packages': {
+    status: 'implemented',
+    describes: 'named packages are not installed, read from the rootfs dpkg database',
+  },
+  'absent-paths': {
+    status: 'implemented',
+    describes: 'named paths do not exist in the rootfs',
+  },
+  'no-unit-ordering': {
+    status: 'implemented',
+    describes: 'no systemd unit declares itself before the signer',
+  },
+  'cmdline-exact': {
+    status: 'implemented',
+    describes:
+      'the bootloader is configured to pass exactly the pinned kernel command line, which is not the same as the line the kernel received',
+  },
   'identifiers-pinned': { status: 'needs-image', describes: 'package versions are pinned to a snapshot' },
   'partition-present': { status: 'needs-image', describes: 'the partition layout matches' },
   'systemd-exposure': { status: 'needs-image', describes: 'declared unit hardening scores as expected' },
-  'no-unit-ordering': { status: 'needs-image', describes: 'no unit orders itself before the signer' },
   'verity-salt-pinned': { status: 'needs-image', describes: 'the dm-verity salt is pinned, not random' },
 
   // --- Need a running device. Reading these from an image lies. ------------
@@ -77,3 +102,19 @@ export function implemented() {
     .filter(([, meta]) => meta.status === 'implemented')
     .map(([name]) => name)
 }
+
+/**
+ * Verifiers that read a root filesystem, so they need an artifact to run.
+ *
+ * Implemented and not yet runnable in CI are different things, and reporting
+ * only the first number would say "seven verifiers are checking this image"
+ * when three are checking the profiles and four are waiting for a rootfs to
+ * point at. This project treats that kind of rounding in its own favour as a
+ * bug, so the two counts are printed separately.
+ */
+export const NEEDS_ROOTFS = new Set([
+  'absent-packages',
+  'absent-paths',
+  'no-unit-ordering',
+  'cmdline-exact',
+])

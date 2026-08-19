@@ -19,7 +19,7 @@ MANIFEST_ROOTS := packages spec provisioning
         lint ui-classes type-check test test-report test-vectors test-differential test-repro \
         test-recovery-drill \
         prose links profiles sbom sbom-check repro-check clean dev-daemon build-app web web-build web-lint web-type-check \
-        screens screen-fit ui-constants dev-check \
+        screens screen-fit ui-constants dev-check verify-image \
         web-isolation web-csp web-responsive web-check web-live-check deploy image
 
 help: ## List available targets
@@ -192,6 +192,24 @@ image: ## Build the hardened Raspberry Pi image. NOT IMPLEMENTED YET.
 	@echo '  What DOES work today: make check, make verify, and make dev to run'
 	@echo '  the daemon and the frontend on this machine.'
 	@exit 1
+
+verify-image: ## Check a built root filesystem against the provisioning profiles. ROOT=<dir>
+	# Takes a DIRECTORY, not an image: mounting an image needs root, and a
+	# verification tool that must run privileged is one people run less often.
+	# The build backend already has the assembled tree.
+	#
+	# An assertion whose verifiers are unwritten prints as "not checked" and is
+	# never counted as satisfied. The gap is the status of this work.
+	@test -n "$(ROOT)" || { \
+	  echo 'make verify-image: pass ROOT=<directory>, the assembled root filesystem.'; \
+	  echo; \
+	  echo '  There is no image build system yet, so there is nothing on this'; \
+	  echo '  machine to point it at. The verifiers exist and are tested against'; \
+	  echo '  a fixture tree, so the day a backend produces a rootfs the only new'; \
+	  echo '  thing is the artifact.'; \
+	  exit 2; \
+	}
+	@node tools/verify-image.mjs --root "$(ROOT)"
 
 make-targets: ## Every script the Makefile invokes actually exists
 	@node tools/check-make-targets.mjs

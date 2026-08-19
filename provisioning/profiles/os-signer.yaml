@@ -299,6 +299,25 @@ assertions:
     stage: image
     verify:
       - check: cmdline-exact
+        params:
+          # The pinned set, written out here because "exactly as pinned" with
+          # nothing pinned is an assertion that cannot fail. tools/verify-image
+          # caught that on its first run against a rootfs: the check was
+          # declared, the parameter was absent, and the verifier had nothing to
+          # compare against.
+          #
+          # No `lockdown=`: see the rationale. No `quiet`: a device whose whole
+          # claim is that you can watch it verify itself should not hide its
+          # boot. No `init=`: the only thing it could do here is replace the
+          # init this image was built with.
+          cmdline: >-
+            console=tty1
+            root=/dev/mmcblk0p2
+            rootfstype=erofs
+            ro
+            rootwait
+            fsck.repair=no
+            systemd.unified_cgroup_hierarchy=1
     rationale: >
       Pinning the whole command line rather than checking for the presence of
       individual tokens catches additions as well as removals. `lockdown=` is

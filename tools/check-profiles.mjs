@@ -32,7 +32,7 @@ const SCHEMA = join(ROOT, 'provisioning/schema.json')
 
 const require = createRequire(join(ROOT, 'packages/verify/package.json'))
 
-const { VERIFIERS, implemented } = await import(
+const { VERIFIERS, implemented, NEEDS_ROOTFS } = await import(
   join(ROOT, 'provisioning/checks/registry.mjs')
 )
 const { profileSelfCheck, verifierIgnoresBackends, documentedWeakness } = await import(
@@ -186,10 +186,17 @@ if (problems > 0) {
 // profiles assert and what can currently be checked IS the status of this work.
 // A run that said only "valid" would be hiding the number that matters.
 const declared = Object.keys(VERIFIERS).length
-const runnable = implemented().length
+const built = implemented()
+// Split, because "implemented" and "running in CI right now" are different
+// numbers and reporting only the first would claim four verifiers are checking
+// an image that does not exist yet.
+const needRootfs = built.filter((name) => NEEDS_ROOTFS.has(name))
+const runNow = built.length - needRootfs.length
 console.log(
   `check-profiles: ${files.length} profile(s) valid, ` +
     `${invariantOwner.size} provisioning invariants declared, ` +
-    `${runnable} of ${declared} verifiers implemented ` +
-    `(the rest need a built image or a running device)`
+    `${String(built.length)} of ${declared} verifiers written ` +
+    `(${String(runNow)} run on every commit, ` +
+    `${String(needRootfs.length)} run against a root filesystem via "make verify-image ROOT=...", ` +
+    `${String(declared - built.length)} need a whole image or a booted device)`
 )

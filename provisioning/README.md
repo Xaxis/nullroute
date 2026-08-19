@@ -59,12 +59,44 @@ provisioning/
   checks/               Verifier implementations, keyed by assertion `check`
 ```
 
+## Running the verifiers
+
+The four verifiers that read a root filesystem take a **directory**, not an
+image:
+
+```
+make verify-image ROOT=/path/to/assembled/rootfs
+```
+
+Mounting or loop-mounting an image needs root, and a verification tool that has
+to run privileged is one people run less often. The build backend already has
+the tree it assembled, so it hands that over.
+
+An assertion whose verifiers are all unwritten prints as `not checked` and is
+never counted as satisfied. That distinction is the point: a summary that
+counted unwritten verifiers as passing would be this system making exactly the
+claim it exists to stop anyone making.
+
 ## Status
 
 The profile schema and the assertion set are being defined first, before any
 backend, so that the first backend is written against a contract rather than the
 contract being reverse-engineered from whatever the first backend happened to
 do.
+
+Seven of the sixteen verifiers are written. Three inspect the profiles
+themselves and run on every commit. Four read a root filesystem and are
+exercised against a fixture tree in `test/provisioning`, so on the day a backend
+produces a rootfs the only new thing is the artifact. The remaining nine need
+the whole image (two builds to compare, a partition table, a verity superblock)
+or a booted device (mount options, listening sockets, swap), and the second
+group stays that way on purpose: reading them from an unbooted rootfs is the
+false pass described above.
+
+The first thing `make verify-image` found, on its first run against a fixture,
+was that INV-PROV-21 asserted the kernel command line matched "the pinned token
+set exactly" and pinned nothing. The check was declared, the parameter was
+absent, and the verifier had nothing to compare against.
 
 See [docs/PROVISIONING.md](../docs/PROVISIONING.md) for the tier model, the
 hardware, and the honest limits.

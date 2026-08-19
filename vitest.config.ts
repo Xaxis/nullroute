@@ -63,6 +63,18 @@ export default defineConfig({
         },
       },
       {
+        // The provisioning verifiers. They read a root filesystem, so they are
+        // testable against a fixture tree today, long before there is an image
+        // to point them at, which is the whole reason they take a directory
+        // rather than an image.
+        test: {
+          name: 'provisioning',
+          environment: 'node',
+          include: ['test/provisioning/**/*.test.ts'],
+          testTimeout: TEST_TIMEOUT,
+        },
+      },
+      {
         // The lint rules that enforce the invariants get their own regression
         // suite. A rule that silently stops matching is an invariant that
         // silently stopped being enforced.
