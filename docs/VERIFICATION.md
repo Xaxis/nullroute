@@ -258,19 +258,24 @@ Do this on a testnet or signet wallet first, with the same script type as your
 real one.
 
 CI runs exactly this drill on every commit, against a Bitcoin Core downloaded
-from bitcoincore.org and checked against a pinned SHA-256. For each of p2wpkh,
-sh(wpkh) and p2pkh it creates the wallet in nullroute, exports the descriptor,
-asks Core to derive the addresses and asserts they are identical, funds one,
-has Core build the spend, signs it with nullroute, and has Core finalise and
-broadcast it. The only thing nullroute contributes to the recovery path is a
-signature.
+from bitcoincore.org and checked against a pinned SHA-256. For **all four**
+address types, taproot included, it creates the wallet in nullroute, exports the
+receive and change descriptors, asks Core to derive the addresses and asserts
+they are identical, funds one, has Core build the spend, signs it with
+nullroute, and has Core finalise and broadcast it. The only thing nullroute
+contributes to the recovery path is a signature.
 
-Two limits, stated rather than implied. Taproot is not drilled: Core imports a
-`tr()` descriptor happily, and signing one through this path needs taproot PSBT
-fields the drill does not build yet, so `p2tr` is listed in the drill's own
-output as not covered. And the drill exits non-zero rather than skipping when no
-regtest node is reachable, because a vacuous pass on this particular claim would
-put a green tick beside the statement that somebody's funds are recoverable.
+One limit, stated rather than implied: the drill exits non-zero rather than
+skipping when no regtest node is reachable, because a vacuous pass on this
+particular claim would put a green tick beside the statement that somebody's
+funds are recoverable.
+
+Taproot was absent from this drill for a long time, and this document said the
+reason was that signing one "needs taproot PSBT fields the drill does not build
+yet". That was wrong twice over. The drill does not build the PSBT; Core does,
+and Core populates those fields for a `tr()` descriptor. The signing path
+already handled taproot. Nobody had tried it, and the device was handing out
+p2tr addresses whose recoverability nothing had checked.
 
 Run it yourself with `make test-recovery-drill` against a local regtest node.
 

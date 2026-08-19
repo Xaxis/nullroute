@@ -163,10 +163,9 @@ export default function HomePage() {
             </Row>
 
             <Row term="Some of the defences are partial" tone="caution">
-              Schnorr signatures are not cross-checked against a second implementation, and the
-              recovery drill covers three script types but not taproot. The systemd sandbox that
-              would hold the air gap at the kernel level is specified and not written. The threat
-              model lists the rest, at length, on purpose.
+              The systemd sandbox that would hold the air gap at the kernel level is specified and
+              not written, and three of the hardening controls that look applied are inert on this
+              hardware. The threat model lists the rest, at length, on purpose.
             </Row>
 
             <Row term="At most one signer in a quorum">
@@ -321,9 +320,9 @@ export default function HomePage() {
         </div>
 
         <p className="mt-8 text-base text-ink-400 max-w-2xl leading-relaxed">
-          Not here, and needed before this is safe for funds: the dm-verity boot attestation, and a
-          taproot recovery drill. The recovery drill covers three script types against a real
-          Bitcoin Core on every commit, and taproot is not one of them.
+          Not here, and needed before this is safe for funds: the dm-verity boot attestation. The
+          recovery drill covers all four address types against a real Bitcoin Core on every commit,
+          taproot included.
         </p>
       </Section>
 

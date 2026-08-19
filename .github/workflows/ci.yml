@@ -168,6 +168,15 @@ jobs:
       #   curl -s https://bitcoincore.org/bin/bitcoin-core-28.0/SHA256SUMS \
       #     | grep x86_64-linux-gnu.tar.gz
       # Verified against that file on 2026-08-15.
+      #
+      # The drill was written against this version and failed the first time
+      # anybody ran it against Core 31, in three separate ways: a watch-only
+      # wallet with only an inactive external descriptor cannot generate a
+      # change address, Core reaches for a bech32 change address unless told the
+      # descriptor's type, and taproot derivations live under a different PSBT
+      # field. All three were the drill being wrong rather than Core changing
+      # its mind about anything that matters, and all three are fixed. Worth
+      # remembering that pinning a version buys reproducibility and hides drift.
       - name: Fetch Bitcoin Core
         env:
           CORE_VERSION: '28.0'

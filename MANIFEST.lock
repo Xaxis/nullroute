@@ -80,6 +80,7 @@ ac0ba1fb29516027633f1d32617fac86bd2bca1477f899037c9fe7935ba816b2  packages/core/
 cae92a24b33d65457d0b5861dbecc14290f8dfbe348197451bf1d68a727d5047  packages/core/test/psbt.parse.test.ts
 ddddf23b852094b430593a4f352497573d68e89a53664746f08152494aeaa358  packages/core/test/psbt.quorum.test.ts
 c529acbdb37f368b704b9440f69a6269273841069702381e89d55a12d8b33084  packages/core/test/psbt.review.test.ts
+d61fcf2d545468f4ce8952ece62dfba29becc3bb2f8597044a2721a18e46b820  packages/core/test/psbt.sign.taproot.test.ts
 dae70fe80b84d64bce5e4b81f58b045ec322071f4c953f45a8479a81e7b9ac03  packages/core/test/psbt.sign.test.ts
 188173f74a52818deccef03c87c0514641464d55dd1bfb183914d6b74a40d74f  packages/core/test/qr.bbqr.test.ts
 1e0759a12046b856eea449498e85d02bba3d6f30d23fab1b171cf43a3b93da9c  packages/core/test/qr.encode.test.ts

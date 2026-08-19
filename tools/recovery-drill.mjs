@@ -38,14 +38,20 @@ const MNEMONIC =
   'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
 
 /**
- * Script types drilled.
+ * Script types drilled. All four the device will hand you.
  *
- * Taproot is absent and that is a real limit rather than an oversight: Core's
- * `importdescriptors` handles tr() but signing one through this path needs
- * taproot PSBT fields the drill does not build yet. It is listed in the summary
- * as not drilled, so the gap is visible rather than implied.
+ * Taproot was absent for a long time, with a comment here saying signing one
+ * "needs taproot PSBT fields the drill does not build yet". That was wrong in
+ * two ways. This drill does not build the PSBT at all: Core does, with
+ * `walletcreatefundedpsbt`, and Core populates the taproot fields when the
+ * descriptor is tr(). And the signing path already handled taproot, because it
+ * passes AUX_RAND to a library that does. Nobody had tried it.
+ *
+ * The gap mattered: the device hands out p2tr addresses, so an address type it
+ * will happily give you had no proof that anybody could recover from it. That
+ * is exactly the claim INV-INTEROP-1 makes.
  */
-const SCRIPT_TYPES = ['p2wpkh', 'p2sh-p2wpkh', 'p2pkh']
+const SCRIPT_TYPES = ['p2wpkh', 'p2sh-p2wpkh', 'p2pkh', 'p2tr']
 
 let rpcId = 0
 
@@ -107,13 +113,16 @@ function nullrouteWallet(scriptType, network, count) {
     })
     root.wipePrivateData(); seed.dispose()
     const origin = '[' + account.masterFingerprint + path.slice(1) + ']'
-    const inner = origin + account.xpub + '/0/*'
-    const body = ${JSON.stringify(scriptType)} === 'p2pkh' ? 'pkh(' + inner + ')'
-      : ${JSON.stringify(scriptType)} === 'p2sh-p2wpkh' ? 'sh(wpkh(' + inner + '))'
-      : ${JSON.stringify(scriptType)} === 'p2wpkh' ? 'wpkh(' + inner + ')'
-      : 'tr(' + inner + ')'
+    const wrap = (suffix) => {
+      const inner = origin + account.xpub + suffix
+      return ${JSON.stringify(scriptType)} === 'p2pkh' ? 'pkh(' + inner + ')'
+        : ${JSON.stringify(scriptType)} === 'p2sh-p2wpkh' ? 'sh(wpkh(' + inner + '))'
+        : ${JSON.stringify(scriptType)} === 'p2wpkh' ? 'wpkh(' + inner + ')'
+        : 'tr(' + inner + ')'
+    }
     console.log(JSON.stringify({
-      descriptor: withChecksum(body),
+      descriptor: withChecksum(wrap('/0/*')),
+      changeDescriptor: withChecksum(wrap('/1/*')),
       addresses: addresses.map((a) => a.address),
     }))
   `
@@ -128,18 +137,17 @@ function nullrouteWallet(scriptType, network, count) {
 }
 
 /** Sign a PSBT with nullroute, in a child process against the shipped code. */
-function nullrouteSign(psbtBase64, scriptType, network, index) {
+function nullrouteSign(psbtBase64, scriptType, network, paths) {
   const script = `
     import { mnemonicToSeed, signTransaction, reviewTransaction, parsePsbt,
              encodePsbt, accountPath, normalizePath, networkById, branchPath } from '@nullroute/core'
     const network = networkById(${JSON.stringify(network)})
     const seed = mnemonicToSeed(${JSON.stringify(MNEMONIC)}, '')
     const tx = parsePsbt(${JSON.stringify(psbtBase64)})
-    const base = normalizePath(accountPath(${JSON.stringify(scriptType)}, network, 0))
     const review = reviewTransaction(tx, { network, isChange: () => undefined })
     const result = signTransaction(tx, seed, {
       network,
-      paths: [base + '/' + branchPath(false, ${String(index)})],
+      paths: ${JSON.stringify(paths)},
       review,
       overrideBlockingWarnings: true,
     })
@@ -170,6 +178,20 @@ async function ensureWallet(name, options = {}) {
   }
 }
 
+/**
+ * A suffix unique to this run, so every watch-only wallet is a fresh one.
+ *
+ * Re-importing a descriptor into a wallet that already holds it fails with
+ * "new range must include current range", which is Core protecting a keypool
+ * and is a confusing way for a drill to fail. Running against a node that has
+ * seen an earlier attempt is the normal case on a developer machine, and a
+ * check that only passes on a clean node is a check people learn to distrust.
+ *
+ * Date.now() is fine here and banned in packages/: this is a tool, and nothing
+ * it produces goes into the reproducible build.
+ */
+const RUN = Date.now().toString(36)
+
 async function drill(scriptType) {
   const label = scriptType.padEnd(12)
   const wallet = nullrouteWallet(scriptType, 'regtest', 5)
@@ -189,11 +211,40 @@ async function drill(scriptType) {
   }
 
   // --- Core imports it as a watch-only wallet ------------------------------
-  const watchName = `drill-${scriptType}`
+  //
+  // BOTH branches, and marked ACTIVE. That is what recovering a wallet actually
+  // looks like: the change branch is the one a wallet has to recognise as its
+  // own, and a recovery that imported only receive addresses would find the
+  // money and then be unable to tell its own change from a stranger's.
+  //
+  // It also has to be this way for Core to build a spend at all. With only an
+  // inactive external descriptor, `walletcreatefundedpsbt` on Core 31 fails
+  // with "Transaction needs a change address, but we can't generate it", which
+  // is Core correctly refusing to invent a destination for the remainder. Core
+  // 28, which CI pins, was more forgiving, so the drill passed there and failed
+  // the first time anybody ran it against a newer node.
+  const watchName = `drill-${scriptType}-${RUN}`
   await ensureWallet(watchName, { disablePrivateKeys: true, blank: true })
   const imported = await rpc(
     'importdescriptors',
-    [[{ desc: wallet.descriptor, timestamp: 'now', range: [0, 20], active: false, internal: false }]],
+    [
+      [
+        {
+          desc: wallet.descriptor,
+          timestamp: 'now',
+          range: [0, 20],
+          active: true,
+          internal: false,
+        },
+        {
+          desc: wallet.changeDescriptor,
+          timestamp: 'now',
+          range: [0, 20],
+          active: true,
+          internal: true,
+        },
+      ],
+    ],
     watchName
   )
   if (imported.some((entry) => entry.success !== true)) {
@@ -217,14 +268,55 @@ async function drill(scriptType) {
 
   // --- Core builds the spend ----------------------------------------------
   const destination = await rpc('getnewaddress', [], 'drill-funding')
+  // change_type has to match the descriptor, because Core otherwise reaches for
+  // a bech32 change address and a wallet holding only sh(wpkh()) descriptors has
+  // none. Real recovery has the same constraint: change goes back to the branch
+  // that was imported, not to whatever the node would prefer.
+  const CHANGE_TYPE = {
+    p2pkh: 'legacy',
+    'p2sh-p2wpkh': 'p2sh-segwit',
+    p2wpkh: 'bech32',
+    p2tr: 'bech32m',
+  }
   const funded = await rpc(
     'walletcreatefundedpsbt',
-    [[], [{ [destination]: 0.1 }], 0, { includeWatching: true, subtractFeeFromOutputs: [0] }],
+    [
+      [],
+      [{ [destination]: 0.1 }],
+      0,
+      {
+        includeWatching: true,
+        subtractFeeFromOutputs: [0],
+        change_type: CHANGE_TYPE[scriptType],
+      },
+    ],
     watchName
   )
 
   // --- nullroute signs, and that is all it does ---------------------------
-  const signed = nullrouteSign(funded.psbt, scriptType, 'regtest', 0)
+  //
+  // The index is read out of the PSBT rather than assumed to be 0. Core chooses
+  // which UTXO to spend, and on a node that has seen an earlier run it can
+  // reasonably choose a different one. A drill that assumed index 0 failed with
+  // "none of the derivation paths matched", which reads as a signing bug and is
+  // actually the drill telling the device to sign with the wrong key.
+  const decoded = await rpc('decodepsbt', [funded.psbt])
+  // Taproot writes its derivations under a DIFFERENT key. PSBT v0 has
+  // PSBT_IN_BIP32_DERIVATION for everything else and PSBT_IN_TAP_BIP32_DERIVATION
+  // for taproot, and Core surfaces them as two separate fields. Reading only the
+  // first reports a correctly built taproot PSBT as having no derivations at
+  // all, which is what happened here first.
+  const derivations = (decoded.inputs ?? []).flatMap((input) => [
+    ...(input.bip32_derivs ?? []).map((entry) => entry.path),
+    ...(input.taproot_bip32_derivs ?? []).map((entry) => entry.path),
+  ])
+  if (derivations.length === 0) {
+    throw new Error(
+      `${scriptType}: Core built a PSBT with no BIP-32 derivations, so nothing identifies which ` +
+        `key signs it. That is a broken import rather than a signing problem.`
+    )
+  }
+  const signed = nullrouteSign(funded.psbt, scriptType, 'regtest', derivations)
   if (signed.inputsSigned < 1) {
     throw new Error(`${scriptType}: nullroute signed nothing.`)
   }
@@ -276,7 +368,7 @@ async function main() {
   }
 
   console.log(`\n  ${String(results.length)} of ${String(results.length)} script types recovered and spent with Core alone.`)
-  console.log('  not drilled: p2tr, which needs taproot PSBT fields this drill does not build yet.\n')
+
   console.log('recovery drill passed\n')
 }
 

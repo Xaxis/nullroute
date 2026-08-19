@@ -166,7 +166,7 @@ deterministic signature to hide a leaked key.
 Core and confirm it sees the same addresses. Doing this by hand is the check
 that matters, and it is the one that makes walking away from this project
 harmless. CI runs the same drill on every commit against a real regtest Core,
-for p2wpkh, sh(wpkh) and p2pkh; taproot is not drilled yet. Run it yourself with
+for all four address types including taproot. Run it yourself with
 `make test-recovery-drill`. If it ever fails, that is a security report.
 
 Full procedure: [docs/VERIFICATION.md](docs/VERIFICATION.md), written for
@@ -281,7 +281,7 @@ signing for segwit addresses, BIP-329 labels in and out, and guided flows that
 put the screens in order for what you are trying to do.
 
 **Not working yet, and needed before this is safe for funds:** the dm-verity
-boot attestation of tier 1, and a taproot recovery drill. The seed is encrypted
+boot attestation of tier 1. The seed is encrypted
 at rest under a passphrase, and that passphrase is the only thing protecting a
 stolen card: there is no secure element, and the retry counter does not survive
 someone copying the card.
