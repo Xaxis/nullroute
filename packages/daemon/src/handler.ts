@@ -978,6 +978,65 @@ export function createHandler(state: DaemonState): IpcHandler {
         }
       }
 
+      /**
+       * Forget a registered quorum.
+       *
+       * A quorum registered by mistake was permanent, which is a strange thing
+       * to be true of the step the documentation calls the dangerous one. A
+       * descriptor with a typo in it, or one for a wallet somebody has stopped
+       * using, sat there deciding which outputs this device calls change.
+       *
+       * WHAT THIS DOES NOT DO is lose money. A registration is not a key. What
+       * it costs is that the device stops recognising that quorum's change as
+       * its own, so change coming back from it reads on the review screen as a
+       * payment to a stranger, which is alarming rather than dangerous and is
+       * fixed by registering the descriptor again.
+       *
+       * Persisted only with a passphrase, like every other change to a sealed
+       * wallet, and reported either way.
+       */
+      case 'multisig.forget': {
+        const descriptor = requireString(request, 'descriptor')
+        const removed = session.forgetRegistration(descriptor)
+        if (!removed) {
+          throw new Error(
+            'This device has no registration matching that descriptor, so there is nothing to ' +
+              'forget. A descriptor differing by one character is a different quorum.'
+          )
+        }
+
+        const passphrase = optionalString(request, 'passphrase')
+        const active = session.active
+        let persisted = false
+        if (
+          passphrase.length > 0 &&
+          !session.ephemeral &&
+          active !== undefined &&
+          state.registry !== undefined
+        ) {
+          state.registry.rename(active.id, {
+            seed: session.requireSeed(),
+            network: session.network,
+            passphrase,
+            label: active.label,
+            colour: active.colour as WalletColour,
+            registrations: session.registrations,
+            cosigners: session.cosigners,
+          })
+          persisted = true
+        }
+
+        return {
+          forgotten: true,
+          remaining: session.registrations.length,
+          persisted,
+          note:
+            'Forgetting a quorum does not lose money. It means this device stops recognising ' +
+            'that quorum\'s change as its own, so change from it will read as a payment to a ' +
+            'stranger until you register the descriptor again.',
+        }
+      }
+
       case 'multisig.assemble': {
         const raw = params(request)['keys']
         if (!Array.isArray(raw) || raw.some((key) => typeof key !== 'string')) {

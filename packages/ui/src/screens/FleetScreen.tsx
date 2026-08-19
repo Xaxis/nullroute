@@ -1,4 +1,4 @@
-import { type ReactElement } from 'react'
+import { type ReactElement, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 
@@ -51,6 +51,15 @@ export interface FleetScreenProps {
   /** The name of the device in your hand, so the list has a subject. */
   readonly deviceName?: string | undefined
   readonly onAddresses?: ((quorum: FleetQuorum) => void) | undefined
+  /**
+   * Forget a registered quorum.
+   *
+   * A quorum registered by mistake was permanent, which is a strange property
+   * for the step the documentation calls dangerous. Confirmed by typing the
+   * checksum, for the same reason erasing a wallet is confirmed by typing its
+   * name: a second tap on a 7 inch panel lands where the last one did.
+   */
+  readonly onForget?: ((quorum: FleetQuorum) => Promise<void>) | undefined
   readonly onBack: () => void
   readonly onHome?: (() => void) | undefined
   readonly device?: { readonly name: string; readonly colour: string } | undefined
@@ -58,7 +67,99 @@ export interface FleetScreenProps {
 }
 
 export function FleetScreen(props: FleetScreenProps): ReactElement {
-  const { quorums, deviceName, onAddresses, onBack, onHome, device, banner } = props
+  const { quorums, deviceName, onAddresses, onForget, onBack, onHome, device, banner } = props
+
+  const [forgetting, setForgetting] = useState<FleetQuorum | null>(null)
+  const [typed, setTyped] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // --- Confirming a removal -------------------------------------------------
+  if (forgetting !== null) {
+    const confirmed = typed.trim() === forgetting.checksum
+    return (
+      <Screen
+        title="Forget this quorum"
+        subtitle={`${String(forgetting.threshold)} of ${String(forgetting.total)}`}
+        banner={banner}
+        onHome={onHome}
+        device={device}
+        testId="fleet-forget"
+        actions={
+          <>
+            <Button
+              onClick={() => {
+                setForgetting(null)
+                setTyped('')
+                setError(null)
+              }}
+              testId="fleet-forget-cancel"
+            >
+              Keep it
+            </Button>
+            <div className="nr-spacer" />
+            <Button
+              variant="danger"
+              disabled={!confirmed || busy || onForget === undefined}
+              onClick={() => {
+                void (async () => {
+                  if (onForget === undefined) return
+                  setBusy(true)
+                  setError(null)
+                  try {
+                    await onForget(forgetting)
+                    setForgetting(null)
+                    setTyped('')
+                  } catch (err) {
+                    setError((err as Error).message)
+                  } finally {
+                    setBusy(false)
+                  }
+                })()
+              }}
+              testId="fleet-forget-submit"
+            >
+              {busy ? 'Forgetting' : 'Forget it'}
+            </Button>
+          </>
+        }
+      >
+        {/* What it costs, which is not what people assume. A registration is
+            not a key, so nothing here loses money. What it loses is the
+            device's ability to tell this quorum's change from a stranger. */}
+        <div className="nr-banner nr-banner--testnet" data-testid="fleet-forget-cost">
+          <strong>This does not lose any money</strong>
+          <span>
+            A registration is not a key. What you lose is this device recognising that
+            quorum&rsquo;s change as its own, so change coming back from it will read as a payment
+            to a stranger on the signing screen until you register the descriptor again. Keep the
+            descriptor somewhere if you might want it back.
+          </span>
+        </div>
+
+        <div className="nr-field">
+          <span className="nr-field__label">Type the checksum to confirm</span>
+          <input
+            className="nr-input nr-mono"
+            value={typed}
+            spellCheck={false}
+            placeholder={forgetting.checksum}
+            onChange={(e) => {
+              setTyped(e.target.value)
+            }}
+            data-testid="fleet-forget-confirm"
+          />
+        </div>
+
+        {error !== null && (
+          <div className="nr-banner nr-banner--danger" data-testid="fleet-forget-error">
+            <strong>Not forgotten</strong>
+            <span>{error}</span>
+          </div>
+        )}
+      </Screen>
+    )
+  }
 
   return (
     <Screen
@@ -145,16 +246,30 @@ export function FleetScreen(props: FleetScreenProps): ReactElement {
                 </tbody>
               </table>
 
-              {onAddresses !== undefined && (
-                <Button
-                  onClick={() => {
-                    onAddresses(quorum)
-                  }}
-                  testId="fleet-addresses"
-                >
-                  Compare addresses
-                </Button>
-              )}
+              <div className="nr-row">
+                {onAddresses !== undefined && (
+                  <Button
+                    onClick={() => {
+                      onAddresses(quorum)
+                    }}
+                    testId="fleet-addresses"
+                  >
+                    Compare addresses
+                  </Button>
+                )}
+                {onForget !== undefined && (
+                  <Button
+                    onClick={() => {
+                      setForgetting(quorum)
+                      setTyped('')
+                      setError(null)
+                    }}
+                    testId="fleet-forget-start"
+                  >
+                    Forget it
+                  </Button>
+                )}
+              </div>
             </>
           )}
         </div>

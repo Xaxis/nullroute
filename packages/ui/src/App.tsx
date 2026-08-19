@@ -1111,6 +1111,17 @@ export function App() {
         onAddresses={(quorum: FleetQuorum) => {
           setStage({ at: 'quorum', quorum: quorum as unknown as QuorumView })
         }}
+        onForget={async (quorum: FleetQuorum) => {
+          await call(transport, 'multisig.forget', { descriptor: quorum.descriptor })
+          // Refetched rather than filtered locally: the daemon holds the
+          // session's registrations and a screen keeping its own copy is a
+          // screen that disagrees with the device after the next change.
+          const listed = await call<{ quorums: readonly QuorumView[] }>(
+            transport,
+            'multisig.registrations'
+          )
+          setQuorums(listed.quorums)
+        }}
         onBack={() => {
           setStage({ at: 'wallet' })
         }}

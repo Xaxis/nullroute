@@ -514,6 +514,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
         },
       ]}
       onAddresses={noop}
+      onForget={never}
       onBack={noop}
     />
   ),
@@ -613,6 +614,8 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   start: [['start-goal-multisig'], ['start-goal-sign']],
   // Built, which is where the checksum every device compares is shown.
   assemble: [['assemble-build']],
+  // The confirmation, which carries the sentence about what forgetting costs.
+  fleet: [['fleet-forget-start']],
   // The reviewed quorum, which is where cosigner names appear.
   multisig: [['multisig-review']],
   // Verified, which adds a paragraph under a screen that already holds a QR

@@ -320,6 +320,28 @@ export class Session {
   }
 
   /** Replace the whole list, as when loading one out of the store. */
+  /**
+   * Forget a registered quorum.
+   *
+   * Returns whether anything was removed, so a caller cannot report success for
+   * a descriptor that was never there.
+   *
+   * Removing a registration is not the inverse of adding one in the way it
+   * looks. A registered descriptor is how the device decides which outputs are
+   * change; forgetting it does not lose money, and it does make the device stop
+   * recognising money coming back to itself, which reads on the review screen
+   * as a stranger's address. That is the argument for a confirmation, not for
+   * refusing: a quorum registered by mistake is otherwise permanent, and
+   * registration is the step the documentation calls dangerous.
+   */
+  forgetRegistration(descriptor: string): boolean {
+    const wallet = this.#wallet
+    if (wallet === undefined) throw new SessionError('No wallet is loaded.')
+    const before = wallet.registrations.length
+    wallet.registrations = wallet.registrations.filter((entry) => entry !== descriptor)
+    return wallet.registrations.length !== before
+  }
+
   setRegistrations(descriptors: readonly string[]): void {
     const wallet = this.#wallet
     if (wallet === undefined) throw new SessionError('No wallet is loaded.')

@@ -934,6 +934,17 @@ invariants:
       - packages/ui/test/fleet-screen.test.tsx::shows-an-unreadable-quorum-with-the-reason
       - packages/ui/test/fleet-screen.test.tsx::says-plainly-when-there-are-no-quorums
 
+  - id: INV-UI-84
+    statement: >
+      Forgetting a quorum requires the checksum to be typed, states that it
+      loses no money and what it does cost, and reports a refusal rather than
+      claiming the registration went.
+    tests:
+      - packages/ui/test/fleet-screen.test.tsx::will-not-forget-on-a-tap
+      - packages/ui/test/fleet-screen.test.tsx::says-what-forgetting-costs-and-what-it-does-not
+      - packages/ui/test/fleet-screen.test.tsx::reports-a-refusal-rather-than-claiming-it-went
+      - packages/ui/test/fleet-screen.test.tsx::offers-nothing-when-there-is-nowhere-to-send-it
+
 threats:
   - INV-KEY-1
   - INV-BUILD-1

@@ -162,10 +162,78 @@ describe('multisig.labelCosigner', () => {
     expect(written.persisted).toBe(true)
   })
 
-  it('refuses-when-no-wallet-is-open', async () => {
+  it('refuses-to-name-a-cosigner-with-no-wallet-open', async () => {
     session.lock()
     await expect(call('multisig.labelCosigner', { xpub: XPUB, label: 'Attic' })).rejects.toThrow(
       /No wallet is loaded/
     )
+  })
+})
+
+/**
+ * Tests for forgetting a quorum.
+ *
+ * A quorum registered by mistake was permanent, which is a strange property for
+ * the step docs/FLEET.md calls the dangerous one.
+ */
+describe('multisig.forget', () => {
+  const DESCRIPTOR = 'wsh(sortedmulti(2,a,b,c))#checksum'
+
+  /**
+   * INV-COSIGN-3. Forgetting a descriptor this device never registered is
+   * refused rather than reported as success, because a descriptor differing by
+   * one character is a different quorum and silently doing nothing would leave
+   * the real one registered.
+   */
+  it('refuses-a-descriptor-that-was-never-registered', async () => {
+    await openWallet()
+    await expect(call('multisig.forget', { descriptor: DESCRIPTOR })).rejects.toThrow(
+      /no registration matching/
+    )
+  })
+
+  it('refuses-to-forget-a-quorum-with-no-wallet-open', async () => {
+    session.lock()
+    await expect(call('multisig.forget', { descriptor: DESCRIPTOR })).rejects.toThrow(
+      /No wallet is loaded/
+    )
+  })
+
+  /**
+   * INV-COSIGN-3. Forgetting removes exactly one and says how many are left,
+   * and the note says what it did not do: a registration is not a key, so
+   * nothing here loses money.
+   */
+  it('forgets-one-and-says-what-that-did-not-cost', async () => {
+    await openWallet()
+    session.setRegistrations([DESCRIPTOR, 'wsh(sortedmulti(2,d,e,f))#other'])
+
+    const result = (await call('multisig.forget', { descriptor: DESCRIPTOR })) as {
+      forgotten: boolean
+      remaining: number
+      note: string
+    }
+
+    expect(result.forgotten).toBe(true)
+    expect(result.remaining).toBe(1)
+    expect(session.registrations).toEqual(['wsh(sortedmulti(2,d,e,f))#other'])
+    expect(result.note).toContain('does not lose money')
+    expect(result.note).toContain('payment to a stranger')
+  })
+
+  it('says-whether-the-removal-was-written-or-only-held', async () => {
+    await openWallet()
+    session.setRegistrations([DESCRIPTOR])
+    const held = (await call('multisig.forget', { descriptor: DESCRIPTOR })) as {
+      persisted: boolean
+    }
+    expect(held.persisted).toBe(false)
+
+    session.setRegistrations([DESCRIPTOR])
+    const written = (await call('multisig.forget', {
+      descriptor: DESCRIPTOR,
+      passphrase: 'correct horse',
+    })) as { persisted: boolean }
+    expect(written.persisted).toBe(true)
   })
 })

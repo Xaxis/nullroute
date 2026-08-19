@@ -15,7 +15,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { FleetScreen, type FleetQuorum } from '../src/screens/FleetScreen.js'
 
 afterEach(cleanup)
@@ -120,5 +120,74 @@ describe('FleetScreen', () => {
     render(<FleetScreen quorums={[one]} onAddresses={onAddresses} onBack={vi.fn()} />)
     fireEvent.click(screen.getByTestId('fleet-addresses'))
     expect(onAddresses).toHaveBeenCalledWith(one)
+  })
+})
+
+/**
+ * Forgetting a quorum.
+ *
+ * A quorum registered by mistake was permanent, which is a strange property for
+ * the step the documentation calls the dangerous one. A descriptor with a typo,
+ * or one for a wallet somebody stopped using, sat there deciding which outputs
+ * this device calls change.
+ */
+describe('FleetScreen forgetting', () => {
+  async function reachConfirm() {
+    const onForget = vi.fn().mockResolvedValue(undefined)
+    render(<FleetScreen quorums={[quorum()]} onForget={onForget} onBack={vi.fn()} />)
+    fireEvent.click(screen.getByTestId('fleet-forget-start'))
+    return onForget
+  }
+
+  /**
+   * INV-UI-84. Confirmed by typing the checksum, not by a second tap. On a 7
+   * inch panel the second tap lands where the first one did.
+   */
+  it('will-not-forget-on-a-tap', async () => {
+    const onForget = await reachConfirm()
+
+    expect(screen.getByTestId<HTMLButtonElement>('fleet-forget-submit').disabled).toBe(true)
+    fireEvent.change(screen.getByTestId('fleet-forget-confirm'), { target: { value: 'q35wkfm' } })
+    expect(screen.getByTestId<HTMLButtonElement>('fleet-forget-submit').disabled).toBe(true)
+
+    fireEvent.change(screen.getByTestId('fleet-forget-confirm'), { target: { value: 'q35wkfm7' } })
+    expect(screen.getByTestId<HTMLButtonElement>('fleet-forget-submit').disabled).toBe(false)
+    fireEvent.click(screen.getByTestId('fleet-forget-submit'))
+    await waitFor(() => {
+      expect(onForget).toHaveBeenCalledOnce()
+    })
+  })
+
+  /**
+   * INV-UI-84. It says what forgetting actually costs, which is not what people
+   * assume. A registration is not a key, so nothing here loses money: what is
+   * lost is the device recognising that quorum's change as its own.
+   */
+  it('says-what-forgetting-costs-and-what-it-does-not', async () => {
+    await reachConfirm()
+    const said = screen.getByTestId('fleet-forget-cost').textContent
+    expect(said).toContain('does not lose any money')
+    expect(said).toContain('A registration is not a key')
+    expect(said).toContain('read as a payment to a stranger')
+    // And how to undo it.
+    expect(said).toContain('register the descriptor again')
+  })
+
+  it('reports-a-refusal-rather-than-claiming-it-went', async () => {
+    const onForget = vi.fn().mockRejectedValue(new Error('This device has no registration.'))
+    render(<FleetScreen quorums={[quorum()]} onForget={onForget} onBack={vi.fn()} />)
+    fireEvent.click(screen.getByTestId('fleet-forget-start'))
+    fireEvent.change(screen.getByTestId('fleet-forget-confirm'), { target: { value: 'q35wkfm7' } })
+    fireEvent.click(screen.getByTestId('fleet-forget-submit'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('fleet-forget-error').textContent).toContain('no registration')
+    })
+    expect(screen.getByTestId('fleet-forget')).toBeTruthy()
+  })
+
+  it('offers-nothing-when-there-is-nowhere-to-send-it', () => {
+    render(<FleetScreen quorums={[quorum()]} onBack={vi.fn()} />)
+    expect(screen.queryByTestId('fleet-forget-start')).toBeNull()
   })
 })

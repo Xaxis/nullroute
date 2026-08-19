@@ -248,6 +248,12 @@ registered the same descriptor. If they differ, do not send anything.
 checksum to compare with the other devices, and every cosigner by whatever name
 you gave it.
 
+A quorum can be **forgotten** from here, confirmed by typing its checksum.
+Forgetting loses no money: a registration is not a key. What it costs is that
+the device stops recognising that quorum's change as its own, so change coming
+back from it reads as a payment to a stranger on the signing screen until you
+register the descriptor again. Keep the descriptor if you might want it back.
+
 It ends by saying what the device **cannot** tell you: whether the other
 cosigners registered the same descriptor, and whether your coordinator ever
 imported it. Both are facts about other machines and this one has no network. An

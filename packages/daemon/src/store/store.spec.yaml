@@ -109,7 +109,18 @@ invariants:
     tests:
       - packages/daemon/test/cosigner-labels.ipc.test.ts::survives-a-rename-and-a-reboot
       - packages/daemon/test/cosigner-labels.ipc.test.ts::says-whether-a-name-was-written-or-only-held
-      - packages/daemon/test/cosigner-labels.ipc.test.ts::refuses-when-no-wallet-is-open
+      - packages/daemon/test/cosigner-labels.ipc.test.ts::refuses-to-name-a-cosigner-with-no-wallet-open
+
+  - id: INV-COSIGN-3
+    statement: >
+      A registered quorum can be forgotten, forgetting one that was never
+      registered is refused rather than reported as success, and the response
+      says that forgetting loses no money because a registration is not a key.
+    tests:
+      - packages/daemon/test/cosigner-labels.ipc.test.ts::refuses-a-descriptor-that-was-never-registered
+      - packages/daemon/test/cosigner-labels.ipc.test.ts::forgets-one-and-says-what-that-did-not-cost
+      - packages/daemon/test/cosigner-labels.ipc.test.ts::says-whether-the-removal-was-written-or-only-held
+      - packages/daemon/test/cosigner-labels.ipc.test.ts::refuses-to-forget-a-quorum-with-no-wallet-open
 
 threats:
   - INV-STORE-1
