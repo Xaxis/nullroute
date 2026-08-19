@@ -54,6 +54,16 @@ export type { ScanScreenProps, ScanResult } from './screens/ScanScreen.js'
 export { QrDisplay } from './components/QrDisplay.js'
 export type { QrDisplayProps } from './components/QrDisplay.js'
 
+export { LabelsScreen } from './screens/LabelsScreen.js'
+export type { LabelsScreenProps, LabelRow, ImportedLabels } from './screens/LabelsScreen.js'
+
+export { ChildSeedScreen } from './screens/ChildSeedScreen.js'
+export type {
+  ChildSeedScreenProps,
+  ChildApplication,
+  ChildSeedView,
+} from './screens/ChildSeedScreen.js'
+
 export { QuorumAddressesScreen } from './screens/QuorumAddressesScreen.js'
 export type {
   QuorumAddressesScreenProps,

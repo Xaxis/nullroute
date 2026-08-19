@@ -19,6 +19,7 @@ MANIFEST_ROOTS := packages spec provisioning
         lint ui-classes type-check test test-report test-vectors test-differential test-repro \
         test-recovery-drill \
         prose links profiles sbom sbom-check repro-check clean dev-daemon build-app web web-build web-lint web-type-check \
+        screens screen-fit ui-constants \
         web-isolation web-csp web-responsive web-check web-live-check deploy image
 
 help: ## List available targets
@@ -202,6 +203,16 @@ ipc-reachable: ## Every IPC method the daemon implements is reachable from the U
 	# daemon directly.
 	@node tools/check-ipc-reachable.mjs
 
+screens: ## Build the screen gallery, a layout harness that never ships to the device
+	@npx vite build --config tools/screens/vite.config.ts
+
+screen-fit: screens ## Every device screen fits 800x480. Drives a real browser.
+	# The panel is fixed hardware: no scrollbar, no window to resize. A control
+	# that does not fit is a control that does not exist. jsdom computes no box
+	# model, so nothing in the test suite can see this, and check-device-ui
+	# reaches only the lock screen because there is no daemon behind it.
+	@node tools/check-screen-fit.mjs
+
 ui-constants: ## Values the frontend restates agree with the daemon that enforces them
 	# The UI may not import from packages/daemon, so a few lists exist twice.
 	# A colour on one side and not the other is a swatch that produces an
@@ -273,4 +284,4 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 
 check-fast: lint ui-classes ui-constants type-check prose links profiles invariant-claims make-targets ipc-reachable device-csp test manifest-check ## Everything except the slow suites
 
-check: check-fast build verify test-vectors test-differential repro-check sbom device-ui web-check ## Everything CI runs
+check: check-fast build verify test-vectors test-differential repro-check sbom device-ui screen-fit web-check ## Everything CI runs

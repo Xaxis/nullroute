@@ -1,0 +1,15 @@
+{
+  "//": "The screen gallery. Type-checked and never emitted: a fixture that does not compile is a screen the harness silently skips, which is exactly how the lock screen was measured as having no action bar at all.",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "incremental": false,
+    "jsx": "react-jsx",
+    "lib": ["ES2023", "DOM"],
+    "types": ["vite/client"]
+  },
+  "include": ["*.tsx", "*.ts"]
+}

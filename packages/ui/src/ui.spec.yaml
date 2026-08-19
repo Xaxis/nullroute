@@ -47,6 +47,8 @@ covers:
   - packages/ui/src/screens/ManageWalletScreen.tsx::ManageWalletScreen
   - packages/ui/src/screens/ManageWalletScreen.tsx::WALLET_COLOUR_NAMES
   - packages/ui/src/screens/QuorumAddressesScreen.tsx::QuorumAddressesScreen
+  - packages/ui/src/screens/LabelsScreen.tsx::LabelsScreen
+  - packages/ui/src/screens/ChildSeedScreen.tsx::ChildSeedScreen
 
 algorithm: >
   Renders the manifest root hash, the verification status with spec and
@@ -536,6 +538,65 @@ invariants:
       - packages/ui/test/multisig-screen.test.tsx::writes-the-bundle-and-says-why-it-matters
       - packages/ui/test/multisig-screen.test.tsx::does-not-offer-a-bundle-with-no-quorum-in-it
       - packages/ui/test/multisig-screen.test.tsx::leaves-both-out-when-there-is-nowhere-to-send-them
+
+  # --- Labels, child seeds and the xpub export --------------------------------
+  - id: INV-UI-48
+    statement: >
+      A partial label import is reported as partial with the reason for every
+      dropped line, the sentence saying a label decides nothing comes from the
+      daemon rather than the screen, and a file where nothing was read cannot
+      be written back out.
+    tests:
+      - packages/ui/test/labels-screen.test.tsx::says-how-many-lines-were-dropped-and-why
+      - packages/ui/test/labels-screen.test.tsx::shows-the-daemons-own-words-about-what-a-label-does-not-do
+      - packages/ui/test/labels-screen.test.tsx::will-not-export-when-nothing-was-read
+      - packages/ui/test/labels-screen.test.tsx::reports-a-refused-file-rather-than-showing-an-empty-import
+
+  # BIP-85 is the second screen on this device that displays key material.
+  - id: INV-UI-49
+    statement: >
+      A derived child seed is shown with the path that produced it, says beside
+      the words themselves that anyone holding the parent mnemonic can derive
+      it, names rolling dice as the alternative, and states that nothing was
+      written to the device.
+    tests:
+      - packages/ui/test/child-seed-screen.test.tsx::shows-the-path-beside-the-words
+      - packages/ui/test/child-seed-screen.test.tsx::says-the-child-is-still-controlled-by-the-parent-seed
+      - packages/ui/test/child-seed-screen.test.tsx::says-nothing-was-written-to-the-device
+
+  - id: INV-UI-50
+    statement: >
+      Each BIP-85 application sends its size under the one name the standard
+      gives it, and switching application resets to a size that application
+      allows rather than carrying over one it refuses.
+    tests:
+      - packages/ui/test/child-seed-screen.test.tsx::sends-a-size-each-application-allows
+      - packages/ui/test/child-seed-screen.test.tsx::derives-a-different-child-per-index
+      - packages/ui/test/child-seed-screen.test.tsx::reports-a-refusal-rather-than-showing-an-empty-child
+
+  - id: INV-UI-51
+    statement: >
+      The xpub export is secondary to the descriptor, is shown with its origin
+      and with what an xpub cannot say about itself, and never survives a change
+      of script type.
+    tests:
+      - packages/ui/test/wallet-screen.test.tsx::shows-the-origin-and-says-what-an-xpub-leaves-out
+      - packages/ui/test/wallet-screen.test.tsx::drops-the-xpub-when-the-script-type-changes
+      - packages/ui/test/wallet-screen.test.tsx::is-absent-rather-than-dead-when-there-is-nowhere-to-get-one
+
+  # --- The panel is fixed hardware --------------------------------------------
+  # Held here as well as by tools/check-screen-fit.mjs, which measures the real
+  # layout in a browser. These tests hold the half jsdom can see.
+  - id: INV-UI-52
+    statement: >
+      Every destination leaving the wallet screen is reachable and says what it
+      does rather than carrying a one-word label, a destination with no handler
+      leaves no control behind, and the action bar holds only the way out, the
+      primary action, and the current tab's paging.
+    tests:
+      - packages/ui/test/wallet-screen.test.tsx::reaches-every-destination-from-the-more-tab
+      - packages/ui/test/wallet-screen.test.tsx::leaves-out-a-destination-with-nowhere-to-go
+      - packages/ui/test/wallet-screen.test.tsx::keeps-the-action-bar-to-the-way-out-and-the-primary-action
 
 threats:
   - INV-KEY-1

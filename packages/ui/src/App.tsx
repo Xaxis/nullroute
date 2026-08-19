@@ -26,6 +26,12 @@ import { PsbtScreen, type PsbtReviewView } from './screens/PsbtScreen.js'
 import { ScanScreen, type ScanResult } from './screens/ScanScreen.js'
 import { WalletsScreen, type WalletRow } from './screens/WalletsScreen.js'
 import { ManageWalletScreen } from './screens/ManageWalletScreen.js'
+import { LabelsScreen, type ImportedLabels, type LabelRow } from './screens/LabelsScreen.js'
+import {
+  ChildSeedScreen,
+  type ChildApplication,
+  type ChildSeedView,
+} from './screens/ChildSeedScreen.js'
 import {
   QuorumAddressesScreen,
   type QuorumAddressRow,
@@ -102,6 +108,10 @@ type Stage =
   | { readonly at: 'message' }
   /** Writing or restoring an encrypted backup. */
   | { readonly at: 'backup' }
+  /** Reading and writing BIP-329 labels. */
+  | { readonly at: 'labels' }
+  /** Deriving a BIP-85 child seed. */
+  | { readonly at: 'child' }
   /** Choosing which of several wallets to open. */
   | { readonly at: 'wallets' }
   /** Naming, recolouring or erasing the wallet that is open. */
@@ -579,6 +589,19 @@ export function App() {
           onBackup={() => {
             setStage({ at: 'backup' })
           }}
+          onLabels={() => {
+            setStage({ at: 'labels' })
+          }}
+          onChildSeed={() => {
+            setStage({ at: 'child' })
+          }}
+          onXpub={async (scriptType: ScriptType) =>
+            call<{ xpub: string; path: string; masterFingerprint: string }>(
+              transport,
+              'wallet.xpub',
+              { scriptType }
+            )
+          }
           {...(activeWallet === null
             ? {}
             : {
@@ -823,6 +846,49 @@ export function App() {
           await refresh()
           setStage({ at: 'wallets' })
         }}
+        onBack={() => {
+          setStage({ at: 'wallet' })
+        }}
+      />
+    )
+  }
+
+  if (stage.at === 'labels') {
+    return (
+      <LabelsScreen
+        banner={banner}
+        onImport={async (text: string) =>
+          call<ImportedLabels>(transport, 'labels.import', { text })
+        }
+        onExport={async (labels: readonly LabelRow[]) =>
+          call<{ text: string }>(transport, 'labels.export', { labels })
+        }
+        onBack={() => {
+          setStage({ at: 'wallet' })
+        }}
+      />
+    )
+  }
+
+  if (stage.at === 'child') {
+    return (
+      <ChildSeedScreen
+        banner={banner}
+        onDerive={async (application: ChildApplication, index: number, size: number) =>
+          call<ChildSeedView>(transport, 'bip85.derive', {
+            application,
+            index,
+            // One name on this screen, three names in the standard. Sending
+            // all three would have the daemon read whichever it wants and
+            // ignore the rest, which is how a screen and a device end up
+            // disagreeing about what was derived.
+            ...(application === 'mnemonic'
+              ? { wordCount: size }
+              : application === 'hex'
+                ? { bytes: size }
+                : { length: size }),
+          })
+        }
         onBack={() => {
           setStage({ at: 'wallet' })
         }}
