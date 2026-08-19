@@ -51,6 +51,7 @@ covers:
   - packages/ui/src/screens/ChildSeedScreen.tsx::ChildSeedScreen
   - packages/ui/src/screens/StartScreen.tsx::StartScreen
   - packages/ui/src/screens/AttestationScreen.tsx::AttestationScreen
+  - packages/ui/src/screens/MachineEntropyScreen.tsx::MachineEntropyScreen
   - packages/ui/src/screens/FinishScreen.tsx::FinishScreen
   - packages/ui/src/screens/ReceiveScreen.tsx::ReceiveScreen
   - packages/ui/src/screens/ReceiveScreen.tsx::chunkAddress
@@ -819,6 +820,38 @@ invariants:
       - packages/ui/test/app.test.tsx::reaches-the-camera-from-a-screen-that-takes-a-file
       - packages/ui/test/app.test.tsx::returns-to-the-screen-that-opened-the-camera
       - packages/ui/test/app.test.tsx::offers-the-camera-on-the-multisig-descriptor-field
+
+  # --- Entropy the user did not observe ----------------------------------------
+  - id: INV-UI-74
+    statement: >
+      A machine-only seed requires an explicit acknowledgement naming what is
+      given up, and the screen leads with the fact that a correct generator and
+      a backdoored one are indistinguishable from outside.
+    tests:
+      - packages/ui/test/machine-entropy-screen.test.tsx::will-not-generate-until-the-user-says-what-they-are-giving-up
+      - packages/ui/test/machine-entropy-screen.test.tsx::says-what-is-lost-rather-than-that-the-device-is-trustworthy
+      - packages/ui/test/machine-entropy-screen.test.tsx::reports-a-refusal-from-the-daemon
+
+  - id: INV-UI-75
+    statement: >
+      The entropy health report is bounded beside the report itself, and a
+      source that failed or could not be checked blocks generation rather than
+      being presented as a caveat.
+    tests:
+      - packages/ui/test/machine-entropy-screen.test.tsx::bounds-what-the-health-checks-mean
+      - packages/ui/test/machine-entropy-screen.test.tsx::refuses-when-a-source-could-not-be-checked
+      - packages/ui/test/machine-entropy-screen.test.tsx::refuses-and-points-at-dice-when-a-source-has-failed
+
+  - id: INV-UI-76
+    statement: >
+      Dice can be rolled by the device one at a time or in bulk, and the screen
+      counts how many rolls it produced and says the user did not watch those
+      land.
+    tests:
+      - packages/ui/test/dice-screen.test.tsx::rolls-one-and-rolls-the-rest
+      - packages/ui/test/dice-screen.test.tsx::says-how-many-of-the-rolls-it-chose-itself
+      - packages/ui/test/dice-screen.test.tsx::says-nothing-when-every-roll-was-entered-by-hand
+      - packages/ui/test/dice-screen.test.tsx::offers-nothing-when-there-is-no-generator-to-ask
 
 threats:
   - INV-KEY-1

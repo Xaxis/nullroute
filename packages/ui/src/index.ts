@@ -10,6 +10,13 @@
  * because entropy collection happens in the daemon or it does not happen.
  */
 
+export { MachineEntropyScreen } from './screens/MachineEntropyScreen.js'
+export type {
+  MachineEntropyScreenProps,
+  HealthReportView,
+  HealthCheckView,
+} from './screens/MachineEntropyScreen.js'
+
 export { AttestationScreen } from './screens/AttestationScreen.js'
 export type { AttestationScreenProps } from './screens/AttestationScreen.js'
 

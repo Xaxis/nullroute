@@ -95,6 +95,9 @@ when somebody asks you to prove the thing in your hand is the thing you built.
 
 ## Making a wallet
 
+There are three ways to get a seed, and they are not equivalent. The setup
+screen says which is which.
+
 ### Dice
 
 100 rolls of a six-sided die, one at a time. Not 99: 99 rolls is 255.911 bits,
@@ -109,6 +112,27 @@ would be the black box this project exists to avoid.
 
 The exact encoding is published in [ENTROPY.md](ENTROPY.md) with a worked
 example you can reproduce with `sha256sum` on any machine.
+
+**The device will roll for you** if you ask, one at a time or the rest in one
+go, using its own generator with the bias removed. The arithmetic afterwards is
+still checkable and the rolls are not, because you did not watch them land. The
+screen counts how many it produced and says so. Rolling by hand is the only
+version of this that does not require trusting the device.
+
+### Letting the device choose
+
+No dice at all. This is what every other hardware wallet does by default, and it
+is the mode whose failure prompted this project: not broken, but unverifiable. A
+correct generator and a backdoored one look identical from outside, because both
+hand you 24 words.
+
+The device checks that its generator is present, is not returning a constant,
+and that the kernel pool is seeded. Those checks catch a broken generator. They
+say nothing about a predictable one, and the screen says so rather than letting
+three green ticks imply otherwise.
+
+It will not generate anything until you tick that you understand the result
+cannot be reproduced or checked by hand.
 
 ### Writing the words down
 

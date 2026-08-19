@@ -46,6 +46,17 @@ export interface DiceScreenProps {
     warnings: readonly PatternWarning[]
   }>
   readonly onComplete: (rolls: string, mixMachine: boolean) => void
+  /**
+   * Ask the device to roll for you.
+   *
+   * Optional, and never the default. Rolling 100 dice by hand is ten minutes,
+   * and somebody who will not spend it is better served by a device that offers
+   * this and says what it costs than by one that pretends the option does not
+   * exist. What it costs: you did not watch these land, so the roll string is
+   * as trustworthy as the device, which is the thing dice exist to avoid
+   * trusting.
+   */
+  readonly onRollForMe?: (count: number) => Promise<{ rolls: string }>
   readonly onCancel: () => void
   /** Where this screen sits in a journey, when it is part of one. */
   readonly steps?: ReactElement | null
@@ -57,7 +68,7 @@ export interface DiceScreenProps {
 const FACES = ['1', '2', '3', '4', '5', '6'] as const
 
 export function DiceScreen(props: DiceScreenProps): ReactElement {
-  const { onAccount, onComplete, onCancel, steps, onHome, banner } = props
+  const { onAccount, onComplete, onCancel, onRollForMe, steps, onHome, banner } = props
 
   const [rolls, setRolls] = useState('')
   const [accounting, setAccounting] = useState<Accounting | null>(null)
@@ -88,7 +99,12 @@ export function DiceScreen(props: DiceScreenProps): ReactElement {
 
   const undo = useCallback(() => {
     setRolls((current) => current.slice(0, -1))
-  }, [])
+    // Device rolls are appended in a block, so the last character removed is a
+    // device roll exactly when every remaining roll past the hand-entered ones
+    // came from the device. Clamped rather than allowed to go negative, which
+    // would understate how much of the string the device chose.
+    setFromDevice((current) => Math.max(0, Math.min(current, rolls.length - 1)))
+  }, [rolls])
 
   // A physical keypad or a numeric keyboard should work as well as the buttons.
   useEffect(() => {
@@ -101,6 +117,23 @@ export function DiceScreen(props: DiceScreenProps): ReactElement {
       window.removeEventListener('keydown', onKey)
     }
   }, [push, undo])
+
+  /**
+   * How many of the rolls on screen came from the device.
+   *
+   * Counted rather than inferred from a flag, because the two can be mixed: a
+   * user who rolls sixty by hand and asks the device for the rest has a string
+   * that is neither one thing nor the other, and the screen has to be able to
+   * say so.
+   */
+  const [fromDevice, setFromDevice] = useState(0)
+
+  const rollForMe = async (count: number): Promise<void> => {
+    if (onRollForMe === undefined) return
+    const result = await onRollForMe(count)
+    setRolls((current) => current + result.rolls)
+    setFromDevice((current) => current + result.rolls.length)
+  }
 
   const bits = accounting?.bits ?? 0
   const target = accounting?.targetBits ?? 256
@@ -161,6 +194,48 @@ export function DiceScreen(props: DiceScreenProps): ReactElement {
         </div>
 
         <div className="nr-dice__side">
+          {onRollForMe !== undefined && (
+            <div className="nr-card nr-card--tight" data-testid="dice-device">
+              <span className="nr-label">Or let the device roll</span>
+              <div className="nr-row">
+                <Button
+                  onClick={() => {
+                    void rollForMe(1)
+                  }}
+                  testId="dice-roll-one"
+                >
+                  Roll one
+                </Button>
+                <Button
+                  disabled={sufficient}
+                  onClick={() => {
+                    void rollForMe(Math.max(1, accounting?.rollsRemaining ?? 100))
+                  }}
+                  testId="dice-roll-rest"
+                >
+                  Roll the rest
+                </Button>
+              </div>
+              <p className="nr-hint">
+                Unbiased: the device discards draws that would favour some faces over others.
+              </p>
+            </div>
+          )}
+
+          {fromDevice > 0 && (
+            <div className="nr-banner nr-banner--testnet" data-testid="dice-device-warning">
+              <strong>
+                {fromDevice} of {rolls.length} rolls came from the device
+              </strong>
+              <span>
+                You did not watch those land. The arithmetic below is still checkable, and the
+                rolls themselves are not: a device that wanted to hand you a seed it had chosen
+                would do it exactly here, and you could not tell. Rolling by hand is the only
+                version of this that does not require trusting the device.
+              </span>
+            </div>
+          )}
+
           <div className="nr-card nr-card--tight">
             <div className="nr-row">
               <span className="nr-label">Entropy</span>

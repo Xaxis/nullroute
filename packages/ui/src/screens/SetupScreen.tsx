@@ -17,7 +17,7 @@ import { Choice } from '../components/Choice.js'
  * equivalent options. Mode C is available and is described as what it is.
  */
 
-export type EntropyMode = 'dice' | 'import'
+export type EntropyMode = 'dice' | 'machine' | 'import'
 export type NetworkChoice = 'mainnet' | 'testnet4' | 'signet' | 'regtest'
 
 export interface SetupScreenProps {
@@ -75,7 +75,11 @@ export function SetupScreen(props: SetupScreenProps): ReactElement {
             }}
             testId="setup-start"
           >
-            {mode === 'dice' ? 'Roll the dice' : 'Enter a mnemonic'}
+            {mode === 'dice'
+              ? 'Roll the dice'
+              : mode === 'machine'
+                ? 'Let the device choose'
+                : 'Enter a mnemonic'}
           </Button>
         </>
       }
@@ -115,6 +119,20 @@ export function SetupScreen(props: SetupScreenProps): ReactElement {
         testId="mode-dice"
       />
 
+      {/* Offered, and never level with the dice. The tag and the description
+          say what is being given up rather than leaving the two looking like a
+          preference. */}
+      <Choice
+        title="Let the device choose"
+        description="A seed from this device's random number generator, with no dice. This is what every other hardware wallet does by default. Nothing about the result can be checked by hand: you are trusting the hardware, the kernel and this code."
+        tag={{ text: 'cannot be verified', tone: 'warn' }}
+        selected={mode === 'machine'}
+        onSelect={() => {
+          setMode('machine')
+        }}
+        testId="mode-machine"
+      />
+
       <Choice
         title="Import an existing mnemonic"
         description="Recover a wallet, or bring in a seed generated elsewhere. The checksum is validated and the fingerprint is shown so you can confirm it is the wallet you meant."
@@ -125,14 +143,17 @@ export function SetupScreen(props: SetupScreenProps): ReactElement {
         testId="mode-import"
       />
 
-      <div className="nr-banner nr-banner--info">
-        <strong>Note</strong>
-        <span>
-          A machine-only mode exists in the design and is deliberately not offered here yet. It is
-          the mode every other device uses by default, and it is the one this project exists to
-          avoid: not broken, but unverifiable. You cannot check a number a black box handed you.
-        </span>
-      </div>
+      {mode === 'machine' && (
+        <div className="nr-banner nr-banner--danger" data-testid="setup-machine-warning">
+          <strong>You will not be able to check this seed</strong>
+          <span>
+            The dice path can be reproduced with a die and any machine that has sha256sum, which
+            is the property that makes this device worth using over a black box. This path has
+            none of it. The device will still check that its generator is present and not stuck,
+            and that is a much weaker claim than being able to redo the arithmetic yourself.
+          </span>
+        </div>
+      )}
     </Screen>
   )
 }

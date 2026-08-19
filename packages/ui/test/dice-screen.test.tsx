@@ -128,3 +128,115 @@ describe('ui.screens.dice', () => {
     })
   })
 })
+
+/**
+ * Letting the device roll for you.
+ *
+ * Rolling 100 dice by hand is ten minutes, and somebody who will not spend it
+ * is better served by a device that offers this and says what it costs than by
+ * one that pretends the option does not exist.
+ *
+ * What it costs is the whole point: you did not watch these land. The
+ * arithmetic downstream stays checkable, and the roll string itself is as
+ * trustworthy as the device, which is the thing dice exist to avoid trusting. A
+ * device that wanted to hand you a seed it had chosen would do it exactly here.
+ */
+describe('ui.screens.dice rolling for you', () => {
+  function withDevice(rolls = '4') {
+    const onRollForMe = vi.fn(async (count: number) =>
+      Promise.resolve({ rolls: rolls.repeat(count).slice(0, count) })
+    )
+    render(
+      <DiceScreen
+        onAccount={vi.fn(async (entered: string) =>
+          Promise.resolve({
+            accounting: {
+              rolls: entered.length,
+              bits: entered.length * 2,
+              targetBits: 256,
+              sufficient: entered.length >= 100,
+              rollsRemaining: Math.max(0, 100 - entered.length),
+            },
+            warnings: [],
+          })
+        )}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+        onRollForMe={onRollForMe}
+      />
+    )
+    return onRollForMe
+  }
+
+  /**
+   * INV-UI-76. One roll at a time, and the rest in one go, both from the
+   * device's generator rather than anything in the browser.
+   */
+  it('rolls-one-and-rolls-the-rest', async () => {
+    const onRollForMe = withDevice()
+
+    fireEvent.click(screen.getByTestId('dice-roll-one'))
+    await waitFor(() => {
+      expect(onRollForMe).toHaveBeenCalledWith(1)
+    })
+    await waitFor(() => {
+      expect(screen.getByTestId('dice-rolls').textContent).toBe('4')
+    })
+
+    fireEvent.click(screen.getByTestId('dice-roll-rest'))
+    await waitFor(() => {
+      expect(onRollForMe).toHaveBeenCalledWith(99)
+    })
+  })
+
+  /**
+   * INV-UI-76. The screen counts how many rolls it chose and says so, because a
+   * string that is part hand-rolled and part device-rolled is neither, and only
+   * the count makes that legible.
+   */
+  it('says-how-many-of-the-rolls-it-chose-itself', async () => {
+    withDevice()
+
+    // Two by hand first.
+    fireEvent.click(screen.getByTestId('die-1'))
+    fireEvent.click(screen.getByTestId('die-6'))
+    expect(screen.queryByTestId('dice-device-warning')).toBeNull()
+
+    fireEvent.click(screen.getByTestId('dice-roll-one'))
+    await waitFor(() => {
+      expect(screen.getByTestId('dice-device-warning')).toBeTruthy()
+    })
+
+    const said = screen.getByTestId('dice-device-warning').textContent
+    expect(said).toContain('1 of 3 rolls came from the device')
+    expect(said).toContain('did not watch those land')
+    expect(said).toContain('Rolling by hand is the only version')
+  })
+
+  it('says-nothing-when-every-roll-was-entered-by-hand', () => {
+    withDevice()
+    fireEvent.click(screen.getByTestId('die-3'))
+    expect(screen.queryByTestId('dice-device-warning')).toBeNull()
+  })
+
+  /**
+   * A device that does not offer this at all renders no control for it, rather
+   * than a disabled one that reads as a feature somebody forgot to finish.
+   */
+  it('offers-nothing-when-there-is-no-generator-to-ask', () => {
+    render(
+      <DiceScreen
+        onAccount={vi.fn(async () =>
+          Promise.resolve({
+            accounting: { rolls: 0, bits: 0, targetBits: 256, sufficient: false, rollsRemaining: 100 },
+            warnings: [],
+          })
+        )}
+        onComplete={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    )
+    expect(screen.queryByTestId('dice-device')).toBeNull()
+    expect(screen.queryByTestId('dice-roll-one')).toBeNull()
+  })
+})

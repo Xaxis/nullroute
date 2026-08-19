@@ -28,6 +28,10 @@ import { WalletsScreen, type WalletRow } from './screens/WalletsScreen.js'
 import { ManageWalletScreen } from './screens/ManageWalletScreen.js'
 import { StartScreen } from './screens/StartScreen.js'
 import { AttestationScreen } from './screens/AttestationScreen.js'
+import {
+  MachineEntropyScreen,
+  type HealthReportView,
+} from './screens/MachineEntropyScreen.js'
 import { FinishScreen } from './screens/FinishScreen.js'
 import { ReceiveScreen, type ReceiveAddress } from './screens/ReceiveScreen.js'
 import { Steps } from './components/Steps.js'
@@ -89,6 +93,8 @@ type Stage =
   | { readonly at: 'lock' }
   | { readonly at: 'setup' }
   | { readonly at: 'dice' }
+  /** Letting the device pick the seed, with what that costs on screen. */
+  | { readonly at: 'machine' }
   | { readonly at: 'import' }
   | { readonly at: 'seed'; readonly words: readonly string[]; readonly fingerprint: string }
   | { readonly at: 'wallet' }
@@ -666,7 +672,13 @@ export function App() {
             await call(transport, 'network.set', { id: network })
             await refresh()
             advance('setup')
-            setStage(mode === 'dice' ? { at: 'dice' } : { at: 'import' })
+            setStage(
+              mode === 'dice'
+                ? { at: 'dice' }
+                : mode === 'machine'
+                  ? { at: 'machine' }
+                  : { at: 'import' }
+            )
           }
           void go()
         }}
@@ -681,6 +693,9 @@ export function App() {
         onHome={goHome}
         steps={stepsFor('dice')}
         onAccount={account}
+        onRollForMe={async (count: number) =>
+          call<{ rolls: string }>(transport, 'entropy.rollDice', { count })
+        }
         onCancel={() => {
           setStage({ at: 'setup' })
         }}
@@ -695,6 +710,29 @@ export function App() {
             setStage({ at: 'seed', words: revealed.words, fingerprint: revealed.fingerprint })
           }
           void go()
+        }}
+      />
+    )
+  }
+
+  if (stage.at === 'machine') {
+    return (
+      <MachineEntropyScreen
+        banner={banner}
+        onHome={goHome}
+        steps={stepsFor('dice')}
+        onHealth={async () => call<HealthReportView>(transport, 'entropy.health')}
+        onGenerate={async (acknowledged: boolean) => {
+          await call(transport, 'entropy.fromMachine', { acknowledged })
+          const revealed = await call<{ words: string[]; fingerprint: string }>(
+            transport,
+            'seed.reveal'
+          )
+          advance('dice')
+          setStage({ at: 'seed', words: revealed.words, fingerprint: revealed.fingerprint })
+        }}
+        onBack={() => {
+          setStage({ at: 'setup' })
         }}
       />
     )

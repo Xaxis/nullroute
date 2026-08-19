@@ -37,6 +37,7 @@ import {
   MultisigScreen,
   StartScreen,
   AttestationScreen,
+  MachineEntropyScreen,
   FinishScreen,
   ReceiveScreen,
   PassphraseScreen,
@@ -220,7 +221,34 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     />
   ),
   setup: () => <SetupScreen onHome={noop} onStart={noop} />,
-  dice: () => <DiceScreen onHome={noop} onAccount={never} onComplete={noop} onCancel={noop} />,
+  dice: () => (
+    <DiceScreen
+      onHome={noop}
+      onAccount={never}
+      onComplete={noop}
+      onCancel={noop}
+      onRollForMe={async (count: number) => Promise.resolve({ rolls: '4'.repeat(count) })}
+    />
+  ),
+  // Off a real device, which is the state that must refuse rather than pass.
+  machine: () => (
+    <MachineEntropyScreen
+      onHome={noop}
+      onHealth={async () =>
+        Promise.resolve({
+          healthy: false,
+          unknown: true,
+          checks: [
+            { name: 'kernel-pool', verdict: 'unknown' as const, detail: 'not a Linux path here' },
+            { name: 'hardware-rng', verdict: 'unknown' as const, detail: 'no /dev/hwrng here' },
+            { name: 'boot-age', verdict: 'unknown' as const, detail: 'uptime is not readable' },
+          ],
+        })
+      }
+      onGenerate={never}
+      onBack={noop}
+    />
+  ),
   import: () => <ImportScreen onHome={noop} onImport={never} onCancel={noop} />,
   seed: () => (
     <SeedScreen words={MNEMONIC.split(' ')} fingerprint="73c5da0a" onConfirm={noop} />

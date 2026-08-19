@@ -66,3 +66,11 @@ export type {
   WalletColour,
   OpenedWallet,
 } from './store/registry.js'
+
+export {
+  checkEntropyHealth,
+  LINUX_SOURCES,
+  MIN_ENTROPY_AVAIL,
+  EARLY_BOOT_SECONDS,
+} from './entropy/health.js'
+export type { HealthReport, HealthCheck, HealthSources, Verdict } from './entropy/health.js'

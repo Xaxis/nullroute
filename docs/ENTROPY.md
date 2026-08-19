@@ -34,13 +34,23 @@ confirm that the seed on screen is the seed the inputs imply?
 
 | Mode | Sources | Hand-reproducible | Recommended |
 | --- | --- | --- | --- |
-| A | Dice only | Yes | **Yes, this is the default** |
+| A | Dice only, rolled by you | Yes | **Yes, this is the default** |
+| A' | Dice, rolled by the device | The arithmetic yes, the rolls no | Only if you will not roll |
 | B | Dice plus machine sources | Only if you record every source | Acceptable |
-| C | Machine only | No | Discouraged, warned in the UI |
+| C | Machine only | No | Discouraged, refused unless acknowledged |
 | D | Import an existing BIP-39 mnemonic | Not applicable | For recovery |
 
 Mode A is the only mode where the device can be caught lying with a pocket
 calculator and a laptop. It is the default for that reason.
+
+**Mode A' is not Mode A.** The device will roll for you, one at a time or the
+rest in one go, and the digit string it produces hashes exactly as a hand-rolled
+one does, so everything downstream stays checkable. What is not checkable is the
+string itself: you did not watch those dice land. A device that wanted to hand
+you a seed it had already chosen would do it precisely there, and you could not
+tell. It exists because rolling 100 dice takes ten minutes and somebody who will
+not spend it is better served by an honest option than by picking whichever mode
+is quickest. The screen counts how many rolls came from the device and says so.
 
 ---
 
@@ -247,7 +257,8 @@ caller's job, which is why the health gates below exist.
 
 ### Machine source health gates
 
-Before any machine source is used, the daemon:
+Before any machine source is used, the daemon runs
+`checkEntropyHealth` (`packages/daemon/src/entropy/health.ts`), which:
 
 - reads `/proc/sys/kernel/random/entropy_avail` and refuses if the pool is
   clearly not initialised
@@ -257,6 +268,19 @@ Before any machine source is used, the daemon:
   RNG typically returns
 - refuses machine-source modes within 60 seconds of boot if `/dev/hwrng` is
   unavailable, because early boot is exactly when the kernel pool is weakest
+
+Every one of those paths is Linux-only. Where a path is absent the check reports
+**unknown**, and unknown never counts as healthy: a gate that passed because it
+could not find its own evidence would be worse than no gate. That is why a
+machine-only seed cannot be generated on a development machine at all.
+
+**What the gates do not do.** They catch a stuck generator, an unseeded pool and
+a device generating a seed in its first minute of boot. They say nothing about
+the quality of the numbers. A generator producing well-formed but predictable
+output passes all three, and that is exactly the attack rolling dice makes
+impossible. The screen says this beside the results, because three green ticks
+otherwise read as "the device checked its randomness", which is not what
+happened.
 
 Mode B remains auditable, but only if you record everything. The device offers
 to display every source value so you can save them and reproduce the derivation
@@ -268,7 +292,7 @@ worth using.
 
 ## Mode C: machine only
 
-Available, and warned about every time.
+Available, and refused unless you say what you are giving up.
 
 This is the mode every other hardware wallet uses by default, and it is the mode
 whose failure prompted this project. It is not inherently broken. It is
@@ -276,8 +300,20 @@ unverifiable, which is different and, for this project, worse.
 
 If you use Mode C you are trusting the Pi's hardware RNG, the kernel CSPRNG, and
 nullroute's own code to have combined them honestly. You have no way to check
-any of it. The UI says exactly that, in those terms, and requires a second
-confirmation.
+any of it. The screen says exactly that, and the daemon refuses to generate
+anything unless the request carries an explicit acknowledgement, so the mode
+cannot be reached by tapping through.
+
+The health gates below run first. All of them must pass.
+
+### An honest note about how long this was fiction
+
+Everything in the two sections above, the gates and the confirmation, was
+written here in the present tense long before any of it was built. A reader
+deciding between rolling dice and letting the device choose was told the second
+path was gated when it was not. That is the overclaim this project calls a
+security bug rather than a documentation chore, and it is recorded rather than
+quietly corrected because the same failure is easy to repeat.
 
 ---
 

@@ -1,0 +1,83 @@
+id: daemon.entropy.health
+version: 1
+title: Machine entropy source health
+assurance_tier: critical
+status: implemented
+purpose: >
+  Decide whether this device's machine entropy sources are sound enough to
+  generate a seed from them alone. docs/ENTROPY.md has described these gates in
+  the present tense since it was written, and none of them existed: a reader
+  choosing between the dice path and a machine path was told the machine path
+  was gated when it was not.
+
+covers:
+  - packages/daemon/src/entropy/health.ts::checkEntropyHealth
+  - packages/daemon/src/entropy/health.ts::LINUX_SOURCES
+  - packages/daemon/src/entropy/health.ts::MIN_ENTROPY_AVAIL
+  - packages/daemon/src/entropy/health.ts::EARLY_BOOT_SECONDS
+
+invariants:
+  - id: INV-ENTHEALTH-1
+    statement: >
+      A source that could not be observed reports unknown and is never counted
+      as healthy, because a gate that passes for want of evidence is worse than
+      no gate.
+    tests:
+      - packages/daemon/test/entropy-health.test.ts::reports-unknown-rather-than-healthy-when-it-cannot-look
+      - packages/daemon/test/entropy-health.test.ts::never-calls-an-unknown-source-healthy
+
+  - id: INV-ENTHEALTH-2
+    statement: >
+      A hardware RNG returning two identical reads, or an all-zero read, is
+      refused. Those are what a stuck and an absent generator return, and a
+      constant passes every test applied to a single sample.
+    tests:
+      - packages/daemon/test/entropy-health.test.ts::refuses-a-stuck-generator
+      - packages/daemon/test/entropy-health.test.ts::refuses-an-all-zero-read
+      - packages/daemon/test/entropy-health.test.ts::accepts-two-different-non-zero-reads
+
+  - id: INV-ENTHEALTH-3
+    statement: >
+      An unseeded kernel pool is refused, and a machine-only seed is refused in
+      early boot when there is no hardware RNG to fall back on.
+    tests:
+      - packages/daemon/test/entropy-health.test.ts::refuses-an-unseeded-kernel-pool
+      - packages/daemon/test/entropy-health.test.ts::refuses-early-boot-without-a-hardware-rng
+      - packages/daemon/test/entropy-health.test.ts::allows-early-boot-when-a-hardware-rng-is-present
+
+algorithm: >
+  Three checks, each reading a fact rather than inferring one. The kernel pool:
+  read /proc/sys/kernel/random/entropy_avail and refuse below 128, which is a
+  floor for an implausibly low reading rather than a tuned threshold, since a
+  modern kernel blocks until initialised and then reports a large number. The
+  hardware RNG: open /dev/hwrng and read two consecutive 32-byte blocks,
+  refusing if they are equal or if either is all zero. Boot age: read
+  /proc/uptime and refuse a machine-only seed within 60 seconds of boot unless
+  the hardware RNG passed, because a headless device with no keyboard, mouse or
+  network has almost nothing feeding the pool in its first minute.
+
+  Every path is Linux-only. Where a path is absent the check returns `unknown`,
+  which never satisfies `healthy`.
+
+security_notes: >
+  The two-read comparison is the only part that catches a failure a single
+  sample cannot show. A stuck hardware RNG returns a constant, and a constant
+  passes every statistical test applied to one 32-byte block.
+
+  These gates say nothing about the QUALITY of the entropy, only that the
+  sources are present and not obviously broken. A backdoored generator producing
+  well-formed, predictable output passes all three. That is not a limitation to
+  be engineered away: it is the reason the dice path exists and is the default,
+  and it is why a machine-only seed additionally requires the user to
+  acknowledge that nothing about the result can be checked by hand.
+
+  Reporting `unknown` rather than healthy is load-bearing. This code runs during
+  development on machines where none of these paths exist, and a gate that
+  passed for want of evidence would be indistinguishable, to a caller, from a
+  gate that observed a healthy device.
+
+references:
+  - docs/ENTROPY.md
+
+threats:
+  - INV-ENT-1

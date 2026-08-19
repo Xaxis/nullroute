@@ -1,0 +1,203 @@
+import { type ReactElement, useCallback, useEffect, useState } from 'react'
+import { Screen } from '../components/Screen.js'
+import { Button } from '../components/Button.js'
+
+/**
+ * Letting the device choose the seed, and being honest about what that costs.
+ *
+ * Spec: ui.screens.machine-entropy
+ *
+ * This is the mode every other hardware wallet uses by default, and it is the
+ * mode whose failure prompted this project. It is not broken. It is
+ * UNVERIFIABLE, which is different and here worse: a correct generator and a
+ * backdoored one look identical from outside, because both hand you 24 words.
+ *
+ * So the screen does two things. It shows what the device could and could not
+ * check about its own generator, which is a real but weak claim, and it makes
+ * the user say out loud that they understand the result cannot be reproduced by
+ * hand. The daemon refuses without that acknowledgement, so this cannot be
+ * reached by tapping through.
+ *
+ * THE HEALTH REPORT IS NOT REASSURANCE. It catches a stuck generator, an
+ * unseeded pool and a device generating a seed in its first minute of boot. It
+ * cannot catch a generator that produces well-formed, predictable output, which
+ * is the attack the dice path exists to make impossible. The screen says that
+ * rather than letting three green ticks imply otherwise.
+ */
+
+export interface HealthCheckView {
+  readonly name: string
+  readonly verdict: 'ok' | 'failed' | 'unknown'
+  readonly detail: string
+}
+
+export interface HealthReportView {
+  readonly healthy: boolean
+  readonly unknown: boolean
+  readonly checks: readonly HealthCheckView[]
+}
+
+export interface MachineEntropyScreenProps {
+  readonly onHealth: () => Promise<HealthReportView>
+  /** Generates the seed. Refused by the daemon unless acknowledged is true. */
+  readonly onGenerate: (acknowledged: boolean) => Promise<void>
+  readonly onBack: () => void
+  readonly steps?: ReactElement | null
+  readonly onHome?: (() => void) | undefined
+  readonly banner?: ReactElement | null
+}
+
+export function MachineEntropyScreen(props: MachineEntropyScreenProps): ReactElement {
+  const { onHealth, onGenerate, onBack, steps, onHome, banner } = props
+
+  const [health, setHealth] = useState<HealthReportView | null>(null)
+  const [acknowledged, setAcknowledged] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async (): Promise<void> => {
+    setError(null)
+    try {
+      setHealth(await onHealth())
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }, [onHealth])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  return (
+    <Screen
+      title="Let the device choose"
+      subtitle="No dice. Nothing here can be checked by hand."
+      banner={banner}
+      steps={steps}
+      onHome={onHome}
+      testId="machine-entropy"
+      actions={
+        <>
+          <Button onClick={onBack} testId="machine-back">
+            Back
+          </Button>
+          <div className="nr-spacer" />
+          <Button
+            variant="danger"
+            disabled={!acknowledged || busy || health?.healthy !== true}
+            onClick={() => {
+              void (async () => {
+                setBusy(true)
+                setError(null)
+                try {
+                  await onGenerate(true)
+                } catch (err) {
+                  setError((err as Error).message)
+                } finally {
+                  setBusy(false)
+                }
+              })()
+            }}
+            testId="machine-generate"
+          >
+            {busy ? 'Generating' : 'Generate the seed'}
+          </Button>
+        </>
+      }
+    >
+      {/* First, and not behind a disclosure. Somebody arrives here having tapped
+          past one warning already, and this is the last screen before a seed
+          exists that nobody can audit. */}
+      <div className="nr-banner nr-banner--danger" data-testid="machine-warning">
+        <strong>A seed you cannot check</strong>
+        <span>
+          The dice path can be reproduced with a die and any machine that has sha256sum. That is
+          the property this device exists to give you, and this path has none of it. A correct
+          generator and a backdoored one look identical from out here: both hand you 24 words.
+        </span>
+      </div>
+
+      {health !== null && (
+        <>
+          <table className="nr-table nr-table--dense" data-testid="machine-health">
+            <thead>
+              <tr>
+                <th>Source</th>
+                <th>Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              {health.checks.map((check) => (
+                <tr key={check.name}>
+                  <td className="nr-mono">{check.name}</td>
+                  <td>
+                    <span
+                      className={`nr-status ${
+                        check.verdict === 'ok' ? 'nr-status--ok' : 'nr-status--fail'
+                      }`}
+                    >
+                      {check.verdict}
+                    </span>
+                    <div className="nr-hint">{check.detail}</div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* The limit of what those rows mean, next to the rows. Three green
+              ticks otherwise read as "the device checked its randomness", which
+              is not what happened. */}
+          <p className="nr-note" data-testid="machine-health-limit">
+            Those checks catch a stuck generator, an unseeded kernel pool, and a device making a
+            seed in its first minute of boot. They say nothing about the quality of the numbers. A
+            generator producing well-formed but predictable output passes all of them, and that is
+            precisely the attack rolling dice makes impossible.
+          </p>
+
+          {health.unknown && (
+            <div className="nr-banner nr-banner--testnet" data-testid="machine-unknown">
+              <strong>Some sources could not be checked here</strong>
+              <span>
+                The rows marked unknown were not observed, which is not the same as being fine.
+                This happens off a real device, where the Linux paths these checks read do not
+                exist. The seed will not be generated while anything is unknown.
+              </span>
+            </div>
+          )}
+
+          {!health.healthy && !health.unknown && (
+            <div className="nr-banner nr-banner--danger" data-testid="machine-unhealthy">
+              <strong>This device will not generate a seed from these sources</strong>
+              <span>Roll dice instead. That path does not depend on any of this.</span>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* The whole label is the target, as on the seed screen, because this
+          gates something irreversible on a panel operated by a finger. */}
+      <label className="nr-check">
+        <input
+          type="checkbox"
+          checked={acknowledged}
+          onChange={(e) => {
+            setAcknowledged(e.target.checked)
+          }}
+          data-testid="machine-acknowledge"
+        />
+        <span className="nr-hint">
+          I understand this seed cannot be reproduced or checked by hand, and that my written
+          mnemonic will be the only record of it.
+        </span>
+      </label>
+
+      {error !== null && (
+        <div className="nr-banner nr-banner--danger" data-testid="machine-error">
+          <strong>Not generated</strong>
+          <span>{error}</span>
+        </div>
+      )}
+    </Screen>
+  )
+}

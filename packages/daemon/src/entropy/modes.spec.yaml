@@ -1,0 +1,70 @@
+id: daemon.entropy.modes
+version: 1
+title: Device-generated entropy, and what it costs
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Offer the two paths that do not involve a physical die, and be honest about
+  what each gives up. docs/ENTROPY.md described a machine-only mode, in the
+  present tense, including a UI confirmation, for a long time before either
+  existed. This spec covers what was built and what it refuses.
+
+covers:
+  - packages/daemon/src/handler.ts::createHandler
+
+algorithm: >
+  Rolling for the user: draw bytes from node:crypto randomBytes and map each to
+  a face by rejection sampling. Bytes at or above 252 are discarded and
+  re-drawn, because 256 is not divisible by 6 and `byte % 6` would make faces 1
+  through 4 roughly 1.6 percent likelier than 5 and 6. The resulting digit
+  string is hashed downstream exactly as a hand-rolled one is, so the encoding
+  published in docs/ENTROPY.md is unchanged.
+
+  Machine-only seed: refuse unless the caller passes `acknowledged: true`, then
+  run every gate in daemon.entropy.health and refuse unless all report ok, then
+  draw 32 bytes from randomBytes and take the same path a dice seed takes.
+
+security_notes: >
+  Rolling for the user is machine entropy wearing a dice costume. The
+  arithmetic afterwards stays checkable and the roll string does not, because
+  nobody watched those dice land. A device that wanted to hand somebody a seed
+  it had chosen would do it exactly here and the result would be
+  indistinguishable, so the screen counts how many rolls it produced and says
+  that in those words rather than presenting the string as though it were
+  observed.
+
+  The 1.6 percent modulo bias is small enough that no hand check would ever
+  find it, which is the argument for discarding rather than folding: this
+  project's claim is that its arithmetic is correct where somebody can look, and
+  a bias nobody can see is still a bias.
+
+  The acknowledgement is not a consent gate. A machine-only seed removes the one
+  property this device exists to provide, and the refusal message says which
+  property rather than asking somebody to agree to terms.
+
+references:
+  - docs/ENTROPY.md
+
+invariants:
+  - id: INV-ENTMODE-1
+    statement: >
+      Dice rolled by the device are drawn by rejection sampling rather than
+      modulo, and the response states that the device chose them.
+    tests:
+      - packages/daemon/test/entropy-modes.ipc.test.ts::produces-every-face-without-an-obvious-lean
+      - packages/daemon/test/entropy-modes.ipc.test.ts::says-in-the-response-that-the-device-chose-them
+      - packages/daemon/test/entropy-modes.ipc.test.ts::bounds-what-it-will-roll-in-one-call
+
+  - id: INV-ENTMODE-2
+    statement: >
+      A machine-only seed is refused without an explicit acknowledgement, and
+      refused again unless every entropy health gate reports ok, with the
+      refusal naming the dice path that does not depend on any of it.
+    tests:
+      - packages/daemon/test/entropy-modes.ipc.test.ts::refuses-without-an-explicit-acknowledgement
+      - packages/daemon/test/entropy-modes.ipc.test.ts::refuses-when-the-device-cannot-confirm-its-own-sources
+      - packages/daemon/test/entropy-modes.ipc.test.ts::reports-what-it-could-not-observe-rather-than-a-verdict
+
+threats:
+  - INV-ENT-1
