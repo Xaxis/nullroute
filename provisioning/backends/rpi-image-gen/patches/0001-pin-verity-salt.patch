@@ -1,0 +1,36 @@
+Pin the dm-verity salt instead of generating one per build
+
+The root hash is a function of (data, salt). Generating the salt with
+uuidgen means the root hash changes on every build even when the
+filesystem is byte-identical, so a user comparing the number on the
+device against a published release compares two unrelated numbers.
+
+Nothing about the output looks wrong, which is what makes it dangerous
+rather than merely inconvenient: the tier 1 story rests entirely on that
+number being comparable.
+
+Also widens the salt to the full 32 bytes veritysetup takes. uuidgen
+produces 16, and while libcryptsetup handles the short value the same
+way every time, a value this project publishes should be the whole one.
+
+Falls back to the previous behaviour when the variable is unset, so this
+patch does not break a build that has not been told about it. That is
+deliberate: a patch that made unrelated builds fail would be a patch
+nobody upstream would take.
+
+--- a/image/gpt/ab_userdata/pre-image.sh
++++ b/image/gpt/ab_userdata/pre-image.sh
+@@
++# A pinned salt, when the caller supplies one. The root hash is a function of
++# (data, salt), so a salt that changes per build makes the root hash change per
++# build even when the filesystem is byte-identical.
++VERITY_SALT="${NULLROUTE_VERITY_SALT:-$(uuidgen | tr -d '-')}"
++
+ VERITY_ARGS_SYSTEM="\
+  --data-block-size ${IGconf_linux_page_size:-4096} \
+  --hash-block-size ${IGconf_linux_page_size:-4096} \
+  --hash sha256 \
+  --uuid ${VERITY_UUID} \
+- --salt $(uuidgen | tr -d '-') \
++ --salt ${VERITY_SALT} \
+  --root-hash-file ${IGconf_image_outputdir}/system.roothash"

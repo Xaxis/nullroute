@@ -90,6 +90,11 @@ profiles: ## Hardening profiles validate, and every assertion is falsifiable
 	# verifier, every assertion states what it does NOT cover, and no assertion
 	# claims to check at build time a fact only observable on a running device.
 	@node tools/check-profiles.mjs
+	# A build recipe nothing in CI executes is the same shape of problem: it
+	# reads as a working build and checks nothing. This does not check that a
+	# recipe works, which it cannot, only that it and the profile declaring it
+	# agree and that it says plainly it has never been run.
+	@node tools/check-backends.mjs
 
 sbom: ## Emit a CycloneDX SBOM as a build artifact
 	@node tools/gen-sbom.mjs

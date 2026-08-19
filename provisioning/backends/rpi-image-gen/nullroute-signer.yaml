@@ -1,0 +1,78 @@
+# The rpi-image-gen configuration for a nullroute signer.
+#
+# NOTHING HERE HAS EVER BEEN RUN. See README.md in this directory, which lists
+# exactly what is unverified. The three-section shape is upstream's own, from
+# config/trixie-minbase.yaml, and the variable names come from the shell in
+# image/gpt/ab_userdata/pre-image.sh, but no build has accepted or rejected them.
+#
+# THIS FILE IS ADVISORY. INV-PROV-2 forbids any verifier from reading a
+# profile's backends key, because an abstraction where the backend can influence
+# its own verdict is a claim rather than an abstraction. Whatever this produces
+# is judged by provisioning/checks/, unchanged.
+
+device:
+  # The 5 and the CM5 share this. A 4 build changes this line and nothing else,
+  # which is the whole reason the profile lists three boards rather than one.
+  layer: rpi5
+
+image:
+  # An immutable system partition under a dm-verity hash tree, A/B slots, and a
+  # separate persistent partition for state. Chosen because it is what the tier
+  # 1 profile asserts, and because writing that layout by hand would be writing
+  # a worse version of something upstream maintains.
+  layer: image-gpt-ab-userdata
+  name: nullroute-signer
+
+  # ext4 rather than the erofs default. erofs is the better choice for an
+  # immutable partition and it is the one whose reproducibility this project has
+  # not established: the hash seed defect above is an ext4 problem with a known
+  # fix, and the equivalent question for erofs has not been answered. Revisit
+  # when there is an image to measure rather than deciding it here.
+  rootfs_type: ext4
+
+  # 200% and 300% are upstream's defaults and they size the partition from the
+  # content, which makes the partition size a function of the build. Fixed sizes
+  # instead: a layout that changes when a package grows is a layout whose
+  # partition offsets change, and every offset the image verifiers read is
+  # relative to one.
+  boot_part_size: 256M
+  root_part_size: 1536M
+
+layer:
+  base: trixie-minbase
+
+# Everything below is a nullroute constraint rather than an upstream default.
+#
+# It is written here AND asserted in provisioning/profiles/os-signer.yaml,
+# deliberately. This is the request; the profile is the requirement; the
+# verifier decides. A backend that quietly failed to apply one of these would
+# fail the verifier, which is the property the whole design is built on.
+nullroute:
+  # No SSH, no avahi, no network manager, no anything that opens a socket. The
+  # device has no network and a daemon listening on one is a contradiction
+  # rather than an inconvenience. Asserted by INV-PROV-13 and INV-PROV-16, whose
+  # verifiers read var/lib/dpkg/status in the built rootfs.
+  omit_packages:
+    - openssh-server
+    - openssh-client
+    - avahi-daemon
+    - network-manager
+    - wpasupplicant
+    - bluez
+    - modemmanager
+
+  # Reproducibility. SOURCE_DATE_EPOCH comes from the commit being built, and
+  # the pinned identifiers come from provisioning/checks/identifiers.mjs, which
+  # is also what the verifier compares against. One definition, two consumers.
+  reproducible:
+    source_date_epoch: env:SOURCE_DATE_EPOCH
+    verity_salt: env:NULLROUTE_VERITY_SALT
+    ext4_hash_seed: env:NULLROUTE_EXT4_HASH_SEED
+
+  # Requires patches/0001 and patches/0002. Without them the two variables above
+  # are read by nothing, the build succeeds, and the verifier fails: the salt
+  # comes out random and the hash seed comes out random. That failure is the
+  # correct outcome and is the reason the verifiers were written first.
+  requires_patches:
+    - patches/0001-pin-verity-salt.patch
+    - patches/0002-pin-ext4-hash-seed.patch

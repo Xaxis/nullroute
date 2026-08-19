@@ -1,0 +1,29 @@
+Pin the ext4 directory hash seed
+
+mke2fs picks a random hash seed when it is not given one. It changes
+nothing a user can see and it changes the bytes of the filesystem, which
+makes it the worst kind of reproducibility defect: invisible in a
+file-level diff of the root filesystem, so two trees compare equal while
+the images differ.
+
+The filesystem UUID is already pinned here, via SYSTEM_UUID. The hash
+seed is the one that was missed.
+
+Appended to the existing mkfs arguments rather than replacing them, and
+only when the variable is set, so a build that has not been told about
+this behaves exactly as before.
+
+--- a/image/gpt/ab_userdata/pre-image.sh
++++ b/image/gpt/ab_userdata/pre-image.sh
+@@
+-MKE2FS_ARGS_SYSTEM="-U $SYSTEM_UUID ${IGconf_fs_ext4_mkfs_args:-}"
++# -E hash_seed=, which mke2fs otherwise picks at random. It changes nothing a
++# user can see and it changes the bytes, so it is invisible in a diff of the
++# root filesystem while making two images differ.
++MKE2FS_HASH_SEED=""
++if [ -n "${NULLROUTE_EXT4_HASH_SEED:-}" ]; then
++	MKE2FS_HASH_SEED="-E hash_seed=${NULLROUTE_EXT4_HASH_SEED}"
++fi
++
++MKE2FS_ARGS_SYSTEM="-U $SYSTEM_UUID ${MKE2FS_HASH_SEED} ${IGconf_fs_ext4_mkfs_args:-}"
+ EROFS_ARGS_SYSTEM="-U $SYSTEM_UUID ${IGconf_fs_erofs_mkfs_args:-}"

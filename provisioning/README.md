@@ -55,9 +55,17 @@ claim `image` stage. That rule is what keeps the build gate honest.
 provisioning/
   schema.json           JSON Schema for a hardening profile
   profiles/             The profiles themselves, one per device class
-  backends/             Per-distribution build recipes. Advisory.
+  backends/             Per-distribution build recipes. Advisory, and unrun.
   checks/               Verifier implementations, keyed by assertion `check`
 ```
+
+**No backend has ever been run here.** Building needs `mmdebstrap`,
+`veritysetup` and `genimage`, which are Linux tools, and this repository is
+developed on macOS. `make profiles` runs `check-backends`, which enforces that a
+recipe on disk is declared in a profile, that a recipe whose profile says
+`planned` says so in its own README, and that every patch a recipe requires
+exists. It does not and cannot check that a recipe works: `make verify-image`
+against real output is the only thing that answers that.
 
 ## Running the verifiers
 

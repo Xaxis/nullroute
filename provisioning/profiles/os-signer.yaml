@@ -30,12 +30,26 @@ backends:
       pins packages against snapshot.debian.org.
 
       Two upstream defects have to be fixed before the reproducibility
-      assertions can hold, and the first one is severe: the verity setup passes
-      --salt "$(uuidgen)", and since the root hash is a function of (data,
-      salt), THE ROOT HASH CHANGES ON EVERY BUILD even when the filesystem is
-      byte-identical. Until that is pinned, the number this project most wants
-      to publish is meaningless. The second is that mke2fs is never given
-      -E hash_seed=, leaving the ext4 directory index seed random per build.
+      assertions can hold, and the first one is severe. Both were read out of
+      upstream source rather than remembered, and both now have a patch in
+      provisioning/backends/rpi-image-gen/patches/.
+
+      image/gpt/ab_userdata/pre-image.sh builds its verity arguments with
+      --salt $(uuidgen | tr -d '-'). The root hash is a function of (data,
+      salt), so THE ROOT HASH CHANGES ON EVERY BUILD even when the filesystem
+      is byte-identical, and the number this project most wants to publish
+      becomes meaningless. INV-PROV-4's verifier reads the salt out of the
+      superblock and fails on exactly this.
+
+      The same script gives mke2fs -U $SYSTEM_UUID and never -E hash_seed=,
+      leaving the ext4 directory index seed random per build. It changes
+      nothing a user can see and it changes the bytes, so it is invisible in a
+      file-level diff of the root filesystem.
+
+      The recipe is written and HAS NEVER BEEN RUN, because the build needs
+      mmdebstrap, veritysetup and genimage and this repository is developed on
+      macOS. status stays planned until somebody runs it on Linux and
+      make verify-image passes against the output.
 
       Pin the commit rather than the tag: v2.8.0 removed INI configuration
       support outright, so this project breaks between minor versions.
