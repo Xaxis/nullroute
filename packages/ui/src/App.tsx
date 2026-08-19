@@ -27,6 +27,7 @@ import { ScanScreen, type ScanResult } from './screens/ScanScreen.js'
 import { WalletsScreen, type WalletRow } from './screens/WalletsScreen.js'
 import { ManageWalletScreen } from './screens/ManageWalletScreen.js'
 import { StartScreen } from './screens/StartScreen.js'
+import { FinishScreen } from './screens/FinishScreen.js'
 import { Steps } from './components/Steps.js'
 import { journeyById, type JourneyId } from './journeys.js'
 import { LabelsScreen, type ImportedLabels, type LabelRow } from './screens/LabelsScreen.js'
@@ -174,6 +175,22 @@ export function App() {
   const [journey, setJourney] = useState<{ id: JourneyId; step: number } | null>(null)
 
   /**
+   * A journey whose last step just completed, and whose leftovers have not been
+   * read yet.
+   *
+   * Held separately from the stage rather than being one, because the screen
+   * that finished the last step has already routed somewhere sensible and this
+   * renders over the top of wherever that was. Dismissing it lands the user
+   * exactly where they would have been.
+   *
+   * Without this the multisig journey ends by dropping somebody on the wallet
+   * screen, which says by saying nothing that a quorum is finished. It can
+   * receive and it cannot spend until every other cosigner registers the same
+   * descriptor.
+   */
+  const [completed, setCompleted] = useState<JourneyId | null>(null)
+
+  /**
    * The header for the current step, or nothing.
    *
    * Nothing when the stage is not one this journey visits, which happens the
@@ -210,7 +227,10 @@ export function App() {
       const current = journeyById(held.id)
       if (current === undefined) return held
       if (current.steps[held.step]?.stage !== from) return held
-      if (held.step + 1 >= current.steps.length) return null
+      if (held.step + 1 >= current.steps.length) {
+        setCompleted(held.id)
+        return null
+      }
       return { id: held.id, step: held.step + 1 }
     })
   }
@@ -531,6 +551,23 @@ export function App() {
         }}
       />
     )
+  }
+
+  // Over the top of whatever the last step routed to, so dismissing it lands
+  // the user where they would have been anyway.
+  if (completed !== null) {
+    const finished = journeyById(completed)
+    if (finished !== undefined) {
+      return (
+        <FinishScreen
+          banner={banner}
+          journey={finished}
+          onDone={() => {
+            setCompleted(null)
+          }}
+        />
+      )
+    }
   }
 
   if (stage.at === 'start') {

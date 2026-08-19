@@ -36,6 +36,7 @@ import {
   MessageScreen,
   MultisigScreen,
   StartScreen,
+  FinishScreen,
   PassphraseScreen,
   PsbtScreen,
   QuorumAddressesScreen,
@@ -44,6 +45,7 @@ import {
   UnlockedScreen,
   WalletScreen,
   WalletsScreen,
+  journeyById,
 } from '../../packages/ui/src/index.js'
 import '../../packages/ui/src/styles.css'
 
@@ -242,6 +244,13 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   labels: () => <LabelsScreen onImport={never} onExport={never} onBack={noop} />,
   child: () => <ChildSeedScreen onDerive={never} onBack={noop} />,
   start: () => <StartScreen walletOpen={false} onBegin={noop} onSkip={noop} />,
+  // The multisig journey, because it has the most left over and is therefore
+  // the tallest this screen ever gets.
+  finish: () => {
+    const multisig = journeyById('multisig')
+    if (multisig === undefined) throw new Error('the multisig journey is gone')
+    return <FinishScreen journey={multisig} onDone={noop} />
+  },
   manage: () => (
     <ManageWalletScreen
       wallet={{ label: 'Cold storage, three of five', colour: 'teal' }}

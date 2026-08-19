@@ -11,6 +11,8 @@
  */
 
 export { StartScreen } from './screens/StartScreen.js'
+export { FinishScreen } from './screens/FinishScreen.js'
+export type { FinishScreenProps } from './screens/FinishScreen.js'
 export type { StartScreenProps } from './screens/StartScreen.js'
 
 export { Steps } from './components/Steps.js'

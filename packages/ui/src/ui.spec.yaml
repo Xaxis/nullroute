@@ -50,6 +50,7 @@ covers:
   - packages/ui/src/screens/LabelsScreen.tsx::LabelsScreen
   - packages/ui/src/screens/ChildSeedScreen.tsx::ChildSeedScreen
   - packages/ui/src/screens/StartScreen.tsx::StartScreen
+  - packages/ui/src/screens/FinishScreen.tsx::FinishScreen
   - packages/ui/src/components/Steps.tsx::Steps
   - packages/ui/src/journeys.ts::JOURNEYS
   - packages/ui/src/journeys.ts::journeyById
@@ -664,6 +665,17 @@ invariants:
       - packages/ui/test/steps.test.tsx::counts-from-one-and-names-the-step
       - packages/ui/test/steps.test.tsx::sits-above-the-screen-title
       - packages/ui/test/steps.test.tsx::is-absent-from-a-screen-that-is-not-part-of-a-journey
+
+  - id: INV-UI-59
+    statement: >
+      A journey whose last step completes reports what this device did NOT
+      finish, does not call itself done when anything is outstanding, and says
+      plainly when nothing is.
+    tests:
+      - packages/ui/test/finish-screen.test.tsx::does-not-say-done-when-the-device-has-only-done-its-part
+      - packages/ui/test/finish-screen.test.tsx::says-plainly-when-nothing-is-left
+      - packages/ui/test/finish-screen.test.tsx::counts-one-leftover-in-the-singular
+      - packages/ui/test/finish-screen.test.tsx::recaps-the-steps-that-were-taken
 
 threats:
   - INV-KEY-1

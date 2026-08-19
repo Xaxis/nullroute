@@ -30,6 +30,15 @@ answer.
 
 ## Setting up a quorum
 
+The device will walk you through this. From the lock screen tap **Guide me**, or
+from the wallet screen open **More** and then **Walk me through something**, and
+pick "Set up a wallet across several devices". It tells you what you need before
+it starts, numbers the steps as you go, and at the end lists what it has not
+finished, because most of this cannot be finished on one device.
+
+The rest of this section is the same procedure written out, for reading before
+you have a device in your hands.
+
 Each device holds one key and none of them holds the whole wallet. The setup is
 therefore a round of exporting, then a round of registering.
 
