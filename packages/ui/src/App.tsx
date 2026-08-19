@@ -99,22 +99,31 @@ type Stage =
    * A scan is never a destination: it always belongs to a screen that asked for
    * it, and the payload goes back there rather than being acted on here.
    */
-  | { readonly at: 'scan'; readonly forStage: 'psbt' }
+  /**
+   * The camera, on its way to whichever screen asked for it.
+   *
+   * `forStage` was `'psbt'` and nothing else, so on a device whose primary
+   * transport is a QR code exactly one screen could use the camera. A
+   * descriptor, a coordinator file, a backup and a label file all arrive the
+   * same way and all took pasted text only, which on a machine with no keyboard
+   * means an on-screen keyboard and a 200 character descriptor.
+   */
+  | { readonly at: 'scan'; readonly forStage: 'psbt' | 'multisig' | 'backup' | 'labels' }
   /** A wallet exists on disk and the passphrase has not been given yet. */
   | { readonly at: 'unlock' }
   /** A wallet has just been created and can be saved to this device. */
   | { readonly at: 'protect' }
-  | { readonly at: 'multisig' }
+  | { readonly at: 'multisig'; readonly prefill?: string }
   /** Proving control of an address by signing a message with it. */
   | { readonly at: 'message' }
   /** Writing or restoring an encrypted backup. */
-  | { readonly at: 'backup' }
+  | { readonly at: 'backup'; readonly prefill?: string }
   /** Taking one address, big enough to read off the panel. */
   | { readonly at: 'receive' }
   /** The device's own attestation, after it is open. */
   | { readonly at: 'attestation' }
   /** Reading and writing BIP-329 labels. */
-  | { readonly at: 'labels' }
+  | { readonly at: 'labels'; readonly prefill?: string }
   /** Deriving a BIP-85 child seed. */
   | { readonly at: 'child' }
   /** Choosing which of several wallets to open. */
@@ -146,6 +155,37 @@ type Stage =
     }
 
 const transport = httpTransport()
+
+/**
+ * What the camera is being pointed at, per destination.
+ *
+ * The scan screen said "Scan a transaction" whatever you were scanning,
+ * because for a long time a transaction was the only thing it could scan. On a
+ * device with one camera and four things that arrive by QR, naming the wrong
+ * one is how somebody holds up the wrong card and concludes the reader is
+ * broken.
+ */
+const SCANNING: Record<
+  'psbt' | 'multisig' | 'backup' | 'labels',
+  { readonly title: string; readonly hint: string }
+> = {
+  psbt: {
+    title: 'Scan a transaction',
+    hint: 'Point the camera at the QR code your coordinator is showing.',
+  },
+  multisig: {
+    title: 'Scan a descriptor',
+    hint: 'The quorum descriptor, or a setup file your coordinator exported.',
+  },
+  backup: {
+    title: 'Scan a backup',
+    hint: 'The encrypted backup file. You will still need its passphrase.',
+  },
+  labels: {
+    title: 'Scan a label file',
+    hint: 'A BIP-329 label file. Nothing in it changes what this device believes is yours.',
+  },
+}
 
 /**
  * Bytes to base64, without a dependency and without Node's Buffer.
@@ -885,6 +925,10 @@ export function App() {
       <MultisigScreen
         banner={banner}
         onHome={goHome}
+        initialText={stage.prefill ?? ''}
+        onScan={() => {
+          setStage({ at: 'scan', forStage: 'multisig' })
+        }}
         steps={stepsFor('multisig')}
         onOurKey={ourMultisigKey}
         // Three of the multisig journey's steps happen on this one screen, so
@@ -1115,6 +1159,10 @@ export function App() {
       <LabelsScreen
         banner={banner}
         onHome={goHome}
+        initialText={stage.prefill ?? ''}
+        onScan={() => {
+          setStage({ at: 'scan', forStage: 'labels' })
+        }}
         onImport={async (text: string) =>
           call<ImportedLabels>(transport, 'labels.import', { text })
         }
@@ -1160,6 +1208,10 @@ export function App() {
       <BackupScreen
         banner={banner}
         onHome={goHome}
+        initialText={stage.prefill ?? ''}
+        onScan={() => {
+          setStage({ at: 'scan', forStage: 'backup' })
+        }}
         steps={stepsFor('backup')}
         onCreate={async (passphrase: string, includeSeed: boolean, label: string) =>
           call<{ backup: string; includesSeed: boolean }>(transport, 'backup.create', {
@@ -1209,16 +1261,25 @@ export function App() {
       <ScanScreen
         banner={banner}
         onHome={goHome}
-        title="Scan a transaction"
-        hint="Point the camera at the QR code your coordinator is showing."
+        title={SCANNING[stage.forStage].title}
+        hint={SCANNING[stage.forStage].hint}
         onCancel={() => {
           setStage({ at: stage.forStage })
         }}
         onResult={(result: ScanResult) => {
-          // A PSBT is carried as raw bytes in a BBQr sequence and as base64
-          // when it fits in one code. Both end up as base64 here, because that
-          // is what the review path takes and what a user can read back.
-          const text = result.kind === 'text' ? result.text.trim() : toBase64(result.data)
+          // Raw bytes come out of a BBQr sequence, text out of a single code.
+          //
+          // A PSBT is base64 either way, because that is what the review path
+          // takes and what a user can read back. Everything else here is text
+          // to begin with (a descriptor, a JSON backup, a JSON Lines label
+          // file), and base64-encoding it would hand the screen something it
+          // cannot parse and the user something they cannot check.
+          const text =
+            result.kind === 'text'
+              ? result.text.trim()
+              : stage.forStage === 'psbt'
+                ? toBase64(result.data)
+                : new TextDecoder().decode(result.data).trim()
           setStage({ at: stage.forStage, prefill: text })
         }}
       />

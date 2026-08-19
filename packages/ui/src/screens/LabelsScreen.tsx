@@ -42,6 +42,15 @@ export interface ImportedLabels {
 export interface LabelsScreenProps {
   readonly onImport: (text: string) => Promise<ImportedLabels>
   readonly onExport: (labels: readonly LabelRow[]) => Promise<{ text: string }>
+  /**
+   * Text the camera already read, if the user arrived that way.
+   *
+   * A descriptor is 200 characters and this device has no keyboard, so typing
+   * one on a 7 inch panel is not a route anybody takes twice.
+   */
+  readonly initialText?: string
+  /** Leaves for the camera. Absent where there is no camera to reach. */
+  readonly onScan?: (() => void) | undefined
   readonly onBack: () => void
   /** Back to the wallet, or the picker. Rendered in the header by Screen. */
   readonly onHome?: (() => void) | undefined
@@ -49,9 +58,9 @@ export interface LabelsScreenProps {
 }
 
 export function LabelsScreen(props: LabelsScreenProps): ReactElement {
-  const { onImport, onExport, onBack, onHome, banner } = props
+  const { onImport, onExport, initialText, onScan, onBack, onHome, banner } = props
 
-  const [text, setText] = useState('')
+  const [text, setText] = useState(initialText ?? '')
   const [imported, setImported] = useState<ImportedLabels | null>(null)
   const [exported, setExported] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -169,6 +178,11 @@ export function LabelsScreen(props: LabelsScreenProps): ReactElement {
             }}
             data-testid="labels-input"
           />
+          {onScan !== undefined && (
+            <Button onClick={onScan} testId="labels-scan">
+              Scan it with the camera
+            </Button>
+          )}
         </div>
       ) : (
         <>

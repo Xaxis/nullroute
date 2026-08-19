@@ -524,3 +524,89 @@ describe('ui.app switching and checking', () => {
     expect(calls.filter((c) => c.method === 'attestation.get').length).toBe(before)
   })
 })
+
+/**
+ * The camera, on the screens that need it.
+ *
+ * `forStage` was `'psbt'` and nothing else, so on a device whose primary
+ * transport is a QR code exactly one screen could use the camera. A descriptor,
+ * a coordinator setup file, an encrypted backup and a label file all arrive the
+ * same way and all took pasted text only, which on a machine with no keyboard
+ * means tapping a 200 character descriptor into an on-screen keyboard.
+ */
+describe('ui.app scanning', () => {
+  async function intoWallet(): Promise<void> {
+    replies.set('device.status', {
+      hasWallet: true,
+      network: { id: 'mainnet', label: 'Mainnet', isMainnet: true },
+    })
+    replies.set('multisig.ourKey', {
+      xpub: 'xpub6E64',
+      path: "m/48'/0'/0'/2'",
+      masterFingerprint: '73c5da0a',
+      keyExpression: "[73c5da0a/48'/0'/0'/2']xpub6E64",
+    })
+    await boot()
+    fireEvent.click(screen.getByTestId('unlock'))
+    await waitFor(() => {
+      expect(screen.getByTestId('wallet-screen')).toBeTruthy()
+    })
+    fireEvent.click(screen.getByTestId('tab-more'))
+  }
+
+  /**
+   * INV-UI-73. Every screen that takes a pasted file can reach the camera, and
+   * the camera names what it is being pointed at.
+   */
+  it('reaches-the-camera-from-a-screen-that-takes-a-file', async () => {
+    await intoWallet()
+    fireEvent.click(screen.getByTestId('wallet-labels'))
+    await waitFor(() => {
+      expect(screen.getByTestId('labels-screen')).toBeTruthy()
+    })
+
+    fireEvent.click(screen.getByTestId('labels-scan'))
+    await waitFor(() => {
+      expect(screen.getByTestId('scan-screen')).toBeTruthy()
+    })
+    // Not "Scan a transaction", which is what it said whatever you scanned.
+    expect(document.body.textContent).toContain('Scan a label file')
+    expect(document.body.textContent).not.toContain('Scan a transaction')
+  })
+
+  /**
+   * INV-UI-73. Cancelling the camera goes back to the screen that opened it,
+   * not to a fixed destination.
+   */
+  it('returns-to-the-screen-that-opened-the-camera', async () => {
+    await intoWallet()
+    fireEvent.click(screen.getByTestId('wallet-backup'))
+    await waitFor(() => {
+      expect(screen.getByTestId('backup-screen')).toBeTruthy()
+    })
+    fireEvent.click(screen.getByTestId('backup-choose-restore'))
+    fireEvent.click(screen.getByTestId('backup-scan'))
+    await waitFor(() => {
+      expect(screen.getByTestId('scan-screen')).toBeTruthy()
+    })
+    expect(document.body.textContent).toContain('Scan a backup')
+
+    fireEvent.click(screen.getByTestId('scan-cancel'))
+    await waitFor(() => {
+      expect(screen.getByTestId('backup-screen')).toBeTruthy()
+    })
+  })
+
+  it('offers-the-camera-on-the-multisig-descriptor-field', async () => {
+    await intoWallet()
+    fireEvent.click(screen.getByTestId('wallet-multisig'))
+    await waitFor(() => {
+      expect(screen.getByTestId('multisig-screen')).toBeTruthy()
+    })
+    fireEvent.click(screen.getByTestId('multisig-scan'))
+    await waitFor(() => {
+      expect(screen.getByTestId('scan-screen')).toBeTruthy()
+    })
+    expect(document.body.textContent).toContain('Scan a descriptor')
+  })
+})

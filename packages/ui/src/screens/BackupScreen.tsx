@@ -49,6 +49,15 @@ export interface BackupScreenProps {
   ) => Promise<{ backup: string; includesSeed: boolean }>
   readonly onDescribe: (backup: string) => Promise<BackupDescription>
   readonly onRestore: (backup: string, passphrase: string) => Promise<RestoredView>
+  /**
+   * Text the camera already read, if the user arrived that way.
+   *
+   * A descriptor is 200 characters and this device has no keyboard, so typing
+   * one on a 7 inch panel is not a route anybody takes twice.
+   */
+  readonly initialText?: string
+  /** Leaves for the camera. Absent where there is no camera to reach. */
+  readonly onScan?: (() => void) | undefined
   readonly onBack: () => void
   /** Where this screen sits in a journey, when it is part of one. */
   readonly steps?: ReactElement | null
@@ -60,10 +69,10 @@ export interface BackupScreenProps {
 type Mode = 'choose' | 'create' | 'restore'
 
 export function BackupScreen(props: BackupScreenProps): ReactElement {
-  const { onCreate, onDescribe, onRestore, onBack, steps, onHome, banner } = props
+  const { onCreate, onDescribe, onRestore, initialText, onScan, onBack, steps, onHome, banner } = props
 
   const [mode, setMode] = useState<Mode>('choose')
-  const [passphrase, setPassphrase] = useState('')
+  const [passphrase, setPassphrase] = useState(initialText ?? '')
   const [includeSeed, setIncludeSeed] = useState(false)
   const [written, setWritten] = useState<{ backup: string; includesSeed: boolean } | null>(null)
   const [text, setText] = useState('')
@@ -360,6 +369,11 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
             }}
             data-testid="backup-input"
           />
+          {onScan !== undefined && (
+            <Button onClick={onScan} testId="backup-scan">
+              Scan it with the camera
+            </Button>
+          )}
         </div>
       ) : (
         <>

@@ -270,6 +270,21 @@ is genuinely separate, roll dice for it.
 Nothing is written to the device. To keep a child here, import it like any other
 mnemonic.
 
+## Getting things on and off
+
+The camera is the main way in. Four screens take a file, and every one of them
+can scan it rather than have you tap it into an on-screen keyboard: a
+transaction, a quorum descriptor or coordinator setup file, an encrypted backup,
+and a label file. The camera names what it is being pointed at, so holding up
+the wrong card is caught by reading the screen rather than by the reader
+appearing broken.
+
+Anything the device produces is shown as a QR code and, underneath a
+disclosure, as text you can copy onto a card. Large payloads are split across
+several codes automatically.
+
+See [AIR-GAP.md](AIR-GAP.md) for what the gap does and does not stop.
+
 ## What the device refuses
 
 Collected in one place, because the refusals are the design:

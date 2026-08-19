@@ -92,6 +92,15 @@ export interface MultisigScreenProps {
   readonly onExportBundle?: () => Promise<{ bundle: string }>
   /** How many quorums are registered, so the export is offered only when it carries something. */
   readonly registeredCount?: number
+  /**
+   * Text the camera already read, if the user arrived that way.
+   *
+   * A descriptor is 200 characters and this device has no keyboard, so typing
+   * one on a 7 inch panel is not a route anybody takes twice.
+   */
+  readonly initialText?: string
+  /** Leaves for the camera. Absent where there is no camera to reach. */
+  readonly onScan?: (() => void) | undefined
   readonly onBack: () => void
   /** Where this screen sits in a journey, when it is part of one. */
   readonly steps?: ReactElement | null
@@ -108,6 +117,8 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
     onImportFile,
     onExportBundle,
     registeredCount = 0,
+    initialText,
+    onScan,
     onBack,
     steps,
     onHome,
@@ -115,7 +126,7 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
   } = props
 
   const [ourKey, setOurKey] = useState<OurKeyView | null>(null)
-  const [descriptor, setDescriptor] = useState('')
+  const [descriptor, setDescriptor] = useState(initialText ?? '')
   const [review, setReview] = useState<RegistrationView | null>(null)
   const [registered, setRegistered] = useState(false)
   const [imported, setImported] = useState<ImportedFileView | null>(null)
@@ -428,6 +439,11 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
             }}
             data-testid="multisig-input"
           />
+          {onScan !== undefined && (
+            <Button onClick={onScan} testId="multisig-scan">
+              Scan it with the camera
+            </Button>
+          )}
           <p className="nr-hint">
             The checksum is required. It is the only thing standing between a mistyped character and
             a valid descriptor for a completely different wallet.

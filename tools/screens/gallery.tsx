@@ -351,7 +351,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     />
   ),
   multisig: () => (
-    <MultisigScreen onHome={noop}
+    <MultisigScreen onScan={noop} onHome={noop}
       onOurKey={async () =>
         Promise.resolve({
           xpub: XPUB,
@@ -385,8 +385,8 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     />
   ),
   message: () => <MessageScreen onHome={noop} onReview={never} onSign={never} onBack={noop} />,
-  backup: () => <BackupScreen onHome={noop} onCreate={never} onDescribe={never} onRestore={never} onBack={noop} />,
-  labels: () => <LabelsScreen onHome={noop} onImport={never} onExport={never} onBack={noop} />,
+  backup: () => <BackupScreen onScan={noop} onHome={noop} onCreate={never} onDescribe={never} onRestore={never} onBack={noop} />,
+  labels: () => <LabelsScreen onScan={noop} onHome={noop} onImport={never} onExport={never} onBack={noop} />,
   child: () => <ChildSeedScreen onHome={noop} onDerive={never} onBack={noop} />,
   start: () => <StartScreen walletOpen={false} onBegin={noop} onSkip={noop} />,
   // The failing case, which is the one that should be impossible and therefore

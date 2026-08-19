@@ -810,6 +810,16 @@ invariants:
     tests:
       - packages/ui/test/app.test.tsx::shows-the-same-attestation-the-lock-screen-showed
 
+  - id: INV-UI-73
+    statement: >
+      Every screen that accepts a pasted file can reach the camera, the camera
+      names what it is being pointed at rather than always naming a
+      transaction, and cancelling returns to the screen that opened it.
+    tests:
+      - packages/ui/test/app.test.tsx::reaches-the-camera-from-a-screen-that-takes-a-file
+      - packages/ui/test/app.test.tsx::returns-to-the-screen-that-opened-the-camera
+      - packages/ui/test/app.test.tsx::offers-the-camera-on-the-multisig-descriptor-field
+
 threats:
   - INV-KEY-1
   - INV-BUILD-1
