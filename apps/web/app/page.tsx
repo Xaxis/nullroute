@@ -44,13 +44,19 @@ const WORKING: readonly { term: string; specs: readonly string[]; detail: string
     term: 'Backups, labels and child seeds',
     specs: ['daemon.store.backup', 'core.labels', 'core.bip85'],
     detail:
-      'Encrypted backup that is seedless unless you say otherwise, BIP-329 labels in and out, and BIP-85 children shown with the path that produced them.',
+      'Encrypted backup that is seedless unless you say otherwise, BIP-85 children shown with the path that produced them, and BIP-329 labels that appear beside the outputs on the screen you read before signing. A label decides nothing: change is still decided by re-deriving it.',
   },
   {
-    term: 'Proving you control an address',
+    term: 'Proving an address, and checking somebody else\u2019s proof',
     specs: ['core.message.bip322'],
     detail:
-      'BIP-322 message signing for segwit addresses, verified against a digest computed by a different library. Taproot and the legacy scheme are refused by name rather than approximated.',
+      'BIP-322 signing for segwit and taproot, each verified against a digest computed by a different library, plus the older signmessage scheme for legacy addresses. Verification needs no key, so it works with the wallet locked: checking a stranger\u2019s signature should not cost the passphrase to your money.',
+  },
+  {
+    term: 'Closing itself when you walk away',
+    specs: ['daemon.idle'],
+    detail:
+      'Ten minutes with nobody touching the screen and the wallet closes, the seed zeroized, with a minute of warning first. It defends against the device being left and nothing else: somebody standing at it simply touches the screen.',
   },
   {
     term: 'Data across the gap by camera',
@@ -320,9 +326,13 @@ export default function HomePage() {
         </div>
 
         <p className="mt-8 text-base text-ink-400 max-w-2xl leading-relaxed">
-          Not here, and needed before this is safe for funds: the dm-verity boot attestation. The
-          recovery drill covers all four address types against a real Bitcoin Core on every commit,
-          taproot included.
+          Not here, and needed before this is safe for funds: the dm-verity boot attestation. There
+          is no image build yet either, so nothing above ships on a card. What does exist is the
+          contract that build has to satisfy, which is the half that had to come first: twelve of
+          the sixteen provisioning assertions carry a verifier that executes, including the ones
+          that catch a dm-verity salt regenerated per build, which would make the root hash this
+          device displays meaningless as a published value. The recovery drill covers all four
+          address types against a real Bitcoin Core on every commit, taproot included.
         </p>
       </Section>
 
