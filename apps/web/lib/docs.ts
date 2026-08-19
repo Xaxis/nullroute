@@ -57,6 +57,15 @@ export const DOCS: readonly DocMeta[] = [
     question: 'How do dice become a seed, and how do I check it?',
   },
   {
+    slug: 'using',
+    navLabel: 'Using it',
+    file: 'docs/USING.md',
+    title: 'Using the device',
+    summary:
+      'What each screen is for, what it refuses, and why. The other pages answer whether this is safe and how to check it; this one answers what happens when you press the thing.',
+    question: 'What are the screens, and what does each one refuse?',
+  },
+  {
     slug: 'air-gap',
     navLabel: 'Air gap',
     file: 'docs/AIR-GAP.md',

@@ -8,7 +8,8 @@ transaction before signing, and it refuses to start unless its own code matches
 a published hash.
 
 > **Pre-1.0, unaudited, and not finished. Do not put money on this yet.**
-> Phase 1 is complete and phase 2 is in progress. See [Status](#status).
+> Phases 1, 2 and 4 are complete and phase 3 is in progress. See
+> [Status](#status).
 
 ---
 
@@ -244,29 +245,46 @@ and anything involving a cloud.
 
 ## Status
 
-**Phase 1 and 2 complete. Phase 3 in progress.**
+**Phases 1, 2 and 4 complete. Phase 3 in progress.**
 
 | Phase | Scope | State |
 | --- | --- | --- |
 | 1 | Spec system, entropy, BIP-39/32, daemon, lock screen, networks | **Complete** |
 | 2 | Descriptors, addresses, PSBT review, signing. **Provisioning tier 0.** | **Complete** |
 | 3 | Encrypted store, passphrase, multisig and cosigner registration done. **Tier 1** outstanding. | In progress |
-| 4 | BIP-322 message signing, BIP-85, BIP-329 labels | Not started |
+| 4 | BIP-322 message signing, BIP-85 child seeds, BIP-329 labels | **Complete** |
 | 5 | Wallet layer, optional and lower assurance | Not started |
 | 6 | Bridge companion, runs on a networked machine | Not started |
 | 7 | Miniscript, taproot script paths, SeedXOR. **Tier 2.** | Not started |
 
-Working today: dice entropy end to end, BIP-39 and BIP-32 against the official
-vectors, all four address types, descriptor parsing with BIP-380 checksums,
-address verification, PSBT review and deterministic signing cross-checked
-against libsecp256k1, an encrypted store so a wallet survives a reboot, and
-multisig with cosigner registration that refuses a quorum this device is not
-part of.
+Phase 4 landing before phase 3 finishes is not phases being pulled forward. It
+is one item inside phase 3, the dm-verity attestation of tier 1, waiting on an
+image build system that does not exist yet. Everything in phase 3 that is
+software is done.
 
-Not working yet, and needed before this is safe for funds: the dm-verity boot
-attestation of tier 1, and a taproot recovery drill. The seed is encrypted at rest under a passphrase, and that passphrase
-is the only thing protecting a stolen card: there is no secure element, and the
-retry counter does not survive someone copying the card.
+**Working today.**
+
+*Keys.* Dice entropy end to end, BIP-39 and BIP-32 against the official
+vectors, all four address types, BIP-85 child seeds derived from one master.
+
+*Spending.* Descriptor parsing with BIP-380 checksums, address verification,
+PSBT review, and deterministic signing cross-checked against libsecp256k1.
+
+*Several devices.* Multisig with cosigner registration that refuses a quorum
+this device holds no key in, coordinator file import and bundle export, and a
+screen for comparing a quorum's addresses across devices, which is the cheap
+proof they all registered the same descriptor.
+
+*Living with it.* An encrypted store so a wallet survives a reboot, several
+named wallets on one device, encrypted backup and restore, BIP-322 message
+signing for segwit addresses, BIP-329 labels in and out, and guided flows that
+put the screens in order for what you are trying to do.
+
+**Not working yet, and needed before this is safe for funds:** the dm-verity
+boot attestation of tier 1, and a taproot recovery drill. The seed is encrypted
+at rest under a passphrase, and that passphrase is the only thing protecting a
+stolen card: there is no secure element, and the retry counter does not survive
+someone copying the card.
 
 Nothing later is pulled forward. That ordering, and the irreversible work
 staying last, is what keeps a large feature list from eroding the small part
@@ -283,11 +301,17 @@ Start with whichever question you have:
 | [Threat model](docs/THREAT-MODEL.md) | What is this safe against, and what is it not? |
 | [Verification](docs/VERIFICATION.md) | How do I check the device is honest? |
 | [Entropy](docs/ENTROPY.md) | How do dice become a seed, and how do I check it? |
+| [Using it](docs/USING.md) | What are the screens, and what does each one refuse? |
+| [The air gap](docs/AIR-GAP.md) | How does anything get on and off this thing? |
+| [Running several](docs/FLEET.md) | How do I use more than one of these together? |
 | [Provisioning](docs/PROVISIONING.md) | How do I build and verify the device image? |
 
-All four are rendered at [nullroute.diy](https://nullroute.diy) directly
+All of them are rendered at [nullroute.diy](https://nullroute.diy) directly
 from this repository, so the published page and the file that ships with the
 code are the same bytes.
+
+This table used to list four of them, and two documents were reachable only by
+guessing the URL. `make docs-reachable` fails the build on that now.
 
 ---
 
