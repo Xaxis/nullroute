@@ -39,6 +39,8 @@ Ranked by what their loss costs you.
 | Extended public keys and descriptors | Loss of privacy: full transaction graph and balance history |
 | Transaction intent (who you are paying, how much) | Loss of privacy, and targeting information |
 | The device's integrity claim (manifest root hash) | Loss of the ability to detect any of the above |
+| A backup file that carries a seed | Total loss of the wallets in it, under one passphrase rather than under the mnemonic |
+| A BIP-85 child seed | Total loss of that child, and it is derivable by anyone holding the parent mnemonic |
 
 The last row is why the verification system exists. If an attacker can make you
 believe you are running verified code when you are not, every other defence in
@@ -73,6 +75,12 @@ loudly if the defence regresses. Invariant identifiers are listed in the
 | Casual physical access | Seed encrypted under an Argon2id-derived key, passphrase gate, failed-attempt counter that erases the sealed blob | INV-STORE-1, INV-STORE-4 |
 | Operator error | Address verification mode, descriptor checksums, forced scroll-through review, fingerprint display before funds actions | INV-INTEROP-1 |
 | Vendor lock-in becoming a loss vector | Every wallet recoverable from the mnemonic and a standard descriptor with third-party software, proved in CI against Bitcoin Core | INV-INTEROP-1 |
+| A message signature being replayable as a transaction | BIP-322 signs a transaction pair that cannot exist on chain: `to_spend` references an all-zeros outpoint at index `0xffffffff`, so the signature commits to something no consensus rule will ever accept | INV-MSG-5 |
+| A message that displays differently from what is signed | Refused before anything is derived, on the review path and on the signing path, rather than signed with a warning | INV-MSG-1, INV-MSG-7 |
+| A label rendering as text it does not contain, beside an amount on the signing screen | Refused rather than repaired, so a file that tried is visible as a skipped line instead of being quietly cleaned up | INV-LABEL-3 |
+| A backup file being a second copy of the money that nobody realised was one | Seedless by default; including the seed changes the action and states what it means beforehand and again on the written file | INV-BACKUP-1 |
+| A backup's outer envelope lying about what is inside it | Network, seed presence and identity are read from inside the ciphertext; the header is authenticated as AAD, so editing it fails the tag rather than changing what is restored | INV-BACKUP-2, INV-BACKUP-3 |
+| A BIP-85 child being treated as independent of its parent | The screen states, beside the words themselves, that anyone holding the parent mnemonic derives every child it has produced, and names rolling dice as the alternative | INV-BIP85-2 |
 
 ### On the exfiltration threat specifically
 

@@ -81,7 +81,12 @@ function enforcedInvariants() {
     for (const file of sourceFiles(join(ROOT, directory))) {
       if (file === self) continue
       const text = readFileSync(file, 'utf8')
-      for (const match of text.matchAll(/\b(INV-[A-Z]+-\d+)\b/g)) {
+      // `[A-Z][A-Z0-9]*`, which is the id format the project actually uses.
+      // This read `[A-Z]+` and was therefore blind to every family with a
+      // digit in its name: INV-BIP32, INV-BIP39 and INV-BIP85, three of the
+      // most load-bearing families in the repository. Nothing noticed, because
+      // a guard that cannot see an invariant reports no problem with it.
+      for (const match of text.matchAll(/\b(INV-[A-Z][A-Z0-9]*-\d+)\b/g)) {
         const id = match[1]
         if (!enforced.has(id)) enforced.set(id, file.slice(ROOT.length))
       }
@@ -96,16 +101,35 @@ function claimedInvariants() {
   const lines = readFileSync(THREAT_MODEL, 'utf8').split('\n')
 
   lines.forEach((line, index) => {
-    // A table row, not prose: `| INV-FOO-1 | statement |`
-    const match = /^\|\s*(INV-[A-Z0-9-]+)\s*\|(.*)\|\s*$/.exec(line)
-    if (match === null) return
-    claimed.push({
-      id: match[1],
-      // The marker is deliberately a visible word in the rendered page rather
-      // than an HTML comment, so a reader sees it too.
-      planned: /\*Planned\b/i.test(match[2] ?? ''),
-      line: index + 1,
-    })
+    // A table row, not prose. Two shapes carry a claim:
+    //
+    //   | INV-FOO-1 | statement |            the invariant reference table
+    //   | Threat | Mitigation | INV-FOO-1 |  the in-scope table
+    //
+    // Only the first was read for a long time, so the Invariant column of the
+    // mitigation table, which is where a reader actually looks to see what
+    // backs a defence, was never checked at all. An id invented there, or one
+    // left behind after a rename, sat in the table looking like evidence.
+    if (!line.startsWith('|')) return
+
+    const first = /^\|\s*(INV-[A-Z0-9-]+)\s*\|(.*)\|\s*$/.exec(line)
+    if (first !== null) {
+      claimed.push({
+        id: first[1],
+        // The marker is deliberately a visible word in the rendered page rather
+        // than an HTML comment, so a reader sees it too.
+        planned: /\*Planned\b/i.test(first[2] ?? ''),
+        line: index + 1,
+      })
+      return
+    }
+
+    // Every id mentioned anywhere else in a row. A mitigation cites several
+    // when several hold it up, and each of those is its own claim.
+    const planned = /\*Planned\b/i.test(line)
+    for (const match of line.matchAll(/(INV-[A-Z][A-Z0-9]*-[0-9]+)/g)) {
+      claimed.push({ id: match[1], planned, line: index + 1 })
+    }
   })
   return claimed
 }
