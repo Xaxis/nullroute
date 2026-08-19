@@ -62,6 +62,19 @@ export interface WalletSession {
    * them there would silently lose every name the user had assigned.
    */
   cosigners: { xpub: string; label: string }[]
+  /**
+   * BIP-329 labels loaded for this session.
+   *
+   * NOT sealed with the wallet, unlike cosigner names, and the difference is
+   * deliberate. A cosigner name is a handful of strings the user typed on this
+   * device. A label file arrives from software this device knows nothing about
+   * and can hold thousands of entries about transactions the device has never
+   * seen, so sealing them would grow the encrypted blob without bound for
+   * something that decides nothing.
+   *
+   * The cost is that they are gone at the next lock, and the screen says so.
+   */
+  labels: { type: string; ref: string; label: string }[]
   readonly provenance: SeedProvenance
   readonly fingerprint: string
   /** True until the user confirms they have written the mnemonic down. */
@@ -157,6 +170,7 @@ export class Session {
       provenance,
       registrations: [],
       cosigners: [],
+      labels: [],
       fingerprint: masterFingerprint(seed, this.#network),
       // A generated seed has not been written down yet. An imported one, by
       // definition, already exists on paper somewhere.
@@ -191,6 +205,7 @@ export class Session {
       provenance: 'loaded',
       registrations: [],
       cosigners: [],
+      labels: [],
       fingerprint: masterFingerprint(seed, this.#network),
       // It came off disk, so it existed before this session and its backup is
       // not this session's business to assert either way.
@@ -296,6 +311,20 @@ export class Session {
     if (wallet === undefined) throw new SessionError('No wallet is loaded.')
     const without = wallet.cosigners.filter((entry) => entry.xpub !== xpub)
     wallet.cosigners = label.length === 0 ? without : [...without, { xpub, label }]
+  }
+
+  /** Labels loaded for this session. Empty is normal. */
+  get labels(): readonly { readonly type: string; readonly ref: string; readonly label: string }[] {
+    return this.#wallet?.labels ?? []
+  }
+
+  /** Replace the loaded labels. Passing none clears them. */
+  setLabels(
+    labels: readonly { readonly type: string; readonly ref: string; readonly label: string }[]
+  ): void {
+    const wallet = this.#wallet
+    if (wallet === undefined) throw new SessionError('No wallet is loaded.')
+    wallet.labels = labels.map((entry) => ({ ...entry }))
   }
 
   setCosigners(cosigners: readonly { readonly xpub: string; readonly label: string }[]): void {

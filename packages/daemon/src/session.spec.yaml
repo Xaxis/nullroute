@@ -30,6 +30,14 @@ algorithm: >
   lock() zeroizes the seed AND resets the network to mainnet, so a subsequent
   wallet cannot silently inherit the previous one's network.
 
+  The session also holds BIP-329 labels, when a caller asks for an imported file
+  to be loaded, so the review screen can show a user's own note beside an
+  output. They are held here rather than sealed with the wallet: a label file
+  arrives from software this device knows nothing about and can hold thousands
+  of entries about transactions this device has never seen, so sealing them
+  would grow the encrypted blob without bound for something that decides
+  nothing. lock() clears them with the seed.
+
 invariants:
   - id: INV-SESS-1
     statement: >
@@ -62,6 +70,16 @@ invariants:
       Checking a word of the mnemonic returns a verdict and never a word.
     tests:
       - packages/daemon/test/ipc.test.ts::checks-a-word-without-revealing-one
+
+  - id: INV-LABEL-5
+    statement: >
+      Imported labels are held only when the caller asks, are attached to the
+      output whose address they name and to no other, and are gone at the next
+      lock because they are never sealed.
+    tests:
+      - packages/daemon/test/phase4.ipc.test.ts::holds-labels-for-the-session-only-when-asked-to
+      - packages/daemon/test/phase4.ipc.test.ts::attaches-a-label-to-the-output-it-names
+      - packages/daemon/test/phase4.ipc.test.ts::forgets-labels-when-the-wallet-locks
 
 threats:
   - INV-KEY-1

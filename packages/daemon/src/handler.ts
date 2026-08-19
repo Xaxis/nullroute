@@ -585,6 +585,13 @@ export function createHandler(state: DaemonState): IpcHandler {
               address: a.address,
               path: `${path}/${a.path}`,
               index: Number(a.path.split('/')[1] ?? 0),
+              // The user's own note, if a label file gave one for this address.
+              // Browsing your own addresses is the other place BIP-329 says a
+              // label earns its keep: it is what turns a column of identical
+              // bech32 strings into ones you can tell apart.
+              label:
+                session.labels.find((entry) => entry.type === 'addr' && entry.ref === a.address)
+                  ?.label ?? null,
             })),
             scriptType,
             change,
@@ -716,6 +723,16 @@ export function createHandler(state: DaemonState): IpcHandler {
           outputs: review.outputs.map((o) => ({
             index: o.index,
             address: o.address ?? null,
+            // The user's own note about this address, if a label file gave one.
+            // Attached here rather than in core, because core has no idea what
+            // a label is and should not learn: a label decides nothing about
+            // whether an output is change, which is decided by re-deriving it.
+            label:
+              o.address === undefined
+                ? null
+                : (session.labels.find(
+                    (entry) => entry.type === 'addr' && entry.ref === o.address
+                  )?.label ?? null),
             amountSats: o.amountSats.toString(),
             amountBtc: formatBtc(o.amountSats),
             kind: o.kind,
@@ -1307,9 +1324,17 @@ export function createHandler(state: DaemonState): IpcHandler {
        */
       case 'labels.import': {
         const result = importLabels(requireString(request, 'text'))
+        // Held for this session when asked, so the review screen can show a
+        // label beside an output. Not sealed: a label file can hold thousands
+        // of entries about transactions this device has never seen, and
+        // growing the encrypted blob without bound for something that decides
+        // nothing is a bad trade.
+        const load = params(request)['load'] === true
+        if (load) session.setLabels(result.labels)
         return {
           labels: result.labels,
           skipped: result.skipped,
+          loaded: load ? result.labels.length : 0,
           note:
             'Labels are text. Nothing here decides whether an address is yours: that is ' +
             'decided by re-deriving it from your seed.',

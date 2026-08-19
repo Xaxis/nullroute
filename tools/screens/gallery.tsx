@@ -144,6 +144,10 @@ const REVIEW = {
       amountSats: '250,000',
       kind: 'payment' as const,
       changePath: null,
+      // A loaded BIP-329 label, measured here because a note under an address
+      // is a second line the row did not have and this screen is the tightest
+      // on the device.
+      label: 'Rent, March',
     },
     {
       index: 1,
@@ -326,6 +330,9 @@ const SCREENS: Record<string, () => React.ReactElement> = {
             address: ADDRESS,
             path: `m/84'/0'/0'/0/${String(i)}`,
             index: i,
+            // One labelled row, so the harness measures a row that is a line
+            // taller than its neighbours rather than a uniform column.
+            label: i === 2 ? 'Rent, March' : null,
           })),
         })
       }
@@ -459,7 +466,26 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   ),
   message: () => <MessageScreen device={DEVICE} onHome={noop} onReview={never} onSign={never} onBack={noop} />,
   backup: () => <BackupScreen device={DEVICE} onScan={noop} onHome={noop} onCreate={never} onDescribe={never} onRestore={never} onBack={noop} />,
-  labels: () => <LabelsScreen device={DEVICE} onScan={noop} onHome={noop} onImport={never} onExport={never} onBack={noop} />,
+  labels: () => (
+    <LabelsScreen device={DEVICE} onScan={noop} onHome={noop}
+      // Filled, so the import button is live and the imported state is
+      // reachable. That state is where the session-only caveat renders, and it
+      // is the taller of the two.
+      initialText={'{"type":"addr","ref":"bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu","label":"Rent, March"}'}
+      onImport={async () =>
+        Promise.resolve({
+          labels: [
+            { type: 'addr', ref: 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu', label: 'Rent, March' },
+            { type: 'tx', ref: '5f2c1e9a4b7d8c3f60a1b2c3d4e5f60718293a4b5c6d7e8f9012a3b4c5d6e7f8', label: 'Sold the bike', spendable: false },
+          ],
+          skipped: [{ line: 4, reason: 'not an object' }],
+          note: 'Two labels read from one file.',
+        })
+      }
+      onExport={async () => Promise.resolve({ text: '{"type":"addr"}\n' })}
+      onBack={noop}
+    />
+  ),
   child: () => <ChildSeedScreen device={DEVICE} onHome={noop} onDerive={never} onBack={noop} />,
   start: () => <StartScreen device={DEVICE} walletOpen={false} onBegin={noop} onSkip={noop} />,
   assemble: () => (
@@ -616,6 +642,9 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   assemble: [['assemble-build']],
   // The confirmation, which carries the sentence about what forgetting costs.
   fleet: [['fleet-forget-start']],
+  // Imported, which is where the rows, the dropped-line banner and the caveat
+  // about labels going at the next lock all appear at once.
+  labels: [['labels-import']],
   // The reviewed quorum, which is where cosigner names appear.
   multisig: [['multisig-review']],
   // Verified, which adds a paragraph under a screen that already holds a QR

@@ -1385,7 +1385,9 @@ export function App() {
           setStage({ at: 'scan', forStage: 'labels' })
         }}
         onImport={async (text: string) =>
-          call<ImportedLabels>(transport, 'labels.import', { text })
+          // Loaded into the session, so the review screen can show a label
+          // beside an output. They are not sealed, so they go at the next lock.
+          call<ImportedLabels>(transport, 'labels.import', { text, load: true })
         }
         onExport={async (labels: readonly LabelRow[]) =>
           call<{ text: string }>(transport, 'labels.export', { labels })

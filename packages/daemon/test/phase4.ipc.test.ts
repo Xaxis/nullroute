@@ -217,3 +217,78 @@ describe('bip85.derive', () => {
     expect(readdirSync(dir)).toEqual([])
   })
 })
+
+/**
+ * Tests for labels reaching the screen that reads a transaction.
+ *
+ * BIP-329 labels were imported, exported, and consumed by nothing. That is the
+ * one place they are worth anything: an output labelled "Rent, March" is
+ * recognisable, and an unlabelled one to an address nobody knows is worth a
+ * second look.
+ */
+describe('labels on the review screen', () => {
+  const ADDRESS = 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4'
+
+  it('holds-labels-for-the-session-only-when-asked-to', async () => {
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+    const text = `${JSON.stringify({ type: 'addr', ref: ADDRESS, label: 'Rent, March' })}\n`
+
+    // Not loaded unless the caller says so, so parsing a file to look at it
+    // does not quietly change what the signing screen will show.
+    const looked = (await call('labels.import', { text })) as { loaded?: number }
+    expect(looked.loaded ?? 0).toBe(0)
+
+    const loaded = (await call('labels.import', { text, load: true })) as { loaded: number }
+    expect(loaded.loaded).toBe(1)
+  })
+
+  /**
+   * INV-LABEL-5. A loaded label appears against the output whose address it
+   * names, and against no other.
+   */
+  it('attaches-a-label-to-the-output-it-names', async () => {
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+    await call('labels.import', {
+      text: `${JSON.stringify({ type: 'addr', ref: ADDRESS, label: 'Rent, March' })}\n`,
+      load: true,
+    })
+
+    // A transaction paying that address, built here rather than mocked so the
+    // matching runs against a real review.
+    const btc = await import('@scure/btc-signer')
+    const tx = new btc.Transaction({ allowUnknownOutputs: true })
+    tx.addInput({
+      txid: new Uint8Array(32).fill(1),
+      index: 0,
+      witnessUtxo: {
+        script: btc.OutScript.encode(btc.Address(btc.NETWORK).decode(ADDRESS)),
+        amount: 100_000n,
+      },
+    })
+    tx.addOutputAddress(ADDRESS, 90_000n, btc.NETWORK)
+
+    const review = (await call('psbt.review', {
+      psbt: Buffer.from(tx.toPSBT()).toString('base64'),
+    })) as { outputs: { address: string | null; label: string | null }[] }
+
+    const paid = review.outputs.find((o) => o.address === ADDRESS)
+    expect(paid?.label).toBe('Rent, March')
+  })
+
+  /**
+   * INV-LABEL-5. Labels go when the wallet locks. They are not sealed, and a
+   * screen that kept showing them after a lock would be showing notes about a
+   * wallet that is no longer open.
+   */
+  it('forgets-labels-when-the-wallet-locks', async () => {
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+    await call('labels.import', {
+      text: `${JSON.stringify({ type: 'addr', ref: ADDRESS, label: 'Rent' })}\n`,
+      load: true,
+    })
+    expect(session.labels).toHaveLength(1)
+
+    session.lock()
+    expect(session.labels).toHaveLength(0)
+  })
+})

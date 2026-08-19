@@ -291,6 +291,25 @@ a wallet.
 Restoring shows what the file claims about itself before asking for a
 passphrase, and says that everything shown at that point is unverified.
 
+### Labels
+
+A BIP-329 file carries the part of a wallet that no seed recreates: which output
+was the rent, which one must never be spent. Read one here and the notes in it
+appear in two places, beside the matching address in the address list, and under
+the matching output on the screen you read before signing.
+
+They are notes and nothing else. This device decides an output is its own change
+by re-deriving it from your seed, never from a label, so a file claiming an
+address belongs to you changes nothing about what the device says. The label is
+drawn under the address rather than above it for the same reason: the characters
+are what you check, and a familiar word sitting above them would stand in for
+reading them.
+
+Labels are held for the session and are not sealed into the wallet. A label file
+can hold thousands of entries about transactions this device has never seen, and
+none of them decides anything, so the encrypted wallet does not grow to carry
+them. Read the file again after a reboot.
+
 ### Erasing a wallet
 
 Requires typing the wallet's name. A confirmation that is a second tap is not a

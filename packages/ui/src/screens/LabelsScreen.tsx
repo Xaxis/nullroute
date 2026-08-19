@@ -242,6 +242,16 @@ export function LabelsScreen(props: LabelsScreenProps): ReactElement {
           <p className="nr-note" data-testid="labels-note">
             {imported.note}
           </p>
+
+          {/* Said where the labels were loaded, because the next place they
+              appear is the signing screen and somebody who saw one there
+              should know it will not be there tomorrow. */}
+          <p className="nr-hint" data-testid="labels-session-only">
+            These are held for this session only and are not saved to the device. A label file can
+            hold thousands of entries about transactions this device has never seen, and none of
+            them decides anything, so they are not written into the encrypted wallet. Load the file
+            again after a reboot.
+          </p>
         </>
       )}
 

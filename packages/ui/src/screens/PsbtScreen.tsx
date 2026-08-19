@@ -35,6 +35,16 @@ import { QrDisplay } from '../components/QrDisplay.js'
 
 export interface PsbtOutputView {
   readonly index: number
+  /**
+   * The user's own note about this address, from a loaded label file.
+   *
+   * Never a reason to trust an output. Whether an output is change is decided
+   * by re-deriving it from a registered descriptor, and a label is text that
+   * arrived in a file from software this device knows nothing about. It is here
+   * because an output labelled "Rent, March" is recognisable and an unlabelled
+   * one to an address nobody knows is worth a second look.
+   */
+  readonly label?: string | null
   readonly address: string | null
   readonly amountBtc: string
   readonly amountSats: string
@@ -457,9 +467,20 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
                   <tr key={o.index} data-testid={`psbt-output-${String(o.index)}`}>
                     <td className="nr-mono">{o.amountBtc}</td>
                     <td>
+                      {/* BELOW the address, never above it, and marked as a
+                          note. The address is what the money goes to; the
+                          label is a string from a file this device did not
+                          write. Putting it first would let a familiar word
+                          stand in for reading the characters, which is the one
+                          thing this screen exists to make people do. */}
                       <div className="nr-mono nr-break">
                         {o.address ?? 'no address (raw script)'}
                       </div>
+                      {o.label !== undefined && o.label !== null && (
+                        <div className="nr-hint" data-testid={`psbt-output-label-${String(o.index)}`}>
+                          Your note: {o.label}
+                        </div>
+                      )}
                       {o.kind === 'change' ? (
                         <div className="nr-hint nr-ok">
                           Change, re-derived at {o.changePath}. Verified against your seed, not

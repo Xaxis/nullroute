@@ -24,6 +24,15 @@ export interface AddressRow {
   readonly address: string
   readonly path: string
   readonly index: number
+  /**
+   * The user's own note about this address, from a loaded BIP-329 file.
+   *
+   * Never evidence of anything. The device decides an address is its own by
+   * deriving it, which is what the path beside it records; a label is text
+   * that arrived on a card. It is here because a column of twenty bech32
+   * strings is unreadable and one of them saying "Rent" is not.
+   */
+  readonly label?: string | null
 }
 
 /** A registered quorum, and where this device sits in it. */
@@ -428,6 +437,11 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
                   <td>
                     <span className="nr-address">{row.address}</span>
                     <div className="nr-hint nr-mono">{row.path}</div>
+                    {row.label !== undefined && row.label !== null && (
+                      <div className="nr-hint" data-testid={`address-label-${String(row.index)}`}>
+                        Your note: {row.label}
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
