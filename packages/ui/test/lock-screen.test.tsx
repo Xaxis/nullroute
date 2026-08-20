@@ -63,11 +63,13 @@ describe('ui.screens.lock', () => {
 
   it('shows-verification-status-and-tier', () => {
     render(<LockScreen attestation={passing} network={mainnet} onUnlock={() => undefined} />)
-    expect(screen.getByTestId('verification-status').textContent).toContain('passed')
-    // The counts are shown as facts beside the hash rather than repeated in the
-    // status line, which spends its one line on the verdict.
-    expect(screen.getByTestId('attestation-facts').textContent).toContain('38')
-    // A user can tell from this screen whether wallet code is present.
+    expect(screen.getByTestId('verified').textContent).toContain('All 3 checks passed')
+    // The spec and invariant counts moved to the attestation screen, which is
+    // where somebody goes to ask a detailed question. Here they cost four
+    // lines and pushed the sentence about what this screen does NOT prove off
+    // the bottom of a 480px panel, which was the wrong sentence to lose.
+    expect(screen.getByTestId('attestation-facts').textContent).not.toContain('38')
+    // A user can still tell from this screen whether wallet code is present.
     expect(screen.getByTestId('tier').textContent).toContain('signer only')
   })
 
@@ -87,7 +89,7 @@ describe('ui.screens.lock', () => {
     fireEvent.click(button)
     expect(onUnlock).not.toHaveBeenCalled()
 
-    expect(screen.getByTestId('blocked').textContent).toContain('Do not enter your PIN')
+    expect(screen.getByTestId('blocked').textContent).toContain('Do not enter your passphrase')
     expect(screen.getByTestId('verification-status').textContent).toContain('integrity')
   })
 
@@ -141,7 +143,9 @@ describe('ui.screens.lock', () => {
     render(<LockScreen attestation={passing} network={mainnet} onUnlock={() => undefined} />)
     // The caveat is on the screen, not only in the docs. Overclaiming here
     // would be the most consequential place in the product to do it.
-    expect(document.body.textContent).toContain('reported by the software you are looking at')
+    expect(screen.getByTestId('lock-caveat').textContent).toContain(
+      'Reported by the software you are looking at'
+    )
   })
 })
 
@@ -225,7 +229,10 @@ describe('ui.screens.lock verdict', () => {
       />
     )
     expect(screen.getByTestId<HTMLButtonElement>('unlock').disabled).toBe(false)
-    expect(screen.getByTestId('checks').textContent).toBe('2/2')
+    // No count on a passing device: the verdict banner already says all of
+    // them passed, and the same number twice reads as two measurements.
+    expect(screen.queryByTestId('checks')).toBeNull()
+    expect(screen.getByTestId('verified').textContent).toContain('All 2 checks passed')
   })
 
   /**
@@ -293,6 +300,8 @@ describe('ui.screens.lock refusal placement', () => {
     const blocked = screen.getByTestId('blocked')
     const hash = screen.getByTestId('attestation')
 
+    // First in the body. The verdict banner is not rendered on a failing
+    // device, so nothing sits between the refusal and the top of the screen.
     expect(body?.firstElementChild).toBe(blocked)
     // Ahead of the hero in document order, so it is read first.
     expect(blocked.compareDocumentPosition(hash) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
@@ -306,16 +315,21 @@ describe('ui.screens.lock refusal placement', () => {
   it('says-what-actually-failed', () => {
     render(<LockScreen attestation={failed} network={mainnet} onUnlock={() => undefined} />)
     const said = screen.getByTestId('blocked').textContent
-    expect(said).toContain('Do not enter your PIN')
+    expect(said).toContain('Do not enter your passphrase')
     expect(said).toContain('hd.ts does not match MANIFEST.lock')
   })
 
   it('is-absent-when-there-is-nothing-to-refuse', () => {
     render(<LockScreen attestation={passing} network={mainnet} onUnlock={() => undefined} />)
     expect(screen.queryByTestId('blocked')).toBeNull()
-    // And the hash is first, since it is what the screen is for.
-    expect(document.querySelector('.nr-screen__body')?.firstElementChild).toBe(
-      screen.getByTestId('attestation')
-    )
+
+    // The VERDICT is first on a passing device, and the hash is directly
+    // under it. The hash used to be first, which was defensible while the
+    // verdict was a small line in the action bar and is not now: this screen
+    // exists to deliver a verdict, and most boots are somebody who wants to
+    // know the device is alright rather than somebody comparing 64 characters.
+    const body = document.querySelector('.nr-screen__body')
+    expect(body?.firstElementChild).toBe(screen.getByTestId('verified'))
+    expect(body?.children[1]).toBe(screen.getByTestId('attestation'))
   })
 })

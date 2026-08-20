@@ -5,7 +5,7 @@ assurance_tier: critical
 status: implemented
 
 purpose: >
-  Put the device's own attestation in front of a user before they enter a PIN,
+  Put the device's own attestation in front of a user before they open a wallet,
   so that a swapped, modified or unverified device can be noticed rather than
   merely feared. This is the screen the whole verification apparatus reports to,
   and the last point at which a user can decline.
@@ -1043,6 +1043,16 @@ invariants:
       - packages/ui/test/nav-rail.test.tsx::hides-quorums-on-a-device-that-is-in-none
       - packages/ui/test/nav-rail.test.tsx::separates-locking-from-the-destinations
       - packages/ui/test/nav-rail.test.tsx::offers-no-lock-when-there-is-no-session-to-end
+
+  - id: INV-UI-92
+    statement: >
+      The lock screen leads with its verdict and states the limit of that
+      verdict beside it, names its action for what it does rather than for what
+      happens a screen later, and does not report the same count twice.
+    tests:
+      - packages/ui/test/lock-screen.test.tsx::shows-verification-status-and-tier
+      - packages/ui/test/lock-screen.test.tsx::states-the-limit-of-what-these-numbers-prove
+      - packages/ui/test/lock-screen.test.tsx::is-absent-when-there-is-nothing-to-refuse
       - packages/ui/test/more-screen.test.tsx::reaches-every-destination
       - packages/ui/test/more-screen.test.tsx::keeps-the-action-bar-to-the-way-back
       - packages/ui/test/wallet-screen.test.tsx::keeps-the-action-bar-to-what-acts-on-this-screen

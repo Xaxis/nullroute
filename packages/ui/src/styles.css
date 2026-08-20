@@ -1026,6 +1026,46 @@ body {
   cursor: pointer;
 }
 
+/* The verdict on the lock screen. Full width and first, because the screen
+   exists to deliver one and it used to appear only as a small line in the
+   action bar, the same size as every other line on the panel. */
+.nr-verdict {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  background-color: color-mix(in srgb, var(--color-verify-600) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-verify-500) 40%, transparent);
+}
+
+.nr-verdict__line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+}
+
+.nr-verdict__limit {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--color-ink-400);
+  margin: 0;
+}
+
+.nr-verdict__mark {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--color-verify-300);
+}
+
+.nr-verdict__detail {
+  font-size: 0.8125rem;
+  color: var(--color-ink-300);
+}
+
 /* Address rows: the wallet screen exists to show these, so more than two
    should fit on a 480px panel. */
 .nr-table--dense td {

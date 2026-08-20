@@ -140,7 +140,8 @@ tells the adversary what to ask for.
 ### Device substitution and evil maid
 
 At unlock, the device shows an anti-phishing verification phrase derived from
-the seed and the PIN. A swapped or reflashed device shows different words.
+the seed and the passphrase. A swapped or reflashed device shows different
+words.
 
 This works only if you actually read the words every time, and only if you
 noticed and memorised them in the first place. It is a detection aid with a

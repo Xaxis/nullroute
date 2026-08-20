@@ -103,7 +103,7 @@ The manifest covers `packages/` and `spec/`. It does not cover:
 Excluding the website is a security decision, not a convenience. The website is
 a networked Next.js application, and folding it into the device's integrity
 claim would mean a change to a marketing page altered the hash a user compares
-before entering their PIN. The two artifacts are independent and their hashes
+before opening a wallet. The two artifacts are independent and their hashes
 are independent.
 
 ---

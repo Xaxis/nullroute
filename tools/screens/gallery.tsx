@@ -260,6 +260,39 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       onToggleExpanded={noop}
     />
   ),
+  /**
+   * The state a user actually sees: verification PASSED, hash abbreviated.
+   *
+   * The fixture above is the failing state with the hash expanded, which is
+   * the worst case and the right thing for screen-fit to measure. It is a bad
+   * sample for "what does somebody see on the hundredth boot", and reading it
+   * as one is how an audit concludes that a 64 character hash dominates the
+   * screen when the default is eight.
+   */
+  'lock-passing': () => (
+    <LockScreen device={DEVICE}
+      attestation={{
+        rootHash: '942b6a2b53d02c1bce1ce4e7592d3f13e44f23db8dea4ef02c4aea2970813600',
+        rootHashShort: '942b6a2b',
+        specCount: 37,
+        invariantCount: 283,
+        tier: 'signer',
+        version: '0.1.0',
+        checks: [
+          { name: 'coverage', status: 'passed', detail: '' },
+          { name: 'invariants', status: 'passed', detail: '' },
+          { name: 'vectors', status: 'passed', detail: '' },
+          { name: 'differential', status: 'passed', detail: '' },
+          { name: 'integrity', status: 'passed', detail: '' },
+        ],
+      }}
+      network={{ id: 'mainnet', label: 'Mainnet', isMainnet: true }}
+      fingerprint="73c5da0a"
+      onGuide={noop}
+      onUnlock={noop}
+      onToggleExpanded={noop}
+    />
+  ),
   setup: () => <SetupScreen device={DEVICE} onHome={noop} onStart={noop} />,
   dice: () => (
     <DiceScreen device={DEVICE}
