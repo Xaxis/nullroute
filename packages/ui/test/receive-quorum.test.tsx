@@ -18,6 +18,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ReceiveScreen } from '../src/screens/ReceiveScreen.js'
+import { WalletScreen } from '../src/screens/WalletScreen.js'
 
 afterEach(() => {
   cleanup()
@@ -127,5 +128,60 @@ describe('ReceiveScreen on a device holding a quorum', () => {
       'Do not use the single-signature address'
     )
     expect(screen.queryByTestId('receive-address')).toBeNull()
+  })
+})
+
+/**
+ * The same confusion, one screen over.
+ *
+ * The Addresses tab is a reference view rather than the one labelled Receive,
+ * so a note is the proportionate fix rather than a choice. What it must not do
+ * is show a column of this device's own addresses to somebody holding a quorum
+ * without saying whose they are.
+ */
+describe('WalletScreen addresses on a device holding a quorum', () => {
+  const QUORUM = {
+    descriptor: 'wsh(sortedmulti(...))#8rf6pq2t',
+    checksum: '8rf6pq2t',
+    threshold: 2,
+    total: 3,
+    ourPosition: 1,
+    cosigners: [],
+    unreadable: null,
+  }
+
+  function openWallet(quorums: readonly (typeof QUORUM)[]) {
+    render(
+      <WalletScreen
+        fingerprint="73c5da0a"
+        quorums={quorums}
+        onAddresses={async () =>
+          Promise.resolve({
+            addresses: [{ address: ADDRESS, path: "m/84'/0'/0'/0/0", index: 0 }],
+          })
+        }
+        onDescriptor={async () => Promise.resolve({ descriptor: 'x', checksum: 'y' })}
+        onXpub={async () =>
+          Promise.resolve({ xpub: 'xpub', path: "m/84'/0'/0'", masterFingerprint: '73c5da0a' })
+        }
+        onVerifyAddress={async () => Promise.resolve({ found: true })}
+        onLock={() => undefined}
+      />
+    )
+  }
+
+  /** INV-UI-88. Said where somebody could otherwise take the wrong address. */
+  it('says-these-are-not-the-quorum-s-addresses', async () => {
+    openWallet([QUORUM])
+    await waitFor(() => screen.getByTestId('addresses-not-the-quorum'))
+    expect(screen.getByTestId('addresses-not-the-quorum').textContent).toContain(
+      'spendable by this device alone'
+    )
+  })
+
+  /** INV-UI-88. And not said on a device where there is nothing to confuse. */
+  it('says-nothing-on-a-device-that-is-in-no-quorum', () => {
+    openWallet([])
+    expect(screen.queryByTestId('addresses-not-the-quorum')).toBeNull()
   })
 })

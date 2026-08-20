@@ -1000,6 +1000,8 @@ invariants:
       - packages/ui/test/receive-quorum.test.tsx::checks-a-quorum-address-against-the-descriptor-not-against-this-device
       - packages/ui/test/receive-quorum.test.tsx::offers-no-choice-on-a-device-that-is-in-no-quorum
       - packages/ui/test/receive-quorum.test.tsx::refuses-rather-than-quietly-showing-the-weaker-address
+      - packages/ui/test/receive-quorum.test.tsx::says-these-are-not-the-quorum-s-addresses
+      - packages/ui/test/receive-quorum.test.tsx::says-nothing-on-a-device-that-is-in-no-quorum
 
 threats:
   - INV-KEY-1

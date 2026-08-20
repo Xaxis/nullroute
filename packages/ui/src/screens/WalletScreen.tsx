@@ -430,6 +430,20 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
         </div>
       )}
 
+      {/* WHICH ADDRESSES THESE ARE, on a device that holds more than one
+          answer. This list is derived from this device's own key: taking one
+          and receiving to it puts money behind one key rather than behind the
+          quorum, which is the mistake the Receive screen was making until it
+          learned to ask. Only shown when there is something to confuse it
+          with. */}
+      {tab === 'addresses' && quorums.length > 0 && (
+        <p className="nr-note" data-testid="addresses-not-the-quorum">
+          These are this device&rsquo;s own addresses, not your quorum&rsquo;s. Money sent to one
+          of these is spendable by this device alone. For an address your quorum controls, use
+          Receive, or open the quorum below.
+        </p>
+      )}
+
       {tab === 'addresses' && (
         <div className="nr-card nr-card--tight">
           <table className="nr-table nr-table--dense">
