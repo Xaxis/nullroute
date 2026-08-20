@@ -113,6 +113,19 @@ const SCRIPT_TYPES: { id: ScriptType; label: string; note: string }[] = [
 ]
 
 /**
+ * The two branches of a BIP-44 path, as two options rather than one toggle.
+ *
+ * "Receiving", not "Receive": this is the branch the list is showing, and the
+ * menu has a Receive DESTINATION. The same word in two places, one a state and
+ * one a journey, is the kind of collision that makes somebody tap the wrong
+ * thing once and distrust the screen afterwards.
+ */
+const BRANCHES: { label: string; change: boolean; testId: string }[] = [
+  { label: 'Receiving', change: false, testId: 'branch-receiving' },
+  { label: 'Change', change: true, testId: 'branch-change' },
+]
+
+/**
  * The fourth tab is not a feature, it is a consequence of the panel.
  *
  * Every destination on this device used to be a button in the action bar, and
@@ -343,24 +356,40 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
               {s.label}
             </button>
           ))}
-          <div className="nr-spacer" />
-          <button
-            type="button"
-            className="nr-picker__option"
-            aria-pressed={change}
-            onClick={() => {
-              setChange(!change)
-              setStart(0)
-            }}
-            data-testid="toggle-change"
-          >
-            {/* "Receiving", not "Receive". This is the branch the list is
-                showing, and the rail now has a Receive DESTINATION: the same
-                word in two places, one a state and one a journey, is the kind
-                of collision that makes somebody tap the wrong thing once and
-                distrust the screen afterwards. */}
-            {change ? 'Change' : 'Receiving'}
-          </button>
+        </div>
+      )}
+
+      {/* WHICH BRANCH, as its own labelled picker.
+          
+          It used to be a single button in the row above, in the same pill as
+          the four script types and separated from them only by a spacer, so a
+          fifth pill reading "Receiving" sat beside four script types with one
+          of them selected. The obvious reading is that Receiving is a fifth
+          script type that happens to be off.
+          
+          It was also ambiguous on its own terms. The label named the state
+          rather than the action, so a button reading "Change" is either "you
+          are looking at change" or "tap to change something", and
+          `aria-pressed` was tracking a third thing again. Two options with one
+          pressed says which branch you are on and cannot be read as a verb. */}
+      {tab !== 'verify' && (
+        <div className="nr-picker" data-testid="branch-picker">
+          <span className="nr-picker__label">Branch</span>
+          {BRANCHES.map((b) => (
+            <button
+              key={b.label}
+              type="button"
+              className="nr-picker__option"
+              aria-pressed={change === b.change}
+              onClick={() => {
+                setChange(b.change)
+                setStart(0)
+              }}
+              data-testid={b.testId}
+            >
+              {b.label}
+            </button>
+          ))}
         </div>
       )}
 
@@ -369,11 +398,17 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
           and receiving to it puts money behind one key rather than behind the
           quorum, which is the mistake the Receive screen was making until it
           learned to ask. Only shown when there is something to confuse it
-          with. */}
+          with.
+          
+          ONE LINE. It was two, above a table that only had room for one row on
+          a 480px panel, on the screen whose whole job is showing addresses. A
+          permanent explanation that pushes the thing it explains off the
+          screen is a explanation that costs more than it pays. The claim that
+          matters survives: this key alone can spend it, and Receive is where
+          the quorum's addresses are. */}
       {tab === 'addresses' && quorums.length > 0 && (
-        <p className="nr-note" data-testid="addresses-not-the-quorum">
-          This device&rsquo;s own addresses, not your quorum&rsquo;s: money sent to one is
-          spendable by this device alone. Use Receive for an address your quorum controls.
+        <p className="nr-note nr-note--tight" data-testid="addresses-not-the-quorum">
+          This device&rsquo;s own key alone can spend these. Use Receive for your quorum&rsquo;s.
         </p>
       )}
 

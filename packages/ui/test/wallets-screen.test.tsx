@@ -61,8 +61,11 @@ describe('WalletsScreen', () => {
    */
   it('says-plainly-that-nothing-here-is-confirmed-yet', () => {
     mount()
+    // Both halves, because the note was shortened to one line: that the list is
+    // unauthenticated, and that opening a wallet is what settles it.
     const note = screen.getByTestId('wallets-unverified').textContent
-    expect(note).toContain('not confirmed until you open a wallet')
+    expect(note).toContain('not confirmed until a wallet opens')
+    expect(note).toContain('says so if a name differs')
 
     // And no fingerprint anywhere, which is the value a user would treat as
     // proof if it were shown.

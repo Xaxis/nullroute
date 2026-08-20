@@ -1411,6 +1411,7 @@ export function App() {
   if (stage.at === 'wallets') {
     return (
       <WalletsScreen
+        nav={menu()}
         banner={banner}
         device={headerDevice}
         steps={stepsFor('wallets')}

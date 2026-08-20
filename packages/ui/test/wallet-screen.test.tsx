@@ -250,3 +250,111 @@ describe('ui.screens.wallet destinations', () => {
     expect(buttons).toEqual(['Previous', 'Next'])
   })
 })
+
+/**
+ * Which branch of the path the list is showing.
+ *
+ * WHAT WAS WRONG. It was one button, in the same pill as the four script
+ * types, in the same row, separated from them by a spacer. Four options with
+ * one selected, then a fifth pill reading "Receiving", and the obvious reading
+ * is that Receiving is a fifth script type that happens to be off.
+ *
+ * It was ambiguous on its own terms too. The label named the state rather than
+ * the action, so a button reading "Change" is either "you are looking at
+ * change" or "tap to change something", and aria-pressed was tracking neither
+ * of those consistently.
+ */
+describe('WalletScreen branch picker', () => {
+  function open(): { addresses: ReturnType<typeof vi.fn> } {
+    const addresses = vi.fn(async () => Promise.resolve({ addresses: [] }))
+    render(
+      <WalletScreen
+        fingerprint="73c5da0a"
+        quorums={[]}
+        onAddresses={addresses}
+        onDescriptor={vi.fn(async () => Promise.resolve({ descriptor: 'x', checksum: 'y' }))}
+        onVerifyAddress={vi.fn(async () => Promise.resolve({ found: false }))}
+      />
+    )
+    return { addresses }
+  }
+
+  /**
+   * INV-UI-94. Two options, one of them on, in a group of their own with their
+   * own label. Not a fifth member of the group above.
+   */
+  it('offers-the-branch-as-its-own-labelled-pair', () => {
+    open()
+
+    const picker = screen.getByTestId('branch-picker')
+    expect(picker.textContent).toContain('Branch')
+
+    const options = [...picker.querySelectorAll('button')]
+    expect(options).toHaveLength(2)
+    expect(options.map((o) => o.textContent)).toEqual(['Receiving', 'Change'])
+
+    // And the script types are somewhere else entirely, rather than four of six
+    // buttons in one row.
+    const scripts = [...screen.getByTestId('script-picker').querySelectorAll('button')]
+    expect(scripts).toHaveLength(4)
+    expect(scripts.map((s) => s.textContent)).not.toContain('Receiving')
+  })
+
+  /** INV-UI-94. Exactly one is on, and it says which branch you are looking at. */
+  it('marks-the-branch-you-are-on-rather-than-the-one-you-would-move-to', () => {
+    open()
+
+    expect(screen.getByTestId('branch-receiving').getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByTestId('branch-change').getAttribute('aria-pressed')).toBe('false')
+
+    fireEvent.click(screen.getByTestId('branch-change'))
+
+    expect(screen.getByTestId('branch-change').getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByTestId('branch-receiving').getAttribute('aria-pressed')).toBe('false')
+  })
+
+  /**
+   * INV-UI-94. And it actually asks the daemon for the other branch.
+   *
+   * The control could have been made unambiguous and still been wired to
+   * nothing, which is the version of this fix that looks right in a screenshot.
+   */
+  it('fetches-the-branch-it-says-it-is-showing', async () => {
+    const { addresses } = open()
+    await waitFor(() => {
+      expect(addresses).toHaveBeenCalled()
+    })
+    // The second argument is `change`.
+    expect(addresses.mock.calls.at(-1)?.[1]).toBe(false)
+
+    fireEvent.click(screen.getByTestId('branch-change'))
+
+    await waitFor(() => {
+      expect(addresses.mock.calls.at(-1)?.[1]).toBe(true)
+    })
+  })
+
+  /**
+   * INV-UI-94. Changing branch returns to index 0.
+   *
+   * Carrying the offset across would show change address 40 to somebody who
+   * had paged through receiving addresses, under a heading that says nothing
+   * about where they are in the list.
+   */
+  it('returns-to-the-start-of-the-list-when-the-branch-changes', async () => {
+    const { addresses } = open()
+    await waitFor(() => {
+      expect(addresses).toHaveBeenCalled()
+    })
+
+    fireEvent.click(screen.getByTestId('addresses-next'))
+    await waitFor(() => {
+      expect(addresses.mock.calls.at(-1)?.[2]).not.toBe(0)
+    })
+
+    fireEvent.click(screen.getByTestId('branch-change'))
+    await waitFor(() => {
+      expect(addresses.mock.calls.at(-1)?.[2]).toBe(0)
+    })
+  })
+})

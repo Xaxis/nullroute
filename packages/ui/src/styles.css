@@ -127,6 +127,9 @@
   --color-accent-strong: #cf6f2a;
   --color-accent-bright: #f39c5c;
   --color-accent-text: #f7b884;
+  /* The accent at fill weight rather than at ink weight, for a chip that has
+     to be legible as a state without competing with a primary button. */
+  --color-accent-soft: #3b2413;
 
   --color-caution-text: #f0918e;
   --color-caution-line: #d9534f;
@@ -194,6 +197,7 @@
      where the dark theme goes lighter. This is the pair most obviously wrong
      under a naive inversion. */
   --color-accent-text: #8a4409;
+  --color-accent-soft: #f7e3d1;
 
   --color-caution-text: #8c2420;
   --color-caution-line: #b83c37;
@@ -566,6 +570,15 @@ body {
   line-height: 1.55;
   color: var(--color-text-soft);
   margin: 0;
+}
+
+/* An aside that sits between a control and the thing it controls, where the
+   note's own line height is the difference between one row of a table being
+   visible and none of it. */
+.nr-note--tight {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--color-text-dim);
 }
 
 /* ==========================================================================
@@ -1671,13 +1684,32 @@ body {
   color: var(--color-caution-text);
 }
 
+/* One chip said "this is the wallet you are using" and the other said "this
+   wallet's seed is gone for good", and they shared a rule: same grey, same
+   size, same weight, at the far right of otherwise identical rows. A state
+   worth marking is worth marking as itself. */
 .nr-wrow__open,
 .nr-wrow__gone {
   font-size: 0.6875rem;
   padding: 0.125rem 0.4375rem;
   border-radius: 0.25rem;
-  background-color: var(--color-surface-3);
-  color: var(--color-text-dim);
+}
+
+.nr-wrow__open {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent-text);
+  font-weight: 600;
+}
+
+.nr-wrow__gone {
+  background-color: transparent;
+  border: 1px solid var(--color-line);
+  color: var(--color-text-faint);
+  /* Not shouting. An erased wallet is a tombstone rather than a warning:
+     nothing is at risk, there is simply nothing there. */
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.625rem;
 }
 
 /* The fingerprint on the post-unlock screen. Deliberately the largest thing

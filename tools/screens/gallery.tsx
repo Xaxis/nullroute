@@ -368,6 +368,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   ),
   wallets: () => (
     <WalletsScreen device={DEVICE}
+      nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} walletOpen={false} />}
       max={8}
       wallets={[
         {

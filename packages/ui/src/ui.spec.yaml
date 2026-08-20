@@ -1083,6 +1083,19 @@ invariants:
       - packages/ui/test/theme.test.tsx::paints-the-ground-from-a-token
       - packages/ui/test/theme.test.tsx::names-no-palette-rungs
 
+  - id: INV-UI-94
+    statement: >
+      Two controls that mean different things do not look like one control.
+      The branch of the derivation path is its own labelled pair rather than a
+      fifth script type, it marks the branch being shown rather than the one a
+      tap would move to, it fetches the branch it names, and changing it
+      returns to the start of the list.
+    tests:
+      - packages/ui/test/wallet-screen.test.tsx::offers-the-branch-as-its-own-labelled-pair
+      - packages/ui/test/wallet-screen.test.tsx::marks-the-branch-you-are-on-rather-than-the-one-you-would-move-to
+      - packages/ui/test/wallet-screen.test.tsx::fetches-the-branch-it-says-it-is-showing
+      - packages/ui/test/wallet-screen.test.tsx::returns-to-the-start-of-the-list-when-the-branch-changes
+
 threats:
   - INV-KEY-1
   - INV-BUILD-1

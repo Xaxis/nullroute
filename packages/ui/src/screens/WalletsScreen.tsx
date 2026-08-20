@@ -1,4 +1,4 @@
-import { type ReactElement, useState } from 'react'
+import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { TextKeyboard } from '../components/TextKeyboard.js'
@@ -81,6 +81,15 @@ export interface WalletsScreenProps {
   /** What this physical device is called. Rendered in the header by Screen. */
   readonly device?: { readonly name: string; readonly colour: string } | undefined
   /**
+   * The navigation menu.
+   *
+   * Safe to leave: nothing has been chosen here yet, and Back was already the
+   * way out. Without it this was the one screen between the lock screen and a
+   * wallet with no menu in its header, which is the sort of gap that teaches
+   * somebody the menu is not always there.
+   */
+  readonly nav?: ReactNode
+  /**
    * Where this screen sits in a journey.
    *
    * The picker became a journey step when journeys stopped refusing to start
@@ -105,6 +114,7 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
     steps,
     onHome,
     device,
+    nav,
     banner,
   } = props
 
@@ -279,6 +289,7 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
       steps={steps}
       onHome={onHome}
       device={device}
+      nav={nav}
       testId="wallets-screen"
       actions={
         <>
@@ -302,11 +313,17 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
       {/* Not dismissible, first, and pinned. Everything below it is a claim
           made by a file rather than by the device, and on a 480px panel a note
           that scrolls away once the device holds five wallets is a note the
-          user reads exactly once. */}
+          user reads exactly once.
+          
+          ONE LINE, THOUGH. It was three, and on a 480px panel that is a
+          standing paragraph of unchanging text above every wallet on the
+          device, every time, forever. A permanent explanation that pushes the
+          thing it explains below the fold gets skipped the same way a
+          dismissible one does, so length here costs the warning its own
+          audience. What survives is the part that is load-bearing: the list is
+          not authenticated, and the device tells you when it opens. */}
       <p className="nr-note nr-note--pinned" data-testid="wallets-unverified">
-        These names, colours and networks are read from files on this device and are not confirmed
-        until you open a wallet. If one opens with a different name to the one you tapped, the
-        device will say so.
+        Read from disk, not confirmed until a wallet opens. The device says so if a name differs.
       </p>
 
       {failure !== undefined && (
@@ -344,6 +361,10 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
             >
               {wallet.network}
             </span>
+            {/* These two used to be the same grey chip, in one CSS rule. One
+                says this is the wallet you are using and the other says this
+                wallet's seed is gone for good, and nothing on the row told
+                them apart at a glance. */}
             {active?.id === wallet.id && <span className="nr-wrow__open">open</span>}
             {wallet.destroyed && <span className="nr-wrow__gone">erased</span>}
           </button>

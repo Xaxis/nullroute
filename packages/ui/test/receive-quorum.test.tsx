@@ -173,9 +173,11 @@ describe('WalletScreen addresses on a device holding a quorum', () => {
   it('says-these-are-not-the-quorum-s-addresses', async () => {
     openWallet([QUORUM])
     await waitFor(() => screen.getByTestId('addresses-not-the-quorum'))
-    expect(screen.getByTestId('addresses-not-the-quorum').textContent).toContain(
-      'spendable by this device alone'
-    )
+    // Both halves of the claim, because the note was shortened to one line and
+    // an assertion on a fragment would have passed on half a warning.
+    const note = screen.getByTestId('addresses-not-the-quorum').textContent
+    expect(note).toContain('own key alone can spend these')
+    expect(note).toContain('Receive')
   })
 
   /** INV-UI-88. And not said on a device where there is nothing to confuse. */
