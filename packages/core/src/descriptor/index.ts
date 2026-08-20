@@ -44,3 +44,6 @@ export type {
   ImportedDescriptor,
   BundleOptions,
 } from './coordinator.js'
+
+export { deriveQuorumAddresses } from './quorum-addresses.js'
+export type { QuorumAddress, DeriveQuorumOptions } from './quorum-addresses.js'

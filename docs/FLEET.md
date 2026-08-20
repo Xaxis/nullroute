@@ -9,6 +9,20 @@ The strongest version of that arrangement, and the one this page is about, is
 several nullroute devices holding one multisig wallet between them.
 
 
+## Which quorums this device handles
+
+It **builds** `wsh(sortedmulti(...))`, native segwit, which is what Build a
+quorum produces.
+
+It **accepts** a taproot quorum, `tr(NUMS, sortedmulti_a(...))`, from a
+coordinator. Registering, deriving addresses, recognising change and signing the
+script path all work, and the recovery drill proves it against a real Bitcoin
+Core: identical addresses, one signature that does not finalise, two devices
+that do.
+
+It does not build taproot quorums itself. If you want one, your coordinator
+writes the descriptor and every device registers it.
+
 ## Back up the descriptor, not just the words
 
 **Your mnemonics are not enough to rebuild a quorum.** Holding all three seed

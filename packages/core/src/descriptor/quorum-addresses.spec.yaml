@@ -1,0 +1,67 @@
+id: core.descriptor.quorum-addresses
+version: 1
+title: One place that dispatches on a quorum's script kind
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Derive the addresses a registered quorum pays to, whichever kind of descriptor
+  it is, from a single function. Taproot quorums and the older kinds derive
+  through different code, and every caller having to remember that is how one
+  of them stopped.
+
+covers:
+  - packages/core/src/descriptor/quorum-addresses.ts::deriveQuorumAddresses
+
+algorithm: >
+  A tr() descriptor derives through the taproot path; everything else through
+  the multisig path. A descriptor that is not a quorum at all is refused by
+  whichever underlying function was reached, because both already say what they
+  expected and what they got.
+
+  The returned shape is the common part of the two: the address and its index
+  within the branch. The extra fields each side carries, the derived public keys
+  in script order for multisig and whether a script path exists for taproot, are
+  real and belong to their own kinds, so they are not merged into a union a
+  caller would have to narrow.
+
+invariants:
+  - id: INV-DESC-8
+    statement: >
+      Dispatch produces exactly what the matching derivation function produces,
+      for both kinds and on both branches, and the two kinds derive genuinely
+      different addresses so the dispatch cannot be doing nothing.
+    tests:
+      - packages/core/test/descriptor.quorum-addresses.test.ts::agrees-with-the-multisig-function-for-a-wsh-quorum
+      - packages/core/test/descriptor.quorum-addresses.test.ts::agrees-with-the-taproot-function-for-a-taproot-quorum
+      - packages/core/test/descriptor.quorum-addresses.test.ts::derives-genuinely-different-addresses-for-the-two-kinds
+      - packages/core/test/descriptor.quorum-addresses.test.ts::derives-the-change-branch-for-both-kinds
+      - packages/core/test/descriptor.quorum-addresses.test.ts::refuses-a-single-signature-descriptor-through-the-underlying-error
+
+threats:
+  - INV-PSBT-2
+
+security_notes: >
+  THIS EXISTS BECAUSE THE BRANCH WAS WRITTEN FOUR TIMES AND FORGOTTEN TWICE.
+  The owned index and the registration smoke test dispatched on script kind.
+  The two IPC methods that show a user a quorum address did not: they called
+  the multisig function unconditionally and refused taproot.
+
+  The result was a taproot quorum that could be registered, signed for and
+  recognised as change, and never once displayed. The receive screen's quorum
+  tab errored and so did the screen for comparing addresses between devices.
+  Neither derivation was wrong. What was wrong was a rule everybody had to
+  remember being remembered in three places out of five.
+
+  A CALL SITE CANNOT FORGET NOW, because dispatching is the only thing on
+  offer. That is the whole security argument for this module: it removes an
+  opportunity to be inconsistent rather than adding a check that catches it
+  afterwards.
+
+  THE TWO KINDS MUST DERIVE DIFFERENT ADDRESSES, which is asserted rather than
+  assumed. If they agreed, every other test here would pass while the dispatch
+  did nothing at all, and the module would be decorative.
+
+references:
+  - BIP-380, Output Script Descriptors
+  - BIP-387, Tapscript Multisig Output Script Descriptors

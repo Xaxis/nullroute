@@ -257,16 +257,60 @@ function nullrouteAssemble(keys, threshold, branch) {
   return built
 }
 
-/** Derive quorum addresses with the device's own code, for comparison with Core. */
+/**
+ * A TAPROOT quorum, as a coordinator writes one.
+ *
+ * assembleQuorum deliberately builds only wsh and sh(wsh), so this is not the
+ * device assembling: it is the device being handed a descriptor to register,
+ * derive from and sign, which is how a taproot quorum actually arrives.
+ *
+ * The internal key is a NUMS point with no known discrete log, which is what
+ * makes this script-path only: nobody can spend it through the key path, so the
+ * 2-of-3 in the leaf is the only way to move the money.
+ */
+function nullrouteTaprootQuorum(keys, threshold) {
+  const NUMS = '50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0'
+  const script = `
+    import { withChecksum } from '@nullroute/core'
+    const keys = ${JSON.stringify(keys)}
+    const wrap = (suffix) => withChecksum(
+      'tr(${NUMS},sortedmulti_a(${String(threshold)},' +
+        keys.map((k) => k + suffix).join(',') + '))'
+    )
+    const full = wrap('/<0;1>/*')
+    console.log(JSON.stringify({
+      descriptor: full,
+      checksum: full.slice(full.lastIndexOf('#') + 1),
+      receive: wrap('/0/*'),
+      change: wrap('/1/*'),
+    }))
+  `
+  const result = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  })
+  if (result.status !== 0) {
+    throw new Error(`taproot quorum construction failed:\n${result.stderr}`)
+  }
+  return JSON.parse(result.stdout.trim())
+}
+
+/**
+ * Derive quorum addresses with the device's own code, for comparison with Core.
+ *
+ * Through deriveQuorumAddresses, the one place that dispatches on script kind.
+ * The drill used the wsh function unconditionally, which is why it could never
+ * have caught a taproot quorum being undisplayable: it could not build one.
+ */
 function nullrouteQuorumAddresses(descriptor, network, count) {
   const script = `
-    import { parseDescriptor, deriveMultisigAddresses, networkById } from '@nullroute/core'
+    import { parseDescriptor, deriveQuorumAddresses, networkById } from '@nullroute/core'
     const network = networkById(${JSON.stringify(network)})
     const parsed = parseDescriptor(${JSON.stringify(descriptor)})
-    console.log(JSON.stringify(
-      deriveMultisigAddresses(parsed, { network, change: false, start: 0, count: ${String(count)} })
-        .map((a) => a.address)
-    ))
+    const derived = deriveQuorumAddresses(parsed, {
+      network, change: false, start: 0, count: ${String(count)},
+    })
+    console.log(JSON.stringify(derived.map((a) => a.address)))
   `
   const result = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
     cwd: ROOT,
@@ -509,7 +553,7 @@ async function drill(scriptType) {
  * spend, Core finalises and broadcasts. nullroute assembles the descriptor and
  * produces two signatures.
  */
-async function drillQuorum() {
+async function drillQuorum(kind = 'wsh') {
   const network = 'regtest'
   const mnemonics = [MNEMONIC, ...COSIGNER_MNEMONICS]
   const keys = mnemonics.map((mnemonic) => nullrouteQuorumKey(mnemonic, network))
@@ -525,7 +569,14 @@ async function drillQuorum() {
     )
   }
 
-  const quorum = nullrouteAssemble(keys.map((key) => key.keyExpression), 2)
+  // wsh is what the device ASSEMBLES. A taproot quorum arrives from a
+  // coordinator instead, because assembleQuorum deliberately builds only wsh
+  // and sh(wsh), so the drill constructs one the same way a coordinator would
+  // and hands it to the device to register, derive and sign.
+  const quorum =
+    kind === 'tr'
+      ? nullrouteTaprootQuorum(keys.map((key) => key.keyExpression), 2)
+      : nullrouteAssemble(keys.map((key) => key.keyExpression), 2)
 
   // --- Core derives the addresses, and they must be identical --------------
   //
@@ -581,15 +632,29 @@ async function drillQuorum() {
       [],
       [{ [destination]: 0.1 }],
       0,
-      { includeWatching: true, subtractFeeFromOutputs: [0], change_type: 'bech32' },
+      {
+        includeWatching: true,
+        subtractFeeFromOutputs: [0],
+        // P2WSH is bech32; a taproot quorum pays to bech32m.
+        change_type: kind === 'tr' ? 'bech32m' : 'bech32',
+      },
     ],
     watchName
   )
 
   const decoded = await rpc('decodepsbt', [funded.psbt])
-  const derivations = (decoded.inputs ?? []).flatMap((input) =>
-    (input.bip32_derivs ?? []).map((entry) => ({ path: entry.path, fingerprint: entry.master_fingerprint }))
-  )
+  // Taproot writes its derivations under a DIFFERENT key, and reading only the
+  // classic field reports a correctly built taproot PSBT as having none.
+  const derivations = (decoded.inputs ?? []).flatMap((input) => [
+    ...(input.bip32_derivs ?? []).map((entry) => ({
+      path: entry.path,
+      fingerprint: entry.master_fingerprint,
+    })),
+    ...(input.taproot_bip32_derivs ?? []).map((entry) => ({
+      path: entry.path,
+      fingerprint: entry.master_fingerprint,
+    })),
+  ])
   if (derivations.length === 0) {
     throw new Error(
       'quorum: Core built a PSBT with no BIP-32 derivations, so nothing identifies which keys ' +
@@ -652,11 +717,12 @@ async function drillQuorum() {
     throw new Error('quorum: the spend did not confirm.')
   }
 
+  const label = kind === 'tr' ? '2-of-3 tr  ' : '2-of-3 wsh '
   console.log(
-    `  ok      2-of-3       checksum ${quorum.checksum}, ${String(ours.length)} identical ` +
+    `  ok      ${label}  checksum ${quorum.checksum}, ${String(ours.length)} identical ` +
       `addresses, ${String(signedBy)} devices signed, spent ${txid.slice(0, 16)}...`
   )
-  return { scriptType: '2-of-3', txid, addresses: ours.length }
+  return { scriptType: `2-of-3 ${kind}`, txid, addresses: ours.length }
 }
 
 async function main() {
@@ -685,9 +751,10 @@ async function main() {
     results.push(await drill(scriptType))
   }
 
-  // The quorum, last, because it is the longest and the one whose failure is
-  // most informative once the simple cases are known to work.
-  results.push(await drillQuorum())
+  // The quorums, last, because they are the longest and the ones whose failure
+  // is most informative once the simple cases are known to work.
+  results.push(await drillQuorum('wsh'))
+  results.push(await drillQuorum('tr'))
 
   console.log(`\n  ${String(results.length)} of ${String(results.length)} wallet kinds recovered and spent with Core alone.`)
 

@@ -24,8 +24,7 @@ import {
   descriptorChecksum,
   deriveAccountXpub,
   deriveAddresses,
-  deriveMultisigAddresses,
-  deriveTaprootAddresses,
+  deriveQuorumAddresses,
   encodePsbt,
   assembleQuorum,
   exportBundle,
@@ -285,9 +284,7 @@ export function createHandler(state: DaemonState): IpcHandler {
     start: number,
     count: number
   ): readonly { address: string; index: number }[] =>
-    descriptor.script.kind === 'tr'
-      ? deriveTaprootAddresses(descriptor, { network: session.network, change, start, count })
-      : deriveMultisigAddresses(descriptor, { network: session.network, change, start, count })
+    deriveQuorumAddresses(descriptor, { network: session.network, change, start, count })
 
   /** A wallet id from a request, validated before it reaches any path. */
   const requireWalletId = (request: IpcRequest): string => {

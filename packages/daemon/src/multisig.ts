@@ -31,8 +31,7 @@ import {
   type Network,
   type Secret,
   deriveAccountXpub,
-  deriveMultisigAddresses,
-  deriveTaprootAddresses,
+  deriveQuorumAddresses,
   findOwnKey,
   multisigShape,
   parseDescriptor,
@@ -194,9 +193,7 @@ export function reviewRegistration(
   // Derive one address as a smoke test. A descriptor that parses, names this
   // device and then cannot produce an address is one worth failing on now
   // rather than after it has been recorded as the wallet.
-  const first = taproot
-    ? deriveTaprootAddresses(descriptor, { network, start: 0, count: 1 })
-    : deriveMultisigAddresses(descriptor, { network, start: 0, count: 1 })
+  const first = deriveQuorumAddresses(descriptor, { network, start: 0, count: 1 })
   if (first.length !== 1) {
     throw new MultisigError('That descriptor produced no addresses.')
   }

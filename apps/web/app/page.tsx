@@ -333,8 +333,8 @@ export default function HomePage() {
           that catch a dm-verity salt regenerated per build, which would make the root hash this
           device displays meaningless as a published value. The recovery drill covers all four
           address types against a real Bitcoin Core on every commit, taproot included, and a
-          2-of-3 quorum built from three distinct seeds where two separate devices sign in
-          sequence.
+          2-of-3 quorum in both native segwit and taproot, built from three distinct seeds, where
+          two separate devices sign in sequence.
         </p>
       </Section>
 

@@ -22,8 +22,7 @@ import {
   accountPath,
   addressFromScript,
   deriveAddresses,
-  deriveMultisigAddresses,
-  deriveTaprootAddresses,
+  deriveQuorumAddresses,
   findOwnKey,
   deriveAccountXpub,
   multisigShape,
@@ -182,9 +181,7 @@ function addRegistration(
 
     let derived
     try {
-      derived = taproot
-        ? deriveTaprootAddresses(descriptor, { network, change, start: 0, count: gapLimit })
-        : deriveMultisigAddresses(descriptor, { network, change, start: 0, count: gapLimit })
+      derived = deriveQuorumAddresses(descriptor, { network, change, start: 0, count: gapLimit })
     } catch {
       return
     }
