@@ -453,3 +453,66 @@ describe('who still has to sign', () => {
     expect(signed.attribution.waiting).toMatch(/No quorum is registered/)
   })
 })
+
+/**
+ * Tests for checking an address against a registered quorum.
+ *
+ * A SEPARATE METHOD FROM wallet.verifyAddress on purpose. A quorum address does
+ * not derive from this device alone by construction, so asking the
+ * single-signature verifier about one answers no about something perfectly
+ * correct, and a screen reporting that would teach somebody to ignore its only
+ * alarm.
+ */
+describe('multisig.verifyAddress', () => {
+  const DESCRIPTOR =
+    'wsh(sortedmulti(2,[73c5da0a/48h/0h/0h/2h]xpub6E64WfdQwBGz85XhbZryr9gUGUPBgoSu5WV6tJWpzAvgAmpVpdPHkT3XYm9R5J6MeWzvLQoz4q845taC9Q28XutbptxAmg7q8QPkjvTL4oi/<0;1>/*,[aabbccdd/48h/0h/0h/2h]xpub6DiYrfRwNnjeX4vHsWMajJVFKrbEEnu8gAW9vDuQzgTWEsEHE16sGWeXXUV1LBWQE1yCTmeprSNcqZ3W74hqVdgDbtYHUv3eM4W2TEUhpan/<0;1>/*))#a7ec6klf'
+
+  it('confirms-an-address-that-comes-out-of-the-descriptor', async () => {
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+
+    const derived = (await call('multisig.addresses', {
+      descriptor: DESCRIPTOR,
+      start: 0,
+      count: 1,
+    })) as { addresses: { address: string; index: number }[] }
+    const address = derived.addresses[0]?.address ?? ''
+
+    expect(
+      await call('multisig.verifyAddress', { descriptor: DESCRIPTOR, address })
+    ).toMatchObject({ found: true, index: 0, change: false })
+  })
+
+  /**
+   * INV-QUORUM-6. Not found says how far it looked. "Not in this quorum" and
+   * "beyond the gap limit" are different, and a screen reporting the second as
+   * the first would call a correct address wrong.
+   */
+  it('says-how-far-it-searched-rather-than-implying-a-verdict', async () => {
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+    const refused = (await call('multisig.verifyAddress', {
+      descriptor: DESCRIPTOR,
+      address: 'bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l',
+      gapLimit: 5,
+    })) as { found: boolean; searchedTo: number }
+
+    expect(refused.found).toBe(false)
+    expect(refused.searchedTo).toBe(5)
+  })
+
+  /** INV-QUORUM-6. Change addresses count: money comes back on that branch too. */
+  it('finds-an-address-on-the-change-branch-as-well', async () => {
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+
+    const derived = (await call('multisig.addresses', {
+      descriptor: DESCRIPTOR,
+      change: true,
+      start: 0,
+      count: 1,
+    })) as { addresses: { address: string }[] }
+    const address = derived.addresses[0]?.address ?? ''
+
+    expect(
+      await call('multisig.verifyAddress', { descriptor: DESCRIPTOR, address })
+    ).toMatchObject({ found: true, change: true })
+  })
+})

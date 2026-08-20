@@ -1455,6 +1455,49 @@ export function App() {
         device={headerDevice}
         steps={stepsFor('receive')}
         walletLabel={activeWallet?.label ?? 'This device'}
+        // Every registered quorum, so the screen can ask which wallet the
+        // money is for. Without this it derived a single-signature address on
+        // a device holding a 2-of-3, which is money protected by one key
+        // instead of two and nothing on the screen saying so.
+        // A quorum with no readable checksum is left OUT rather than shown
+        // with a blank one. The checksum is what every device in the fleet
+        // compares, and a tab labelled with nothing is a choice nobody can
+        // make deliberately.
+        quorums={quorums
+          .filter((quorum) => quorum.checksum !== undefined)
+          .map((quorum) => ({
+            checksum: quorum.checksum ?? '',
+            threshold: quorum.threshold,
+            total: quorum.total,
+            descriptor: quorum.descriptor,
+          }))}
+        onQuorumAddress={async (descriptor: string, index: number) => {
+          const derived = await call<{ addresses: readonly { address: string; index: number }[] }>(
+            transport,
+            'multisig.addresses',
+            { descriptor, change: false, start: index, count: 1 }
+          )
+          const first = derived.addresses[0]
+          if (first === undefined) {
+            throw new Error(`The daemon returned no quorum address at index ${String(index)}.`)
+          }
+          // The path is the quorum's, not one derivation this device owns: a
+          // sortedmulti address comes from every key at that index. Written as
+          // the index rather than as a path, because showing one cosigner's
+          // path beside a multisig address implies it derived from that key
+          // alone.
+          return {
+            address: first.address,
+            index: first.index,
+            path: `quorum index ${String(first.index)}`,
+          }
+        }}
+        onVerifyQuorum={async (descriptor: string, address: string) =>
+          call<{ found: boolean; index?: number }>(transport, 'multisig.verifyAddress', {
+            descriptor,
+            address,
+          })
+        }
         onAddress={async (index: number) => {
           const derived = await call<{ addresses: readonly ReceiveAddress[] }>(
             transport,

@@ -1294,6 +1294,48 @@ export function createHandler(state: DaemonState): IpcHandler {
         }
       }
 
+      /**
+       * Does this address come out of that descriptor.
+       *
+       * The multisig counterpart to `wallet.verifyAddress`, and a separate
+       * method rather than a flag on it, because the two answer genuinely
+       * different questions. A quorum address does not derive from this device
+       * alone by construction, so asking the single-signature verifier about
+       * one answers no about something that is perfectly correct, and a screen
+       * reporting that would teach somebody to ignore its only alarm.
+       *
+       * Both branches are searched, and the gap limit bounds the work. Not
+       * found is not proof the address is wrong: it may simply be beyond the
+       * limit, and the response says which was searched so a screen can say so
+       * rather than implying a verdict.
+       */
+      case 'multisig.verifyAddress': {
+        const descriptor = parseDescriptor(requireString(request, 'descriptor'))
+        const target = requireString(request, 'address').trim()
+        const gapLimit = Math.min(requireNumber(request, 'gapLimit', 100), 500)
+
+        for (const change of [false, true]) {
+          const derived = deriveMultisigAddresses(descriptor, {
+            network: session.network,
+            change,
+            start: 0,
+            count: gapLimit,
+          })
+          const hit = derived.find((entry) => entry.address === target)
+          if (hit !== undefined) {
+            return {
+              found: true,
+              address: target,
+              index: hit.index,
+              change,
+              network: session.network.id,
+            }
+          }
+        }
+
+        return { found: false, address: target, searchedTo: gapLimit }
+      }
+
       // --- Persistence ----------------------------------------------------
       /**
        * Whether a wallet is stored, and how many attempts remain.

@@ -671,6 +671,27 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       onBack={noop}
     />
   ),
+  // A device holding two quorums, which is the state that added a tab bar to a
+  // screen that already carries an address in large type, a QR code and a
+  // warning above the fold.
+  'receive-quorum': () => (
+    <ReceiveScreen device={DEVICE} onHome={noop}
+      walletLabel="Cold storage, three of five"
+      quorums={[
+        { checksum: '8rf6pq2t', threshold: 2, total: 3, descriptor: DESCRIPTOR },
+        { checksum: 'q35wkfm7', threshold: 3, total: 5, descriptor: DESCRIPTOR },
+      ]}
+      onQuorumAddress={async (_descriptor: string, index: number) =>
+        Promise.resolve({ address: ADDRESS, path: `quorum index ${String(index)}`, index })
+      }
+      onVerifyQuorum={async () => Promise.resolve({ found: true, index: 0 })}
+      onAddress={async (index: number) =>
+        Promise.resolve({ address: ADDRESS, path: `m/84'/0'/0'/0/${String(index)}`, index })
+      }
+      onVerify={async () => Promise.resolve({ found: true, path: "m/84'/0'/0'/0/0" })}
+      onBack={noop}
+    />
+  ),
   // The multisig journey, because it has the most left over and is therefore
   // the tallest this screen ever gets.
   finish: () => {
@@ -741,6 +762,10 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   // Verified, which adds a paragraph under a screen that already holds a QR
   // code, an address in large type and a warning banner.
   receive: [['receive-verify']],
+  // The single-signature choice on a device that holds a quorum, which is the
+  // weaker answer and carries a banner saying so, and then the verification on
+  // top of it.
+  'receive-quorum': [['receive-verify'], ['receive-source-single'], ['receive-source-single', 'receive-verify']],
   // Straight into the review, which is the state that matters, and then into
   // the confirmation that a blocking warning forces.
   // Sign is correctly disabled on the review fixture, which carries a blocking

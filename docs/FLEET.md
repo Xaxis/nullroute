@@ -9,6 +9,29 @@ The strongest version of that arrangement, and the one this page is about, is
 several nullroute devices holding one multisig wallet between them.
 
 
+## Receiving to the quorum, not to one device
+
+**A device holding a registered quorum has two different answers to "what is my
+address", and they are not interchangeable.** The quorum's address needs your
+threshold of devices to spend from. This device's own address needs only this
+device, which is exactly what the quorum was set up to prevent.
+
+Both are ordinary bech32 strings and neither looks different from the other.
+
+So Receive asks which one you want, and the quorum is the default. Choosing
+this device alone is allowed, says plainly that the money would be protected by
+one key rather than by the quorum, and is a thing you have to pick.
+
+Money sent to the single-signature address is not lost: this device can spend
+it, and your mnemonic recovers it. It is protected by one key instead of two,
+which is the whole difference you built a fleet for.
+
+**Check the address against the thing that produced it.** For a quorum address
+the device re-derives it from the registered descriptor, which is a different
+question from whether it derives from this device's own keys. A quorum address
+does not derive from one device by construction, so asking the wrong question
+answers no about something perfectly correct.
+
 ## Knowing which device to walk to next
 
 A 2-of-3 signed on one device is not finished, and the screen used to say so

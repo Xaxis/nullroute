@@ -987,6 +987,20 @@ invariants:
       - packages/ui/test/manage-passphrase.test.tsx::reports-a-refusal-rather-than-claiming-it-changed
       - packages/ui/test/manage-passphrase.test.tsx::confirms-the-change-rather-than-returning-silently
 
+  - id: INV-UI-88
+    statement: >
+      On a device holding a registered quorum, a receive address is the
+      quorum's by default, choosing this device alone is deliberate and states
+      that the money would be protected by one key instead of the quorum, the
+      address is verified against whatever produced it, and a build that cannot
+      derive a quorum address refuses rather than showing the weaker one.
+    tests:
+      - packages/ui/test/receive-quorum.test.tsx::derives-the-quorum-address-rather-than-this-device-s-own
+      - packages/ui/test/receive-quorum.test.tsx::says-what-the-single-signature-choice-costs
+      - packages/ui/test/receive-quorum.test.tsx::checks-a-quorum-address-against-the-descriptor-not-against-this-device
+      - packages/ui/test/receive-quorum.test.tsx::offers-no-choice-on-a-device-that-is-in-no-quorum
+      - packages/ui/test/receive-quorum.test.tsx::refuses-rather-than-quietly-showing-the-weaker-address
+
 threats:
   - INV-KEY-1
   - INV-BUILD-1

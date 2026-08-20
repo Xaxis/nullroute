@@ -93,6 +93,9 @@ invariants:
       - packages/core/test/psbt.attribution.test.ts::writes-a-sentence-that-agrees-with-itself-about-unnamed-cosigners
       - packages/core/test/psbt.attribution.test.ts::says-plainly-when-every-cosigner-has-signed
       - packages/daemon/test/phase4.ipc.test.ts::names-no-cosigners-for-a-single-signature-wallet
+      - packages/daemon/test/phase4.ipc.test.ts::confirms-an-address-that-comes-out-of-the-descriptor
+      - packages/daemon/test/phase4.ipc.test.ts::says-how-far-it-searched-rather-than-implying-a-verdict
+      - packages/daemon/test/phase4.ipc.test.ts::finds-an-address-on-the-change-branch-as-well
 
 threats:
   - INV-PSBT-2
