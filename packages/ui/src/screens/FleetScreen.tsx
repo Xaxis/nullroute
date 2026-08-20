@@ -64,10 +64,12 @@ export interface FleetScreenProps {
   readonly onHome?: (() => void) | undefined
   readonly device?: { readonly name: string; readonly colour: string } | undefined
   readonly banner?: ReactElement | null
+  /** The navigation rail, forwarded to Screen. Always safe to leave this screen. */
+  readonly nav?: ReactElement | null
 }
 
 export function FleetScreen(props: FleetScreenProps): ReactElement {
-  const { quorums, deviceName, onAddresses, onForget, onBack, onHome, device, banner } = props
+  const { quorums, deviceName, onAddresses, onForget, onBack, onHome, device, banner, nav } = props
 
   const [forgetting, setForgetting] = useState<FleetQuorum | null>(null)
   const [typed, setTyped] = useState('')
@@ -170,6 +172,7 @@ export function FleetScreen(props: FleetScreenProps): ReactElement {
           : `${String(quorums.length)} registered on ${deviceName}.`
       }
       banner={banner}
+      nav={nav}
       onHome={onHome}
       device={device}
       testId="fleet-screen"

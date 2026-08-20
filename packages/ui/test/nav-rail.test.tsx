@@ -74,3 +74,33 @@ describe('NavRail', () => {
     expect(screen.queryByTestId('nav-lock')).toBeNull()
   })
 })
+
+/**
+ * The rail only offers what works.
+ *
+ * Four of the six destinations are ABOUT a wallet. With none open they lead to
+ * screens with nothing to show, and a rail whose entries sometimes do nothing
+ * teaches somebody not to trust it the time it matters.
+ */
+describe('NavRail with no wallet open', () => {
+  /** INV-UI-91. */
+  it('hides-the-destinations-that-need-a-wallet', () => {
+    render(<NavRail current="home" onNavigate={vi.fn()} walletOpen={false} />)
+
+    for (const id of ['wallet', 'sign', 'receive', 'quorums']) {
+      expect(screen.queryByTestId(`nav-${id}`), id).toBeNull()
+    }
+    // Home and More both work without one: More is where switching wallets,
+    // naming the device and checking it live.
+    expect(screen.getByTestId('nav-home')).toBeTruthy()
+    expect(screen.getByTestId('nav-more')).toBeTruthy()
+  })
+
+  /** INV-UI-91. And they come back when a wallet opens. */
+  it('offers-them-again-once-a-wallet-is-open', () => {
+    render(<NavRail current="wallet" onNavigate={vi.fn()} walletOpen />)
+    for (const id of ['wallet', 'sign', 'receive', 'quorums']) {
+      expect(screen.getByTestId(`nav-${id}`), id).toBeTruthy()
+    }
+  })
+})

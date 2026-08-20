@@ -468,6 +468,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   // The screen that authorises spending money, in the state where it does so.
   'psbt-review': () => (
     <PsbtScreen device={DEVICE} onHome={noop}
+      nav={<NavRail current="sign" onNavigate={noop} onLock={noop} />}
       initialPsbt="cHNidP8BAHUCAAAAAQ=="
       onScan={noop}
       onReview={async () => Promise.resolve(REVIEW)}
@@ -648,7 +649,12 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       onBack={noop}
     />
   ),
-  start: () => <StartScreen device={DEVICE} walletOpen={false} onBegin={noop} onSkip={noop} />,
+  start: () => (
+    <StartScreen device={DEVICE} walletOpen={false} onBegin={noop} onSkip={noop}
+      // No wallet open, so the rail shows only what works without one.
+      nav={<NavRail current="home" onNavigate={noop} walletOpen={false} />}
+    />
+  ),
   assemble: () => (
     <AssembleQuorumScreen
       device={DEVICE}
@@ -745,6 +751,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   ),
   receive: () => (
     <ReceiveScreen device={DEVICE} onHome={noop}
+      nav={<NavRail current="receive" onNavigate={noop} onLock={noop} />}
       walletLabel="Cold storage, three of five"
       onAddress={async (index: number) =>
         Promise.resolve({ address: ADDRESS, path: `m/84'/0'/0'/0/${String(index)}`, index })
@@ -758,6 +765,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   // warning above the fold.
   'receive-quorum': () => (
     <ReceiveScreen device={DEVICE} onHome={noop}
+      nav={<NavRail current="receive" onNavigate={noop} onLock={noop} />}
       walletLabel="Cold storage, three of five"
       quorums={[
         { checksum: '8rf6pq2t', threshold: 2, total: 3, descriptor: DESCRIPTOR },

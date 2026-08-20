@@ -37,10 +37,12 @@ export interface StartScreenProps {
   /** What this physical device is called. Rendered in the header by Screen. */
   readonly device?: { readonly name: string; readonly colour: string } | undefined
   readonly banner?: ReactElement | null
+  /** The navigation rail, forwarded to Screen. Always safe to leave this screen. */
+  readonly nav?: ReactElement | null
 }
 
 export function StartScreen(props: StartScreenProps): ReactElement {
-  const { walletOpen, onBegin, onSkip, onHome, device, banner } = props
+  const { walletOpen, onBegin, onSkip, onHome, device, banner, nav } = props
   const [chosen, setChosen] = useState<Journey | null>(null)
 
   // --- What this goal needs before it starts --------------------------------
@@ -125,6 +127,7 @@ export function StartScreen(props: StartScreenProps): ReactElement {
       title="What do you want to do?"
       subtitle="Or skip this and use the device directly."
       banner={banner}
+      nav={nav}
       onHome={onHome}
       device={device}
       testId="start-screen"

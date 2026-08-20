@@ -81,7 +81,13 @@ export function Screen(props: ScreenProps): ReactElement {
           </span>
         )}
         {banner}
-        {onHome !== undefined && (
+        {/* The header Home button, only when there is no rail.
+            
+            The rail carries Home as a destination, so a screen with both had
+            the same word twice: once in the corner and once four inches to the
+            left, doing the same thing. The rail is the better of the two,
+            because it also says where you currently are. */}
+        {onHome !== undefined && (nav === undefined || nav === null) && (
           <button
             type="button"
             className="nr-home"

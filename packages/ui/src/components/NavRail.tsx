@@ -47,6 +47,19 @@ export interface NavRailProps {
   readonly onLock?: (() => void) | undefined
   /** Hidden when this device is in no quorum, so the rail has nothing dead in it. */
   readonly showQuorums?: boolean
+  /**
+   * Whether a wallet is open.
+   *
+   * Four of the six destinations are ABOUT a wallet, and with none open they
+   * lead to screens that have nothing to show or refuse outright. A rail whose
+   * entries do not work is worse than a shorter rail: it teaches somebody that
+   * tapping things here sometimes does nothing, and the next time it matters
+   * they will not trust it.
+   *
+   * Home and More both work without one, which is why they stay: More is where
+   * switching wallets, naming the device and checking it live.
+   */
+  readonly walletOpen?: boolean
 }
 
 /**
@@ -76,12 +89,16 @@ const DESTINATIONS: readonly {
   { id: 'more', label: 'More' },
 ]
 
-export function NavRail(props: NavRailProps): ReactElement {
-  const { current, onNavigate, onLock, showQuorums = true } = props
+/** Destinations that need a wallet behind them to show anything. */
+const NEEDS_WALLET = new Set<NavDestination>(['wallet', 'sign', 'receive', 'quorums'])
 
-  const shown = DESTINATIONS.filter(
-    (destination) => destination.id !== 'quorums' || showQuorums
-  )
+export function NavRail(props: NavRailProps): ReactElement {
+  const { current, onNavigate, onLock, showQuorums = true, walletOpen = true } = props
+
+  const shown = DESTINATIONS.filter((destination) => {
+    if (!walletOpen && NEEDS_WALLET.has(destination.id)) return false
+    return destination.id !== 'quorums' || showQuorums
+  })
 
   return (
     <nav className="nr-rail" aria-label="Main" data-testid="nav-rail">

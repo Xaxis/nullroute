@@ -99,6 +99,8 @@ export interface ReceiveScreenProps {
   /** What this physical device is called. Rendered in the header by Screen. */
   readonly device?: { readonly name: string; readonly colour: string } | undefined
   readonly banner?: ReactElement | null
+  /** The navigation rail, forwarded to Screen. Always safe to leave this screen. */
+  readonly nav?: ReactElement | null
 }
 
 /** Groups of four, so two people can read it to each other without losing place. */
@@ -119,6 +121,7 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
     onHome,
     device,
     banner,
+    nav,
   } = props
 
   /**
@@ -175,6 +178,7 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
       title="Receive"
       subtitle={walletLabel}
       banner={banner}
+      nav={nav}
       onHome={onHome}
       device={device}
       steps={steps}

@@ -563,8 +563,11 @@ export function App() {
   const rail = (current: NavDestination): ReactElement => (
     <NavRail
       current={current}
+      walletOpen={status?.hasWallet === true}
       showQuorums={quorums.length > 0}
-      onLock={lockSession}
+      // Nothing to lock with nothing open, and a Lock that does nothing is a
+      // control somebody learns to distrust.
+      {...(status?.hasWallet === true ? { onLock: lockSession } : {})}
       onNavigate={(destination) => {
         if (destination === 'home') setStage({ at: 'start' })
         else if (destination === 'wallet') setStage({ at: 'wallet' })
@@ -849,6 +852,7 @@ export function App() {
   if (stage.at === 'start') {
     return (
       <StartScreen
+        nav={rail('home')}
         banner={banner}
         device={headerDevice}
         walletOpen={status?.hasWallet === true}
@@ -1307,6 +1311,7 @@ export function App() {
   if (stage.at === 'fleet') {
     return (
       <FleetScreen
+        nav={rail('quorums')}
         banner={banner}
         onHome={goHome}
         device={headerDevice}
@@ -1364,6 +1369,7 @@ export function App() {
   if (stage.at === 'psbt') {
     return (
       <PsbtScreen
+        nav={rail('sign')}
         banner={banner}
         onHome={goHome}
         device={headerDevice}
@@ -1561,6 +1567,7 @@ export function App() {
   if (stage.at === 'receive') {
     return (
       <ReceiveScreen
+        nav={rail('receive')}
         banner={banner}
         onHome={goHome}
         device={headerDevice}

@@ -159,10 +159,20 @@ export interface PsbtScreenProps {
   /** What this physical device is called. Rendered in the header by Screen. */
   readonly device?: { readonly name: string; readonly colour: string } | undefined
   readonly banner?: ReactElement | null
+  /**
+   * The navigation rail.
+   *
+   * Rendered on the screens where leaving costs nothing, and NOT once this
+   * device has signed. A signed PSBT exists only here until it is carried off
+   * by camera or by file, so a rail beside it is an invitation to walk away
+   * from the one artefact this device was asked to produce.
+   */
+  readonly nav?: ReactElement | null
 }
 
 export function PsbtScreen(props: PsbtScreenProps): ReactElement {
-  const { initialPsbt, onScan, onReview, onSign, onBack, onHome, device, steps, banner } = props
+  const { initialPsbt, onScan, onReview, onSign, onBack, onHome, device, steps, banner, nav } =
+    props
 
   const [psbt, setPsbt] = useState(initialPsbt ?? '')
   const [review, setReview] = useState<PsbtReviewView | null>(null)
@@ -393,6 +403,10 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
       title="Sign a transaction"
       subtitle="Nothing is signed until you have read what is below."
       banner={banner}
+      /* Safe to leave: nothing has been produced yet. The SIGNED state above
+         gets no rail, because a signed PSBT exists only on this screen until
+         it is carried off by camera or by file. */
+      nav={nav}
       onHome={onHome}
       device={device}
       steps={steps}
