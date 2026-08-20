@@ -86,12 +86,44 @@ invariants:
       - packages/daemon/test/wallets.ipc.test.ts::says-which-cosigner-this-device-is
       - packages/daemon/test/wallets.ipc.test.ts::lists-a-quorum-it-cannot-place-itself-in-rather-than-hiding-it
 
+  - id: INV-MULTI-11
+    statement: >
+      Accepting a registration is a promise that every path acting on it
+      handles that script kind: deriving addresses to show a user, confirming
+      an address belongs, and contributing to the owned index so change from
+      the quorum is recognised.
+    tests:
+      - packages/daemon/test/registration-derivable.test.ts::wsh-sortedmulti-derives-addresses-after-being-accepted
+      - packages/daemon/test/registration-derivable.test.ts::sh-wsh-sortedmulti-derives-addresses-after-being-accepted
+      - packages/daemon/test/registration-derivable.test.ts::tr-sortedmulti-a-derives-addresses-after-being-accepted
+      - packages/daemon/test/registration-derivable.test.ts::wsh-sortedmulti-adds-owned-scripts-beyond-the-single-signature-ones
+      - packages/daemon/test/registration-derivable.test.ts::tr-sortedmulti-a-adds-owned-scripts-beyond-the-single-signature-ones
+      - packages/daemon/test/registration-derivable.test.ts::wsh-sortedmulti-derives-an-address-and-confirms-it-belongs
+      - packages/daemon/test/registration-derivable.test.ts::tr-sortedmulti-a-derives-an-address-and-confirms-it-belongs
+      - packages/daemon/test/registration-derivable.test.ts::still-says-a-single-key-taproot-descriptor-is-not-a-quorum
+
 threats:
   - INV-PSBT-2
   - INV-MULTI-6
   - INV-MULTI-7
 
 security_notes: >
+  ACCEPTING A REGISTRATION IS A PROMISE, and the ways to break it are quiet.
+  Registration, change detection and signing all branch on the descriptor's
+  script kind. The two methods that SHOW a user a quorum address did not: they
+  called the older derivation function unconditionally, so a taproot quorum
+  could be agreed to, signed for and recognised as change, and never displayed.
+  The receive screen's quorum tab and the compare-addresses screen both errored
+  on a wallet the device was otherwise handling correctly.
+
+  Deriving now dispatches in ONE place, because deriving in several places with
+  several rules is exactly how that divergence happened.
+
+  INV-MULTI-11 is the general rule rather than a taproot special case. A build
+  that teaches the parser a new script kind without teaching the rest fails
+  here instead of on somebody's wallet.
+
+
   The failure this module exists to prevent is quiet. A descriptor with the
   user's key swapped out is perfectly well formed: its addresses are valid,
   deposits confirm, and every screen looks normal. The problem only appears when

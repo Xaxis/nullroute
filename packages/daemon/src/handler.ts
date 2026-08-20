@@ -25,6 +25,7 @@ import {
   deriveAccountXpub,
   deriveAddresses,
   deriveMultisigAddresses,
+  deriveTaprootAddresses,
   encodePsbt,
   assembleQuorum,
   exportBundle,
@@ -263,6 +264,30 @@ export function createHandler(state: DaemonState): IpcHandler {
       waiting: describeWaiting(attributed),
     }
   }
+
+  /**
+   * Addresses for a registered quorum, whichever script kind it is.
+   *
+   * TAPROOT AND THE OLDER KINDS DERIVE THROUGH DIFFERENT FUNCTIONS, and these
+   * two methods called only the older one. Registration, change detection and
+   * signing all handled taproot quorums correctly; the two methods that show a
+   * user an address refused them, so a taproot quorum could be agreed to,
+   * signed for and recognised, and never displayed. The Receive screen's quorum
+   * tab and the compare-addresses screen both errored.
+   *
+   * Dispatched here, once, rather than at each call site, because that is how
+   * the divergence happened: buildOwnedIndex and the registration smoke test
+   * both branch on the kind and these did not.
+   */
+  const quorumAddresses = (
+    descriptor: ReturnType<typeof parseDescriptor>,
+    change: boolean,
+    start: number,
+    count: number
+  ): readonly { address: string; index: number }[] =>
+    descriptor.script.kind === 'tr'
+      ? deriveTaprootAddresses(descriptor, { network: session.network, change, start, count })
+      : deriveMultisigAddresses(descriptor, { network: session.network, change, start, count })
 
   /** A wallet id from a request, validated before it reaches any path. */
   const requireWalletId = (request: IpcRequest): string => {
@@ -1313,12 +1338,7 @@ export function createHandler(state: DaemonState): IpcHandler {
         const change = params(request)['change'] === true
         const start = requireNumber(request, 'start', 0)
         const count = Math.min(requireNumber(request, 'count', 20), 200)
-        const derived = deriveMultisigAddresses(descriptor, {
-          network: session.network,
-          change,
-          start,
-          count,
-        })
+        const derived = quorumAddresses(descriptor, change, start, count)
         return {
           addresses: derived.map((a) => ({ address: a.address, index: a.index })),
           change,
@@ -1346,12 +1366,7 @@ export function createHandler(state: DaemonState): IpcHandler {
         const gapLimit = Math.min(requireNumber(request, 'gapLimit', 100), 500)
 
         for (const change of [false, true]) {
-          const derived = deriveMultisigAddresses(descriptor, {
-            network: session.network,
-            change,
-            start: 0,
-            count: gapLimit,
-          })
+          const derived = quorumAddresses(descriptor, change, 0, gapLimit)
           const hit = derived.find((entry) => entry.address === target)
           if (hit !== undefined) {
             return {
