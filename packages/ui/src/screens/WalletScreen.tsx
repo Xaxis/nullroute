@@ -473,20 +473,59 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
         </div>
       )}
 
+      {/* THE QUORUM'S DESCRIPTOR FIRST, on a device that holds one, and this
+          is the export that matters most on the whole device.
+
+          A 2-of-3 CANNOT BE RECONSTRUCTED FROM MNEMONICS ALONE. Holding all
+          three seed phrases is not enough: you also need to know the other
+          keys, the threshold and the script type, and that is what the
+          descriptor records. Somebody who backed up the single-signature
+          descriptor below, on the strength of it saying it makes this wallet
+          recoverable, would have backed up the wrong thing and would find out
+          at the worst possible moment. */}
+      {tab === 'export' && quorums.length > 0 && (
+        <div className="nr-card nr-card--tight" data-testid="export-quorum">
+          <span className="nr-card__label">Back this up: your quorum</span>
+          {quorums.map((quorum) => (
+            <div key={quorum.descriptor}>
+              <div className="nr-row">
+                <span className="nr-label">
+                  {quorum.threshold} of {quorum.total}
+                </span>
+                <span className="nr-value nr-mono">{quorum.checksum}</span>
+              </div>
+              <div className="nr-address nr-break" data-testid="export-quorum-descriptor">
+                {quorum.descriptor}
+              </div>
+            </div>
+          ))}
+          <p className="nr-hint">
+            Your mnemonics are not enough to rebuild a quorum. Recovering one needs this line as
+            well: it records the other keys, how many must sign, and the script type, and none of
+            that is derivable from a seed phrase. Keep it wherever you keep the words, and it is
+            not a secret: it holds no private key and cannot spend anything.
+          </p>
+        </div>
+      )}
+
       {tab === 'export' && descriptor !== null && (
         <>
           <div className="nr-card nr-card--tight">
-            <span className="nr-label">Output descriptor</span>
+            <span className="nr-label">
+              {quorums.length > 0 ? 'This device alone, not the quorum' : 'Output descriptor'}
+            </span>
             <div className="nr-address" data-testid="descriptor">
               {descriptor.descriptor}
             </div>
           </div>
           <QrDisplay text={descriptor.descriptor} fileType="unicode" testId="descriptor-qr" />
           <p className="nr-note">
-            This is what a coordinator needs, and it is what makes this wallet recoverable without
-            nullroute. The eight characters after the <span className="nr-mono">#</span> are a
-            checksum: compare them with the other party out of band, because a single mistyped
-            character produces a valid descriptor for a different wallet.
+            {quorums.length > 0
+              ? 'This describes a single-signature wallet holding only this device’s key. It is not your quorum and backing it up does not back your quorum up.'
+              : 'This is what a coordinator needs, and it is what makes this wallet recoverable without nullroute.'}{' '}
+            The eight characters after the <span className="nr-mono">#</span> are a checksum:
+            compare them with the other party out of band, because a single mistyped character
+            produces a valid descriptor for a different wallet.
           </p>
 
           {/* Behind a disclosure, and second. The descriptor is the export

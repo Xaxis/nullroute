@@ -165,6 +165,8 @@ describe('WalletScreen addresses on a device holding a quorum', () => {
           Promise.resolve({ xpub: 'xpub', path: "m/84'/0'/0'", masterFingerprint: '73c5da0a' })
         }
         onVerifyAddress={async () => Promise.resolve({ found: true })}
+        onSignTransaction={() => undefined}
+        onMultisig={() => undefined}
         onLock={() => undefined}
       />
     )
@@ -183,5 +185,87 @@ describe('WalletScreen addresses on a device holding a quorum', () => {
   it('says-nothing-on-a-device-that-is-in-no-quorum', () => {
     openWallet([])
     expect(screen.queryByTestId('addresses-not-the-quorum')).toBeNull()
+  })
+})
+
+/**
+ * Tests for what a quorum device tells you to back up.
+ *
+ * THE LOSS THIS PREVENTS is not theoretical and is not recoverable. A 2-of-3
+ * cannot be reconstructed from mnemonics alone: holding all three seed phrases
+ * is not enough, because you also need the other keys, the threshold and the
+ * script type, and none of that is derivable from a seed. That is what the
+ * descriptor records.
+ *
+ * The export tab said, under a single-signature descriptor, that it "makes this
+ * wallet recoverable without nullroute". On a quorum device that sentence is
+ * false, and somebody acting on it would find out at the worst possible moment.
+ */
+describe('WalletScreen export on a device holding a quorum', () => {
+  const QUORUM = {
+    descriptor: 'wsh(sortedmulti(2,[73c5da0a/48h]xpubA,[aabbccdd/48h]xpubB))#8rf6pq2t',
+    checksum: '8rf6pq2t',
+    threshold: 2,
+    total: 3,
+    ourPosition: 1,
+    cosigners: [],
+    unreadable: null,
+  }
+
+  async function openExport(quorums: readonly (typeof QUORUM)[]) {
+    render(
+      <WalletScreen
+        fingerprint="73c5da0a"
+        quorums={quorums}
+        onAddresses={async () => Promise.resolve({ addresses: [] })}
+        onDescriptor={async () =>
+          Promise.resolve({ descriptor: 'wpkh([73c5da0a/84h]xpubC/<0;1>/*)#aaaaaaaa', checksum: 'aaaaaaaa' })
+        }
+        onXpub={async () =>
+          Promise.resolve({ xpub: 'xpub', path: "m/84'/0'/0'", masterFingerprint: '73c5da0a' })
+        }
+        onVerifyAddress={async () => Promise.resolve({ found: true })}
+        onSignTransaction={() => undefined}
+        onMultisig={() => undefined}
+        onLock={() => undefined}
+      />
+    )
+    fireEvent.click(screen.getByTestId('tab-export'))
+    await waitFor(() => screen.getByTestId('descriptor'))
+  }
+
+  /**
+   * INV-UI-89. The quorum descriptor is offered, and named as the thing to
+   * back up, on the screen where somebody goes to back something up.
+   */
+  it('offers-the-quorum-descriptor-as-the-thing-to-back-up', async () => {
+    await openExport([QUORUM])
+
+    const block = screen.getByTestId('export-quorum')
+    expect(block.textContent).toContain('Back this up: your quorum')
+    expect(block.textContent).toContain('mnemonics are not enough')
+    expect(screen.getByTestId('export-quorum-descriptor').textContent).toBe(QUORUM.descriptor)
+  })
+
+  /**
+   * INV-UI-89. And the single-signature one stops claiming to be the wallet.
+   * That sentence is the one somebody would have acted on.
+   */
+  it('stops-calling-the-single-signature-descriptor-the-recoverable-wallet', async () => {
+    await openExport([QUORUM])
+    const page = document.body.textContent
+
+    expect(page).toContain('This device alone, not the quorum')
+    expect(page).toContain('backing it up does not back your quorum up')
+    expect(page).not.toContain('makes this wallet recoverable')
+  })
+
+  /** INV-UI-89. Unchanged on a device that holds no quorum. */
+  it('says-what-it-always-said-on-a-single-signature-device', async () => {
+    await openExport([])
+    const page = document.body.textContent
+
+    expect(screen.queryByTestId('export-quorum')).toBeNull()
+    expect(page).toContain('makes this wallet recoverable')
   })
 })

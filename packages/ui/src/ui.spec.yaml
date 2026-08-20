@@ -1003,6 +1003,17 @@ invariants:
       - packages/ui/test/receive-quorum.test.tsx::says-these-are-not-the-quorum-s-addresses
       - packages/ui/test/receive-quorum.test.tsx::says-nothing-on-a-device-that-is-in-no-quorum
 
+  - id: INV-UI-89
+    statement: >
+      A device holding a quorum offers the quorum's descriptor as the thing to
+      back up and says that mnemonics alone cannot rebuild it, and stops
+      describing the single-signature descriptor as what makes the wallet
+      recoverable.
+    tests:
+      - packages/ui/test/receive-quorum.test.tsx::offers-the-quorum-descriptor-as-the-thing-to-back-up
+      - packages/ui/test/receive-quorum.test.tsx::stops-calling-the-single-signature-descriptor-the-recoverable-wallet
+      - packages/ui/test/receive-quorum.test.tsx::says-what-it-always-said-on-a-single-signature-device
+
 threats:
   - INV-KEY-1
   - INV-BUILD-1

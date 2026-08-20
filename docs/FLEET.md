@@ -9,6 +9,23 @@ The strongest version of that arrangement, and the one this page is about, is
 several nullroute devices holding one multisig wallet between them.
 
 
+## Back up the descriptor, not just the words
+
+**Your mnemonics are not enough to rebuild a quorum.** Holding all three seed
+phrases of a 2-of-3 does not let you reconstruct it: you also need the other
+keys, how many must sign, and the script type, and none of that is derivable
+from a seed phrase. The descriptor records it, and without the descriptor the
+money is behind a wallet nobody can describe.
+
+The device shows it under **Export** on a wallet screen, above the
+single-signature descriptor, labelled as the thing to keep. Keep it wherever you
+keep the words. It is not a secret: it holds no private key and cannot spend
+anything, and a copy in a filing cabinet is worth more than the copy nobody
+made.
+
+The single-signature descriptor on the same screen describes a wallet holding
+only this device's key. Backing that up does not back the quorum up.
+
 ## Receiving to the quorum, not to one device
 
 **A device holding a registered quorum has two different answers to "what is my
