@@ -19,6 +19,13 @@
  * and says so. A drill that quietly skipped would put a green tick against the
  * one claim that, if false, means somebody's funds are unrecoverable.
  *
+ * VERSIONS THIS HAS ACTUALLY BEEN RUN AGAINST, because "works with Bitcoin
+ * Core" is not one claim. CI pins 28.0; the quorum drill below was written and
+ * verified against 31.1.0. Those two have already disagreed once in this file:
+ * `walletcreatefundedpsbt` on 31 refuses to invent a change address where 28
+ * would, so the drill passed in CI and failed the first time anybody ran it
+ * locally. The version is printed on every run for that reason.
+ *
  * Run: make test-recovery-drill
  * Needs: bitcoind on regtest. In CI it is a service container. Locally:
  *   bitcoind -regtest -fallbackfee=0.0002 -rpcuser=nullroute -rpcpassword=drill
