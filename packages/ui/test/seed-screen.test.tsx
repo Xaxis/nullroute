@@ -23,7 +23,15 @@ describe('ui.screens.seed', () => {
     expect(container.textContent).toContain(String(WORDS.length))
   })
 
-  // INV-UI-10: irreversible, so it takes an explicit acknowledgement.
+  /**
+   * INV-UI-10: irreversible, so it takes an explicit acknowledgement.
+   *
+   * The acknowledgement is now the gate on STARTING the check rather than on
+   * hiding the words. This test used to assert that ticking the box and
+   * tapping confirm called onConfirm, which was the whole defect: a checkbox
+   * is not a backup, and somebody who mistyped a word believed they had one.
+   * What replaced it is INV-UI-90, in seed-check.test.tsx.
+   */
   it('requires-acknowledgement', () => {
     const onConfirm = vi.fn()
     render(<SeedScreen words={WORDS} fingerprint="b8688df1" onConfirm={onConfirm} />)
@@ -35,8 +43,11 @@ describe('ui.screens.seed', () => {
 
     fireEvent.click(screen.getByTestId('seed-ack'))
     expect(confirm.disabled).toBe(false)
+
+    // And STILL does not hide them. Without a way to check, this build refuses
+    // rather than falling back to trusting the tick.
     fireEvent.click(confirm)
-    expect(onConfirm).toHaveBeenCalledOnce()
+    expect(onConfirm).not.toHaveBeenCalled()
   })
 
   it('warns-that-this-is-the-only-showing', () => {

@@ -913,6 +913,25 @@ export function App() {
         steps={stepsFor('seed')}
         words={stage.words}
         fingerprint={stage.fingerprint}
+        onCheckPositions={async (count: number) => {
+          const chosen = await call<{ positions: readonly number[] }>(
+            transport,
+            'seed.checkPositions',
+            { count }
+          )
+          return chosen.positions
+        }}
+        onCheckWord={async (index: number, word: string) => {
+          // The DAEMON decides whether the word is right. Comparing against the
+          // words this screen was handed would confirm the screen against
+          // itself, which checks nothing about the seed that was actually
+          // stored.
+          const verdict = await call<{ correct: boolean }>(transport, 'seed.checkWord', {
+            index,
+            word,
+          })
+          return verdict.correct === true
+        }}
         onConfirm={() => {
           const go = async (): Promise<void> => {
             await call(transport, 'seed.confirmBackup')

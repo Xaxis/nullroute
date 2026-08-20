@@ -599,3 +599,65 @@ describe('backup.restore and the quorum descriptors', () => {
     expect(session.registrations).toEqual([DESCRIPTOR])
   })
 })
+
+/**
+ * Tests for choosing which words to ask back.
+ *
+ * The positions come from the daemon rather than the frontend, and not because
+ * they are a secret: the screen has just shown every word. They come from here
+ * because Math.random is banned on this device and the frontend has no other
+ * source, which is the rule working rather than getting in the way.
+ */
+describe('seed.checkPositions', () => {
+  it('returns-positions-and-never-words', async () => {
+    await call('seed.generate', { entropy: 'a'.repeat(64) }).catch(() => undefined)
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+
+    const chosen = (await call('seed.checkPositions', { count: 3 })) as {
+      positions: number[]
+      total: number
+    }
+
+    expect(chosen.positions).toHaveLength(3)
+    expect(chosen.total).toBe(12)
+    // Every position is in range, and nothing in the response is a word.
+    for (const position of chosen.positions) {
+      expect(position).toBeGreaterThanOrEqual(0)
+      expect(position).toBeLessThan(chosen.total)
+    }
+    expect(JSON.stringify(chosen)).not.toContain('abandon')
+  })
+
+  /** Distinct, so a three word check is not the same word three times. */
+  it('never-asks-for-the-same-position-twice', async () => {
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const chosen = (await call('seed.checkPositions', { count: 3 })) as { positions: number[] }
+      expect(new Set(chosen.positions).size).toBe(chosen.positions.length)
+    }
+  })
+
+  /**
+   * Every position is reachable. A biased chooser that never asked about the
+   * last word would leave a word nobody ever checks, which is exactly the kind
+   * of quiet gap this check exists to close.
+   */
+  it('can-ask-about-any-position-including-the-last', async () => {
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+
+    const seen = new Set<number>()
+    for (let attempt = 0; attempt < 200 && seen.size < 12; attempt += 1) {
+      const chosen = (await call('seed.checkPositions', { count: 3 })) as { positions: number[] }
+      for (const position of chosen.positions) seen.add(position)
+    }
+    expect(seen.size).toBe(12)
+  })
+
+  /** Asking for more words than exist returns every position, not an error. */
+  it('caps-at-the-number-of-words-there-are', async () => {
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+    const chosen = (await call('seed.checkPositions', { count: 50 })) as { positions: number[] }
+    expect(chosen.positions).toHaveLength(12)
+  })
+})

@@ -374,6 +374,25 @@ can hold thousands of entries about transactions this device has never seen, and
 none of them decides anything, so the encrypted wallet does not grow to carry
 them. Read the file again after a reboot.
 
+### Checking your backup
+
+After the words are shown, the device asks for three of them back, by position,
+before it hides them. Read them off the paper you just wrote. If you have to
+remember one rather than read it, you do not have a backup yet.
+
+**A tick box is not a backup**, which is what this replaced. Somebody who
+mistyped a word, skipped one, or wrote them out of order believed they had one
+and found out with the device already gone.
+
+Getting one wrong returns you to the list and says so. Nothing is lost: the
+words are still on screen and nothing has been confirmed. Write them out again
+and check them against the screen before trying again.
+
+The device chooses the positions, so writing down only the first three words
+does not get you past it. What the check catches is carelessness, which is what
+loses most coins. It cannot catch a wrong word at a position it did not ask
+about, and it cannot tell paper from a photograph.
+
 ### Changing the passphrase
 
 Under **Name or erase this wallet**. It needs the passphrase it has now, and

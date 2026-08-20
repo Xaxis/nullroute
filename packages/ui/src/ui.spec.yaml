@@ -1014,6 +1014,19 @@ invariants:
       - packages/ui/test/receive-quorum.test.tsx::stops-calling-the-single-signature-descriptor-the-recoverable-wallet
       - packages/ui/test/receive-quorum.test.tsx::says-what-it-always-said-on-a-single-signature-device
 
+  - id: INV-UI-90
+    statement: >
+      The mnemonic is hidden only after words asked back by position are all
+      correct. A checkbox alone does not confirm, a wrong answer returns to the
+      words rather than to another guess, the words stay reachable during the
+      check, and a build that cannot check does not hide them.
+    tests:
+      - packages/ui/test/seed-check.test.tsx::does-not-confirm-on-the-checkbox-alone
+      - packages/ui/test/seed-check.test.tsx::confirms-only-after-every-asked-word-is-right
+      - packages/ui/test/seed-check.test.tsx::sends-a-wrong-answer-back-to-the-words-rather-than-to-another-guess
+      - packages/ui/test/seed-check.test.tsx::lets-somebody-look-at-the-words-again-mid-check
+      - packages/ui/test/seed-check.test.tsx::will-not-hide-the-words-when-it-cannot-check-them
+
 threats:
   - INV-KEY-1
   - INV-BUILD-1

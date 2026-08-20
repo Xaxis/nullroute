@@ -71,6 +71,17 @@ invariants:
     tests:
       - packages/daemon/test/ipc.test.ts::checks-a-word-without-revealing-one
 
+  - id: INV-SESS-6
+    statement: >
+      The positions to check are chosen by the daemon with a real CSPRNG, are
+      distinct, cover every position over repeated calls, and the response
+      carries positions and never words.
+    tests:
+      - packages/daemon/test/phase4.ipc.test.ts::returns-positions-and-never-words
+      - packages/daemon/test/phase4.ipc.test.ts::never-asks-for-the-same-position-twice
+      - packages/daemon/test/phase4.ipc.test.ts::can-ask-about-any-position-including-the-last
+      - packages/daemon/test/phase4.ipc.test.ts::caps-at-the-number-of-words-there-are
+
   - id: INV-LABEL-5
     statement: >
       Imported labels are held only when the caller asks, are attached to the

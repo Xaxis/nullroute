@@ -289,7 +289,11 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   ),
   import: () => <ImportScreen device={DEVICE} onHome={noop} onImport={never} onCancel={noop} />,
   seed: () => (
-    <SeedScreen device={DEVICE} words={MNEMONIC.split(' ')} fingerprint="73c5da0a" onConfirm={noop} />
+    <SeedScreen device={DEVICE} words={MNEMONIC.split(' ')} fingerprint="73c5da0a"
+      onCheckPositions={async () => Promise.resolve([1, 4, 9])}
+      onCheckWord={async () => Promise.resolve(true)}
+      onConfirm={noop}
+    />
   ),
   passphrase: () => (
     <PassphraseScreen device={DEVICE} mode="enter" attemptsRemaining={2} maxAttempts={10} onSubmit={never} onCancel={noop} />
@@ -741,6 +745,9 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   // The disclosure adds a textarea to a screen already holding a full
   // keyboard, which is the tallest this screen ever gets.
   import: [['import-typed-toggle']],
+  // The word check, which puts a full word keyboard on the screen that decides
+  // whether a backup is real.
+  seed: [['seed-ack', 'seed-confirm']],
   // The preamble for the longest journey: what it needs, its five steps, and
   // what it still does not finish. The most text this screen ever holds.
   // Chosen with no wallet open, which is the state that used to be refused and

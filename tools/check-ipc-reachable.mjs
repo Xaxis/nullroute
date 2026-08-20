@@ -54,11 +54,6 @@ const DELIBERATELY_UNREACHABLE = new Map([
     'A building block for multisig.review, which is what a screen calls. Exposed so a third ' +
       'party can check a descriptor against this device without registering it.',
   ],
-  [
-    'seed.checkWord',
-    'Used by the seed confirmation flow through its own props rather than by a direct call ' +
-      'from a screen. Covered by the seed screen tests.',
-  ],
 ])
 
 /**
