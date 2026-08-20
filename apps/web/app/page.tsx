@@ -20,7 +20,7 @@ const WORKING: readonly { term: string; specs: readonly string[]; detail: string
     term: 'Addresses and descriptors other software understands',
     specs: ['core.address.derive', 'core.descriptor.parse', 'core.descriptor.checksum'],
     detail:
-      'All four address types, and canonical BIP-380 descriptors with checksums. A wallet made here restores in Bitcoin Core, which CI proves on every commit against a real regtest node.',
+      'All four address types, and canonical BIP-380 descriptors with checksums. A wallet made here restores in Bitcoin Core, which CI proves on every commit against a real regtest node, for single-signature and for a 2-of-3.',
   },
   {
     term: 'Transactions reviewed before they are signed',
@@ -332,7 +332,9 @@ export default function HomePage() {
           the sixteen provisioning assertions carry a verifier that executes, including the ones
           that catch a dm-verity salt regenerated per build, which would make the root hash this
           device displays meaningless as a published value. The recovery drill covers all four
-          address types against a real Bitcoin Core on every commit, taproot included.
+          address types against a real Bitcoin Core on every commit, taproot included, and a
+          2-of-3 quorum built from three distinct seeds where two separate devices sign in
+          sequence.
         </p>
       </Section>
 

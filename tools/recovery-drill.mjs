@@ -38,6 +38,20 @@ const MNEMONIC =
   'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
 
 /**
+ * Two more published vectors, so a quorum has three DISTINCT keys.
+ *
+ * A 2-of-3 built from one seed three times is not a 2-of-3, and it would pass a
+ * drill written carelessly: the addresses derive, Core imports them, and the
+ * one device signs twice. These are the other two BIP-39 test vectors, chosen
+ * for the same reason as the first: published, worthless, and unmistakable in a
+ * block explorer if anybody ever points this at a real chain by accident.
+ */
+const COSIGNER_MNEMONICS = [
+  'legal winner thank year wave sausage worth useful legal winner thank yellow',
+  'letter advice cage absurd amount doctor acoustic avoid letter advice cage above',
+]
+
+/**
  * Script types drilled. All four the device will hand you.
  *
  * Taproot was absent for a long time, with a comment here saying signing one
@@ -160,6 +174,127 @@ function nullrouteSign(psbtBase64, scriptType, network, paths) {
   })
   if (result.status !== 0) {
     throw new Error(`nullroute signing failed:\n${result.stderr}`)
+  }
+  return JSON.parse(result.stdout.trim())
+}
+
+/**
+ * The multisig account key for one mnemonic, as a descriptor key expression.
+ *
+ * m/48'/1'/0'/2' on regtest, which is BIP-48's native segwit multisig branch.
+ * Returned with its origin already attached, because a key without one cannot
+ * be traced back to a seed and a device restoring later cannot tell whether it
+ * holds it.
+ */
+function nullrouteQuorumKey(mnemonic, network) {
+  const script = `
+    import { mnemonicToSeed, deriveAccountXpub, normalizePath, networkById } from '@nullroute/core'
+    const network = networkById(${JSON.stringify(network)})
+    const seed = mnemonicToSeed(${JSON.stringify(mnemonic)}, '')
+    const path = normalizePath("m/48'/" + (network.id === 'mainnet' ? '0' : '1') + "'/0'/2'")
+    const account = deriveAccountXpub(seed, network, path)
+    seed.dispose()
+    console.log(JSON.stringify({
+      keyExpression: '[' + account.masterFingerprint + path.slice(1) + ']' + account.xpub,
+      fingerprint: account.masterFingerprint,
+      path,
+    }))
+  `
+  const result = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  })
+  if (result.status !== 0) {
+    throw new Error(`nullroute quorum key derivation failed:\n${result.stderr}`)
+  }
+  return JSON.parse(result.stdout.trim())
+}
+
+/**
+ * Assemble a quorum ON THE DEVICE, with the code the device ships.
+ *
+ * Deliberately assembleQuorum rather than a string built here. The point of the
+ * drill is that the artefact the device produces is the one Core accepts, and a
+ * descriptor the drill wrote itself would prove the drill can write descriptors.
+ */
+function nullrouteAssemble(keys, threshold, branch) {
+  const script = `
+    import { assembleQuorum, withChecksum } from '@nullroute/core'
+    const built = assembleQuorum({
+      threshold: ${String(threshold)},
+      keys: ${JSON.stringify(keys.map((key) => key + '/<0;1>/*'))},
+    })
+    // The multipath form is what the device holds and what every cosigner
+    // compares. Core takes one branch at a time, so both are written out here
+    // from the SAME assembled key order rather than assembled twice.
+    const single = (index) => withChecksum(
+      built.descriptor.slice(0, built.descriptor.lastIndexOf('#'))
+        .replaceAll('/<0;1>/*', '/' + index + '/*')
+    )
+    console.log(JSON.stringify({
+      descriptor: built.descriptor,
+      checksum: built.checksum,
+      receive: single(0),
+      change: single(1),
+    }))
+  `
+  const result = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  })
+  if (result.status !== 0) {
+    throw new Error(`nullroute quorum assembly failed:\n${result.stderr}`)
+  }
+  const built = JSON.parse(result.stdout.trim())
+  void branch
+  return built
+}
+
+/** Derive quorum addresses with the device's own code, for comparison with Core. */
+function nullrouteQuorumAddresses(descriptor, network, count) {
+  const script = `
+    import { parseDescriptor, deriveMultisigAddresses, networkById } from '@nullroute/core'
+    const network = networkById(${JSON.stringify(network)})
+    const parsed = parseDescriptor(${JSON.stringify(descriptor)})
+    console.log(JSON.stringify(
+      deriveMultisigAddresses(parsed, { network, change: false, start: 0, count: ${String(count)} })
+        .map((a) => a.address)
+    ))
+  `
+  const result = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  })
+  if (result.status !== 0) {
+    throw new Error(`nullroute quorum address derivation failed:\n${result.stderr}`)
+  }
+  return JSON.parse(result.stdout.trim())
+}
+
+/** Sign a quorum PSBT as ONE cosigner, with that cosigner's mnemonic. */
+function nullrouteQuorumSign(psbtBase64, mnemonic, network, paths) {
+  const script = `
+    import { mnemonicToSeed, signTransaction, reviewTransaction, parsePsbt,
+             encodePsbt, networkById } from '@nullroute/core'
+    const network = networkById(${JSON.stringify(network)})
+    const seed = mnemonicToSeed(${JSON.stringify(mnemonic)}, '')
+    const tx = parsePsbt(${JSON.stringify(psbtBase64)})
+    const review = reviewTransaction(tx, { network, isChange: () => undefined })
+    const result = signTransaction(tx, seed, {
+      network,
+      paths: ${JSON.stringify(paths)},
+      review,
+      overrideBlockingWarnings: true,
+    })
+    seed.dispose()
+    console.log(JSON.stringify({ psbt: encodePsbt(result.psbt), inputsSigned: result.inputsSigned }))
+  `
+  const result = spawnSync(process.execPath, ['--input-type=module', '-e', script], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  })
+  if (result.status !== 0) {
+    throw new Error(`nullroute quorum signing failed:\n${result.stderr}`)
   }
   return JSON.parse(result.stdout.trim())
 }
@@ -341,6 +476,182 @@ async function drill(scriptType) {
   return { scriptType, txid, addresses: coreAddresses.length }
 }
 
+/**
+ * The drill that matters most for a fleet, and the one that did not exist.
+ *
+ * INV-INTEROP-2. A quorum is recoverable from its descriptor, and its threshold
+ * is the one that was asked for.
+ *
+ * A 2-of-3 CANNOT BE REBUILT FROM MNEMONICS. Holding all three seed phrases is
+ * not enough: the other keys, the threshold and the script type live only in
+ * the descriptor. So the single-signature drill above, which proves a mnemonic
+ * plus Core recovers a wallet, proves nothing at all about a quorum. Every one
+ * of the four bugs found in the multisig screens this week lived on a path
+ * nothing here exercised.
+ *
+ * THREE DISTINCT SEEDS, and that is not a detail. A 2-of-3 assembled from one
+ * seed three times derives, imports and signs perfectly, and is a 1-of-1 with
+ * extra steps. The drill would have passed.
+ *
+ * TWO DIFFERENT DEVICES SIGN, sequentially, exactly as a fleet does it: the
+ * first signs and hands the partial PSBT on, the second signs the same PSBT,
+ * and only then does Core finalise. Signing twice with one seed would pass a
+ * carelessly written version of this and prove nothing about a quorum.
+ *
+ * Core does all the recovery: Core derives the addresses, Core builds the
+ * spend, Core finalises and broadcasts. nullroute assembles the descriptor and
+ * produces two signatures.
+ */
+async function drillQuorum() {
+  const network = 'regtest'
+  const mnemonics = [MNEMONIC, ...COSIGNER_MNEMONICS]
+  const keys = mnemonics.map((mnemonic) => nullrouteQuorumKey(mnemonic, network))
+
+  // Three distinct seeds produce three distinct fingerprints. Asserted rather
+  // than assumed, because the failure it guards against is a drill that looks
+  // like it tests a quorum and tests one key.
+  const fingerprints = new Set(keys.map((key) => key.fingerprint))
+  if (fingerprints.size !== 3) {
+    throw new Error(
+      `quorum: the three cosigners share a key. ${String(fingerprints.size)} distinct ` +
+        `fingerprints among three mnemonics means this drill would be testing a 1-of-1.`
+    )
+  }
+
+  const quorum = nullrouteAssemble(keys.map((key) => key.keyExpression), 2)
+
+  // --- Core derives the addresses, and they must be identical --------------
+  //
+  // The heart of it, same as the single-signature drill. If Core and the device
+  // disagree here, money sent to an address the device displayed is invisible
+  // to the wallet somebody recovers with.
+  const ours = nullrouteQuorumAddresses(quorum.receive, network, 5)
+  const theirs = await rpc('deriveaddresses', [quorum.receive, [0, 4]])
+  for (const [index, address] of ours.entries()) {
+    if (theirs[index] !== address) {
+      throw new Error(
+        `quorum: Core derived a different address at index ${String(index)}.\n` +
+          `  nullroute: ${address}\n  core:      ${theirs[index]}`
+      )
+    }
+  }
+
+  // --- Core imports the quorum as watch-only -------------------------------
+  const watchName = `drill-quorum-${RUN}`
+  await ensureWallet(watchName, { disablePrivateKeys: true, blank: true })
+  const imported = await rpc(
+    'importdescriptors',
+    [
+      [
+        { desc: quorum.receive, timestamp: 'now', range: [0, 20], active: true, internal: false },
+        { desc: quorum.change, timestamp: 'now', range: [0, 20], active: true, internal: true },
+      ],
+    ],
+    watchName
+  )
+  if (imported.some((entry) => entry.success !== true)) {
+    throw new Error(`quorum: Core refused the descriptor: ${JSON.stringify(imported)}`)
+  }
+
+  // --- Fund it -------------------------------------------------------------
+  await rpc('sendtoaddress', [ours[0], 0.5], 'drill-funding')
+  await rpc('generatetoaddress', [6, await rpc('getnewaddress', [], 'drill-funding')], 'drill-funding')
+
+  let balance = 0
+  for (let attempt = 0; attempt < 20 && balance === 0; attempt += 1) {
+    balance = await rpc('getbalance', ['*', 1, true], watchName)
+    if (balance === 0) await sleep(250)
+  }
+  if (balance <= 0) {
+    throw new Error('quorum: Core sees no balance for the imported quorum descriptor.')
+  }
+
+  // --- Core builds the spend ----------------------------------------------
+  const destination = await rpc('getnewaddress', [], 'drill-funding')
+  const funded = await rpc(
+    'walletcreatefundedpsbt',
+    [
+      [],
+      [{ [destination]: 0.1 }],
+      0,
+      { includeWatching: true, subtractFeeFromOutputs: [0], change_type: 'bech32' },
+    ],
+    watchName
+  )
+
+  const decoded = await rpc('decodepsbt', [funded.psbt])
+  const derivations = (decoded.inputs ?? []).flatMap((input) =>
+    (input.bip32_derivs ?? []).map((entry) => ({ path: entry.path, fingerprint: entry.master_fingerprint }))
+  )
+  if (derivations.length === 0) {
+    throw new Error(
+      'quorum: Core built a PSBT with no BIP-32 derivations, so nothing identifies which keys ' +
+        'sign it. That is a broken import rather than a signing problem.'
+    )
+  }
+
+  // --- Two DIFFERENT devices sign, one after the other ---------------------
+  //
+  // Each is given only the paths belonging to its own fingerprint. Handing a
+  // device every path in the PSBT would let one seed appear to satisfy the
+  // quorum, which is the thing being disproved.
+  let psbt = funded.psbt
+  let signedBy = 0
+  for (const index of [0, 1]) {
+    const key = keys[index]
+    const mine = derivations
+      .filter((entry) => entry.fingerprint?.toLowerCase() === key.fingerprint.toLowerCase())
+      .map((entry) => entry.path)
+    if (mine.length === 0) {
+      throw new Error(
+        `quorum: no input names cosigner ${String(index + 1)}'s fingerprint ${key.fingerprint}, ` +
+          `so this device has nothing to sign and the quorum Core imported is not the one built.`
+      )
+    }
+    const result = nullrouteQuorumSign(psbt, mnemonics[index], network, mine)
+    if (result.inputsSigned < 1) {
+      throw new Error(`quorum: cosigner ${String(index + 1)} signed nothing.`)
+    }
+    psbt = result.psbt
+    signedBy += 1
+
+    // INV-INTEROP-2. After ONE signature a 2-of-3 must not finalise. If it
+    // does, the threshold is not what the descriptor says and one device can
+    // spend the money.
+    if (index === 0) {
+      const early = await rpc('finalizepsbt', [psbt])
+      if (early.complete === true) {
+        throw new Error(
+          'quorum: Core finalised a 2-of-3 after ONE signature. The threshold in the built ' +
+            'descriptor is not the one that was asked for, and one device can spend this money.'
+        )
+      }
+    }
+  }
+
+  // --- Core finalises and broadcasts --------------------------------------
+  const finalised = await rpc('finalizepsbt', [psbt])
+  if (finalised.complete !== true) {
+    throw new Error(
+      'quorum: Core could not finalise the PSBT after two signatures. The signatures nullroute ' +
+        'produced are not ones Core accepts for this quorum.'
+    )
+  }
+  const txid = await rpc('sendrawtransaction', [finalised.hex])
+  await rpc('generatetoaddress', [1, await rpc('getnewaddress', [], 'drill-funding')], 'drill-funding')
+
+  const confirmed = await rpc('gettransaction', [txid, true], watchName)
+  if ((confirmed.confirmations ?? 0) < 1) {
+    throw new Error('quorum: the spend did not confirm.')
+  }
+
+  console.log(
+    `  ok      2-of-3       checksum ${quorum.checksum}, ${String(ours.length)} identical ` +
+      `addresses, ${String(signedBy)} devices signed, spent ${txid.slice(0, 16)}...`
+  )
+  return { scriptType: '2-of-3', txid, addresses: ours.length }
+}
+
 async function main() {
   console.log('\nnullroute recovery drill (INV-INTEROP-1)\n')
 
@@ -367,7 +678,11 @@ async function main() {
     results.push(await drill(scriptType))
   }
 
-  console.log(`\n  ${String(results.length)} of ${String(results.length)} script types recovered and spent with Core alone.`)
+  // The quorum, last, because it is the longest and the one whose failure is
+  // most informative once the simple cases are known to work.
+  results.push(await drillQuorum())
+
+  console.log(`\n  ${String(results.length)} of ${String(results.length)} wallet kinds recovered and spent with Core alone.`)
 
   console.log('recovery drill passed\n')
 }

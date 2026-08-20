@@ -348,7 +348,8 @@ does not keep.
 | INV-BUILD-1 | `npm run verify` must pass before the app starts. On failure the UI shows the error and refuses to load the wallet. |
 | INV-WALLET-1 | `packages/wallet` may import `packages/core`, never the reverse. Removing it leaves a functional signer. |
 | INV-WALLET-2 | *Planned, phase 5, not enforced today.* The wallet layer proposes but never signs. `packages/wallet` does not exist yet, so there is nothing to constrain. |
-| INV-INTEROP-1 | Every wallet is fully recoverable from the BIP-39 mnemonic plus a standard descriptor, with third-party software and no nullroute code. Drilled in CI against a real Bitcoin Core on regtest for p2wpkh, sh(wpkh) and p2pkh. Taproot is not yet drilled. |
+| INV-INTEROP-1 | Every wallet is fully recoverable from the BIP-39 mnemonic plus a standard descriptor, with third-party software and no nullroute code. Drilled in CI against a real Bitcoin Core on regtest for p2wpkh, sh(wpkh), p2pkh and p2tr, and for a 2-of-3 quorum with three distinct seeds where two separate devices sign in sequence. |
+| INV-INTEROP-2 | A quorum is recoverable from its descriptor, which mnemonics alone cannot replace. The drill asserts that one signature does NOT finalise a 2-of-3, so a threshold that silently became 1 fails the build rather than shipping. |
 | INV-MULTI-6 | A multisig descriptor in which this device holds no key is refused at registration, rather than producing a wallet that can receive and never spend. |
 | INV-MULTI-7 | Quorum membership is decided by key material. A key origin claiming this device's fingerprint does not make a stranger's key ours. |
 | INV-STORE-1 | A seed is never written to disk in a form readable without the passphrase. |

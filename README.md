@@ -166,7 +166,9 @@ deterministic signature to hide a leaked key.
 Core and confirm it sees the same addresses. Doing this by hand is the check
 that matters, and it is the one that makes walking away from this project
 harmless. CI runs the same drill on every commit against a real regtest Core,
-for all four address types including taproot. Run it yourself with
+for all four address types including taproot, and for a 2-of-3 quorum built
+from three distinct seeds where two separate devices sign in sequence. Run it
+yourself with
 `make test-recovery-drill`. If it ever fails, that is a security report.
 
 Full procedure: [docs/VERIFICATION.md](docs/VERIFICATION.md), written for

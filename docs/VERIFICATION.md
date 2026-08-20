@@ -258,7 +258,8 @@ Do this on a testnet or signet wallet first, with the same script type as your
 real one.
 
 CI runs exactly this drill on every commit, against a Bitcoin Core downloaded
-from bitcoincore.org and checked against a pinned SHA-256. For **all four**
+from bitcoincore.org and checked against a pinned SHA-256. For a **2-of-3
+quorum**, and for **all four**
 address types, taproot included, it creates the wallet in nullroute, exports the
 receive and change descriptors, asks Core to derive the addresses and asserts
 they are identical, funds one, has Core build the spend, signs it with
