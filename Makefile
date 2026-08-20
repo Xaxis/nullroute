@@ -172,6 +172,19 @@ build: ## Build every package
 dev: build manifest verify ## Run the whole device locally: daemon plus UI at 127.0.0.1:5180
 	@bash tools/dev.sh
 
+restart: ## Stop everything and start the local device clean. FRESH=1 also erases local wallets
+	# One step instead of two. `make dev` REFUSES to start on top of a previous
+	# run, which is right for a script that might be stepping on something you
+	# meant to keep, and tedious when you are restarting all afternoon. This is
+	# the other half: stop, then start.
+	#
+	# It does NOT deploy anything. `make deploy` publishes the website to
+	# nullroute.diy and has nothing to do with running the device locally.
+	#
+	# Wallets survive unless you say FRESH=1, which names the directory and
+	# counts what it is about to erase.
+	@bash tools/dev-restart.sh
+
 dev-daemon: build manifest verify ## Just the daemon, on a Unix socket in /tmp
 	@NULLROUTE_SOCKET=$${NULLROUTE_SOCKET:-/tmp/nullrouted.sock} \
 	  node --jitless packages/daemon/dist/main.js

@@ -112,8 +112,23 @@ built. From there you can roll dice, create a wallet, and browse addresses
 exactly as you would on hardware.
 
 Ctrl-C stops both halves. If it ever reports that port 5180 is in use, an
-earlier run is still going; the message names the process and how to stop it.
-To run alongside one instead, set the port:
+earlier run is still going. `make dev` refuses rather than stepping on it, and
+names the process; to stop it and start clean in one step:
+
+```bash
+make restart           # stop whatever is running, rebuild, start again
+make restart FRESH=1   # the same, and erase the local wallets first
+```
+
+`make restart` keeps your wallets unless you ask otherwise, and tells you how
+many it is keeping. `FRESH=1` names the directory and counts what it is about to
+erase, because a restart that silently threw away wallets would be one nobody
+could trust.
+
+**`make deploy` is not part of this.** It publishes the website to nullroute.diy
+and has nothing to do with running the device locally.
+
+To run alongside an existing instance instead of replacing it, set the port:
 
 ```bash
 NULLROUTE_UI_PORT=5181 make dev
