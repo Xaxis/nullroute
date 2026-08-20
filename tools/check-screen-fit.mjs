@@ -268,16 +268,83 @@ const MEASURE = `(() => {
     return el.getBoundingClientRect()
   }
 
+  /*
+   * A control with something painted over it is not a target.
+   *
+   * The navigation menu opens a panel over the screen behind it, with a scrim
+   * across the rest, and every control underneath keeps its geometry: the
+   * harness read a menu entry and a button four layers below it as neighbours
+   * 0px apart. They are not neighbours, because a finger landing on either
+   * point reaches the panel or the scrim, and never the button.
+   *
+   * Tested at the centre, and only against the top layer being an ancestor or
+   * a descendant, so a control that is genuinely half-buried still fails. This
+   * does not weaken the under-the-action-bar check: that one measures whether a
+   * control can be SCROLLED clear, and asks a different question of a different
+   * geometry.
+   */
+  const covered = (el, r) => {
+    const x = r.left + r.width / 2
+    const y = r.top + r.height / 2
+    if (x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) return false
+    const top = document.elementFromPoint(x, y)
+    if (top === null) return false
+    return !el.contains(top) && !top.contains(el)
+  }
+
+  /*
+   * How much of a control is actually painted.
+   *
+   * A scrolling body clips its children, and the header above it is opaque, so
+   * a control scrolled halfway under the header is only tappable from where it
+   * emerges. The harness measured the whole rect and read a header button and a
+   * body button scrolled beneath it as neighbours 0px apart, when nothing on
+   * screen ever showed them touching. That was a blind spot the whole time: it
+   * only surfaced once the header had a control in it to compare against.
+   *
+   * Intersected with every clipping ancestor, so this reports what a finger can
+   * reach rather than what the layout would like to exist.
+   */
+  const painted = (el, r) => {
+    let box = { top: r.top, bottom: r.bottom, left: r.left, right: r.right }
+    for (let p = el.parentElement; p !== null; p = p.parentElement) {
+      const style = getComputedStyle(p)
+      const clips =
+        style.overflow !== 'visible' ||
+        style.overflowX !== 'visible' ||
+        style.overflowY !== 'visible'
+      if (!clips) continue
+      const c = p.getBoundingClientRect()
+      box = {
+        top: Math.max(box.top, c.top),
+        bottom: Math.min(box.bottom, c.bottom),
+        left: Math.max(box.left, c.left),
+        right: Math.min(box.right, c.right),
+      }
+    }
+    return {
+      top: box.top,
+      bottom: Math.max(box.top, box.bottom),
+      left: box.left,
+      right: Math.max(box.left, box.right),
+    }
+  }
+
   const targets = []
   for (const el of document.querySelectorAll('button, a[href], input, textarea, summary, [role="button"]')) {
     if (!visible(el)) continue
     const r = hitBox(el)
     if (r.width === 0 && r.height === 0) continue
     if (!onScreen(el, r)) continue
+    if (covered(el, r)) continue
     // A field the user types into is sized by its content and is not a target
     // in the same sense: nothing sits beside it to mis-hit.
     const typed = el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && el.type !== 'checkbox')
-    targets.push({ el, r, typed, name: label(el) })
+    // The raw rect for size, because a control clipped by a scroll can be
+    // scrolled back into view and is still the size it is. The painted rect for
+    // adjacency, because two controls never shown side by side cannot be
+    // mis-tapped for each other.
+    targets.push({ el, r, p: painted(el, r), typed, name: label(el) })
   }
 
   for (const t of targets) {
@@ -302,15 +369,16 @@ const MEASURE = `(() => {
       if (a.r.width === b.r.width && a.r.height === b.r.height && a.r.left === b.r.left &&
           a.r.top === b.r.top) continue
 
-      // Gap along each axis. A negative value on both means they overlap.
-      const dx = Math.max(a.r.left - b.r.right, b.r.left - a.r.right)
-      const dy = Math.max(a.r.top - b.r.bottom, b.r.top - a.r.bottom)
+      // Gap along each axis, between the parts that are actually painted. A
+      // negative value on both means they overlap.
+      const dx = Math.max(a.p.left - b.p.right, b.p.left - a.p.right)
+      const dy = Math.max(a.p.top - b.p.bottom, b.p.top - a.p.bottom)
       const gap = Math.max(dx, dy)
       if (gap >= MIN_GAP) continue
       // Only when they actually sit beside each other: two controls in
       // different columns and different rows are not confusable.
-      const overlapsX = a.r.left < b.r.right && b.r.left < a.r.right
-      const overlapsY = a.r.top < b.r.bottom && b.r.top < a.r.bottom
+      const overlapsX = a.p.left < b.p.right && b.p.left < a.p.right
+      const overlapsY = a.p.top < b.p.bottom && b.p.top < a.p.bottom
       if (!overlapsX && !overlapsY) continue
 
       problems.push({

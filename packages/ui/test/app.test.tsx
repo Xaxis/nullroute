@@ -468,9 +468,10 @@ describe('ui.app switching and checking', () => {
     await waitFor(() => {
       expect(screen.getByTestId('wallet-screen')).toBeTruthy()
     })
-    // Through the RAIL, which is how somebody reaches More now. It used to be
+    // Through the MENU, which is how somebody reaches More now. It used to be
     // the fourth tab of the wallet screen, which put the same word in two
-    // places once the rail existed.
+    // places once there was navigation.
+    fireEvent.click(screen.getByTestId('nav-menu-button'))
     fireEvent.click(screen.getByTestId('nav-more'))
     await waitFor(() => {
       expect(screen.getByTestId('more-screen')).toBeTruthy()
@@ -557,9 +558,10 @@ describe('ui.app scanning', () => {
     await waitFor(() => {
       expect(screen.getByTestId('wallet-screen')).toBeTruthy()
     })
-    // Through the RAIL, which is how somebody reaches More now. It used to be
+    // Through the MENU, which is how somebody reaches More now. It used to be
     // the fourth tab of the wallet screen, which put the same word in two
-    // places once the rail existed.
+    // places once there was navigation.
+    fireEvent.click(screen.getByTestId('nav-menu-button'))
     fireEvent.click(screen.getByTestId('nav-more'))
     await waitFor(() => {
       expect(screen.getByTestId('more-screen')).toBeTruthy()

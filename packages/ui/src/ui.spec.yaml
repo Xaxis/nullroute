@@ -60,7 +60,7 @@ covers:
   - packages/ui/src/screens/ReceiveScreen.tsx::chunkAddress
   - packages/ui/src/components/Steps.tsx::Steps
   - packages/ui/src/components/IdleBanner.tsx::IdleBanner
-  - packages/ui/src/components/NavRail.tsx::NavRail
+  - packages/ui/src/components/NavMenu.tsx::NavMenu
   - packages/ui/src/screens/MoreScreen.tsx::MoreScreen
   - packages/ui/src/screens/VerifyMessageScreen.tsx::VerifyMessageScreen
   - packages/ui/src/lib/idle.ts::useIdleLock
@@ -1039,19 +1039,23 @@ invariants:
 
   - id: INV-UI-91
     statement: >
-      Navigation is one persistent rail rather than destinations scattered
-      through action bars and tab rows. Every destination is reachable, the
-      current one is marked as a page rather than as a pressed button, a
-      destination with nothing behind it is hidden, and ending the session is
-      separated from every destination.
+      Navigation is one menu in the header rather than destinations scattered
+      through action bars and tab rows. It costs nothing until it is opened,
+      every destination including the guide is reachable from it, the current
+      one is marked as a page rather than as a pressed button, a destination
+      with nothing behind it is hidden, it closes on a tap outside it, and
+      ending the session is separated from every destination.
     tests:
-      - packages/ui/test/nav-rail.test.tsx::reaches-every-destination
-      - packages/ui/test/nav-rail.test.tsx::marks-where-you-are-as-the-current-page
-      - packages/ui/test/nav-rail.test.tsx::hides-quorums-on-a-device-that-is-in-none
-      - packages/ui/test/nav-rail.test.tsx::separates-locking-from-the-destinations
-      - packages/ui/test/nav-rail.test.tsx::offers-no-lock-when-there-is-no-session-to-end
-      - packages/ui/test/nav-rail.test.tsx::hides-the-destinations-that-need-a-wallet
-      - packages/ui/test/nav-rail.test.tsx::offers-them-again-once-a-wallet-is-open
+      - packages/ui/test/nav-menu.test.tsx::reaches-every-destination
+      - packages/ui/test/nav-menu.test.tsx::carries-guide-me-as-a-destination
+      - packages/ui/test/nav-menu.test.tsx::shows-nothing-until-it-is-opened
+      - packages/ui/test/nav-menu.test.tsx::marks-where-you-are-as-the-current-page
+      - packages/ui/test/nav-menu.test.tsx::hides-quorums-on-a-device-that-is-in-none
+      - packages/ui/test/nav-menu.test.tsx::separates-locking-from-the-destinations
+      - packages/ui/test/nav-menu.test.tsx::closes-on-a-tap-outside-it
+      - packages/ui/test/nav-menu.test.tsx::offers-no-lock-when-there-is-no-session-to-end
+      - packages/ui/test/nav-menu.test.tsx::hides-the-destinations-that-need-a-wallet
+      - packages/ui/test/nav-menu.test.tsx::offers-them-again-once-a-wallet-is-open
       - packages/ui/test/more-screen.test.tsx::reaches-every-destination
       - packages/ui/test/more-screen.test.tsx::keeps-the-action-bar-to-the-way-back
       - packages/ui/test/wallet-screen.test.tsx::keeps-the-action-bar-to-what-acts-on-this-screen

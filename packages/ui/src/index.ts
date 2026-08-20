@@ -49,8 +49,8 @@ export type {
 export { MoreScreen } from './screens/MoreScreen.js'
 export type { MoreScreenProps } from './screens/MoreScreen.js'
 
-export { NavRail } from './components/NavRail.js'
-export type { NavRailProps, NavDestination } from './components/NavRail.js'
+export { NavMenu } from './components/NavMenu.js'
+export type { NavMenuProps, NavDestination } from './components/NavMenu.js'
 
 export { IdleBanner } from './components/IdleBanner.js'
 export type { IdleBannerProps } from './components/IdleBanner.js'

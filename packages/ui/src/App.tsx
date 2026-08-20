@@ -72,7 +72,7 @@ import {
 import { BackupScreen, type BackupDescription, type RestoredView } from './screens/BackupScreen.js'
 import { WalletChip } from './components/WalletChip.js'
 import { IdleBanner } from './components/IdleBanner.js'
-import { NavRail, type NavDestination } from './components/NavRail.js'
+import { NavMenu, type NavDestination } from './components/NavMenu.js'
 import { MoreScreen } from './screens/MoreScreen.js'
 import { useIdleLock, type IdleWindow } from './lib/idle.js'
 import { PassphraseScreen } from './screens/PassphraseScreen.js'
@@ -255,6 +255,7 @@ function toBase64(bytes: Uint8Array): string {
 
 export function App() {
   const [stage, setStage] = useState<Stage>({ at: 'loading' })
+  const [menuOpen, setMenuOpen] = useState(false)
 
   /**
    * The journey underway, if there is one, and how far into it.
@@ -560,20 +561,31 @@ export function App() {
    * are defined once. A screen in the middle of a flow passes nothing and gets
    * no rail: see the note on Screen's `nav` prop.
    */
-  const rail = (current: NavDestination): ReactElement => (
-    <NavRail
-      current={current}
+  // Lifted, so that navigating closes it. A panel left open over the screen it
+  // just moved to is the classic version of this control, and on a device where
+  // the next tap might authorise a transaction it is worse than untidy.
+  const menu = (current?: NavDestination): ReactElement => (
+    <NavMenu
+      {...(current === undefined ? {} : { current })}
+      open={menuOpen}
+      onToggle={() => {
+        setMenuOpen((was) => !was)
+      }}
       walletOpen={status?.hasWallet === true}
       showQuorums={quorums.length > 0}
-      // Nothing to lock with nothing open, and a Lock that does nothing is a
-      // control somebody learns to distrust.
-      {...(status?.hasWallet === true ? { onLock: lockSession } : {})}
       onNavigate={(destination) => {
-        if (destination === 'home') setStage({ at: 'start' })
-        else if (destination === 'wallet') setStage({ at: 'wallet' })
+        setMenuOpen(false)
+        if (destination === 'guide') {
+          // Start, not resume. Somebody who reaches for the guide from the
+          // middle of a wallet is asking what to do next, and handing back a
+          // half-finished journey answers a question they did not ask.
+          setJourney(null)
+          setStage({ at: 'start' })
+        } else if (destination === 'wallet') setStage({ at: 'wallet' })
         else if (destination === 'sign') setStage({ at: 'psbt' })
         else if (destination === 'receive') setStage({ at: 'receive' })
         else if (destination === 'quorums') setStage({ at: 'fleet' })
+        else if (destination === 'lock') lockSession()
         else setStage({ at: 'more' })
       }}
     />
@@ -805,6 +817,7 @@ export function App() {
       <LockScreen
         attestation={attestation}
         device={headerDevice}
+        nav={menu()}
         network={status.network}
         {...(status.fingerprint === null ? {} : { fingerprint: status.fingerprint })}
         expanded={expanded}
@@ -852,7 +865,7 @@ export function App() {
   if (stage.at === 'start') {
     return (
       <StartScreen
-        nav={rail('home')}
+        nav={menu('guide')}
         banner={banner}
         device={headerDevice}
         walletOpen={status?.hasWallet === true}
@@ -1028,7 +1041,7 @@ export function App() {
   if (stage.at === 'more' && status !== null) {
     return (
       <MoreScreen
-        nav={rail('more')}
+        nav={menu('more')}
         theme={theme}
         onSetTheme={
           device === null
@@ -1121,7 +1134,7 @@ export function App() {
     return (
       <>
         <WalletScreen
-          nav={rail('wallet')}
+          nav={menu('wallet')}
           device={headerDevice}
           quorums={quorums}
           banner={banner}
@@ -1311,7 +1324,7 @@ export function App() {
   if (stage.at === 'fleet') {
     return (
       <FleetScreen
-        nav={rail('quorums')}
+        nav={menu('quorums')}
         banner={banner}
         onHome={goHome}
         device={headerDevice}
@@ -1369,7 +1382,7 @@ export function App() {
   if (stage.at === 'psbt') {
     return (
       <PsbtScreen
-        nav={rail('sign')}
+        nav={menu('sign')}
         banner={banner}
         onHome={goHome}
         device={headerDevice}
@@ -1567,7 +1580,7 @@ export function App() {
   if (stage.at === 'receive') {
     return (
       <ReceiveScreen
-        nav={rail('receive')}
+        nav={menu('receive')}
         banner={banner}
         onHome={goHome}
         device={headerDevice}

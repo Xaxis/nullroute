@@ -29,7 +29,7 @@ import {
   BackupScreen,
   ChildSeedScreen,
   IdleBanner,
-  NavRail,
+  NavMenu,
   NetworkBanner,
   DiceScreen,
   ImportScreen,
@@ -288,6 +288,39 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       }}
       network={{ id: 'mainnet', label: 'Mainnet', isMainnet: true }}
       fingerprint="73c5da0a"
+      nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} walletOpen={false} />}
+      onGuide={noop}
+      onUnlock={noop}
+      onToggleExpanded={noop}
+    />
+  ),
+  /*
+   * The menu open, on the gate screen, which is the reason it is a menu.
+   *
+   * The fit harness measures this state: a floating panel is the one thing on
+   * this device that is not laid out by the screen grid, so nothing else would
+   * catch it running off the bottom of 480px.
+   */
+  'lock-menu-open': () => (
+    <LockScreen device={DEVICE}
+      attestation={{
+        rootHash: '942b6a2b53d02c1bce1ce4e7592d3f13e44f23db8dea4ef02c4aea2970813600',
+        rootHashShort: '942b6a2b',
+        specCount: 37,
+        invariantCount: 283,
+        tier: 'signer',
+        version: '0.1.0',
+        checks: [
+          { name: 'coverage', status: 'passed', detail: '' },
+          { name: 'invariants', status: 'passed', detail: '' },
+          { name: 'vectors', status: 'passed', detail: '' },
+          { name: 'differential', status: 'passed', detail: '' },
+          { name: 'integrity', status: 'passed', detail: '' },
+        ],
+      }}
+      network={{ id: 'mainnet', label: 'Mainnet', isMainnet: true }}
+      fingerprint="73c5da0a"
+      nav={<NavMenu open onToggle={noop} onNavigate={noop} walletOpen={false} />}
       onGuide={noop}
       onUnlock={noop}
       onToggleExpanded={noop}
@@ -389,7 +422,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   ),
   wallet: () => (
     <WalletScreen device={DEVICE}
-      nav={<NavRail current="wallet" onNavigate={noop} onLock={noop} />}
+      nav={<NavMenu current="wallet" open={false} onToggle={noop} onNavigate={noop} />}
       fingerprint="73c5da0a"
       quorums={[QUORUM]}
       onAddresses={async () =>
@@ -468,7 +501,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   // The screen that authorises spending money, in the state where it does so.
   'psbt-review': () => (
     <PsbtScreen device={DEVICE} onHome={noop}
-      nav={<NavRail current="sign" onNavigate={noop} onLock={noop} />}
+      nav={<NavMenu current="sign" open={false} onToggle={noop} onNavigate={noop} />}
       initialPsbt="cHNidP8BAHUCAAAAAQ=="
       onScan={noop}
       onReview={async () => Promise.resolve(REVIEW)}
@@ -553,7 +586,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   backup: () => <BackupScreen device={DEVICE} onScan={noop} onHome={noop} onCreate={never} onDescribe={never} onRestore={never} onBack={noop} />,
   more: () => (
     <MoreScreen device={DEVICE}
-      nav={<NavRail current="more" onNavigate={noop} onLock={noop} />}
+      nav={<NavMenu current="more" open={false} onToggle={noop} onNavigate={noop} />}
       theme="dark"
       onSetTheme={async () => Promise.resolve()}
       quorumCount={2}
@@ -581,7 +614,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     document.documentElement.setAttribute('data-theme', 'light')
     return (
       <WalletScreen device={DEVICE}
-        nav={<NavRail current="wallet" onNavigate={noop} onLock={noop} />}
+        nav={<NavMenu current="wallet" open={false} onToggle={noop} onNavigate={noop} />}
         fingerprint="73c5da0a"
         quorums={[QUORUM]}
         onAddresses={async () =>
@@ -652,7 +685,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   start: () => (
     <StartScreen device={DEVICE} walletOpen={false} onBegin={noop} onSkip={noop}
       // No wallet open, so the rail shows only what works without one.
-      nav={<NavRail current="home" onNavigate={noop} walletOpen={false} />}
+      nav={<NavMenu current="guide" open={false} onToggle={noop} onNavigate={noop} walletOpen={false} />}
     />
   ),
   assemble: () => (
@@ -751,7 +784,23 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   ),
   receive: () => (
     <ReceiveScreen device={DEVICE} onHome={noop}
-      nav={<NavRail current="receive" onNavigate={noop} onLock={noop} />}
+      nav={<NavMenu current="receive" open={false} onToggle={noop} onNavigate={noop} />}
+      walletLabel="Cold storage, three of five"
+      onAddress={async (index: number) =>
+        Promise.resolve({ address: ADDRESS, path: `m/84'/0'/0'/0/${String(index)}`, index })
+      }
+      onVerify={async () => Promise.resolve({ found: true, path: "m/84'/0'/0'/0/0" })}
+      onBack={noop}
+    />
+  ),
+  /*
+   * Every entry the menu has: six destinations and a lock, on a device with a
+   * wallet open and a quorum registered. This is the tallest the panel gets,
+   * and it is the state that decides whether the eighth entry would fit.
+   */
+  'receive-menu-open': () => (
+    <ReceiveScreen device={DEVICE} onHome={noop}
+      nav={<NavMenu current="receive" open onToggle={noop} onNavigate={noop} />}
       walletLabel="Cold storage, three of five"
       onAddress={async (index: number) =>
         Promise.resolve({ address: ADDRESS, path: `m/84'/0'/0'/0/${String(index)}`, index })
@@ -765,7 +814,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   // warning above the fold.
   'receive-quorum': () => (
     <ReceiveScreen device={DEVICE} onHome={noop}
-      nav={<NavRail current="receive" onNavigate={noop} onLock={noop} />}
+      nav={<NavMenu current="receive" open={false} onToggle={noop} onNavigate={noop} />}
       walletLabel="Cold storage, three of five"
       quorums={[
         { checksum: '8rf6pq2t', threshold: 2, total: 3, descriptor: DESCRIPTOR },

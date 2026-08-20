@@ -53,10 +53,6 @@ const EXITS = ['onBack', 'onCancel', 'onHome', 'onDone', 'onContinue', 'onSkip',
  */
 const NO_WAY_OUT = new Map([
   [
-    'LockScreen.tsx',
-    'the root of the device. There is nothing above it, and Unlock is refused outright when verification fails.',
-  ],
-  [
     'SeedScreen.tsx',
     'the words are shown once. Leaving loses them, so the only exit is confirming they are written down.',
   ],

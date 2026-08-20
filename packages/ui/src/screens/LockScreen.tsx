@@ -39,7 +39,7 @@
  * them.
  */
 
-import { type ReactElement } from 'react'
+import { type ReactElement, type ReactNode } from 'react'
 import { type NetworkId } from '@nullroute/core'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
@@ -77,6 +77,16 @@ export interface LockScreenProps {
    * on every other screen until one of them is unlocked.
    */
   readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /**
+   * The navigation menu.
+   *
+   * On the gate screen too, and this is the reason the menu replaced a rail: a
+   * rail of wallet destinations had nothing to show here, so the first screen
+   * anybody meets had no visible navigation at all. What this menu offers with
+   * nothing unlocked is the guide and the device's own settings, which is
+   * exactly the set of things you can do before a passphrase.
+   */
+  readonly nav?: ReactNode
   readonly expanded?: boolean
   readonly onToggleExpanded?: () => void
 }
@@ -97,6 +107,7 @@ export function LockScreen(props: LockScreenProps): ReactElement {
     onUnlock,
     onGuide,
     device,
+    nav,
     expanded = false,
     onToggleExpanded,
   } = props
@@ -119,6 +130,7 @@ export function LockScreen(props: LockScreenProps): ReactElement {
       subtitle={`v${attestation.version}`}
       banner={network.isMainnet ? null : <NetworkBanner network={network} />}
       device={device}
+      nav={nav}
       testId="lock-screen"
       actions={
         <>
