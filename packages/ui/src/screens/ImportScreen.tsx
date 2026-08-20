@@ -1,4 +1,4 @@
-import { type ReactElement, useState } from 'react'
+import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { WordKeyboard } from '../components/WordKeyboard.js'
@@ -21,14 +21,20 @@ import { TextKeyboard } from '../components/TextKeyboard.js'
  */
 
 export interface ImportScreenProps {
+  /**
+   * The navigation menu, when leaving this screen is free.
+   *
+   * The only signal this device gives for that. It replaced a Home button in
+   * the same corner meaning the same thing, which is how that corner came to
+   * have three states and no rule.
+   */
+  readonly nav?: ReactNode
   readonly onImport: (mnemonic: string, passphrase: string) => Promise<void>
   readonly onCancel: () => void
   /** Where this screen sits in a journey, when it is part of one. */
   readonly steps?: ReactElement | null
-  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
-  readonly onHome?: (() => void) | undefined
-  /** What this physical device is called. Rendered in the header by Screen. */
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   readonly banner?: ReactElement | null
 }
 
@@ -36,7 +42,7 @@ export interface ImportScreenProps {
 const VALID_LENGTHS = [12, 15, 18, 21, 24]
 
 export function ImportScreen(props: ImportScreenProps): ReactElement {
-  const { onImport, onCancel, steps, onHome, device, banner } = props
+  const { onImport, onCancel, steps, identity, banner, nav } = props
   const [words, setWords] = useState<readonly string[]>([])
   const [passphrase, setPassphrase] = useState('')
   const [showPassphrase, setShowPassphrase] = useState(false)
@@ -67,8 +73,8 @@ export function ImportScreen(props: ImportScreenProps): ReactElement {
       title="Import a mnemonic"
       subtitle="BIP-39, 12 to 24 words."
       banner={banner}
-      onHome={onHome}
-      device={device}
+      nav={nav}
+      identity={identity}
       steps={steps}
       testId="import-screen"
       actions={

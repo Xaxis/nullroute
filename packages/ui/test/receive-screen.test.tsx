@@ -33,7 +33,6 @@ function setup(overrides: Partial<React.ComponentProps<typeof ReceiveScreen>> = 
   const onBack = vi.fn()
   render(
     <ReceiveScreen
-      walletLabel="Cold storage"
       onAddress={onAddress}
       onVerify={onVerify}
       onBack={onBack}

@@ -30,6 +30,7 @@ import {
   ChildSeedScreen,
   IdleBanner,
   NavMenu,
+  Identity,
   NetworkBanner,
   DiceScreen,
   ImportScreen,
@@ -72,7 +73,33 @@ const never = (): Promise<never> =>
 const noop = (): void => undefined
 
 /** A named device, so the header chip is measured on every screen. */
-const DEVICE = { name: 'The one in the attic', colour: 'teal' }
+/*
+ * The header identity, as every screen now receives it: one node built once,
+ * not a device prop each screen renders its own way.
+ */
+const DEVICE = (
+  <Identity
+    device="The one in the attic"
+    wallet={{ label: 'Cold storage, three of five', colour: 'teal' }}
+    networkLabel="Mainnet"
+    isMainnet
+    onSwitch={noop}
+  />
+)
+
+/** With nothing open: what the lock screen and the picker show. */
+const NO_WALLET = <Identity device="The one in the attic" onSwitch={noop} />
+
+/*
+ * The menu, closed, as most screens carry it.
+ *
+ * One constant rather than a literal per fixture. Fixtures had drifted apart
+ * from each other and from the app: a contact sheet of the headers showed the
+ * same screen rendered with a menu in one state and without it in another,
+ * which made the header look inconsistent in a harness whose whole job is
+ * catching that.
+ */
+const MENU = <NavMenu open={false} onToggle={noop} onNavigate={noop} />
 
 
 /** Long enough to be the worst case a real device would meet. */
@@ -235,7 +262,8 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   // matters and the one nobody sees while developing, and it is the longest
   // text this screen ever holds.
   lock: () => (
-    <LockScreen device={DEVICE}
+    <LockScreen identity={NO_WALLET}
+      nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} walletOpen={false} />}
       attestation={{
         rootHash: '942b6a2b53d02c1bce1ce4e7592d3f13e44f23db8dea4ef02c4aea297081360d',
         rootHashShort: '942b6a2b...7081360d',
@@ -272,7 +300,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
    * screen when the default is eight.
    */
   'lock-passing': () => (
-    <LockScreen device={DEVICE}
+    <LockScreen identity={NO_WALLET}
       attestation={{
         rootHash: '942b6a2b53d02c1bce1ce4e7592d3f13e44f23db8dea4ef02c4aea2970813600',
         rootHashShort: '942b6a2b',
@@ -304,7 +332,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
    * catch it running off the bottom of 480px.
    */
   'lock-menu-open': () => (
-    <LockScreen device={DEVICE}
+    <LockScreen identity={NO_WALLET}
       attestation={{
         rootHash: '942b6a2b53d02c1bce1ce4e7592d3f13e44f23db8dea4ef02c4aea2970813600',
         rootHashShort: '942b6a2b',
@@ -328,10 +356,10 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       onToggleExpanded={noop}
     />
   ),
-  setup: () => <SetupScreen device={DEVICE} onHome={noop} onStart={noop} />,
+  setup: () => <SetupScreen identity={NO_WALLET} nav={MENU} onStart={noop} />,
   dice: () => (
-    <DiceScreen device={DEVICE}
-      onHome={noop}
+    <DiceScreen identity={DEVICE}
+      nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
       onAccount={never}
       onComplete={noop}
       onCancel={noop}
@@ -340,8 +368,8 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   ),
   // Off a real device, which is the state that must refuse rather than pass.
   machine: () => (
-    <MachineEntropyScreen device={DEVICE}
-      onHome={noop}
+    <MachineEntropyScreen identity={DEVICE}
+      nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
       onHealth={async () =>
         Promise.resolve({
           healthy: false,
@@ -357,19 +385,19 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       onBack={noop}
     />
   ),
-  import: () => <ImportScreen device={DEVICE} onHome={noop} onImport={never} onCancel={noop} />,
+  import: () => <ImportScreen identity={DEVICE} nav={MENU} onImport={never} onCancel={noop} />,
   seed: () => (
-    <SeedScreen device={DEVICE} words={MNEMONIC.split(' ')} fingerprint="73c5da0a"
+    <SeedScreen identity={DEVICE} words={MNEMONIC.split(' ')} fingerprint="73c5da0a"
       onCheckPositions={async () => Promise.resolve([1, 4, 9])}
       onCheckWord={async () => Promise.resolve(true)}
       onConfirm={noop}
     />
   ),
   passphrase: () => (
-    <PassphraseScreen device={DEVICE} mode="enter" attemptsRemaining={2} maxAttempts={10} onSubmit={never} onCancel={noop} />
+    <PassphraseScreen identity={DEVICE} mode="enter" attemptsRemaining={2} maxAttempts={10} onSubmit={never} onCancel={noop} />
   ),
   wallets: () => (
-    <WalletsScreen device={DEVICE}
+    <WalletsScreen identity={NO_WALLET}
       nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} walletOpen={false} />}
       max={8}
       wallets={[
@@ -410,7 +438,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     />
   ),
   unlocked: () => (
-    <UnlockedScreen device={DEVICE}
+    <UnlockedScreen identity={DEVICE}
       label="Cold storage, three of five"
       colour="teal"
       fingerprint="73c5da0a"
@@ -424,7 +452,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     />
   ),
   wallet: () => (
-    <WalletScreen device={DEVICE}
+    <WalletScreen identity={DEVICE}
       nav={<NavMenu current="wallet" open={false} onToggle={noop} onNavigate={noop} />}
       fingerprint="73c5da0a"
       quorums={[QUORUM]}
@@ -450,13 +478,13 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     />
   ),
   psbt: () => (
-    <PsbtScreen device={DEVICE} onHome={noop} initialPsbt="" onScan={noop} onReview={never} onSign={never} onBack={noop} />
+    <PsbtScreen identity={DEVICE} nav={MENU} initialPsbt="" onScan={noop} onReview={never} onSign={never} onBack={noop} />
   ),
   // Signed, and NOT finished: the state the second device of three lands on,
   // where the next move is another device rather than the machine that built
   // the transaction.
   'psbt-signed-partial': () => (
-    <PsbtScreen device={DEVICE} onHome={noop}
+    <PsbtScreen identity={DEVICE} nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
       initialPsbt="cHNidP8BAHUCAAAAAQ=="
       onScan={noop}
       onReview={async () => Promise.resolve({ ...REVIEW, warnings: [], signable: true })}
@@ -492,7 +520,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   // a testnet banner and the wallet chip all in a header that has to leave room
   // for a transaction underneath.
   'psbt-idle': () => (
-    <PsbtScreen onHome={noop}
+    <PsbtScreen nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
       banner={CROWDED_HEADER}
       initialPsbt="cHNidP8BAHUCAAAAAQ=="
       onScan={noop}
@@ -503,8 +531,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   ),
   // The screen that authorises spending money, in the state where it does so.
   'psbt-review': () => (
-    <PsbtScreen device={DEVICE} onHome={noop}
-      nav={<NavMenu current="sign" open={false} onToggle={noop} onNavigate={noop} />}
+    <PsbtScreen identity={DEVICE} nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
       initialPsbt="cHNidP8BAHUCAAAAAQ=="
       onScan={noop}
       onReview={async () => Promise.resolve(REVIEW)}
@@ -513,7 +540,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     />
   ),
   multisig: () => (
-    <MultisigScreen device={DEVICE} onScan={noop} onHome={noop}
+    <MultisigScreen identity={DEVICE} onScan={noop} nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
       initialText={DESCRIPTOR}
       onOurKey={async () =>
         Promise.resolve({
@@ -570,7 +597,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     />
   ),
   quorum: () => (
-    <QuorumAddressesScreen device={DEVICE} onHome={noop}
+    <QuorumAddressesScreen identity={DEVICE} nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
       descriptor={DESCRIPTOR}
       position={{ ours: 2, of: 3 }}
       onAddresses={async () =>
@@ -585,10 +612,10 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       onBack={noop}
     />
   ),
-  message: () => <MessageScreen device={DEVICE} onHome={noop} onReview={never} onSign={never} onBack={noop} />,
-  backup: () => <BackupScreen device={DEVICE} onScan={noop} onHome={noop} onCreate={never} onDescribe={never} onRestore={never} onBack={noop} />,
+  message: () => <MessageScreen identity={DEVICE} nav={MENU} onReview={never} onSign={never} onBack={noop} />,
+  backup: () => <BackupScreen identity={DEVICE} onScan={noop} nav={MENU} onCreate={never} onDescribe={never} onRestore={never} onBack={noop} />,
   more: () => (
-    <MoreScreen device={DEVICE}
+    <MoreScreen identity={DEVICE}
       nav={<NavMenu current="more" open={false} onToggle={noop} onNavigate={noop} />}
       theme="dark"
       onSetTheme={async () => Promise.resolve()}
@@ -616,7 +643,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   'wallet-light': () => {
     document.documentElement.setAttribute('data-theme', 'light')
     return (
-      <WalletScreen device={DEVICE}
+      <WalletScreen identity={DEVICE}
         nav={<NavMenu current="wallet" open={false} onToggle={noop} onNavigate={noop} />}
         fingerprint="73c5da0a"
         quorums={[QUORUM]}
@@ -639,7 +666,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     )
   },
   labels: () => (
-    <LabelsScreen device={DEVICE} onScan={noop} onHome={noop}
+    <LabelsScreen identity={DEVICE} onScan={noop} nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
       // Filled, so the import button is live and the imported state is
       // reachable. That state is where the session-only caveat renders, and it
       // is the taller of the two.
@@ -658,12 +685,12 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       onBack={noop}
     />
   ),
-  child: () => <ChildSeedScreen device={DEVICE} onHome={noop} onDerive={never} onBack={noop} />,
+  child: () => <ChildSeedScreen identity={DEVICE} nav={MENU} onDerive={never} onBack={noop} />,
   // Checking somebody else's proof. Measured empty, which is the state with a
   // full keyboard and three tabs and nothing else, and after a pass and a
   // failure, which are the two states that add a banner above all of it.
   'verify-message': () => (
-    <VerifyMessageScreen device={DEVICE} onHome={noop} onScan={noop}
+    <VerifyMessageScreen identity={DEVICE} nav={MENU} onScan={noop}
       // A whole proof from one scan, which is how somebody actually arrives
       // here: the check button is live and the fields are full.
       scannedProof={SCANNED_PROOF}
@@ -672,7 +699,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     />
   ),
   'verify-message-failed': () => (
-    <VerifyMessageScreen device={DEVICE} onHome={noop} onScan={noop}
+    <VerifyMessageScreen identity={DEVICE} nav={MENU} onScan={noop}
       scannedProof={SCANNED_PROOF}
       onVerify={async () =>
         Promise.resolve({
@@ -686,15 +713,15 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     />
   ),
   start: () => (
-    <StartScreen device={DEVICE} walletOpen={false} onBegin={noop} onSkip={noop}
+    <StartScreen identity={DEVICE} walletOpen={false} onBegin={noop} onSkip={noop}
       // No wallet open, so the rail shows only what works without one.
       nav={<NavMenu current="guide" open={false} onToggle={noop} onNavigate={noop} walletOpen={false} />}
     />
   ),
   assemble: () => (
     <AssembleQuorumScreen
-      device={DEVICE}
-      onHome={noop}
+      identity={DEVICE}
+      nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
       onOurKey={async () =>
         Promise.resolve({
           keyExpression: `[73c5da0a/48'/0'/0'/2']${XPUB}`,
@@ -718,8 +745,8 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   ),
   fleet: () => (
     <FleetScreen
-      device={DEVICE}
-      onHome={noop}
+      identity={DEVICE}
+      nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
       deviceName="The one in the attic"
       quorums={[
         {
@@ -749,9 +776,9 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   ),
   'device-name': () => (
     <DeviceNameScreen
-      onHome={noop}
+      nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
+      identity={DEVICE}
       current={{ name: 'The one in the attic', colour: 'teal' }}
-      device={{ name: 'The one in the attic', colour: 'teal' }}
       onSave={never}
       onBack={noop}
     />
@@ -759,8 +786,8 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   // The failing case, which is the one that should be impossible and therefore
   // the one worth looking at: a device open with a check failing.
   attestation: () => (
-    <AttestationScreen device={DEVICE}
-      onHome={noop}
+    <AttestationScreen identity={DEVICE}
+      nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
       attestation={{
         rootHash: '942b6a2b53d02c1bce1ce4e7592d3f13e44f23db8dea4ef02c4aea297081360d',
         rootHashShort: '942b6a2b...7081360d',
@@ -786,9 +813,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     />
   ),
   receive: () => (
-    <ReceiveScreen device={DEVICE} onHome={noop}
-      nav={<NavMenu current="receive" open={false} onToggle={noop} onNavigate={noop} />}
-      walletLabel="Cold storage, three of five"
+    <ReceiveScreen identity={DEVICE} nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
       onAddress={async (index: number) =>
         Promise.resolve({ address: ADDRESS, path: `m/84'/0'/0'/0/${String(index)}`, index })
       }
@@ -802,9 +827,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
    * and it is the state that decides whether the eighth entry would fit.
    */
   'receive-menu-open': () => (
-    <ReceiveScreen device={DEVICE} onHome={noop}
-      nav={<NavMenu current="receive" open onToggle={noop} onNavigate={noop} />}
-      walletLabel="Cold storage, three of five"
+    <ReceiveScreen identity={DEVICE} nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
       onAddress={async (index: number) =>
         Promise.resolve({ address: ADDRESS, path: `m/84'/0'/0'/0/${String(index)}`, index })
       }
@@ -816,9 +839,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   // screen that already carries an address in large type, a QR code and a
   // warning above the fold.
   'receive-quorum': () => (
-    <ReceiveScreen device={DEVICE} onHome={noop}
-      nav={<NavMenu current="receive" open={false} onToggle={noop} onNavigate={noop} />}
-      walletLabel="Cold storage, three of five"
+    <ReceiveScreen identity={DEVICE} nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
       quorums={[
         { checksum: '8rf6pq2t', threshold: 2, total: 3, descriptor: DESCRIPTOR },
         { checksum: 'q35wkfm7', threshold: 3, total: 5, descriptor: DESCRIPTOR },
@@ -839,10 +860,10 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   finish: () => {
     const multisig = journeyById('multisig')
     if (multisig === undefined) throw new Error('the multisig journey is gone')
-    return <FinishScreen device={DEVICE} journey={multisig} onDone={noop} />
+    return <FinishScreen identity={DEVICE} nav={MENU} journey={multisig} onDone={noop} />
   },
   manage: () => (
-    <ManageWalletScreen device={DEVICE} onHome={noop}
+    <ManageWalletScreen identity={DEVICE} nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
       wallet={{ label: 'Cold storage, three of five', colour: 'teal' }}
       labelVerified={false}
       onRename={never}

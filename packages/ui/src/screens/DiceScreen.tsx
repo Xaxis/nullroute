@@ -1,4 +1,4 @@
-import { type ReactElement, useCallback, useEffect, useState } from 'react'
+import { type ReactElement, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 
@@ -40,6 +40,14 @@ export interface PatternWarning {
 }
 
 export interface DiceScreenProps {
+  /**
+   * The navigation menu, when leaving this screen is free.
+   *
+   * The only signal this device gives for that. It replaced a Home button in
+   * the same corner meaning the same thing, which is how that corner came to
+   * have three states and no rule.
+   */
+  readonly nav?: ReactNode
   /** Asks the daemon to account for the rolls entered so far. */
   readonly onAccount: (rolls: string) => Promise<{
     accounting: Accounting
@@ -60,17 +68,15 @@ export interface DiceScreenProps {
   readonly onCancel: () => void
   /** Where this screen sits in a journey, when it is part of one. */
   readonly steps?: ReactElement | null
-  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
-  readonly onHome?: (() => void) | undefined
-  /** What this physical device is called. Rendered in the header by Screen. */
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   readonly banner?: ReactElement | null
 }
 
 const FACES = ['1', '2', '3', '4', '5', '6'] as const
 
 export function DiceScreen(props: DiceScreenProps): ReactElement {
-  const { onAccount, onComplete, onCancel, onRollForMe, steps, onHome, device, banner } = props
+  const { onAccount, onComplete, onCancel, onRollForMe, steps, identity, banner, nav } = props
 
   const [rolls, setRolls] = useState('')
   const [accounting, setAccounting] = useState<Accounting | null>(null)
@@ -147,8 +153,8 @@ export function DiceScreen(props: DiceScreenProps): ReactElement {
       title="Roll the dice"
       subtitle="A d6, one roll at a time. 100 rolls."
       banner={banner}
-      onHome={onHome}
-      device={device}
+      nav={nav}
+      identity={identity}
       steps={steps}
       testId="dice-screen"
       actions={

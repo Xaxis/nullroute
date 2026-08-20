@@ -21,9 +21,11 @@ import { type ReactElement, useEffect, useRef } from 'react'
  * hiding: an opt-in screen you could dismiss permanently, plus a button on the
  * lock screen and nowhere else. It is a destination like any other now.
  *
- * WHAT IT STILL WILL NOT DO is offer an exit from the middle of a flow.
- * Rolling dice, writing down a mnemonic and holding a signed transaction are
- * sequences where leaving throws work away, and those screens pass no menu.
+ * WHAT IT STILL WILL NOT DO is offer an exit where leaving destroys something
+ * that cannot be made again: the seed words, which are shown once, a signed
+ * transaction, which exists only on the screen that made it, and the two gates
+ * that have to be read. Those screens pass no menu, and no switchable wallet
+ * name either, because that is the same exit in different clothes.
  */
 
 export type NavDestination =

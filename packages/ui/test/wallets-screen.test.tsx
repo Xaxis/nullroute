@@ -11,7 +11,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { WalletsScreen, type WalletRow } from '../src/screens/WalletsScreen.js'
-import { WalletChip } from '../src/components/WalletChip.js'
+import { Identity } from '../src/components/Identity.js'
 
 afterEach(cleanup)
 
@@ -297,7 +297,7 @@ describe('WalletsScreen', () => {
   })
 })
 
-describe('WalletChip', () => {
+describe('Identity', () => {
   /**
    * INV-UI-31. The chip always names the network, mainnet included.
    *
@@ -308,24 +308,107 @@ describe('WalletChip', () => {
    */
   it('names-the-network-on-mainnet-too', () => {
     render(
-      <WalletChip label="Cold storage" colour="teal" networkLabel="Mainnet" isMainnet />
+      <Identity
+        wallet={{ label: 'Cold storage', colour: 'teal' }}
+        networkLabel="Mainnet"
+        isMainnet
+      />
     )
-    const chip = screen.getByTestId('wallet-chip')
+    const chip = screen.getByTestId('identity')
     expect(chip.textContent).toContain('Cold storage')
     expect(chip.textContent).toContain('Mainnet')
   })
 
   it('marks-a-test-network-differently', () => {
     render(
-      <WalletChip label="Signet test" colour="amber" networkLabel="Signet" isMainnet={false} />
+      <Identity
+        wallet={{ label: 'Signet test', colour: 'amber' }}
+        networkLabel="Signet"
+        isMainnet={false}
+      />
     )
-    expect(screen.getByTestId('wallet-chip').querySelector('.nr-wchip__net--test')).toBeTruthy()
+    expect(screen.getByTestId('identity').querySelector('.nr-identity__net--test')).toBeTruthy()
   })
 
+  /**
+   * INV-UI-31. Said in words, not only in a coloured dot.
+   *
+   * The only thing separating two wallets at a glance is that dot, which is
+   * nothing at all to a screen reader or to somebody who cannot tell five
+   * colours apart.
+   */
   it('describes-itself-for-a-reader-that-cannot-see-colour', () => {
-    render(<WalletChip label="Cold storage" colour="teal" networkLabel="Mainnet" isMainnet />)
-    expect(screen.getByTestId('wallet-chip').getAttribute('aria-label')).toBe(
-      'Active wallet Cold storage on Mainnet'
+    render(
+      <Identity
+        device="The one in the attic"
+        wallet={{ label: 'Cold storage', colour: 'teal' }}
+        networkLabel="Mainnet"
+        isMainnet
+      />
     )
+    expect(screen.getByTestId('identity').getAttribute('aria-label')).toBe(
+      'Device The one in the attic, wallet Cold storage, on Mainnet'
+    )
+  })
+
+  /** INV-UI-31. And it says so when the chip is also a way to change it. */
+  it('says-that-tapping-it-switches-wallet', () => {
+    render(<Identity wallet={{ label: 'Cold storage', colour: 'teal' }} onSwitch={vi.fn()} />)
+    expect(screen.getByTestId('identity-switch').getAttribute('aria-label')).toContain(
+      'Switch wallet'
+    )
+  })
+
+  /**
+   * INV-UI-95. It names the device as well as the wallet.
+   *
+   * These were two chips competing for one corner. Three identical Raspberry
+   * Pis holding one 2-of-3 show the same wallet name, so the wallet alone
+   * cannot say which object is in your hand.
+   */
+  it('names-the-device-and-the-wallet-together', () => {
+    render(
+      <Identity
+        device="The one in the attic"
+        wallet={{ label: 'Cold storage', colour: 'teal' }}
+      />
+    )
+    const chip = screen.getByTestId('identity').textContent
+    expect(chip).toContain('The one in the attic')
+    expect(chip).toContain('Cold storage')
+  })
+
+  /**
+   * INV-UI-95. With nothing open it says so, rather than showing a device name
+   * beside a blank where a wallet would be.
+   */
+  it('says-when-no-wallet-is-open', () => {
+    render(<Identity device="The one in the attic" />)
+    expect(screen.getByTestId('identity').textContent).toContain('No wallet open')
+  })
+
+  /**
+   * INV-UI-95. Switching is offered through it, which is the point: it used to
+   * live four taps deep inside More, under a screen about something else.
+   */
+  it('opens-the-picker-when-switching-is-allowed', () => {
+    const onSwitch = vi.fn()
+    render(<Identity device="attic" wallet={{ label: 'Cold', colour: 'teal' }} onSwitch={onSwitch} />)
+    fireEvent.click(screen.getByTestId('identity-switch'))
+    expect(onSwitch).toHaveBeenCalledOnce()
+  })
+
+  /**
+   * INV-UI-95. And not offered at all where it is not allowed, rather than
+   * offered and refused.
+   *
+   * On a screen with no menu this chip would be the same exit wearing
+   * different clothes: tapping it on the seed screen throws away the words
+   * before anybody has written them down.
+   */
+  it('is-not-a-control-at-all-where-leaving-is-not-free', () => {
+    render(<Identity device="attic" wallet={{ label: 'Cold', colour: 'teal' }} />)
+    expect(screen.queryByTestId('identity-switch')).toBeNull()
+    expect(screen.getByTestId('identity').tagName).not.toBe('BUTTON')
   })
 })

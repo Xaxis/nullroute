@@ -1,4 +1,4 @@
-import { type ReactElement, useEffect, useState } from 'react'
+import { type ReactElement, type ReactNode, useEffect, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { Hash } from '../components/Hash.js'
@@ -75,6 +75,14 @@ export interface ImportedFileView {
 }
 
 export interface MultisigScreenProps {
+  /**
+   * The navigation menu, when leaving this screen is free.
+   *
+   * The only signal this device gives for that. It replaced a Home button in
+   * the same corner meaning the same thing, which is how that corner came to
+   * have three states and no rule.
+   */
+  readonly nav?: ReactNode
   readonly onOurKey: () => Promise<OurKeyView>
   readonly onReview: (descriptor: string) => Promise<RegistrationView>
   readonly onRegister: (descriptor: string) => Promise<void>
@@ -124,10 +132,8 @@ export interface MultisigScreenProps {
   readonly onBack: () => void
   /** Where this screen sits in a journey, when it is part of one. */
   readonly steps?: ReactElement | null
-  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
-  readonly onHome?: (() => void) | undefined
-  /** What this physical device is called. Rendered in the header by Screen. */
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   readonly banner?: ReactElement | null
 }
 
@@ -145,10 +151,9 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
     onScan,
     onBack,
     steps,
-    onHome,
-    device,
-    banner,
-  } = props
+    
+    identity,
+    banner, nav} = props
 
   const [ourKey, setOurKey] = useState<OurKeyView | null>(null)
   const [descriptor, setDescriptor] = useState(initialText ?? '')
@@ -194,8 +199,8 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
         title="For the coordinator"
         subtitle="Public keys and descriptors. Nothing here can spend."
         banner={banner}
-        onHome={onHome}
-        device={device}
+        nav={nav}
+        identity={identity}
         steps={steps}
         testId="multisig-bundle"
         actions={
@@ -244,8 +249,8 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
         title="What that file contains"
         subtitle={`Read as ${imported.format}. Nothing in it is verified yet.`}
         banner={banner}
-        onHome={onHome}
-        device={device}
+        nav={nav}
+        identity={identity}
         steps={steps}
         testId="multisig-imported"
         actions={
@@ -330,8 +335,8 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
         title="Quorum registered"
         subtitle={`${String(review.threshold)} of ${String(review.total)}, and this device is one of them.`}
         banner={banner}
-        onHome={onHome}
-        device={device}
+        nav={nav}
+        identity={identity}
         steps={steps}
         testId="multisig-registered"
         actions={
@@ -381,8 +386,8 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
       title="Multisig"
       subtitle="Share this device's key, then register the quorum."
       banner={banner}
-      onHome={onHome}
-      device={device}
+      nav={nav}
+      identity={identity}
       steps={steps}
       testId="multisig-screen"
       actions={

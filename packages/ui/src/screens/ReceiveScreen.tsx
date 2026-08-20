@@ -1,4 +1,4 @@
-import { type ReactElement, useCallback, useEffect, useState } from 'react'
+import { type ReactElement, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { QrDisplay } from '../components/QrDisplay.js'
@@ -44,15 +44,7 @@ export interface ReceiveSource {
 
 export interface ReceiveScreenProps {
   /**
-   * How the device describes itself, for the header.
-   *
-   * Several identical devices in a quorum show the same wallet name, so the
-   * cosigner position is what tells them apart, and taking an address from the
-   * wrong one is a wallet nobody is watching.
-   */
-  readonly walletLabel: string
-  /**
-   * Quorums registered on this device, if any.
+   * Quorums registered on this identity, if any.
    *
    * THE BUG THIS EXISTS FOR. This screen derived a single-signature address and
    * nothing else. On a device holding a registered 2-of-3, tapping Receive
@@ -94,10 +86,8 @@ export interface ReceiveScreenProps {
     | undefined
   readonly onBack: () => void
   readonly steps?: ReactElement | null
-  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
-  readonly onHome?: (() => void) | undefined
-  /** What this physical device is called. Rendered in the header by Screen. */
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   readonly banner?: ReactElement | null
   /** The navigation rail, forwarded to Screen. Always safe to leave this screen. */
   readonly nav?: ReactElement | null
@@ -110,7 +100,6 @@ export function chunkAddress(address: string): string {
 
 export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
   const {
-    walletLabel,
     quorums = [],
     onQuorumAddress,
     onAddress,
@@ -118,8 +107,7 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
     onVerifyQuorum,
     onBack,
     steps,
-    onHome,
-    device,
+    identity,
     banner,
     nav,
   } = props
@@ -176,11 +164,14 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
   return (
     <Screen
       title="Receive"
-      subtitle={walletLabel}
+      /* Not the wallet label. The identity chip in this same header names the
+         open wallet on every screen now, so this was the name twice, two
+         hundred pixels apart, where the subtitle's job is saying what THIS
+         screen is for. */
+      subtitle="An address to give somebody, one at a time." 
       banner={banner}
       nav={nav}
-      onHome={onHome}
-      device={device}
+      identity={identity}
       steps={steps}
       testId="receive-screen"
       actions={

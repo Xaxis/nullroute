@@ -70,9 +70,9 @@ import {
   type MessageSignatureView,
 } from './screens/MessageScreen.js'
 import { BackupScreen, type BackupDescription, type RestoredView } from './screens/BackupScreen.js'
-import { WalletChip } from './components/WalletChip.js'
 import { IdleBanner } from './components/IdleBanner.js'
 import { NavMenu, type NavDestination } from './components/NavMenu.js'
+import { Identity } from './components/Identity.js'
 import { MoreScreen } from './screens/MoreScreen.js'
 import { useIdleLock, type IdleWindow } from './lib/idle.js'
 import { PassphraseScreen } from './screens/PassphraseScreen.js'
@@ -307,24 +307,6 @@ export function App() {
    * that kept counting after somebody wandered off would be describing a
    * position they are not in.
    */
-  /**
-   * Back to the wallet, or the picker when no wallet is open.
-   *
-   * Passed to every screen that renders it, which is every screen except the
-   * three where leaving discards something: the lock screen (there is nowhere
-   * above it), the seed words (shown once, and leaving loses them), and the
-   * screen that reports which wallet just opened (a gate that has to be read).
-   *
-   * Leaving a journey clears it. A step counter that survived going home would
-   * reappear on an unrelated screen claiming the user is three steps into
-   * something they walked away from.
-   */
-  const goHome = (): void => {
-    setJourney(null)
-    setCompleted(null)
-    setStage({ at: status?.hasWallet === true ? 'wallet' : 'wallets' })
-  }
-
   const stepsFor = (at: Stage['at']): ReactElement | null => {
     if (journey === null) return null
     const step = journey.steps[journey.step]
@@ -495,44 +477,87 @@ export function App() {
   })
 
   /**
-   * The header, on every screen.
+   * The banner strip, under the header rather than inside it.
    *
-   * The wallet chip comes AFTER the network banner in the DOM, so when the 800px
-   * header runs out of room it is the wallet label that truncates and never the
-   * network warning. INV-UI-3 requires that warning to stay visible, and a
-   * decoration must not be able to push it off the panel.
+   * WHY IT MOVED. These used to be a slot between the title and the header
+   * controls, which meant every warning was competing for one row with the
+   * name of the screen and the name of the device. It was a competition the
+   * warnings won: on the idle state the title wrapped to three lines and the
+   * device name was dropped outright, so a warning about the session hid the
+   * answer to "which session". The code went to real trouble to manage that,
+   * ordering the DOM so the network warning truncated last and dropping chips
+   * on a timer, and all of it was working around a header that was too small
+   * because it was doing two jobs.
    *
-   * The idle warning comes FIRST, and it DISPLACES the two decorations rather
-   * than joining them. Four chips beside a title do not fit in 800px, which the
-   * fit harness proved by pushing the transaction underneath off the panel, and
-   * a warning that hides the thing it is warning you about is worse than no
-   * warning. The network tag survives, because INV-UI-3 says it must and
-   * because it is the only header element that cannot be recovered from
-   * anything else on the screen.
-   *
-   * What goes is the wallet name and the device name, for a minute, while a red
-   * countdown runs. Both are answers to "which one is this", and neither is the
-   * question somebody has in the second after the countdown appears.
+   * A full width strip has room for both warnings at once and takes nothing
+   * from the header when there are none.
    */
-  const crowded = idle.warning && idle.remaining !== null
   const banner =
     status === null ? null : (
       <>
-        {crowded && <IdleBanner remaining={idle.remaining} onStayOpen={idle.stayOpen} />}
-        {!status.network.isMainnet && <NetworkBanner network={status.network} />}
-        {activeWallet !== null && !crowded && (
-          <WalletChip
-            label={activeWallet.label}
-            colour={activeWallet.colour}
-            networkLabel={status.network.label}
-            isMainnet={status.network.isMainnet}
-          />
+        {idle.warning && idle.remaining !== null && (
+          <IdleBanner remaining={idle.remaining} onStayOpen={idle.stayOpen} />
         )}
+        {!status.network.isMainnet && <NetworkBanner network={status.network} />}
       </>
     )
 
-  /** The device name, dropped while the idle warning needs the room. */
-  const headerDevice = crowded ? undefined : (device ?? undefined)
+  /**
+   * Who this device is and which wallet it has open, in one control.
+   *
+   * It replaced two: a device chip that could not be tapped, and a wallet chip
+   * that lived in the banner slot and was dropped whenever a warning wanted
+   * the room. Tapping it opens the picker, which is where switching wallets
+   * belongs on a device that holds eight of them: it used to be four taps
+   * deep, inside More, under a screen about something else.
+   *
+   * THE SWITCH IS OFFERED ONLY WHERE THE MENU IS. Both mean "leaving here is
+   * free", and a device that refuses an exit in the menu while offering the
+   * same exit through the wallet name two inches away has not refused
+   * anything.
+   */
+  const identity = (
+    <Identity
+      device={device?.name}
+      {...(activeWallet === null
+        ? {}
+        : { wallet: { label: activeWallet.label, colour: activeWallet.colour } })}
+      {...(status === null
+        ? {}
+        : { networkLabel: status.network.label, isMainnet: status.network.isMainnet })}
+      onSwitch={() => {
+        setMenuOpen(false)
+        // The same clearing the menu does. This chip is the other exit, and an
+        // exit that leaves the step counter running puts "step 2 of 4" on an
+        // unrelated screen later, describing a journey somebody walked away
+        // from. Leaving is leaving, whichever control did it.
+        setJourney(null)
+        setCompleted(null)
+        setStage({ at: 'wallets' })
+      }}
+    />
+  )
+
+  /**
+   * The same chip, with no way through it.
+   *
+   * For the screens that carry no menu. Both controls mean "leaving here is
+   * free", and a device that refuses an exit in the menu while offering the
+   * same exit through the wallet name two inches to the left has not refused
+   * anything: tapping this on the seed screen would have thrown away the words
+   * before anybody wrote them down.
+   */
+  const identityFixed = (
+    <Identity
+      device={device?.name}
+      {...(activeWallet === null
+        ? {}
+        : { wallet: { label: activeWallet.label, colour: activeWallet.colour } })}
+      {...(status === null
+        ? {}
+        : { networkLabel: status.network.label, isMainnet: status.network.isMainnet })}
+    />
+  )
 
   /**
    * End the session, from wherever you are.
@@ -575,13 +600,15 @@ export function App() {
       showQuorums={quorums.length > 0}
       onNavigate={(destination) => {
         setMenuOpen(false)
-        if (destination === 'guide') {
-          // Start, not resume. Somebody who reaches for the guide from the
-          // middle of a wallet is asking what to do next, and handing back a
-          // half-finished journey answers a question they did not ask.
-          setJourney(null)
-          setStage({ at: 'start' })
-        } else if (destination === 'wallet') setStage({ at: 'wallet' })
+        // LEAVING A JOURNEY CLEARS IT, wherever you leave it for. A step
+        // counter that survived would reappear on an unrelated screen later
+        // claiming somebody is three steps into something they walked away
+        // from. This lived in a Home handler until Home went, and the menu is
+        // the only exit now, so it belongs here.
+        setJourney(null)
+        setCompleted(null)
+        if (destination === 'guide') setStage({ at: 'start' })
+        else if (destination === 'wallet') setStage({ at: 'wallet' })
         else if (destination === 'sign') setStage({ at: 'psbt' })
         else if (destination === 'receive') setStage({ at: 'receive' })
         else if (destination === 'quorums') setStage({ at: 'fleet' })
@@ -816,7 +843,7 @@ export function App() {
     return (
       <LockScreen
         attestation={attestation}
-        device={headerDevice}
+        identity={identity}
         nav={menu()}
         network={status.network}
         {...(status.fingerprint === null ? {} : { fingerprint: status.fingerprint })}
@@ -851,8 +878,8 @@ export function App() {
       return (
         <FinishScreen
           banner={banner}
-          onHome={goHome}
-          device={headerDevice}
+          nav={menu()}
+          identity={identity}
           journey={finished}
           onDone={() => {
             setCompleted(null)
@@ -867,7 +894,7 @@ export function App() {
       <StartScreen
         nav={menu('guide')}
         banner={banner}
-        device={headerDevice}
+        identity={identity}
         walletOpen={status?.hasWallet === true}
         onBegin={(id: JourneyId) => {
           const chosen = journeyById(id)
@@ -893,8 +920,11 @@ export function App() {
     return (
       <SetupScreen
         banner={banner}
-        onHome={goHome}
-        device={headerDevice}
+        nav={menu()}
+        onCancel={() => {
+          setStage({ at: 'wallets' })
+        }}
+        identity={identity}
         steps={stepsFor('setup')}
         onStart={(mode: EntropyMode, network: NetworkChoice) => {
           const go = async (): Promise<void> => {
@@ -919,8 +949,8 @@ export function App() {
     return (
       <DiceScreen
         banner={banner}
-        onHome={goHome}
-        device={headerDevice}
+        nav={menu()}
+        identity={identity}
         steps={stepsFor('dice')}
         onAccount={account}
         onRollForMe={async (count: number) =>
@@ -949,8 +979,8 @@ export function App() {
     return (
       <MachineEntropyScreen
         banner={banner}
-        onHome={goHome}
-        device={headerDevice}
+        nav={menu()}
+        identity={identity}
         steps={stepsFor('dice')}
         onHealth={async () => call<HealthReportView>(transport, 'entropy.health')}
         onGenerate={async (acknowledged: boolean) => {
@@ -973,8 +1003,8 @@ export function App() {
     return (
       <ImportScreen
         banner={banner}
-        onHome={goHome}
-        device={headerDevice}
+        nav={menu()}
+        identity={identity}
         steps={stepsFor('import')}
         onCancel={() => {
           setStage({ at: 'setup' })
@@ -997,7 +1027,7 @@ export function App() {
     return (
       <SeedScreen
         banner={banner}
-        device={headerDevice}
+        identity={identityFixed}
         steps={stepsFor('seed')}
         words={stage.words}
         fingerprint={stage.fingerprint}
@@ -1066,7 +1096,7 @@ export function App() {
               }
         }
         banner={banner}
-        device={headerDevice}
+        identity={identity}
         quorumCount={quorums.length}
         onGuide={() => {
             setJourney(null)
@@ -1135,7 +1165,7 @@ export function App() {
       <>
         <WalletScreen
           nav={menu('wallet')}
-          device={headerDevice}
+          identity={identity}
           quorums={quorums}
           banner={banner}
           fingerprint={status.fingerprint ?? 'unknown'}
@@ -1172,6 +1202,9 @@ export function App() {
       <PassphraseScreen
         mode="enter"
         banner={banner}
+        // A gate. No menu, and therefore no switching wallets through the
+        // chip either: both are the same exit wearing different clothes.
+        identity={identityFixed}
         attemptsRemaining={store.attemptsRemaining}
         maxAttempts={store.maxAttempts}
         onSubmit={async (passphrase) => {
@@ -1197,8 +1230,8 @@ export function App() {
       <PassphraseScreen
         mode="set"
         banner={banner}
-        onHome={goHome}
-        device={headerDevice}
+        nav={menu()}
+        identity={identity}
         steps={stepsFor('protect')}
         onSubmit={async (passphrase) => {
           // wallets.create, NOT store.create. The latter addresses the single
@@ -1251,8 +1284,8 @@ export function App() {
     return (
       <AssembleQuorumScreen
         banner={banner}
-        onHome={goHome}
-        device={headerDevice}
+        nav={menu()}
+        identity={identity}
         onOurKey={ourMultisigKey}
         scanned={stage.prefill ?? undefined}
         onScan={() => {
@@ -1278,8 +1311,8 @@ export function App() {
     return (
       <MultisigScreen
         banner={banner}
-        onHome={goHome}
-        device={headerDevice}
+        nav={menu()}
+        identity={identity}
         initialText={stage.prefill ?? ''}
         onScan={() => {
           setStage({ at: 'scan', forStage: 'multisig' })
@@ -1326,8 +1359,7 @@ export function App() {
       <FleetScreen
         nav={menu('quorums')}
         banner={banner}
-        onHome={goHome}
-        device={headerDevice}
+        identity={identity}
         deviceName={device?.name ?? undefined}
         quorums={quorums as unknown as readonly FleetQuorum[]}
         onAddresses={(quorum: FleetQuorum) => {
@@ -1355,8 +1387,8 @@ export function App() {
     return (
       <QuorumAddressesScreen
         banner={banner}
-        onHome={goHome}
-        device={headerDevice}
+        nav={menu()}
+        identity={identity}
         steps={stepsFor('quorum')}
         descriptor={stage.quorum.descriptor}
         position={
@@ -1384,8 +1416,7 @@ export function App() {
       <PsbtScreen
         nav={menu('sign')}
         banner={banner}
-        onHome={goHome}
-        device={headerDevice}
+        identity={identity}
         steps={stepsFor('psbt')}
         initialPsbt={stage.prefill ?? ''}
         onScan={() => {
@@ -1413,7 +1444,7 @@ export function App() {
       <WalletsScreen
         nav={menu()}
         banner={banner}
-        device={headerDevice}
+        identity={identity}
         steps={stepsFor('wallets')}
         wallets={wallets}
         max={maxWallets}
@@ -1447,7 +1478,7 @@ export function App() {
     return (
       <UnlockedScreen
         banner={banner}
-        device={headerDevice}
+        identity={identityFixed}
         label={activeWallet.label}
         colour={activeWallet.colour}
         fingerprint={stage.fingerprint}
@@ -1493,8 +1524,8 @@ export function App() {
     return (
       <ManageWalletScreen
         banner={banner}
-        onHome={goHome}
-        device={headerDevice}
+        nav={menu()}
+        identity={identity}
         wallet={activeWallet}
         labelVerified={labelVerified}
         onChangePassphrase={async (oldPassphrase: string, newPassphrase: string) => {
@@ -1538,8 +1569,8 @@ export function App() {
     return (
       <DeviceNameScreen
         banner={banner}
-        onHome={goHome}
-        device={headerDevice}
+        nav={menu()}
+        identity={identity}
         current={device ?? undefined}
         onSave={async (name: string, colour: string) => {
           const saved = await call<{ identity: { name: string; colour: string } }>(
@@ -1564,8 +1595,8 @@ export function App() {
     return (
       <AttestationScreen
         banner={banner}
-        onHome={goHome}
-        device={headerDevice}
+        nav={menu()}
+        identity={identity}
         attestation={attestation}
         expanded={expanded}
         onToggleExpanded={() => {
@@ -1583,10 +1614,8 @@ export function App() {
       <ReceiveScreen
         nav={menu('receive')}
         banner={banner}
-        onHome={goHome}
-        device={headerDevice}
+        identity={identity}
         steps={stepsFor('receive')}
-        walletLabel={activeWallet?.label ?? 'This device'}
         // Every registered quorum, so the screen can ask which wallet the
         // money is for. Without this it derived a single-signature address on
         // a device holding a 2-of-3, which is money protected by one key
@@ -1657,8 +1686,8 @@ export function App() {
     return (
       <LabelsScreen
         banner={banner}
-        onHome={goHome}
-        device={headerDevice}
+        nav={menu()}
+        identity={identity}
         initialText={stage.prefill ?? ''}
         onScan={() => {
           setStage({ at: 'scan', forStage: 'labels' })
@@ -1682,8 +1711,8 @@ export function App() {
     return (
       <ChildSeedScreen
         banner={banner}
-        onHome={goHome}
-        device={headerDevice}
+        nav={menu()}
+        identity={identity}
         onDerive={async (application: ChildApplication, index: number, size: number) =>
           call<ChildSeedView>(transport, 'bip85.derive', {
             application,
@@ -1710,8 +1739,8 @@ export function App() {
     return (
       <BackupScreen
         banner={banner}
-        onHome={goHome}
-        device={headerDevice}
+        nav={menu()}
+        identity={identity}
         initialText={stage.prefill ?? ''}
         onScan={() => {
           setStage({ at: 'scan', forStage: 'backup' })
@@ -1746,8 +1775,8 @@ export function App() {
     return (
       <MessageScreen
         banner={banner}
-        onHome={goHome}
-        device={headerDevice}
+        nav={menu()}
+        identity={identity}
         onReview={async (message: string) =>
           call<MessageReviewView>(transport, 'message.review', { message })
         }
@@ -1765,8 +1794,8 @@ export function App() {
     return (
       <VerifyMessageScreen
         banner={banner}
-        onHome={goHome}
-        device={headerDevice}
+        nav={menu()}
+        identity={identity}
         scanned={stage.prefill}
         // An armoured block fills all three fields from one scan. Parsed in
         // core, which is where the format knowledge belongs, and passed here
@@ -1796,8 +1825,8 @@ export function App() {
     return (
       <ScanScreen
         banner={banner}
-        onHome={goHome}
-        device={headerDevice}
+        nav={menu()}
+        identity={identity}
         title={SCANNING[stage.forStage].title}
         hint={SCANNING[stage.forStage].hint}
         onCancel={() => {

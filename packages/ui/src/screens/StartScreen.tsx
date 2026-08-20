@@ -1,4 +1,4 @@
-import { type ReactElement, useState } from 'react'
+import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { Choice } from '../components/Choice.js'
@@ -32,17 +32,15 @@ export interface StartScreenProps {
   readonly walletOpen: boolean
   readonly onBegin: (id: JourneyId) => void
   readonly onSkip: () => void
-  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
-  readonly onHome?: (() => void) | undefined
-  /** What this physical device is called. Rendered in the header by Screen. */
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   readonly banner?: ReactElement | null
   /** The navigation rail, forwarded to Screen. Always safe to leave this screen. */
   readonly nav?: ReactElement | null
 }
 
 export function StartScreen(props: StartScreenProps): ReactElement {
-  const { walletOpen, onBegin, onSkip, onHome, device, banner, nav } = props
+  const { walletOpen, onBegin, onSkip, identity, banner, nav } = props
   const [chosen, setChosen] = useState<Journey | null>(null)
 
   // --- What this goal needs before it starts --------------------------------
@@ -55,8 +53,8 @@ export function StartScreen(props: StartScreenProps): ReactElement {
         title={chosen.goal}
         subtitle={chosen.summary}
         banner={banner}
-        onHome={onHome}
-        device={device}
+        nav={nav}
+        identity={identity}
         testId="start-preamble"
         actions={
           <>
@@ -128,8 +126,7 @@ export function StartScreen(props: StartScreenProps): ReactElement {
       subtitle="Or skip this and use the device directly."
       banner={banner}
       nav={nav}
-      onHome={onHome}
-      device={device}
+      identity={identity}
       testId="start-screen"
       actions={
         <>

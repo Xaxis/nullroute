@@ -69,14 +69,8 @@ export interface LockScreenProps {
    * wants the device, not a menu asking what they are trying to achieve.
    */
   readonly onGuide?: () => void
-  /**
-   * What this physical device is called. Rendered in the header by Screen.
-   *
-   * The most important place for it. This is the first thing shown when
-   * somebody picks a device up, and three devices in one quorum are identical
-   * on every other screen until one of them is unlocked.
-   */
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   /**
    * The navigation menu.
    *
@@ -106,7 +100,7 @@ export function LockScreen(props: LockScreenProps): ReactElement {
     fingerprint,
     onUnlock,
     onGuide,
-    device,
+    identity,
     nav,
     expanded = false,
     onToggleExpanded,
@@ -126,10 +120,15 @@ export function LockScreen(props: LockScreenProps): ReactElement {
 
   return (
     <Screen
-      title="nullroute"
-      subtitle={`v${attestation.version}`}
+      /* Not "nullroute". The brand says that, in the same header, four
+         inches to the left, on this screen and on every other one. A title
+         that repeats the brand is a title that says nothing about which
+         screen you are on, which on the first screen anybody sees is the
+         one thing a title is for. */
+      title="This device"
+      subtitle={`v${attestation.version}, ${attestation.tier}`}
       banner={network.isMainnet ? null : <NetworkBanner network={network} />}
-      device={device}
+      identity={identity}
       nav={nav}
       testId="lock-screen"
       actions={

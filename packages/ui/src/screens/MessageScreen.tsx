@@ -1,4 +1,4 @@
-import { type ReactElement, useCallback, useState } from 'react'
+import { type ReactElement, type ReactNode, useCallback, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { TextKeyboard } from '../components/TextKeyboard.js'
@@ -62,6 +62,14 @@ export const MESSAGE_SCRIPT_TYPES = [
 ] as const
 
 export interface MessageScreenProps {
+  /**
+   * The navigation menu, when leaving this screen is free.
+   *
+   * The only signal this device gives for that. It replaced a Home button in
+   * the same corner meaning the same thing, which is how that corner came to
+   * have three states and no rule.
+   */
+  readonly nav?: ReactNode
   readonly onReview: (message: string) => Promise<MessageReviewView>
   readonly onSign: (
     message: string,
@@ -69,15 +77,13 @@ export interface MessageScreenProps {
     path: string
   ) => Promise<MessageSignatureView>
   readonly onBack: () => void
-  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
-  readonly onHome?: (() => void) | undefined
-  /** What this physical device is called. Rendered in the header by Screen. */
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   readonly banner?: ReactElement | null
 }
 
 export function MessageScreen(props: MessageScreenProps): ReactElement {
-  const { onReview, onSign, onBack, onHome, device, banner } = props
+  const { onReview, onSign, onBack, identity, banner, nav } = props
 
   const [message, setMessage] = useState('')
   const [review, setReview] = useState<MessageReviewView | null>(null)
@@ -146,8 +152,8 @@ export function MessageScreen(props: MessageScreenProps): ReactElement {
         title="Signed"
         subtitle="Give all three of these to whoever asked."
         banner={banner}
-        onHome={onHome}
-        device={device}
+        nav={nav}
+        identity={identity}
         testId="message-signed"
         actions={
           <>
@@ -212,8 +218,8 @@ export function MessageScreen(props: MessageScreenProps): ReactElement {
       title="Prove you control an address"
       subtitle="Sign a message with one of your keys."
       banner={banner}
-      onHome={onHome}
-      device={device}
+      nav={nav}
+      identity={identity}
       testId="message-screen"
       actions={
         <>

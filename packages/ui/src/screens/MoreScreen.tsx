@@ -1,4 +1,4 @@
-import { type ReactElement } from 'react'
+import { type ReactElement, type ReactNode } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Choice } from '../components/Choice.js'
 import { Button } from '../components/Button.js'
@@ -61,7 +61,8 @@ export interface MoreScreenProps {
    */
   readonly onSetTheme?: ((theme: 'dark' | 'light') => Promise<void>) | undefined
   readonly nav?: ReactElement | null
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   readonly banner?: ReactElement | null
 }
 
@@ -85,7 +86,7 @@ export function MoreScreen(props: MoreScreenProps): ReactElement {
     theme = 'dark',
     onSetTheme,
     nav,
-    device,
+    identity,
     banner,
   } = props
 
@@ -95,7 +96,7 @@ export function MoreScreen(props: MoreScreenProps): ReactElement {
       subtitle="Everything that is not an address or a transaction."
       banner={banner}
       nav={nav}
-      device={device}
+      identity={identity}
       testId="more-screen"
       actions={
         <>

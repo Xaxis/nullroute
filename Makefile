@@ -300,6 +300,14 @@ ipc-reachable: ## Every IPC method the daemon implements is reachable from the U
 	# daemon directly.
 	@node tools/check-ipc-reachable.mjs
 
+header-rule: ## The header offers one exit or none, never one and a half
+	# Collapsing three header states into one fixed the look and opened a hole:
+	# the identity chip beside the menu is ALSO an exit, since it opens the
+	# wallet picker. A screen that withholds the menu and offers a tappable
+	# wallet name two inches away has withheld nothing, and the screens that
+	# withhold it are the seed words and the transaction review.
+	@node tools/check-header-rule.mjs
+
 screens: ## Build the screen gallery, a layout harness that never ships to the device
 	# TYPECHECKED FIRST. vite builds this with esbuild, which strips types
 	# without reading them, and the gallery is not in tsconfig.build.json
@@ -396,6 +404,6 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 
 # --- aggregates --------------------------------------------------------------
 
-check-fast: lint ui-classes ui-constants no-dead-ends type-check prose links docs-reachable profiles invariant-claims make-targets ipc-reachable device-csp test manifest-check ## Everything except the slow suites
+check-fast: lint ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims make-targets ipc-reachable device-csp test manifest-check ## Everything except the slow suites
 
 check: check-fast build verify test-vectors test-differential repro-check sbom device-ui screen-fit dev-check web-check ## Everything CI runs

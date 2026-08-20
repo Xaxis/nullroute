@@ -356,8 +356,8 @@ describe('ui.app getting home', () => {
       expect(screen.getByTestId('setup-screen')).toBeTruthy()
     })
 
-    // Two ways out, and both work: the header, and Cancel in the action bar.
-    expect(screen.getByTestId('screen-home')).toBeTruthy()
+    // Two ways out, and both work: the menu, and Cancel in the action bar.
+    expect(screen.getByTestId('nav-menu-button')).toBeTruthy()
     fireEvent.click(screen.getByTestId('setup-cancel'))
     await waitFor(() => {
       expect(screen.getByTestId('wallets-screen')).toBeTruthy()
@@ -365,9 +365,12 @@ describe('ui.app getting home', () => {
   })
 
   /**
-   * INV-UI-67. Home is in the header of the screens that carry it, and goes to
-   * the picker when no wallet is open rather than to a wallet screen with
-   * nothing behind it.
+   * INV-UI-67. The picker is reachable from a screen deep in a flow.
+   *
+   * THROUGH THE WALLET NAME, which is the route that replaced a Home button.
+   * With nothing open the menu offers the guide and the device's settings and
+   * nothing about a wallet, deliberately, so the chip naming the open wallet
+   * is what leads to the list of them.
    */
   it('goes-home-from-a-screen-deep-in-a-flow', async () => {
     await reach('wallets-add')
@@ -380,14 +383,14 @@ describe('ui.app getting home', () => {
       expect(screen.getByTestId('import-screen')).toBeTruthy()
     })
 
-    fireEvent.click(screen.getByTestId('screen-home'))
+    fireEvent.click(screen.getByTestId('identity-switch'))
     await waitFor(() => {
       expect(screen.getByTestId('wallets-screen')).toBeTruthy()
     })
   })
 
   /**
-   * INV-UI-68. Going home ends the journey. A step counter that survived would
+   * INV-UI-68. Leaving ends the journey. A step counter that survived would
    * reappear on an unrelated screen claiming the user is three steps into
    * something they walked away from.
    */
@@ -403,7 +406,7 @@ describe('ui.app getting home', () => {
       expect(screen.getByTestId('journey-steps')).toBeTruthy()
     })
 
-    fireEvent.click(screen.getByTestId('screen-home'))
+    fireEvent.click(screen.getByTestId('identity-switch'))
     await waitFor(() => {
       expect(screen.getByTestId('wallets-screen')).toBeTruthy()
     })
@@ -422,6 +425,12 @@ describe('ui.app getting home', () => {
    * INV-UI-68. The seed screen deliberately has no way out. The words are shown
    * once and leaving loses them, so the only exit is confirming they are
    * written down: an escape hatch beside that would be the easier tap.
+   *
+   * The OTHER exit on that screen, the tappable wallet name, is checked in two
+   * cheaper places rather than here: tools/check-header-rule.mjs proves the
+   * wiring in App.tsx, and the Identity tests prove the component renders no
+   * control without an onSwitch. Reaching the real seed screen from here costs
+   * a hundred dice rolls and a passphrase for one assertion.
    */
   it('offers-no-escape-from-the-screen-showing-the-words', async () => {
     replies.set('wallet.import', { fingerprint: '73c5da0a' })
@@ -444,8 +453,33 @@ describe('ui.app getting home', () => {
     await waitFor(() => {
       expect(screen.getByTestId('dice-screen')).toBeTruthy()
     })
-    // The dice screen can be left; that is the point of the contrast.
-    expect(screen.getByTestId('screen-home')).toBeTruthy()
+    // The dice screen can be left; that is the point of the contrast. Rolling
+    // again is a tedious afternoon, not a loss.
+    expect(screen.getByTestId('nav-menu-button')).toBeTruthy()
+  })
+
+  /**
+   * INV-UI-95. A device fresh out of the box can still reach the picker.
+   *
+   * It has no name and no wallet open, and the menu withholds every wallet
+   * destination until one is. The chip used to render nothing at all in that
+   * case, which left setup and import with a menu that led nowhere and no
+   * other way back: the exact dead end this header was built to end,
+   * reintroduced by the thing that was supposed to end it.
+   */
+  it('reaches-the-picker-from-a-device-with-no-name-and-no-wallet', async () => {
+    await reach('wallets-add')
+    await waitFor(() => {
+      expect(screen.getByTestId('setup-screen')).toBeTruthy()
+    })
+
+    const chip = screen.getByTestId('identity-switch')
+    expect(chip.textContent).toContain('No wallet open')
+
+    fireEvent.click(chip)
+    await waitFor(() => {
+      expect(screen.getByTestId('wallets-screen')).toBeTruthy()
+    })
   })
 })
 
@@ -736,7 +770,7 @@ describe('ui.app device identity', () => {
 
     await boot()
     // On the lock screen, before anything is unlocked.
-    expect(screen.getByTestId('screen-device').textContent).toContain('The one in the attic')
+    expect(screen.getByTestId('identity-switch').textContent).toContain('The one in the attic')
   })
 
   /**

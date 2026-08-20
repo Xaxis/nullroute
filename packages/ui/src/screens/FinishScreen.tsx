@@ -1,4 +1,4 @@
-import { type ReactElement } from 'react'
+import { type ReactElement, type ReactNode } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { type Journey } from '../journeys.js'
@@ -28,18 +28,24 @@ import { type Journey } from '../journeys.js'
  */
 
 export interface FinishScreenProps {
+  /**
+   * The navigation menu, when leaving this screen is free.
+   *
+   * The only signal this device gives for that. It replaced a Home button in
+   * the same corner meaning the same thing, which is how that corner came to
+   * have three states and no rule.
+   */
+  readonly nav?: ReactNode
   readonly journey: Journey
   readonly onDone: () => void
   readonly steps?: ReactElement | null
-  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
-  readonly onHome?: (() => void) | undefined
-  /** What this physical device is called. Rendered in the header by Screen. */
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   readonly banner?: ReactElement | null
 }
 
 export function FinishScreen(props: FinishScreenProps): ReactElement {
-  const { journey, onDone, steps, onHome, device, banner } = props
+  const { journey, onDone, steps, identity, banner, nav } = props
   const outstanding = journey.thenWhat
 
   return (
@@ -47,8 +53,8 @@ export function FinishScreen(props: FinishScreenProps): ReactElement {
       title={outstanding.length === 0 ? 'Done' : 'This device has done its part'}
       subtitle={journey.goal}
       banner={banner}
-      onHome={onHome}
-      device={device}
+      nav={nav}
+      identity={identity}
       steps={steps}
       testId="finish-screen"
       actions={

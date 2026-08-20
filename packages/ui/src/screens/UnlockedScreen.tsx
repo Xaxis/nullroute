@@ -1,4 +1,4 @@
-import { type ReactElement } from 'react'
+import { type ReactElement, type ReactNode } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { Hash } from '../components/Hash.js'
@@ -39,14 +39,8 @@ export interface UnlockedScreenProps {
   readonly hintCorrected: boolean
   readonly onContinue: () => void
   readonly onLock: () => void
-  /**
-   * What this physical device is called. Rendered in the header by Screen.
-   *
-   * The lock screen is the single most important place for it: it is the first
-   * thing shown when somebody picks a device up, and every device in a quorum
-   * looks identical until one is unlocked.
-   */
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   readonly banner?: ReactElement | null
 }
 
@@ -62,7 +56,7 @@ export function UnlockedScreen(props: UnlockedScreenProps): ReactElement {
     hintCorrected,
     onContinue,
     onLock,
-    device,
+    identity,
     banner,
   } = props
 
@@ -71,7 +65,7 @@ export function UnlockedScreen(props: UnlockedScreenProps): ReactElement {
       title={label}
       subtitle={`${networkLabel}${isMainnet ? '' : ', a test network'}`}
       banner={banner}
-      device={device}
+      identity={identity}
       testId="unlocked-screen"
       actions={
         <>
@@ -98,7 +92,7 @@ export function UnlockedScreen(props: UnlockedScreenProps): ReactElement {
         <span className="nr-fp__value">
           <Hash value={fingerprint} />
         </span>
-        <span className="nr-wchip__dot" data-colour={colour} />
+        <span className="nr-dot" data-colour={colour} />
       </div>
 
       <p className="nr-note" data-testid="unlocked-compare">

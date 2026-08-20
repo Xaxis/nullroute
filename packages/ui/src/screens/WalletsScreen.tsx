@@ -76,10 +76,8 @@ export interface WalletsScreenProps {
    * device holds none.
    */
   readonly failure?: string
-  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
-  readonly onHome?: (() => void) | undefined
-  /** What this physical device is called. Rendered in the header by Screen. */
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   /**
    * The navigation menu.
    *
@@ -112,8 +110,8 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
     onCheckProof,
     failure,
     steps,
-    onHome,
-    device,
+    
+    identity,
     nav,
     banner,
   } = props
@@ -171,8 +169,8 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
         subtitle={tombstone.label}
         banner={banner}
       steps={steps}
-        onHome={onHome}
-        device={device}
+        nav={nav}
+        identity={identity}
         testId="wallets-forget"
         actions={
           <>
@@ -223,8 +221,8 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
         subtitle="This name is not confirmed until the wallet opens."
         banner={banner}
       steps={steps}
-        onHome={onHome}
-        device={device}
+        nav={nav}
+        identity={identity}
         testId="wallet-unlock-screen"
         actions={
           <>
@@ -287,9 +285,8 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
       subtitle={`${String(live)} of ${String(max)} on this device`}
       banner={banner}
       steps={steps}
-      onHome={onHome}
-      device={device}
       nav={nav}
+      identity={identity}
       testId="wallets-screen"
       actions={
         <>

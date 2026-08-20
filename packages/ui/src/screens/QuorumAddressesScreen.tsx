@@ -1,4 +1,4 @@
-import { type ReactElement, useCallback, useEffect, useState } from 'react'
+import { type ReactElement, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 
@@ -29,6 +29,14 @@ export interface QuorumAddressRow {
 }
 
 export interface QuorumAddressesScreenProps {
+  /**
+   * The navigation menu, when leaving this screen is free.
+   *
+   * The only signal this device gives for that. It replaced a Home button in
+   * the same corner meaning the same thing, which is how that corner came to
+   * have three states and no rule.
+   */
+  readonly nav?: ReactNode
   /** The registered descriptor these addresses come from. */
   readonly descriptor: string
   /** How this device sits in the quorum, for the header. Already one-based. */
@@ -42,17 +50,15 @@ export interface QuorumAddressesScreenProps {
   readonly onBack: () => void
   /** Where this screen sits in a journey, when it is part of one. */
   readonly steps?: ReactElement | null
-  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
-  readonly onHome?: (() => void) | undefined
-  /** What this physical device is called. Rendered in the header by Screen. */
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   readonly banner?: ReactElement | null
 }
 
 const PAGE = 10
 
 export function QuorumAddressesScreen(props: QuorumAddressesScreenProps): ReactElement {
-  const { descriptor, position, onAddresses, onBack, steps, onHome, device, banner } = props
+  const { descriptor, position, onAddresses, onBack, steps, identity, banner, nav } = props
 
   const [change, setChange] = useState(false)
   const [start, setStart] = useState(0)
@@ -87,8 +93,8 @@ export function QuorumAddressesScreen(props: QuorumAddressesScreenProps): ReactE
           : `This device is cosigner ${String(position.ours)} of ${String(position.of)}.`
       }
       banner={banner}
-      onHome={onHome}
-      device={device}
+      nav={nav}
+      identity={identity}
       steps={steps}
       testId="quorum-addresses"
       actions={

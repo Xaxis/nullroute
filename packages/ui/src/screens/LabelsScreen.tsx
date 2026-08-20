@@ -1,4 +1,4 @@
-import { type ReactElement, useState } from 'react'
+import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { QrDisplay } from '../components/QrDisplay.js'
@@ -40,6 +40,14 @@ export interface ImportedLabels {
 }
 
 export interface LabelsScreenProps {
+  /**
+   * The navigation menu, when leaving this screen is free.
+   *
+   * The only signal this device gives for that. It replaced a Home button in
+   * the same corner meaning the same thing, which is how that corner came to
+   * have three states and no rule.
+   */
+  readonly nav?: ReactNode
   readonly onImport: (text: string) => Promise<ImportedLabels>
   readonly onExport: (labels: readonly LabelRow[]) => Promise<{ text: string }>
   /**
@@ -52,15 +60,13 @@ export interface LabelsScreenProps {
   /** Leaves for the camera. Absent where there is no camera to reach. */
   readonly onScan?: (() => void) | undefined
   readonly onBack: () => void
-  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
-  readonly onHome?: (() => void) | undefined
-  /** What this physical device is called. Rendered in the header by Screen. */
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   readonly banner?: ReactElement | null
 }
 
 export function LabelsScreen(props: LabelsScreenProps): ReactElement {
-  const { onImport, onExport, initialText, onScan, onBack, onHome, device, banner } = props
+  const { onImport, onExport, initialText, onScan, onBack, identity, banner, nav } = props
 
   const [text, setText] = useState(initialText ?? '')
   const [imported, setImported] = useState<ImportedLabels | null>(null)
@@ -87,8 +93,8 @@ export function LabelsScreen(props: LabelsScreenProps): ReactElement {
         title="Labels written"
         subtitle="The same format other wallets read."
         banner={banner}
-        onHome={onHome}
-        device={device}
+        nav={nav}
+        identity={identity}
         testId="labels-exported"
         actions={
           <Button
@@ -130,8 +136,8 @@ export function LabelsScreen(props: LabelsScreenProps): ReactElement {
       title="Labels"
       subtitle="Notes about transactions and addresses. They decide nothing."
       banner={banner}
-      onHome={onHome}
-      device={device}
+      nav={nav}
+      identity={identity}
       testId="labels-screen"
       actions={
         <>

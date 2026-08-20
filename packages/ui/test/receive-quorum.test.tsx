@@ -37,7 +37,6 @@ function open(overrides: Record<string, unknown> = {}) {
 
   render(
     <ReceiveScreen
-      walletLabel="Cold storage"
       quorums={QUORUMS}
       onAddress={onAddress}
       onQuorumAddress={onQuorumAddress}

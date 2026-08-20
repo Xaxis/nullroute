@@ -1,4 +1,4 @@
-import { type ReactElement, useState } from 'react'
+import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { WordKeyboard } from '../components/WordKeyboard.js'
@@ -60,14 +60,8 @@ export interface SeedScreenProps {
   readonly onConfirm: () => void
   /** Where this screen sits in a journey, when it is part of one. */
   readonly steps?: ReactElement | null
-  /**
-   * What this physical device is called. Rendered in the header by Screen.
-   *
-   * The lock screen is the single most important place for it: it is the first
-   * thing shown when somebody picks a device up, and every device in a quorum
-   * looks identical until one is unlocked.
-   */
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   readonly banner?: ReactElement | null
 }
 
@@ -88,7 +82,7 @@ export function SeedScreen(props: SeedScreenProps): ReactElement {
     onCheckPositions,
     onConfirm,
     steps,
-    device,
+    identity,
     banner,
   } = props
   const [acknowledged, setAcknowledged] = useState(false)
@@ -154,7 +148,7 @@ export function SeedScreen(props: SeedScreenProps): ReactElement {
         title={`Word ${String((position ?? 0) + 1)}`}
         subtitle={`From your paper, not from memory. ${String(at + 1)} of ${String(asked.length)}.`}
         banner={banner}
-        device={device}
+        identity={identity}
         steps={steps}
         testId="seed-check"
         actions={
@@ -207,7 +201,7 @@ export function SeedScreen(props: SeedScreenProps): ReactElement {
       title="Write these down"
       subtitle={`${String(words.length)} words, in order. This is the only time they are shown.`}
       banner={banner}
-      device={device}
+      identity={identity}
       steps={steps}
       testId="seed-screen"
       actions={

@@ -39,7 +39,7 @@ covers:
   - packages/ui/src/components/WordKeyboard.tsx::WordKeyboard
   - packages/ui/src/components/TextKeyboard.tsx::TextKeyboard
   - packages/ui/src/screens/WalletsScreen.tsx::WalletsScreen
-  - packages/ui/src/components/WalletChip.tsx::WalletChip
+  - packages/ui/src/components/Identity.tsx::Identity
   - packages/ui/src/screens/UnlockedScreen.tsx::UnlockedScreen
   - packages/ui/src/screens/MessageScreen.tsx::MessageScreen
   - packages/ui/src/screens/MessageScreen.tsx::MESSAGE_SCRIPT_TYPES
@@ -379,6 +379,7 @@ invariants:
       - packages/ui/test/wallets-screen.test.tsx::names-the-network-on-mainnet-too
       - packages/ui/test/wallets-screen.test.tsx::marks-a-test-network-differently
       - packages/ui/test/wallets-screen.test.tsx::describes-itself-for-a-reader-that-cannot-see-colour
+      - packages/ui/test/wallets-screen.test.tsx::says-that-tapping-it-switches-wallet
 
   - id: INV-UI-32
     statement: >
@@ -1095,6 +1096,21 @@ invariants:
       - packages/ui/test/wallet-screen.test.tsx::marks-the-branch-you-are-on-rather-than-the-one-you-would-move-to
       - packages/ui/test/wallet-screen.test.tsx::fetches-the-branch-it-says-it-is-showing
       - packages/ui/test/wallet-screen.test.tsx::returns-to-the-start-of-the-list-when-the-branch-changes
+
+  - id: INV-UI-95
+    statement: >
+      The header is the same on every screen: brand, title, identity,
+      navigation. Identity names both the device and the open wallet, says so
+      when none is open, and is the way to the picker. Where a screen carries
+      no menu it carries no switchable wallet name either, because those are
+      one exit, and a device with no name and no wallet can still reach the
+      picker.
+    tests:
+      - packages/ui/test/wallets-screen.test.tsx::names-the-device-and-the-wallet-together
+      - packages/ui/test/wallets-screen.test.tsx::says-when-no-wallet-is-open
+      - packages/ui/test/wallets-screen.test.tsx::opens-the-picker-when-switching-is-allowed
+      - packages/ui/test/wallets-screen.test.tsx::is-not-a-control-at-all-where-leaving-is-not-free
+      - packages/ui/test/app.test.tsx::reaches-the-picker-from-a-device-with-no-name-and-no-wallet
 
 threats:
   - INV-KEY-1

@@ -1,4 +1,4 @@
-import { type ReactElement, useCallback, useEffect, useState } from 'react'
+import { type ReactElement, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 
@@ -38,19 +38,26 @@ export interface HealthReportView {
 }
 
 export interface MachineEntropyScreenProps {
+  /**
+   * The navigation menu, when leaving this screen is free.
+   *
+   * The only signal this device gives for that. It replaced a Home button in
+   * the same corner meaning the same thing, which is how that corner came to
+   * have three states and no rule.
+   */
+  readonly nav?: ReactNode
   readonly onHealth: () => Promise<HealthReportView>
   /** Generates the seed. Refused by the daemon unless acknowledged is true. */
   readonly onGenerate: (acknowledged: boolean) => Promise<void>
   readonly onBack: () => void
   readonly steps?: ReactElement | null
-  readonly onHome?: (() => void) | undefined
-  /** What this physical device is called. Rendered in the header by Screen. */
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   readonly banner?: ReactElement | null
 }
 
 export function MachineEntropyScreen(props: MachineEntropyScreenProps): ReactElement {
-  const { onHealth, onGenerate, onBack, steps, onHome, device, banner } = props
+  const { onHealth, onGenerate, onBack, steps, identity, banner, nav } = props
 
   const [health, setHealth] = useState<HealthReportView | null>(null)
   const [acknowledged, setAcknowledged] = useState(false)
@@ -76,8 +83,8 @@ export function MachineEntropyScreen(props: MachineEntropyScreenProps): ReactEle
       subtitle="No dice. Nothing here can be checked by hand."
       banner={banner}
       steps={steps}
-      onHome={onHome}
-      device={device}
+      nav={nav}
+      identity={identity}
       testId="machine-entropy"
       actions={
         <>

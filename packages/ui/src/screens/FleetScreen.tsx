@@ -1,4 +1,4 @@
-import { type ReactElement, useState } from 'react'
+import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 
@@ -61,15 +61,15 @@ export interface FleetScreenProps {
    */
   readonly onForget?: ((quorum: FleetQuorum) => Promise<void>) | undefined
   readonly onBack: () => void
-  readonly onHome?: (() => void) | undefined
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   readonly banner?: ReactElement | null
   /** The navigation rail, forwarded to Screen. Always safe to leave this screen. */
   readonly nav?: ReactElement | null
 }
 
 export function FleetScreen(props: FleetScreenProps): ReactElement {
-  const { quorums, deviceName, onAddresses, onForget, onBack, onHome, device, banner, nav } = props
+  const { quorums, deviceName, onAddresses, onForget, onBack, identity, banner, nav } = props
 
   const [forgetting, setForgetting] = useState<FleetQuorum | null>(null)
   const [typed, setTyped] = useState('')
@@ -84,8 +84,8 @@ export function FleetScreen(props: FleetScreenProps): ReactElement {
         title="Forget this quorum"
         subtitle={`${String(forgetting.threshold)} of ${String(forgetting.total)}`}
         banner={banner}
-        onHome={onHome}
-        device={device}
+        nav={nav}
+        identity={identity}
         testId="fleet-forget"
         actions={
           <>
@@ -173,8 +173,7 @@ export function FleetScreen(props: FleetScreenProps): ReactElement {
       }
       banner={banner}
       nav={nav}
-      onHome={onHome}
-      device={device}
+      identity={identity}
       testId="fleet-screen"
       actions={
         <Button onClick={onBack} testId="fleet-back">

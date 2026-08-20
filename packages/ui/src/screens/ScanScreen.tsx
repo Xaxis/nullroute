@@ -1,4 +1,4 @@
-import { type ReactElement, useCallback, useEffect, useRef, useState } from 'react'
+import { type ReactElement, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { BbqrCollector, parseBbqrPart } from '@nullroute/core'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
@@ -28,14 +28,20 @@ export type ScanResult =
   | { readonly kind: 'bbqr'; readonly fileType: string; readonly data: Uint8Array }
 
 export interface ScanScreenProps {
+  /**
+   * The navigation menu, when leaving this screen is free.
+   *
+   * The only signal this device gives for that. It replaced a Home button in
+   * the same corner meaning the same thing, which is how that corner came to
+   * have three states and no rule.
+   */
+  readonly nav?: ReactNode
   readonly title?: string
   readonly hint?: string
   readonly onResult: (result: ScanResult) => void
   readonly onCancel: () => void
-  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
-  readonly onHome?: (() => void) | undefined
-  /** What this physical device is called. Rendered in the header by Screen. */
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   readonly banner?: ReactElement | null
   /**
    * Injected in tests, where there is no camera, no canvas and no wasm.
@@ -96,11 +102,10 @@ export function ScanScreen(props: ScanScreenProps): ReactElement {
     hint,
     onResult,
     onCancel,
-    onHome,
-    device,
+    
+    identity,
     banner,
-    openCamera = defaultCamera,
-  } = props
+    openCamera = defaultCamera, nav} = props
 
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -255,8 +260,8 @@ export function ScanScreen(props: ScanScreenProps): ReactElement {
       title={title}
       subtitle={hint ?? 'Hold the other screen inside the frame.'}
       banner={banner}
-      onHome={onHome}
-      device={device}
+      nav={nav}
+      identity={identity}
       testId="scan-screen"
       actions={
         <>

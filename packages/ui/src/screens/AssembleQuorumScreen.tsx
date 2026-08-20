@@ -1,4 +1,4 @@
-import { type ReactElement, useCallback, useEffect, useState } from 'react'
+import { type ReactElement, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { Hash } from '../components/Hash.js'
@@ -37,6 +37,14 @@ export interface AssembledView {
 }
 
 export interface AssembleQuorumScreenProps {
+  /**
+   * The navigation menu, when leaving this screen is free.
+   *
+   * The only signal this device gives for that. It replaced a Home button in
+   * the same corner meaning the same thing, which is how that corner came to
+   * have three states and no rule.
+   */
+  readonly nav?: ReactNode
   /** This device's own multisig key, fetched so slot one is filled in. */
   readonly onOurKey: () => Promise<{ keyExpression: string; masterFingerprint: string }>
   readonly onAssemble: (threshold: number, keys: readonly string[]) => Promise<AssembledView>
@@ -46,13 +54,13 @@ export interface AssembleQuorumScreenProps {
   /** Text the camera already read, dropped into the next empty slot. */
   readonly scanned?: string | undefined
   readonly onBack: () => void
-  readonly onHome?: (() => void) | undefined
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   readonly banner?: ReactElement | null
 }
 
 export function AssembleQuorumScreen(props: AssembleQuorumScreenProps): ReactElement {
-  const { onOurKey, onAssemble, onReview, onScan, scanned, onBack, onHome, device, banner } = props
+  const { onOurKey, onAssemble, onReview, onScan, scanned, onBack, identity, banner, nav } = props
 
   /** Slot zero is this device. The rest are the other cosigners. */
   const [keys, setKeys] = useState<string[]>(['', ''])
@@ -112,8 +120,8 @@ export function AssembleQuorumScreen(props: AssembleQuorumScreenProps): ReactEle
         title="Quorum built"
         subtitle={`${String(built.threshold)} of ${String(built.total)}. Nothing is registered yet.`}
         banner={banner}
-        onHome={onHome}
-        device={device}
+        nav={nav}
+        identity={identity}
         testId="assemble-built"
         actions={
           <>
@@ -186,8 +194,8 @@ export function AssembleQuorumScreen(props: AssembleQuorumScreenProps): ReactEle
       title="Build a quorum"
       subtitle="Collect a key from every device, here, with no coordinator."
       banner={banner}
-      onHome={onHome}
-      device={device}
+      nav={nav}
+      identity={identity}
       testId="assemble-screen"
       actions={
         <>

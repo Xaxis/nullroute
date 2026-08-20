@@ -1,4 +1,4 @@
-import { type ReactElement, useState } from 'react'
+import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { Choice } from '../components/Choice.js'
@@ -21,13 +21,29 @@ export type EntropyMode = 'dice' | 'machine' | 'import'
 export type NetworkChoice = 'mainnet' | 'testnet4' | 'signet' | 'regtest'
 
 export interface SetupScreenProps {
+  /**
+   * The navigation menu, when leaving this screen is free.
+   *
+   * The only signal this device gives for that. It replaced a Home button in
+   * the same corner meaning the same thing, which is how that corner came to
+   * have three states and no rule.
+   */
+  readonly nav?: ReactNode
   readonly onStart: (mode: EntropyMode, network: NetworkChoice) => void
   /** Where this screen sits in a journey, when it is part of one. */
   readonly steps?: ReactElement | null
-  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
-  readonly onHome?: (() => void) | undefined
-  /** What this physical device is called. Rendered in the header by Screen. */
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /**
+   * Back to the picker, from the action bar.
+   *
+   * Named for what it is now. It was `onHome`, which was the header button's
+   * prop name back when Screen rendered one, and this screen borrowed it for a
+   * Cancel in the body. When the header button went, a sweep took the prop with
+   * it and this button silently stopped rendering: the screen that had no way
+   * out went back to having no way out, and only a test noticed.
+   */
+  readonly onCancel?: (() => void) | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   readonly banner?: ReactElement | null
 }
 
@@ -47,7 +63,7 @@ const NETWORKS: { id: NetworkChoice; label: string; description: string }[] = [
 ]
 
 export function SetupScreen(props: SetupScreenProps): ReactElement {
-  const { onStart, steps, onHome, device, banner } = props
+  const { onStart, steps, identity, banner, nav, onCancel } = props
   const [network, setNetwork] = useState<NetworkChoice>('mainnet')
   const [mode, setMode] = useState<EntropyMode>('dice')
 
@@ -56,8 +72,8 @@ export function SetupScreen(props: SetupScreenProps): ReactElement {
       title="Set up this device"
       subtitle="No wallet exists yet."
       banner={banner}
-      onHome={onHome}
-      device={device}
+      nav={nav}
+      identity={identity}
       steps={steps}
       testId="setup-screen"
       actions={
@@ -65,8 +81,8 @@ export function SetupScreen(props: SetupScreenProps): ReactElement {
           {/* This screen had no way out at all. Tapping "add a wallet" from the
               picker and changing your mind left you here, on a device with no
               browser back and no window to close. */}
-          {onHome !== undefined && (
-            <Button onClick={onHome} testId="setup-cancel">
+          {onCancel !== undefined && (
+            <Button onClick={onCancel} testId="setup-cancel">
               Cancel
             </Button>
           )}

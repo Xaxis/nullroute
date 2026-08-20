@@ -1,4 +1,4 @@
-import { type ReactElement, useCallback, useEffect, useState } from 'react'
+import { type ReactElement, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { QrDisplay } from '../components/QrDisplay.js'
@@ -92,14 +92,8 @@ export interface WalletScreenProps {
     change?: boolean
     searchedTo?: number
   }>
-  /**
-   * What this physical device is called. Rendered in the header by Screen.
-   *
-   * The lock screen is the single most important place for it: it is the first
-   * thing shown when somebody picks a device up, and every device in a quorum
-   * looks identical until one is unlocked.
-   */
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   readonly banner?: ReactElement | null
   /** The navigation rail, forwarded to Screen. */
   readonly nav?: ReactElement | null
@@ -164,7 +158,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
     onDescriptor,
     onXpub,
     onVerifyAddress,
-    device,
+    identity,
     banner,
   } = props
 
@@ -278,7 +272,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
       subtitle={quorumSummary}
       banner={banner}
       nav={nav}
-      device={device}
+      identity={identity}
       testId="wallet-screen"
       actions={
         <>

@@ -1,4 +1,4 @@
-import { type ReactElement, useState } from 'react'
+import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 
@@ -35,16 +35,22 @@ export interface ChildSeedView {
 }
 
 export interface ChildSeedScreenProps {
+  /**
+   * The navigation menu, when leaving this screen is free.
+   *
+   * The only signal this device gives for that. It replaced a Home button in
+   * the same corner meaning the same thing, which is how that corner came to
+   * have three states and no rule.
+   */
+  readonly nav?: ReactNode
   readonly onDerive: (
     application: ChildApplication,
     index: number,
     size: number
   ) => Promise<ChildSeedView>
   readonly onBack: () => void
-  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
-  readonly onHome?: (() => void) | undefined
-  /** What this physical device is called. Rendered in the header by Screen. */
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   readonly banner?: ReactElement | null
 }
 
@@ -66,7 +72,7 @@ const APPLICATIONS: {
 ]
 
 export function ChildSeedScreen(props: ChildSeedScreenProps): ReactElement {
-  const { onDerive, onBack, onHome, device, banner } = props
+  const { onDerive, onBack, identity, banner, nav } = props
 
   const [application, setApplication] = useState<ChildApplication>('mnemonic')
   const [size, setSize] = useState(12)
@@ -84,8 +90,8 @@ export function ChildSeedScreen(props: ChildSeedScreenProps): ReactElement {
         title="Child seed"
         subtitle="Write down the path with it. Without the path this is unrecoverable."
         banner={banner}
-        onHome={onHome}
-        device={device}
+        nav={nav}
+        identity={identity}
         testId="child-result"
         actions={
           <Button
@@ -157,8 +163,8 @@ export function ChildSeedScreen(props: ChildSeedScreenProps): ReactElement {
       title="Derive a child seed"
       subtitle="BIP-85. One master, many wallets, all recoverable from it."
       banner={banner}
-      onHome={onHome}
-      device={device}
+      nav={nav}
+      identity={identity}
       testId="child-screen"
       actions={
         <>

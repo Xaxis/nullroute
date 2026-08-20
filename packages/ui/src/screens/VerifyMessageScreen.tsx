@@ -1,4 +1,4 @@
-import { type ReactElement, useCallback, useEffect, useState } from 'react'
+import { type ReactElement, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { TextKeyboard } from '../components/TextKeyboard.js'
@@ -50,6 +50,14 @@ export interface ScannedProof {
 }
 
 export interface VerifyMessageScreenProps {
+  /**
+   * The navigation menu, when leaving this screen is free.
+   *
+   * The only signal this device gives for that. It replaced a Home button in
+   * the same corner meaning the same thing, which is how that corner came to
+   * have three states and no rule.
+   */
+  readonly nav?: ReactNode
   readonly onVerify: (
     address: string,
     message: string,
@@ -66,8 +74,8 @@ export interface VerifyMessageScreenProps {
    */
   readonly scannedProof?: ScannedProof | undefined
   readonly onBack: () => void
-  readonly onHome?: (() => void) | undefined
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   readonly banner?: ReactElement | null
 }
 
@@ -87,7 +95,7 @@ const FIELDS = [
 ] as const
 
 export function VerifyMessageScreen(props: VerifyMessageScreenProps): ReactElement {
-  const { onVerify, onScan, scanned, scannedProof, onBack, onHome, device, banner } = props
+  const { onVerify, onScan, scanned, scannedProof, onBack, identity, banner, nav } = props
 
   const [address, setAddress] = useState('')
   const [message, setMessage] = useState('')
@@ -150,8 +158,8 @@ export function VerifyMessageScreen(props: VerifyMessageScreenProps): ReactEleme
       title="Check a proof"
       subtitle="Whether somebody controls the address they say they do."
       banner={banner}
-      onHome={onHome}
-      device={device}
+      nav={nav}
+      identity={identity}
       testId="verify-message"
       actions={
         <>

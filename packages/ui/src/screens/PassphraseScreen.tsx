@@ -1,4 +1,4 @@
-import { type ReactElement, useState } from 'react'
+import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { TextKeyboard } from '../components/TextKeyboard.js'
@@ -30,6 +30,14 @@ import { TextKeyboard } from '../components/TextKeyboard.js'
 export type PassphraseMode = 'set' | 'enter'
 
 export interface PassphraseScreenProps {
+  /**
+   * The navigation menu, when leaving this screen is free.
+   *
+   * The only signal this device gives for that. It replaced a Home button in
+   * the same corner meaning the same thing, which is how that corner came to
+   * have three states and no rule.
+   */
+  readonly nav?: ReactNode
   readonly mode: PassphraseMode
   /** Shown in `enter` mode so a user knows how close the device is to erasing. */
   readonly attemptsRemaining?: number
@@ -39,10 +47,8 @@ export interface PassphraseScreenProps {
   readonly onCancel?: (() => void) | undefined
   /** Where this screen sits in a journey, when it is part of one. */
   readonly steps?: ReactElement | null
-  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
-  readonly onHome?: (() => void) | undefined
-  /** What this physical device is called. Rendered in the header by Screen. */
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   readonly banner?: ReactElement | null
 }
 
@@ -76,7 +82,7 @@ function guessCost(passphrase: string): { label: string; tone: 'warn' | 'ok' } {
 }
 
 export function PassphraseScreen(props: PassphraseScreenProps): ReactElement {
-  const { mode, attemptsRemaining, maxAttempts, onSubmit, onCancel, steps, onHome, device, banner } = props
+  const { mode, attemptsRemaining, maxAttempts, onSubmit, onCancel, steps, identity, banner, nav } = props
 
   const [value, setValue] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -120,8 +126,8 @@ export function PassphraseScreen(props: PassphraseScreenProps): ReactElement {
           : 'Enter the passphrase for the wallet stored here.'
       }
       banner={banner}
-      onHome={onHome}
-      device={device}
+      nav={nav}
+      identity={identity}
       steps={steps}
       testId="passphrase-screen"
       actions={

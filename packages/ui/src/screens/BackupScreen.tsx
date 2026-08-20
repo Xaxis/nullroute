@@ -1,4 +1,4 @@
-import { type ReactElement, useCallback, useState } from 'react'
+import { type ReactElement, type ReactNode, useCallback, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { TextKeyboard } from '../components/TextKeyboard.js'
@@ -42,6 +42,14 @@ export interface RestoredView {
 }
 
 export interface BackupScreenProps {
+  /**
+   * The navigation menu, when leaving this screen is free.
+   *
+   * The only signal this device gives for that. It replaced a Home button in
+   * the same corner meaning the same thing, which is how that corner came to
+   * have three states and no rule.
+   */
+  readonly nav?: ReactNode
   readonly onCreate: (
     passphrase: string,
     includeSeed: boolean,
@@ -61,17 +69,15 @@ export interface BackupScreenProps {
   readonly onBack: () => void
   /** Where this screen sits in a journey, when it is part of one. */
   readonly steps?: ReactElement | null
-  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
-  readonly onHome?: (() => void) | undefined
-  /** What this physical device is called. Rendered in the header by Screen. */
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   readonly banner?: ReactElement | null
 }
 
 type Mode = 'choose' | 'create' | 'restore'
 
 export function BackupScreen(props: BackupScreenProps): ReactElement {
-  const { onCreate, onDescribe, onRestore, initialText, onScan, onBack, steps, onHome, device, banner } = props
+  const { onCreate, onDescribe, onRestore, initialText, onScan, onBack, steps, identity, banner, nav } = props
 
   const [mode, setMode] = useState<Mode>('choose')
   const [passphrase, setPassphrase] = useState(initialText ?? '')
@@ -102,8 +108,8 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
         title="Backup written"
         subtitle={written.includesSeed ? 'This file can spend your money.' : 'Watch-only.'}
         banner={banner}
-        onHome={onHome}
-        device={device}
+        nav={nav}
+        identity={identity}
         steps={steps}
         testId="backup-written"
         actions={
@@ -147,8 +153,8 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
         title="Restored"
         subtitle={restored.label}
         banner={banner}
-        onHome={onHome}
-        device={device}
+        nav={nav}
+        identity={identity}
         steps={steps}
         testId="backup-restored"
         actions={
@@ -197,8 +203,8 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
         title="Backup"
         subtitle="Write one, or restore one."
         banner={banner}
-        onHome={onHome}
-        device={device}
+        nav={nav}
+        identity={identity}
         steps={steps}
         testId="backup-screen"
         actions={
@@ -240,8 +246,8 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
         title="Write a backup"
         subtitle="Encrypted under a passphrase you choose."
         banner={banner}
-        onHome={onHome}
-        device={device}
+        nav={nav}
+        identity={identity}
         steps={steps}
         testId="backup-create"
         actions={
@@ -318,8 +324,8 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
       title="Restore a backup"
       subtitle="Paste or scan the file, then unlock it."
       banner={banner}
-      onHome={onHome}
-      device={device}
+      nav={nav}
+      identity={identity}
       steps={steps}
       testId="backup-restore"
       actions={

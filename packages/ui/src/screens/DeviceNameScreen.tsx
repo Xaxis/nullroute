@@ -1,4 +1,4 @@
-import { type ReactElement, useState } from 'react'
+import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { WALLET_COLOUR_NAMES } from './ManageWalletScreen.js'
@@ -28,17 +28,25 @@ import { WALLET_COLOUR_NAMES } from './ManageWalletScreen.js'
  */
 
 export interface DeviceNameScreenProps {
+  /**
+   * The navigation menu, when leaving this screen is free.
+   *
+   * The only signal this device gives for that. It replaced a Home button in
+   * the same corner meaning the same thing, which is how that corner came to
+   * have three states and no rule.
+   */
+  readonly nav?: ReactNode
   /** What it is called now, if it has been named. */
   readonly current?: { readonly name: string; readonly colour: string } | undefined
   readonly onSave: (name: string, colour: string) => Promise<void>
   readonly onBack: () => void
-  readonly onHome?: (() => void) | undefined
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   readonly banner?: ReactElement | null
 }
 
 export function DeviceNameScreen(props: DeviceNameScreenProps): ReactElement {
-  const { current, onSave, onBack, onHome, device, banner } = props
+  const { current, onSave, onBack, identity, banner, nav } = props
 
   const [name, setName] = useState(current?.name ?? '')
   const [colour, setColour] = useState(current?.colour ?? 'slate')
@@ -54,8 +62,8 @@ export function DeviceNameScreen(props: DeviceNameScreenProps): ReactElement {
           : `Currently called ${current.name}.`
       }
       banner={banner}
-      onHome={onHome}
-      device={device}
+      nav={nav}
+      identity={identity}
       testId="device-name"
       actions={
         <>

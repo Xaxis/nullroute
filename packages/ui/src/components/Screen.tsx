@@ -4,8 +4,22 @@ import { type ReactElement, type ReactNode } from 'react'
  * The screen scaffold: fixed header, scrolling body, fixed action bar.
  *
  * 480px of height is not much, and the constraint that follows is that the
- * primary action must never scroll out of reach. A user hunting for a button
- * on a security screen is a user who stops reading the screen.
+ * primary action must never scroll out of reach. A user hunting for a button on
+ * a security screen is a user who stops reading the screen.
+ *
+ * THE HEADER IS A SYSTEM NOW RATHER THAN A SET OF PER-SCREEN DECISIONS. A
+ * contact sheet of all thirty six states showed what it had become: the top
+ * right held nothing, or Home, or Menu, with no rule anybody could learn, and
+ * "Sign a transaction" appeared four times with three different answers. The
+ * top left held the screen title and nothing else, so a device with no browser
+ * chrome and no title bar had no fixed point anywhere on it. Banners were
+ * injected between the title and the controls, and on the idle-warning state
+ * they pushed the title into a three line wrap and shoved the device name off
+ * the panel entirely.
+ *
+ * The rule: brand leftmost, title beside it, identity to the right of that,
+ * navigation in the corner. Always, on every screen. Banners get a full width
+ * strip underneath, where growing costs the header nothing.
  */
 export interface ScreenProps {
   readonly title: string
@@ -19,39 +33,42 @@ export interface ScreenProps {
    */
   readonly steps?: ReactNode
   /**
-   * Back to the wallet, or to the picker when no wallet is open.
+   * Who this device is and which wallet it has open. See `Identity`.
    *
-   * In the header, on every screen that has one, because a device with no
-   * consistent way home is a device where getting out depends on remembering
-   * which button this particular screen calls it. The setup screen had no way
-   * out at all: tapping "add a wallet" and changing your mind left you there.
-   *
-   * Deliberately ABSENT from the screens where leaving discards something that
-   * cannot be recovered, rather than present and guarded by a dialog. A
-   * confirmation on a 7 inch panel is a second tap in the place the last one
-   * was, and the screens in question are the seed words and the transaction
-   * review. On those, the way out is the action that says what it costs.
+   * One control in one place, rather than the two chips this replaced: a
+   * device name that could not be tapped, and a wallet name that lived in the
+   * banner slot and vanished whenever the idle warning wanted the room, which
+   * is to say exactly when somebody had been away long enough to forget what
+   * was on the screen.
    */
-  readonly onHome?: (() => void) | undefined
+  readonly identity?: ReactNode
   /**
-   * What this physical device is called, when it has been named.
+   * Warnings about the session rather than about this screen: the idle
+   * countdown, the network.
    *
-   * In the header of every screen, because three devices holding one 2-of-3
-   * all show the same wallet name, the same colour and the same fingerprint,
-   * and nothing else on any screen says which object is in your hand.
-   *
-   * Never authenticated. It is read from a file beside the wallets before any
-   * passphrase, which is the moment the question is asked, and it therefore
-   * decides nothing.
+   * A strip BELOW the header rather than a slot inside it. Inside, a second
+   * banner competed with the title for one row and won.
    */
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
   readonly banner?: ReactNode
   /**
    * The navigation menu, on screens it is safe to leave.
    *
-   * Passed rather than assumed, because a flow with a beginning and an end
-   * must not offer an exit from the middle: a menu on the dice screen is an
-   * invitation to throw away a hundred rolls.
+   * ABSENT WHERE LEAVING DESTROYS SOMETHING THAT CANNOT BE MADE AGAIN: the
+   * seed words, which are shown once; a signed PSBT, which exists only on the
+   * screen that produced it until it is carried off; and the two gates that
+   * have to be read, the passphrase prompt and the screen naming the wallet
+   * that just opened.
+   *
+   * PRESENT where leaving costs work that can be redone. A hundred dice rolls
+   * is real work and rolling them again is a tedious afternoon rather than a
+   * loss, and that screen has offered a way out since before this menu
+   * existed. Removing one would be a regression dressed up as consistency.
+   *
+   * ITS PRESENCE IS THE ONLY SIGNAL this device gives for either. There used
+   * to be a second, a Home button in the same corner meaning the same thing,
+   * which is how that corner came to have three states and no rule. The
+   * identity chip follows it: where there is no menu, the wallet name is not
+   * tappable either, since switching wallets is the same exit.
    */
   readonly nav?: ReactNode
   readonly children: ReactNode
@@ -60,50 +77,40 @@ export interface ScreenProps {
 }
 
 export function Screen(props: ScreenProps): ReactElement {
-  const { title, steps, subtitle, banner, nav, children, actions, onHome, device, testId } = props
+  const { title, steps, subtitle, identity, banner, nav, children, actions, testId } = props
 
-  // The menu lives in the header, which is the row of this grid that does not
-  // scroll. Its panel is positioned against the screen rather than the header
-  // so a long list of destinations is not clipped by a 64px tall box.
   return (
     <section className="nr-screen" data-testid={testId}>
       <header className="nr-screen__head">
-        <div>
+        {/* THE FIXED POINT. Everything else in this header changes with the
+            screen, and on a panel with no browser chrome, no title bar and no
+            way to see what is running, somebody four screens into a flow had
+            nothing at all telling them where they were.
+
+            Not a button. Making it one would put an exit on the dice screen
+            and on the seed screen, which is precisely what `nav` is careful
+            not to do. This is identity, not navigation. */}
+        <span className="nr-brand" data-testid="brand">
+          nullroute
+        </span>
+
+        <div className="nr-screen__titles">
           {steps}
           <h1 className="nr-screen__title">{title}</h1>
           {subtitle !== undefined && <p className="nr-screen__subtitle">{subtitle}</p>}
         </div>
-        <div className="nr-spacer" />
-        {device !== undefined && (
-          <span className="nr-device" data-testid="screen-device" title={device.name}>
-            <span className="nr-device__dot" data-colour={device.colour} />
-            <span className="nr-device__name">{device.name}</span>
-          </span>
-        )}
-        {/* Last, at the right edge. The panel it opens is right-aligned to
-            this button, so anywhere else in the header leaves the panel
-            hanging in the middle of the screen with a strip of untouched
-            header beside it. */}
-        {nav}
-        {banner}
-        {/* The header Home button, only when there is no menu.
 
-            The menu carries the same destination, so a screen with both had
-            the same journey twice: once behind a word in the corner and once
-            in a list. The menu is the better of the two, because it also says
-            where you currently are and what else there is. */}
-        {onHome !== undefined && (nav === undefined || nav === null) && (
-          <button
-            type="button"
-            className="nr-home"
-            onClick={onHome}
-            aria-label="Back to the wallet"
-            data-testid="screen-home"
-          >
-            Home
-          </button>
-        )}
+        <div className="nr-spacer" />
+        {identity}
+        {nav}
       </header>
+
+      {banner !== undefined && banner !== null && (
+        <div className="nr-screen__banners" data-testid="screen-banners">
+          {banner}
+        </div>
+      )}
+
       <div className="nr-screen__body">{children}</div>
       {actions !== undefined && <footer className="nr-screen__actions">{actions}</footer>}
     </section>

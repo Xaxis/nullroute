@@ -1,4 +1,4 @@
-import { type ReactElement, useState } from 'react'
+import { type ReactElement, type ReactNode, useState } from 'react'
 import { type ReviewWarning } from '@nullroute/core'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
@@ -192,11 +192,8 @@ export interface PsbtScreenProps {
   readonly onBack: () => void
   /** Where this screen sits in a journey, when it is part of one. */
   readonly steps?: ReactElement | null
-  /** Back to the wallet. Redundant with Cancel here, and consistent, which on
-   *  a device with one screen size matters more than avoiding a second route. */
-  readonly onHome?: (() => void) | undefined
-  /** What this physical device is called. Rendered in the header by Screen. */
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   readonly banner?: ReactElement | null
   /**
    * The navigation rail.
@@ -210,7 +207,7 @@ export interface PsbtScreenProps {
 }
 
 export function PsbtScreen(props: PsbtScreenProps): ReactElement {
-  const { initialPsbt, onScan, onReview, onSign, onBack, onHome, device, steps, banner, nav } =
+  const { initialPsbt, onScan, onReview, onSign, onBack, identity, steps, banner, nav } =
     props
 
   const [psbt, setPsbt] = useState(initialPsbt ?? '')
@@ -295,8 +292,8 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
             : 'Carry this back to the machine that built it.'
         }
         banner={banner}
-      onHome={onHome}
-      device={device}
+      nav={nav}
+      identity={identity}
         steps={steps}
         testId="psbt-signed"
         actions={
@@ -446,8 +443,7 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
          gets no rail, because a signed PSBT exists only on this screen until
          it is carried off by camera or by file. */
       nav={nav}
-      onHome={onHome}
-      device={device}
+      identity={identity}
       steps={steps}
       testId="psbt-screen"
       actions={

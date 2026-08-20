@@ -1,4 +1,4 @@
-import { type ReactElement, useState } from 'react'
+import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { TextKeyboard } from '../components/TextKeyboard.js'
@@ -40,6 +40,14 @@ export const WALLET_COLOUR_NAMES = [
 export type WalletColourName = (typeof WALLET_COLOUR_NAMES)[number]
 
 export interface ManageWalletScreenProps {
+  /**
+   * The navigation menu, when leaving this screen is free.
+   *
+   * The only signal this device gives for that. It replaced a Home button in
+   * the same corner meaning the same thing, which is how that corner came to
+   * have three states and no rule.
+   */
+  readonly nav?: ReactNode
   /** The open wallet. Authenticated: it came out of the ciphertext. */
   readonly wallet: { readonly label: string; readonly colour: string }
   /**
@@ -65,10 +73,8 @@ export interface ManageWalletScreenProps {
     | undefined
   readonly onDestroy: () => Promise<void>
   readonly onBack: () => void
-  /** Back to the wallet, or the picker. Rendered in the header by Screen. */
-  readonly onHome?: (() => void) | undefined
-  /** What this physical device is called. Rendered in the header by Screen. */
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   readonly banner?: ReactElement | null
 }
 
@@ -82,10 +88,9 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
     onChangePassphrase,
     onDestroy,
     onBack,
-    onHome,
-    device,
-    banner,
-  } = props
+    
+    identity,
+    banner, nav} = props
 
   const [mode, setMode] = useState<Mode>('menu')
   const [label, setLabel] = useState(labelVerified ? wallet.label : '')
@@ -122,8 +127,8 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
         title="Change the passphrase"
         subtitle="What unlocks the file. Not what derives your addresses."
         banner={banner}
-        onHome={onHome}
-        device={device}
+        nav={nav}
+        identity={identity}
         testId="manage-passphrase"
         actions={
           <>
@@ -256,8 +261,8 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
         title="Name this wallet"
         subtitle="The name is sealed with it, so this needs the passphrase."
         banner={banner}
-        onHome={onHome}
-        device={device}
+        nav={nav}
+        identity={identity}
         testId="manage-rename"
         actions={
           <>
@@ -353,8 +358,8 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
         title="Erase this wallet"
         subtitle={wallet.label}
         banner={banner}
-        onHome={onHome}
-        device={device}
+        nav={nav}
+        identity={identity}
         testId="manage-destroy"
         actions={
           <>
@@ -423,8 +428,8 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
       title="Manage wallet"
       subtitle={wallet.label}
       banner={banner}
-      onHome={onHome}
-      device={device}
+      nav={nav}
+      identity={identity}
       testId="manage-screen"
       actions={
         <Button onClick={onBack} testId="manage-back">

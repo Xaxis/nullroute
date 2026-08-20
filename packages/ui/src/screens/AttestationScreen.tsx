@@ -1,4 +1,4 @@
-import { type ReactElement } from 'react'
+import { type ReactElement, type ReactNode } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { Hash } from '../components/Hash.js'
@@ -28,14 +28,21 @@ import { type AttestationView } from './LockScreen.js'
  */
 
 export interface AttestationScreenProps {
+  /**
+   * The navigation menu, when leaving this screen is free.
+   *
+   * The only signal this device gives for that. It replaced a Home button in
+   * the same corner meaning the same thing, which is how that corner came to
+   * have three states and no rule.
+   */
+  readonly nav?: ReactNode
   readonly attestation: AttestationView
   /** Whether the manifest root is shown in full. Lifted, like the lock screen. */
   readonly expanded?: boolean
   readonly onToggleExpanded?: () => void
   readonly onBack: () => void
-  readonly onHome?: (() => void) | undefined
-  /** What this physical device is called. Rendered in the header by Screen. */
-  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  /** Who this device is and which wallet it has open. See `Identity`. */
+  readonly identity?: ReactNode
   readonly banner?: ReactElement | null
 }
 
@@ -43,7 +50,7 @@ export interface AttestationScreenProps {
 const PASSING = new Set(['passed', 'not-applicable'])
 
 export function AttestationScreen(props: AttestationScreenProps): ReactElement {
-  const { attestation, expanded = false, onToggleExpanded, onBack, onHome, device, banner } = props
+  const { attestation, expanded = false, onToggleExpanded, onBack, identity, banner, nav } = props
 
   // Fail closed, for the reason the lock screen does: a status this file has
   // not been told about must not read as a pass. See INV-UI-53.
@@ -55,8 +62,8 @@ export function AttestationScreen(props: AttestationScreenProps): ReactElement {
       title="This device"
       subtitle={`v${attestation.version}`}
       banner={banner}
-      onHome={onHome}
-      device={device}
+      nav={nav}
+      identity={identity}
       testId="attestation-screen"
       actions={
         <>
