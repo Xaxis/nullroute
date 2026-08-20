@@ -50,6 +50,16 @@ export interface MoreScreenProps {
   readonly onNameDevice?: (() => void) | undefined
   readonly onChildSeed?: (() => void) | undefined
   readonly onBack: () => void
+  /** Which theme the panel is rendering in. */
+  readonly theme?: 'dark' | 'light'
+  /**
+   * Change it.
+   *
+   * Absent on a device with no name yet, because the theme lives in the same
+   * file the name does and there is nothing to write it into. That is worth an
+   * explanation on screen rather than a control that fails.
+   */
+  readonly onSetTheme?: ((theme: 'dark' | 'light') => Promise<void>) | undefined
   readonly nav?: ReactElement | null
   readonly device?: { readonly name: string; readonly colour: string } | undefined
   readonly banner?: ReactElement | null
@@ -72,6 +82,8 @@ export function MoreScreen(props: MoreScreenProps): ReactElement {
     onNameDevice,
     onChildSeed,
     onBack,
+    theme = 'dark',
+    onSetTheme,
     nav,
     device,
     banner,
@@ -96,6 +108,35 @@ export function MoreScreen(props: MoreScreenProps): ReactElement {
         </>
       }
     >
+      {/* The theme, at the top, because it is the only thing on this screen
+          that changes the screen you are looking at. Everything below is a
+          destination. */}
+      <div className="nr-picker" data-testid="theme-picker">
+        <span className="nr-picker__label">Theme</span>
+        {(['dark', 'light'] as const).map((option) => (
+          <button
+            key={option}
+            type="button"
+            className="nr-picker__option"
+            aria-pressed={theme === option}
+            disabled={onSetTheme === undefined}
+            onClick={() => {
+              void onSetTheme?.(option)
+            }}
+            data-testid={`theme-${option}`}
+          >
+            {option === 'dark' ? 'Dark' : 'Light'}
+          </button>
+        ))}
+      </div>
+
+      {onSetTheme === undefined && (
+        <p className="nr-hint" data-testid="theme-needs-a-name">
+          The theme is kept in the same file as this device&rsquo;s name, so that the lock screen
+          can render in it before you type a passphrase. Name this device to choose one.
+        </p>
+      )}
+
       <div className="nr-wlist" data-testid="wallet-more">
         {onGuide !== undefined && (
           <Choice

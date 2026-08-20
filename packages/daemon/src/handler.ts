@@ -484,6 +484,43 @@ export function createHandler(state: DaemonState): IpcHandler {
           identity: state.identity.write({
             name: requireString(request, 'name'),
             colour,
+            // Carried through. Renaming a device rewrites this file, and
+            // dropping the theme would reset the panel to dark as a side
+            // effect of changing a name.
+            theme: optionalString(request, 'theme', state.identity.read()?.theme ?? 'dark'),
+          }),
+        }
+      }
+
+      /**
+       * Which theme the panel renders in.
+       *
+       * A SEPARATE METHOD from naming, because they are separate acts and one
+       * of them happens far more often. Folding a theme into setIdentity would
+       * mean every theme change re-validated and rewrote a name.
+       *
+       * Stored beside the wallets rather than inside one, so the LOCK screen
+       * renders in the chosen theme. A preference sealed in a wallet could
+       * only be read after unlocking, which means the first screen anybody
+       * sees would always be the default and would flicker afterwards.
+       *
+       * Unauthenticated, and that is fine: it decides nothing. Somebody
+       * holding the card can change which colours the panel uses and learn
+       * nothing by it.
+       */
+      case 'device.setTheme': {
+        if (state.identity === undefined) {
+          throw new Error('This daemon was started without storage, so it cannot store a theme.')
+        }
+        const current = state.identity.read()
+        if (current === null) {
+          throw new Error('Name this device before choosing a theme, so there is a file to keep it in.')
+        }
+        return {
+          identity: state.identity.write({
+            name: current.name,
+            colour: current.colour,
+            theme: requireString(request, 'theme'),
           }),
         }
       }

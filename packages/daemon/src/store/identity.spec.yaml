@@ -16,6 +16,7 @@ covers:
   - packages/daemon/src/store/identity.ts::IdentityError
   - packages/daemon/src/store/identity.ts::normaliseName
   - packages/daemon/src/store/identity.ts::MAX_NAME_LENGTH
+  - packages/daemon/src/store/identity.ts::THEMES
 
 algorithm: >
   A name and a colour in a JSON file beside the wallets, written to a temporary
@@ -64,7 +65,9 @@ invariants:
     tests:
       - packages/daemon/test/identity.test.ts::strips-what-cannot-be-displayed-and-returns-what-was-stored
       - packages/daemon/test/identity.test.ts::refuses-a-name-longer-than-a-header-can-show
-      - packages/daemon/test/identity.test.ts::writes-a-name-and-a-colour-and-nothing-else
+      - packages/daemon/test/identity.test.ts::writes-a-name-a-colour-and-a-theme-and-nothing-else
+      - packages/daemon/test/identity.test.ts::reads-an-unknown-or-missing-theme-as-dark
+      - packages/daemon/test/identity.test.ts::refuses-to-store-a-theme-it-does-not-know
       - packages/daemon/test/identity.test.ts::round-trips-a-name-and-a-colour
       - packages/daemon/test/identity.test.ts::refuses-a-colour-the-device-cannot-draw
 

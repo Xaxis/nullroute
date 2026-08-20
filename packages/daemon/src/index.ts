@@ -83,5 +83,6 @@ export {
   IdentityError,
   normaliseName,
   MAX_NAME_LENGTH,
+  THEMES,
 } from './store/identity.js'
-export type { DeviceIdentity } from './store/identity.js'
+export type { DeviceIdentity, Theme } from './store/identity.js'

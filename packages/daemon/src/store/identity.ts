@@ -41,9 +41,27 @@ export class IdentityError extends Error {
   }
 }
 
+/** The themes the panel can render in. Dark is what an unset file means. */
+export const THEMES = ['dark', 'light'] as const
+export type Theme = (typeof THEMES)[number]
+
 export interface DeviceIdentity {
   readonly name: string
   readonly colour: WalletColour
+  /**
+   * Which theme the panel renders in.
+   *
+   * HERE RATHER THAN IN A WALLET, and the reason is the same one that put the
+   * device name here: it has to be readable before any passphrase. A theme
+   * sealed inside a wallet would mean the lock screen renders in whichever one
+   * the last session happened to leave, or in a default that flickers to the
+   * real one after unlocking.
+   *
+   * Unauthenticated, like everything else in this file, and that is fine
+   * because it decides nothing. Somebody holding the card can change which
+   * colours the panel uses and learn nothing and grant themselves nothing.
+   */
+  readonly theme: Theme
 }
 
 /** The file, beside the wallets rather than inside any of them. */
@@ -104,25 +122,44 @@ export class DeviceIdentityStore {
     try {
       const parsed: unknown = JSON.parse(readFileSync(this.path, 'utf8'))
       if (parsed === null || typeof parsed !== 'object') return null
-      const { name, colour } = parsed as { name?: unknown; colour?: unknown }
+      const { name, colour, theme } = parsed as {
+        name?: unknown
+        colour?: unknown
+        theme?: unknown
+      }
       if (typeof name !== 'string' || typeof colour !== 'string') return null
       if (!(WALLET_COLOURS as readonly string[]).includes(colour)) return null
       // Normalised on the way out as well as in. The file is editable by
       // anyone holding the card, so what was written is not necessarily what
       // this code wrote.
-      return { name: normaliseName(name), colour: colour as WalletColour }
+      // A theme this build does not know about, or none at all, reads as dark.
+      // A file written by a newer build must not leave the panel unrendered,
+      // and dark is the default the device ships in.
+      const known = (THEMES as readonly string[]).includes(theme as string)
+      return {
+        name: normaliseName(name),
+        colour: colour as WalletColour,
+        theme: known ? (theme as Theme) : 'dark',
+      }
     } catch {
       return null
     }
   }
 
   /** Name this device. Replaces whatever was there. */
-  write(identity: { name: string; colour: string }): DeviceIdentity {
+  write(identity: { name: string; colour: string; theme?: string }): DeviceIdentity {
     const colour = WALLET_COLOURS.find((known) => known === identity.colour)
     if (colour === undefined) {
       throw new IdentityError(`Unknown colour. Expected one of: ${WALLET_COLOURS.join(', ')}.`)
     }
     const name = normaliseName(identity.name)
+    // An unknown theme is refused rather than stored. This file is read before
+    // any passphrase, and a value nothing recognises would leave the panel
+    // choosing a fallback on every boot instead of once, here, loudly.
+    const theme = THEMES.find((known) => known === (identity.theme ?? 'dark'))
+    if (theme === undefined) {
+      throw new IdentityError(`Unknown theme. Expected one of: ${THEMES.join(', ')}.`)
+    }
 
     mkdirSync(dirname(this.path), { recursive: true })
     // Written to a temporary file and renamed, so a power cut during a rename
@@ -130,9 +167,11 @@ export class DeviceIdentityStore {
     // wallets themselves are far more careful than this; a cosmetic file gets
     // the cheap version of the same idea.
     const temporary = `${this.path}.new`
-    writeFileSync(temporary, `${JSON.stringify({ name, colour }, null, 2)}\n`, { mode: 0o600 })
+    writeFileSync(temporary, `${JSON.stringify({ name, colour, theme }, null, 2)}\n`, {
+      mode: 0o600,
+    })
     renameSync(temporary, this.path)
 
-    return { name, colour }
+    return { name, colour, theme }
   }
 }

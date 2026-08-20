@@ -392,6 +392,25 @@ export function App() {
    */
   const [device, setDevice] = useState<{ name: string; colour: string } | null>(null)
 
+  /**
+   * Which theme the panel renders in.
+   *
+   * Dark until the daemon says otherwise, which is also what it says when
+   * nothing has been chosen. Stamped on the document element rather than held
+   * in React state alone, because the stylesheet switches on
+   * `[data-theme='light']` and a class on a component would not reach the
+   * scrollbars, the selection colour or the ground behind the app.
+   */
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
+
+  useEffect(() => {
+    // The attribute is only ever SET, never removed, so there is no frame in
+    // which the document has no theme. Dark is stamped explicitly rather than
+    // left as the bare-:root default, so a stale attribute from a previous
+    // render cannot survive a switch back.
+    document.documentElement.setAttribute('data-theme', theme)
+  }, [theme])
+
   const [labelVerified, setLabelVerified] = useState(true)
   const [activeWallet, setActiveWallet] = useState<{
     id: string
@@ -418,7 +437,9 @@ export function App() {
         // Not fatal. A daemon without storage cannot be named, and a device
         // that refused to boot because a cosmetic file was missing would be a
         // bad trade for a name.
-        let named: { identity: { name: string; colour: string } | null } = { identity: null }
+        let named: {
+          identity: { name: string; colour: string; theme?: 'dark' | 'light' } | null
+        } = { identity: null }
         try {
           named = await call<typeof named>(transport, 'device.identity')
         } catch {
@@ -426,6 +447,10 @@ export function App() {
         }
         if (cancelled) return
         setDevice(named.identity)
+        // Before the first paint of anything but the loading state, so the
+        // lock screen is the first thing rendered in the chosen theme rather
+        // than the first thing to flicker out of the default.
+        setTheme(named.identity?.theme ?? 'dark')
         setAttestation(att)
         setStatus(st)
         setStore(store)
@@ -1000,6 +1025,29 @@ export function App() {
     return (
       <MoreScreen
         nav={rail('more')}
+        theme={theme}
+        onSetTheme={
+          device === null
+            ? undefined
+            : async (next: 'dark' | 'light') => {
+                // Optimistic, then confirmed. The panel switches on the tap
+                // because waiting on a disk write to change a colour feels
+                // broken, and the daemon's answer is what sticks: if the write
+                // fails the theme goes back rather than claiming to persist.
+                setTheme(next)
+                try {
+                  const saved = await call<{ identity: { theme: 'dark' | 'light' } }>(
+                    transport,
+                    'device.setTheme',
+                    { theme: next }
+                  )
+                  setTheme(saved.identity.theme)
+                } catch (err) {
+                  setTheme(theme)
+                  throw err
+                }
+              }
+        }
         banner={banner}
         device={headerDevice}
         quorumCount={quorums.length}

@@ -44,12 +44,16 @@ describe('daemon.store.identity', () => {
 
   it('round-trips-a-name-and-a-colour', () => {
     const saved = identity.write({ name: 'The one in the attic', colour: 'teal' })
-    expect(saved).toEqual({ name: 'The one in the attic', colour: 'teal' })
-    expect(identity.read()).toEqual({ name: 'The one in the attic', colour: 'teal' })
+    expect(saved).toEqual({ name: 'The one in the attic', colour: 'teal', theme: 'dark' })
+    expect(identity.read()).toEqual({
+      name: 'The one in the attic',
+      colour: 'teal',
+      theme: 'dark',
+    })
 
     // Replaces rather than accumulating.
-    identity.write({ name: 'Attic', colour: 'rose' })
-    expect(identity.read()).toEqual({ name: 'Attic', colour: 'rose' })
+    identity.write({ name: 'Attic', colour: 'rose', theme: 'light' })
+    expect(identity.read()).toEqual({ name: 'Attic', colour: 'rose', theme: 'light' })
   })
 
   /**
@@ -124,14 +128,46 @@ describe('daemon.store.identity', () => {
   })
 
   /**
-   * INV-IDENT-2. Nothing about a key is in this file. It is a name and a
-   * colour, and the test asserts that rather than trusting the shape: a future
-   * change that put a fingerprint here would put an unauthenticated identifier
-   * beside the wallets it is meant to distinguish.
+   * INV-IDENT-2. Nothing about a key is in this file.
+   *
+   * The allowed set is asserted exactly rather than checked for absence, so a
+   * future change that put a fingerprint or an xpub here fails: an
+   * unauthenticated identifier sitting beside the wallets it is meant to
+   * distinguish is the failure this guards.
+   *
+   * The theme joined the list because it is cosmetic in the same way the
+   * colour is, and because it has to be readable before any passphrase: a
+   * theme sealed inside a wallet could only be applied after unlocking, so the
+   * first screen anybody sees would always be the default and would then
+   * flicker.
    */
-  it('writes-a-name-and-a-colour-and-nothing-else', () => {
+  it('writes-a-name-a-colour-and-a-theme-and-nothing-else', () => {
     identity.write({ name: 'Attic', colour: 'teal' })
     const raw: unknown = JSON.parse(readFileSync(identity.path, 'utf8'))
-    expect(Object.keys(raw as object).sort()).toEqual(['colour', 'name'])
+    expect(Object.keys(raw as object).sort()).toEqual(['colour', 'name', 'theme'])
+  })
+
+  /**
+   * INV-IDENT-2. An unset theme reads as dark, which is what the device ships
+   * in, and a theme this build does not recognise reads as dark too. A file
+   * written by a newer build must not leave the panel unrendered.
+   */
+  it('reads-an-unknown-or-missing-theme-as-dark', () => {
+    identity.write({ name: 'Attic', colour: 'teal' })
+    writeFileSync(identity.path, JSON.stringify({ name: 'Attic', colour: 'teal' }))
+    expect(identity.read()?.theme).toBe('dark')
+
+    writeFileSync(
+      identity.path,
+      JSON.stringify({ name: 'Attic', colour: 'teal', theme: 'solarized' })
+    )
+    expect(identity.read()?.theme).toBe('dark')
+  })
+
+  /** And an unknown theme is refused on the way IN rather than stored. */
+  it('refuses-to-store-a-theme-it-does-not-know', () => {
+    expect(() => identity.write({ name: 'Attic', colour: 'teal', theme: 'solarized' })).toThrow(
+      /Unknown theme/
+    )
   })
 })

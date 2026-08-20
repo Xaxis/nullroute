@@ -340,6 +340,22 @@ Electrum writes, fills all three fields at once.
 quorum would produce. It is refused by name rather than approximated, because a
 proof some verifiers accept and others reject is worse than no proof.
 
+### Dark or light
+
+Under **More**. Dark is what the device ships in and what an unset preference
+means; light is tuned for a bright room rather than produced by inverting the
+dark one, because a naive inversion gives you grey text on white and an accent
+that vanishes on paper.
+
+The choice is kept beside your wallets, in the same file as the device name,
+not inside a wallet. That is deliberate: it has to be readable before you type a
+passphrase, or the lock screen would always appear in the default and then
+flicker to your choice after unlocking.
+
+Like the device name, it is not verified and it decides nothing. Somebody
+holding the card can change which colours the panel uses and learn nothing by
+it.
+
 ### Locking itself
 
 After ten minutes with nobody touching the screen, the device closes the wallet

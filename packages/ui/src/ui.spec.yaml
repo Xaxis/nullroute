@@ -648,8 +648,6 @@ invariants:
       - packages/ui/test/lock-screen.test.tsx::says-what-actually-failed
       - packages/ui/test/lock-screen.test.tsx::is-absent-when-there-is-nothing-to-refuse
 
-  # --- Journeys ---------------------------------------------------------------
-  # The device is organised by feature. Nobody arrives thinking in features.
   - id: INV-UI-55
     statement: >
       Choosing a goal shows what it needs and what it will not finish, in plain
@@ -1052,6 +1050,9 @@ invariants:
       - packages/ui/test/nav-rail.test.tsx::hides-quorums-on-a-device-that-is-in-none
       - packages/ui/test/nav-rail.test.tsx::separates-locking-from-the-destinations
       - packages/ui/test/nav-rail.test.tsx::offers-no-lock-when-there-is-no-session-to-end
+      - packages/ui/test/more-screen.test.tsx::reaches-every-destination
+      - packages/ui/test/more-screen.test.tsx::keeps-the-action-bar-to-the-way-back
+      - packages/ui/test/wallet-screen.test.tsx::keeps-the-action-bar-to-what-acts-on-this-screen
 
   - id: INV-UI-92
     statement: >
@@ -1062,9 +1063,19 @@ invariants:
       - packages/ui/test/lock-screen.test.tsx::shows-verification-status-and-tier
       - packages/ui/test/lock-screen.test.tsx::states-the-limit-of-what-these-numbers-prove
       - packages/ui/test/lock-screen.test.tsx::is-absent-when-there-is-nothing-to-refuse
-      - packages/ui/test/more-screen.test.tsx::reaches-every-destination
-      - packages/ui/test/more-screen.test.tsx::keeps-the-action-bar-to-the-way-back
-      - packages/ui/test/wallet-screen.test.tsx::keeps-the-action-bar-to-what-acts-on-this-screen
+
+  - id: INV-UI-93
+    statement: >
+      Every colour the stylesheet reads is defined in the default block, light
+      redefines exactly what dark defines, text on the accent stays dark in
+      both, the ground is painted from a token rather than inherited, and no
+      palette rung is named directly.
+    tests:
+      - packages/ui/test/theme.test.tsx::defines-every-colour-in-the-default-block
+      - packages/ui/test/theme.test.tsx::redefines-the-same-tokens-in-light
+      - packages/ui/test/theme.test.tsx::keeps-text-on-the-accent-dark-in-both-themes
+      - packages/ui/test/theme.test.tsx::paints-the-ground-from-a-token
+      - packages/ui/test/theme.test.tsx::names-no-palette-rungs
 
 threats:
   - INV-KEY-1

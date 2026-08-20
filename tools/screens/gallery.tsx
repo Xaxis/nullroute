@@ -553,6 +553,8 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   more: () => (
     <MoreScreen device={DEVICE}
       nav={<NavRail current="more" onNavigate={noop} onLock={noop} />}
+      theme="dark"
+      onSetTheme={async () => Promise.resolve()}
       quorumCount={2}
       onGuide={noop}
       onReceive={noop}
@@ -570,6 +572,35 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       onBack={noop}
     />
   ),
+  /**
+   * The panel in LIGHT. Rendered by stamping the attribute the app stamps, so
+   * this measures the real theme rather than a second stylesheet.
+   */
+  'wallet-light': () => {
+    document.documentElement.setAttribute('data-theme', 'light')
+    return (
+      <WalletScreen device={DEVICE}
+        nav={<NavRail current="wallet" onNavigate={noop} onLock={noop} />}
+        fingerprint="73c5da0a"
+        quorums={[QUORUM]}
+        onAddresses={async () =>
+          Promise.resolve({
+            addresses: Array.from({ length: 10 }, (_, i) => ({
+              address: ADDRESS,
+              path: `m/84'/0'/0'/0/${String(i)}`,
+              index: i,
+              label: i === 2 ? 'Rent, March' : null,
+            })),
+          })
+        }
+        onDescriptor={async () => Promise.resolve({ descriptor: DESCRIPTOR, checksum: '8rf6pq2t' })}
+        onXpub={async () =>
+          Promise.resolve({ xpub: XPUB, path: "m/84'/0'/0'", masterFingerprint: '73c5da0a' })
+        }
+        onVerifyAddress={never}
+      />
+    )
+  },
   labels: () => (
     <LabelsScreen device={DEVICE} onScan={noop} onHome={noop}
       // Filled, so the import button is live and the imported state is
