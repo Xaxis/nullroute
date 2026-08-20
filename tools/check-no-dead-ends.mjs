@@ -32,8 +32,17 @@ import { fileURLToPath } from 'node:url'
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const SCREENS = join(ROOT, 'packages/ui/src/screens')
 
-/** Props whose name means "this leaves the screen". */
-const EXITS = ['onBack', 'onCancel', 'onHome', 'onDone', 'onContinue', 'onSkip', 'onLock']
+/**
+ * Props whose name means "this leaves the screen".
+ *
+ * `nav` is here and is the strongest of them. The others go one place, usually
+ * back; a navigation rail goes everywhere, is always visible, and holds still
+ * while the body scrolls. A screen that has one cannot trap anybody.
+ *
+ * It is deliberately not a substitute in the list below: a screen in the middle
+ * of a flow is passed no rail, on purpose, and still needs its own way out.
+ */
+const EXITS = ['onBack', 'onCancel', 'onHome', 'onDone', 'onContinue', 'onSkip', 'onLock', 'nav']
 
 /**
  * Screens with no way out, and why that is right.

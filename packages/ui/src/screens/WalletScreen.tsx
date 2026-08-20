@@ -2,7 +2,6 @@ import { type ReactElement, useCallback, useEffect, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { QrDisplay } from '../components/QrDisplay.js'
-import { Choice } from '../components/Choice.js'
 
 /**
  * The wallet: accounts, addresses, and export.
@@ -93,35 +92,6 @@ export interface WalletScreenProps {
     change?: boolean
     searchedTo?: number
   }>
-  /** Leaves for the signing screen. The reason this device exists. */
-  readonly onSignTransaction: () => void
-  /** Leaves for cosigner registration. */
-  readonly onMultisig: () => void
-  /**
-   * Leaves for message signing.
-   *
-   * Optional so the screen renders in tests and on a build without it, and so
-   * the button is absent rather than dead when there is nowhere to go.
-   */
-  readonly onProveControl?: () => void
-  /**
-   * Check somebody else's proof.
-   *
-   * Beside proving your own, because they are the two halves of one question
-   * and somebody who has just been shown how to make a proof is the person
-   * most likely to be handed one.
-   */
-  readonly onCheckProof?: () => void
-  /** Leaves for encrypted backup and restore. Optional, like the others. */
-  readonly onBackup?: () => void
-  /**
-   * Leaves for naming and erasing this wallet.
-   *
-   * Absent when the wallet in the session is not a stored one. There is nothing
-   * to rename and nothing to erase, and offering it would be an error message
-   * dressed as a feature.
-   */
-  readonly onManage?: () => void
   /**
    * Leaves for the quorum's addresses.
    *
@@ -129,47 +99,6 @@ export interface WalletScreenProps {
    * so it is reached from the quorum itself rather than from a menu.
    */
   readonly onQuorum?: (quorum: QuorumView) => void
-  /** Leaves for BIP-329 labels. Optional, like the others. */
-  readonly onLabels?: () => void
-  /** Leaves for the goal hub, for somebody who wants to be walked through. */
-  readonly onGuide?: () => void
-  /**
-   * Leaves for the wallet picker.
-   *
-   * A device holds up to eight wallets and there was no route between them:
-   * switching meant locking the device and starting again, which is a strange
-   * thing to have to do to look at a different wallet you own.
-   */
-  readonly onSwitchWallet?: () => void
-  /**
-   * Leaves for the device's own attestation.
-   *
-   * The lock screen shows the manifest root once and then it is gone for the
-   * session. "You can check this device" is not something you do only at boot:
-   * it is what you do before signing something large, or after the device has
-   * been out of your sight.
-   */
-  readonly onCheckDevice?: () => void
-  /** Leaves for every quorum this device is in, and what it cannot know. */
-  readonly onFleet?: () => void
-  /** Leaves for naming this physical device, so it can be told from its siblings. */
-  readonly onNameDevice?: () => void
-  /**
-   * Leaves for one address, shown large.
-   *
-   * The addresses tab is a table, which is right for auditing an account and
-   * wrong for taking an address: the eye slips a row on a 7 inch panel, and a
-   * row here is a different address.
-   */
-  readonly onReceive?: () => void
-  /**
-   * Leaves for deriving a BIP-85 child seed.
-   *
-   * Optional, and last in the row on purpose. It is the one entry here that
-   * ends in key material on screen.
-   */
-  readonly onChildSeed?: () => void
-  readonly onLock: () => void
   /**
    * What this physical device is called. Rendered in the header by Screen.
    *
@@ -179,6 +108,8 @@ export interface WalletScreenProps {
    */
   readonly device?: { readonly name: string; readonly colour: string } | undefined
   readonly banner?: ReactElement | null
+  /** The navigation rail, forwarded to Screen. */
+  readonly nav?: ReactElement | null
 }
 
 const SCRIPT_TYPES: { id: ScriptType; label: string; note: string }[] = [
@@ -203,39 +134,31 @@ const SCRIPT_TYPES: { id: ScriptType; label: string; note: string }[] = [
  * because a 40px button labelled "Manage" is both harder to hit and less
  * informative than a full-width row that says what managing means.
  */
-type Tab = 'addresses' | 'export' | 'verify' | 'more'
+type Tab = 'addresses' | 'export' | 'verify'
 
+/**
+ * Views OF the wallet. Not destinations: those are in the rail.
+ *
+ * "More" used to be here as well, which put the same word in two places
+ * meaning the same thing once the rail existed. It is a destination, so it
+ * lives in the rail and nowhere else.
+ */
 const TABS: { readonly id: Tab; readonly label: string }[] = [
   { id: 'addresses', label: 'Addresses' },
   { id: 'export', label: 'Export' },
   { id: 'verify', label: 'Verify an address' },
-  { id: 'more', label: 'More' },
 ]
 
 export function WalletScreen(props: WalletScreenProps): ReactElement {
   const {
     fingerprint,
     quorums = [],
+    nav,
     onAddresses,
     onDescriptor,
     onXpub,
     onVerifyAddress,
-    onSignTransaction,
-    onMultisig,
-    onProveControl,
-    onCheckProof,
-    onBackup,
-    onManage,
     onQuorum,
-    onLabels,
-    onGuide,
-    onSwitchWallet,
-    onCheckDevice,
-    onFleet,
-    onNameDevice,
-    onReceive,
-    onChildSeed,
-    onLock,
     device,
     banner,
   } = props
@@ -305,19 +228,16 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
       title="Wallet"
       subtitle={`Fingerprint ${fingerprint}`}
       banner={banner}
+      nav={nav}
       device={device}
       testId="wallet-screen"
       actions={
         <>
-          <Button onClick={onLock} testId="wallet-lock">
-            Lock
-          </Button>
-          {/* The primary action on the device. Everything else on this screen
-              is preparation for it, so it is not buried in a tab. */}
-          <Button variant="primary" onClick={onSignTransaction} testId="wallet-sign">
-            Sign a transaction
-          </Button>
-          <div className="nr-spacer" />
+          {/* Lock and Sign moved to the rail, which is reachable from every
+              screen rather than only this one. What is left here is what acts
+              on the screen you are looking at, which is the rule an action bar
+              should have followed all along: this one carried a session
+              control, a task and pagination at equal weight. */}
           {tab === 'addresses' && (
             <>
               <Button
@@ -339,6 +259,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
               </Button>
             </>
           )}
+          <div className="nr-spacer" />
         </>
       }
     >
@@ -393,7 +314,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
         ))}
       </div>
 
-      {tab !== 'more' && tab !== 'verify' && (
+      {tab !== 'verify' && (
         <div className="nr-tabs">
           {SCRIPT_TYPES.map((s) => (
             <button
@@ -425,7 +346,12 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
             }}
             data-testid="toggle-change"
           >
-            {change ? 'Change' : 'Receive'}
+            {/* "Receiving", not "Receive". This is the branch the list is
+                showing, and the rail now has a Receive DESTINATION: the same
+                word in two places, one a state and one a journey, is the kind
+                of collision that makes somebody tap the wrong thing once and
+                distrust the screen afterwards. */}
+            {change ? 'Change' : 'Receiving'}
           </button>
         </div>
       )}
@@ -593,126 +519,6 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
           one of these was a 40px button in the action bar, which was both
           harder to hit and less informative, and two of them were off the edge
           of the panel entirely. */}
-      {tab === 'more' && (
-        <div className="nr-wlist" data-testid="wallet-more">
-          {onGuide !== undefined && (
-            <Choice
-              title="Walk me through something"
-              description="Pick what you are trying to achieve and the device puts the steps in order."
-              selected={false}
-              onSelect={onGuide}
-              testId="wallet-guide"
-            />
-          )}
-          {onReceive !== undefined && (
-            <Choice
-              title="Receive money"
-              description="One address at a time, large enough to read against the screen that is paying you."
-              selected={false}
-              onSelect={onReceive}
-              testId="wallet-receive"
-            />
-          )}
-          <Choice
-            title="Multisig"
-            description="Hand this device's key to a coordinator, and agree to the quorum that comes back."
-            selected={false}
-            onSelect={onMultisig}
-            testId="wallet-multisig"
-          />
-          {onProveControl !== undefined && (
-            <Choice
-              title="Prove an address"
-              description="Sign a message with one of your addresses, to show somebody it is yours."
-              selected={false}
-              onSelect={onProveControl}
-              testId="wallet-prove"
-            />
-          )}
-          {onCheckProof !== undefined && (
-            <Choice
-              title="Check a proof"
-              description="Somebody sent you an address and a signature. Find out whether it is really theirs."
-              selected={false}
-              onSelect={onCheckProof}
-              testId="wallet-check-proof"
-            />
-          )}
-          {onBackup !== undefined && (
-            <Choice
-              title="Backup"
-              description="Write an encrypted backup of this wallet, or restore one onto this device."
-              selected={false}
-              onSelect={onBackup}
-              testId="wallet-backup"
-            />
-          )}
-          {onLabels !== undefined && (
-            <Choice
-              title="Labels"
-              description="Read and write BIP-329 label files. A label is a note and decides nothing."
-              selected={false}
-              onSelect={onLabels}
-              testId="wallet-labels"
-            />
-          )}
-          {onManage !== undefined && (
-            <Choice
-              title="Name or erase this wallet"
-              description="Change what this wallet is called, or remove its seed from this device."
-              selected={false}
-              onSelect={onManage}
-              testId="wallet-manage"
-            />
-          )}
-          {onFleet !== undefined && quorums.length > 0 && (
-            <Choice
-              title="Quorums"
-              description="Everything this device cosigns, who else is in each, and what it cannot tell you about them."
-              selected={false}
-              onSelect={onFleet}
-              testId="wallet-fleet"
-            />
-          )}
-          {onSwitchWallet !== undefined && (
-            <Choice
-              title="Switch wallet"
-              description="Open a different wallet on this device. Locks this one first."
-              selected={false}
-              onSelect={onSwitchWallet}
-              testId="wallet-switch"
-            />
-          )}
-          {onCheckDevice !== undefined && (
-            <Choice
-              title="Check this device"
-              description="The manifest root and the verification checks, the same ones the lock screen showed."
-              selected={false}
-              onSelect={onCheckDevice}
-              testId="wallet-check-device"
-            />
-          )}
-          {onNameDevice !== undefined && (
-            <Choice
-              title="Name this device"
-              description="So you can tell it from your other ones. Every device in a quorum shows the same wallet name."
-              selected={false}
-              onSelect={onNameDevice}
-              testId="wallet-name-device"
-            />
-          )}
-          {onChildSeed !== undefined && (
-            <Choice
-              title="Derive a child seed"
-              description="BIP-85. Makes another wallet from this one, recoverable from these words and nothing else."
-              selected={false}
-              onSelect={onChildSeed}
-              tag={{ text: 'shows key material', tone: 'warn' }}
-              testId="wallet-child"
-            />
-          )}
-        </div>
-      )}
 
       {tab === 'verify' && (
         <>

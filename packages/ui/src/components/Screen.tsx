@@ -46,14 +46,26 @@ export interface ScreenProps {
    */
   readonly device?: { readonly name: string; readonly colour: string } | undefined
   readonly banner?: ReactNode
+  /**
+   * The navigation rail, on screens it is safe to leave.
+   *
+   * Passed rather than assumed, because a flow with a beginning and an end
+   * must not offer an exit from the middle: a rail on the dice screen is an
+   * invitation to throw away a hundred rolls.
+   */
+  readonly nav?: ReactNode
   readonly children: ReactNode
   readonly actions?: ReactNode
   readonly testId?: string
 }
 
 export function Screen(props: ScreenProps): ReactElement {
-  const { title, steps, subtitle, banner, children, actions, onHome, device, testId } = props
-  return (
+  const { title, steps, subtitle, banner, nav, children, actions, onHome, device, testId } = props
+
+  // The rail sits OUTSIDE the header/body/actions grid rather than inside the
+  // body, so it stays put while the body scrolls. That is the whole point of
+  // it: somewhere that does not move.
+  const screen = (
     <section className="nr-screen" data-testid={testId}>
       <header className="nr-screen__head">
         <div>
@@ -84,5 +96,14 @@ export function Screen(props: ScreenProps): ReactElement {
       <div className="nr-screen__body">{children}</div>
       {actions !== undefined && <footer className="nr-screen__actions">{actions}</footer>}
     </section>
+  )
+
+  if (nav === undefined || nav === null) return screen
+
+  return (
+    <div className="nr-withrail">
+      {nav}
+      {screen}
+    </div>
   )
 }

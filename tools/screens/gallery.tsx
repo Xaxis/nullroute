@@ -29,6 +29,7 @@ import {
   BackupScreen,
   ChildSeedScreen,
   IdleBanner,
+  NavRail,
   NetworkBanner,
   DiceScreen,
   ImportScreen,
@@ -36,6 +37,7 @@ import {
   LockScreen,
   ManageWalletScreen,
   MessageScreen,
+  MoreScreen,
   MultisigScreen,
   VerifyMessageScreen,
   StartScreen,
@@ -354,6 +356,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   ),
   wallet: () => (
     <WalletScreen device={DEVICE}
+      nav={<NavRail current="wallet" onNavigate={noop} onLock={noop} />}
       fingerprint="73c5da0a"
       quorums={[QUORUM]}
       onAddresses={async () =>
@@ -375,15 +378,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
         Promise.resolve({ xpub: XPUB, path: "m/84'/0'/0'", masterFingerprint: '73c5da0a' })
       }
       onVerifyAddress={never}
-      onSignTransaction={noop}
-      onMultisig={noop}
-      onProveControl={noop}
-      onBackup={noop}
-      onLabels={noop}
-      onManage={noop}
-      onChildSeed={noop}
       onQuorum={noop}
-      onLock={noop}
     />
   ),
   psbt: () => (
@@ -523,6 +518,26 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   ),
   message: () => <MessageScreen device={DEVICE} onHome={noop} onReview={never} onSign={never} onBack={noop} />,
   backup: () => <BackupScreen device={DEVICE} onScan={noop} onHome={noop} onCreate={never} onDescribe={never} onRestore={never} onBack={noop} />,
+  more: () => (
+    <MoreScreen device={DEVICE}
+      nav={<NavRail current="more" onNavigate={noop} onLock={noop} />}
+      quorumCount={2}
+      onGuide={noop}
+      onReceive={noop}
+      onMultisig={noop}
+      onProveControl={noop}
+      onCheckProof={noop}
+      onBackup={noop}
+      onLabels={noop}
+      onManage={noop}
+      onFleet={noop}
+      onSwitchWallet={noop}
+      onCheckDevice={noop}
+      onNameDevice={noop}
+      onChildSeed={noop}
+      onBack={noop}
+    />
+  ),
   labels: () => (
     <LabelsScreen device={DEVICE} onScan={noop} onHome={noop}
       // Filled, so the import button is live and the imported state is
@@ -731,7 +746,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
  * skipped, for the same reason.
  */
 const REACH: Record<string, readonly (readonly string[])[]> = {
-  wallet: [['tab-export'], ['tab-verify'], ['tab-more']],
+  wallet: [['tab-export'], ['tab-verify']],
   backup: [['backup-choose-create'], ['backup-choose-restore']],
   manage: [
     ['manage-choose-rename'],

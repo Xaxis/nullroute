@@ -468,7 +468,13 @@ describe('ui.app switching and checking', () => {
     await waitFor(() => {
       expect(screen.getByTestId('wallet-screen')).toBeTruthy()
     })
-    fireEvent.click(screen.getByTestId('tab-more'))
+    // Through the RAIL, which is how somebody reaches More now. It used to be
+    // the fourth tab of the wallet screen, which put the same word in two
+    // places once the rail existed.
+    fireEvent.click(screen.getByTestId('nav-more'))
+    await waitFor(() => {
+      expect(screen.getByTestId('more-screen')).toBeTruthy()
+    })
   }
 
   /**
@@ -551,7 +557,13 @@ describe('ui.app scanning', () => {
     await waitFor(() => {
       expect(screen.getByTestId('wallet-screen')).toBeTruthy()
     })
-    fireEvent.click(screen.getByTestId('tab-more'))
+    // Through the RAIL, which is how somebody reaches More now. It used to be
+    // the fourth tab of the wallet screen, which put the same word in two
+    // places once the rail existed.
+    fireEvent.click(screen.getByTestId('nav-more'))
+    await waitFor(() => {
+      expect(screen.getByTestId('more-screen')).toBeTruthy()
+    })
   }
 
   /**

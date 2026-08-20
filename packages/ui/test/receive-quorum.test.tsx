@@ -165,9 +165,6 @@ describe('WalletScreen addresses on a device holding a quorum', () => {
           Promise.resolve({ xpub: 'xpub', path: "m/84'/0'/0'", masterFingerprint: '73c5da0a' })
         }
         onVerifyAddress={async () => Promise.resolve({ found: true })}
-        onSignTransaction={() => undefined}
-        onMultisig={() => undefined}
-        onLock={() => undefined}
       />
     )
   }
@@ -225,9 +222,6 @@ describe('WalletScreen export on a device holding a quorum', () => {
           Promise.resolve({ xpub: 'xpub', path: "m/84'/0'/0'", masterFingerprint: '73c5da0a' })
         }
         onVerifyAddress={async () => Promise.resolve({ found: true })}
-        onSignTransaction={() => undefined}
-        onMultisig={() => undefined}
-        onLock={() => undefined}
       />
     )
     fireEvent.click(screen.getByTestId('tab-export'))

@@ -72,6 +72,8 @@ import {
 import { BackupScreen, type BackupDescription, type RestoredView } from './screens/BackupScreen.js'
 import { WalletChip } from './components/WalletChip.js'
 import { IdleBanner } from './components/IdleBanner.js'
+import { NavRail, type NavDestination } from './components/NavRail.js'
+import { MoreScreen } from './screens/MoreScreen.js'
 import { useIdleLock, type IdleWindow } from './lib/idle.js'
 import { PassphraseScreen } from './screens/PassphraseScreen.js'
 import {
@@ -149,6 +151,7 @@ type Stage =
   | { readonly at: 'assemble'; readonly prefill?: string }
   /** Proving control of an address by signing a message with it. */
   | { readonly at: 'message' }
+  | { readonly at: 'more' }
   | { readonly at: 'verify-message'; readonly prefill?: string }
   /** Writing or restoring an encrypted backup. */
   | { readonly at: 'backup'; readonly prefill?: string }
@@ -504,6 +507,49 @@ export function App() {
 
   /** The device name, dropped while the idle warning needs the room. */
   const headerDevice = crowded ? undefined : (device ?? undefined)
+
+  /**
+   * End the session, from wherever you are.
+   *
+   * Defined once because the rail offers it on every destination and the
+   * wallet screen used to define its own. Two copies of "lock" that differed
+   * in what they cleared would be two different amounts of forgetting.
+   */
+  const lockSession = useCallback((): void => {
+    const go = async (): Promise<void> => {
+      await call(transport, 'session.lock')
+      // The chip is the only always-visible answer to "which wallet is this",
+      // so it must not survive the wallet it names.
+      setActiveWallet(null)
+      setQuorums([])
+      await refresh()
+      setStage({ at: 'lock' })
+    }
+    void go()
+  }, [refresh])
+
+  /**
+   * The navigation rail, for screens it is safe to leave.
+   *
+   * Built here rather than in each screen so the destinations and their routes
+   * are defined once. A screen in the middle of a flow passes nothing and gets
+   * no rail: see the note on Screen's `nav` prop.
+   */
+  const rail = (current: NavDestination): ReactElement => (
+    <NavRail
+      current={current}
+      showQuorums={quorums.length > 0}
+      onLock={lockSession}
+      onNavigate={(destination) => {
+        if (destination === 'home') setStage({ at: 'start' })
+        else if (destination === 'wallet') setStage({ at: 'wallet' })
+        else if (destination === 'sign') setStage({ at: 'psbt' })
+        else if (destination === 'receive') setStage({ at: 'receive' })
+        else if (destination === 'quorums') setStage({ at: 'fleet' })
+        else setStage({ at: 'more' })
+      }}
+    />
+  )
 
   const loadWallets = useCallback(async (): Promise<void> => {
     // Never swallowed. A failed list rendered as an empty one tells a user with
@@ -950,55 +996,39 @@ export function App() {
     )
   }
 
-  if (stage.at === 'wallet' && status !== null) {
+  if (stage.at === 'more' && status !== null) {
     return (
-      <>
-        <WalletScreen
-          device={headerDevice}
-          quorums={quorums}
-          onQuorum={(quorum: QuorumView) => {
-            setStage({ at: 'quorum', quorum })
-          }}
-          banner={banner}
-          fingerprint={status.fingerprint ?? 'unknown'}
-          onAddresses={addresses}
-          onDescriptor={descriptor}
-          onVerifyAddress={verifyAddress}
-          onSignTransaction={() => {
-            setStage({ at: 'psbt' })
-          }}
-          onMultisig={() => {
-            setStage({ at: 'multisig' })
-          }}
-          onProveControl={() => {
-            setStage({ at: 'message' })
-          }}
-          onCheckProof={() => {
-            setStage({ at: 'verify-message' })
-          }}
-          onBackup={() => {
-            setStage({ at: 'backup' })
-          }}
-          onLabels={() => {
-            setStage({ at: 'labels' })
-          }}
-          onReceive={() => {
-            setStage({ at: 'receive' })
-          }}
-          onGuide={() => {
+      <MoreScreen
+        nav={rail('more')}
+        banner={banner}
+        device={headerDevice}
+        quorumCount={quorums.length}
+        onGuide={() => {
             setJourney(null)
             setStage({ at: 'start' })
           }}
-          onCheckDevice={() => {
-            setStage({ at: 'attestation' })
+        onReceive={() => {
+            setStage({ at: 'receive' })
           }}
-          onFleet={() => {
+        onMultisig={() => {
+            setStage({ at: 'multisig' })
+          }}
+        onProveControl={() => {
+            setStage({ at: 'message' })
+          }}
+        onCheckProof={() => {
+            setStage({ at: 'verify-message' })
+          }}
+        onBackup={() => {
+            setStage({ at: 'backup' })
+          }}
+        onLabels={() => {
+            setStage({ at: 'labels' })
+          }}
+        onFleet={() => {
             setStage({ at: 'fleet' })
           }}
-          onNameDevice={() => {
-            setStage({ at: 'device-name' })
-          }}
-          onSwitchWallet={() => {
+        onSwitchWallet={() => {
             // Locks first. Two seeds resident at once is the state from which a
             // device signs with the wrong one, and `wallets.unlock` locks
             // anyway, so doing it here means the picker is never showing a
@@ -1012,9 +1042,44 @@ export function App() {
             }
             void go()
           }}
-          onChildSeed={() => {
+        onCheckDevice={() => {
+            setStage({ at: 'attestation' })
+          }}
+        onNameDevice={() => {
+            setStage({ at: 'device-name' })
+          }}
+        onChildSeed={() => {
             setStage({ at: 'child' })
           }}
+        {...(activeWallet === null
+          ? {}
+          : {
+              onManage: () => {
+                setStage({ at: 'manage' })
+              },
+            })}
+        onBack={() => {
+          setStage({ at: 'wallet' })
+        }}
+      />
+    )
+  }
+
+  if (stage.at === 'wallet' && status !== null) {
+    return (
+      <>
+        <WalletScreen
+          nav={rail('wallet')}
+          device={headerDevice}
+          quorums={quorums}
+          onQuorum={(quorum: QuorumView) => {
+            setStage({ at: 'quorum', quorum })
+          }}
+          banner={banner}
+          fingerprint={status.fingerprint ?? 'unknown'}
+          onAddresses={addresses}
+          onDescriptor={descriptor}
+          onVerifyAddress={verifyAddress}
           onXpub={async (scriptType: ScriptType) =>
             call<{ xpub: string; path: string; masterFingerprint: string }>(
               transport,
@@ -1022,24 +1087,6 @@ export function App() {
               { scriptType }
             )
           }
-          {...(activeWallet === null
-            ? {}
-            : {
-                onManage: () => {
-                  setStage({ at: 'manage' })
-                },
-              })}
-          onLock={() => {
-            const go = async (): Promise<void> => {
-              await call(transport, 'session.lock')
-              // The chip is the only always-visible answer to "which wallet is
-              // this", so it must not survive the wallet it names.
-              setActiveWallet(null)
-              await refresh()
-              setStage({ at: 'lock' })
-            }
-            void go()
-          }}
         />
         {error !== null && (
           <div className="nr-banner nr-banner--testnet">

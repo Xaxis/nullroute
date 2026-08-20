@@ -60,6 +60,8 @@ covers:
   - packages/ui/src/screens/ReceiveScreen.tsx::chunkAddress
   - packages/ui/src/components/Steps.tsx::Steps
   - packages/ui/src/components/IdleBanner.tsx::IdleBanner
+  - packages/ui/src/components/NavRail.tsx::NavRail
+  - packages/ui/src/screens/MoreScreen.tsx::MoreScreen
   - packages/ui/src/screens/VerifyMessageScreen.tsx::VerifyMessageScreen
   - packages/ui/src/lib/idle.ts::useIdleLock
   - packages/ui/src/journeys.ts::JOURNEYS
@@ -605,14 +607,15 @@ invariants:
   # layout in a browser. These tests hold the half jsdom can see.
   - id: INV-UI-52
     statement: >
-      Every destination leaving the wallet screen is reachable and says what it
-      does rather than carrying a one-word label, a destination with no handler
-      leaves no control behind, and the action bar holds only the way out, the
-      primary action, and the current tab's paging.
+      Every destination leaving the wallet is reachable and says what it does
+      rather than carrying a one-word label, and a destination with no handler
+      leaves no control behind. Those destinations moved to the More screen and
+      the navigation rail when "More" stopped being a tab; the wallet's action
+      bar now holds only what acts on the wallet screen itself.
     tests:
-      - packages/ui/test/wallet-screen.test.tsx::reaches-every-destination-from-the-more-tab
-      - packages/ui/test/wallet-screen.test.tsx::leaves-out-a-destination-with-nowhere-to-go
-      - packages/ui/test/wallet-screen.test.tsx::keeps-the-action-bar-to-the-way-out-and-the-primary-action
+      - packages/ui/test/more-screen.test.tsx::reaches-every-destination
+      - packages/ui/test/more-screen.test.tsx::leaves-out-a-destination-with-nowhere-to-go
+      - packages/ui/test/more-screen.test.tsx::offers-quorums-only-when-this-device-is-in-one
 
   # --- The verdict fails closed ----------------------------------------------
   - id: INV-UI-53
@@ -1026,6 +1029,23 @@ invariants:
       - packages/ui/test/seed-check.test.tsx::sends-a-wrong-answer-back-to-the-words-rather-than-to-another-guess
       - packages/ui/test/seed-check.test.tsx::lets-somebody-look-at-the-words-again-mid-check
       - packages/ui/test/seed-check.test.tsx::will-not-hide-the-words-when-it-cannot-check-them
+
+  - id: INV-UI-91
+    statement: >
+      Navigation is one persistent rail rather than destinations scattered
+      through action bars and tab rows. Every destination is reachable, the
+      current one is marked as a page rather than as a pressed button, a
+      destination with nothing behind it is hidden, and ending the session is
+      separated from every destination.
+    tests:
+      - packages/ui/test/nav-rail.test.tsx::reaches-every-destination
+      - packages/ui/test/nav-rail.test.tsx::marks-where-you-are-as-the-current-page
+      - packages/ui/test/nav-rail.test.tsx::hides-quorums-on-a-device-that-is-in-none
+      - packages/ui/test/nav-rail.test.tsx::separates-locking-from-the-destinations
+      - packages/ui/test/nav-rail.test.tsx::offers-no-lock-when-there-is-no-session-to-end
+      - packages/ui/test/more-screen.test.tsx::reaches-every-destination
+      - packages/ui/test/more-screen.test.tsx::keeps-the-action-bar-to-the-way-back
+      - packages/ui/test/wallet-screen.test.tsx::keeps-the-action-bar-to-what-acts-on-this-screen
 
 threats:
   - INV-KEY-1

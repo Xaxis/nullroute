@@ -22,9 +22,6 @@ function withQuorums(quorums: readonly QuorumView[]) {
       onAddresses={vi.fn(async () => Promise.resolve({ addresses: [] }))}
       onDescriptor={vi.fn(async () => Promise.resolve({ descriptor: 'x', checksum: 'y' }))}
       onVerifyAddress={vi.fn(async () => Promise.resolve({ found: false }))}
-      onSignTransaction={vi.fn()}
-      onMultisig={vi.fn()}
-      onLock={vi.fn()}
     />
   )
 }
@@ -97,9 +94,6 @@ describe('ui.screens.wallet xpub', () => {
         )}
         onXpub={onXpub}
         onVerifyAddress={vi.fn()}
-        onSignTransaction={vi.fn()}
-        onMultisig={vi.fn()}
-        onLock={vi.fn()}
       />
     )
     return onXpub
@@ -164,9 +158,6 @@ describe('ui.screens.wallet xpub', () => {
           Promise.resolve({ descriptor: 'wpkh(xpub.../0/*)#abcdefgh', checksum: 'abcdefgh' })
         )}
         onVerifyAddress={vi.fn()}
-        onSignTransaction={vi.fn()}
-        onMultisig={vi.fn()}
-        onLock={vi.fn()}
       />
     )
     fireEvent.click(screen.getByTestId('tab-export'))
@@ -209,8 +200,6 @@ describe('ui.screens.wallet destinations', () => {
           Promise.resolve({ descriptor: 'wpkh(xpub.../0/*)#abcdefgh', checksum: 'abcdefgh' })
         )}
         onVerifyAddress={vi.fn()}
-        onSignTransaction={vi.fn()}
-        onLock={vi.fn()}
         {...handlers}
         {...over}
       />
@@ -219,75 +208,17 @@ describe('ui.screens.wallet destinations', () => {
   }
 
   /**
-   * INV-UI-52. Every destination is reachable, and each says what it does
-   * rather than carrying a one-word label.
+   * The action bar carries what acts on THIS screen and nothing else.
+   *
+   * It used to hold Lock, Sign a transaction, and the address pagination:
+   * a session control, a task and a pager at equal weight. Lock and Sign are
+   * destinations, so they moved to the navigation rail, which is reachable
+   * from every screen rather than from this one.
    */
-  it('reaches-every-destination-from-the-more-tab', () => {
-    const handlers = mount()
-    fireEvent.click(screen.getByTestId('tab-more'))
-
-    for (const [testId, handler] of [
-      ['wallet-multisig', handlers.onMultisig],
-      ['wallet-prove', handlers.onProveControl],
-      ['wallet-backup', handlers.onBackup],
-      ['wallet-labels', handlers.onLabels],
-      ['wallet-manage', handlers.onManage],
-      ['wallet-child', handlers.onChildSeed],
-    ] as const) {
-      fireEvent.click(screen.getByTestId(testId))
-      expect(handler, testId).toHaveBeenCalledOnce()
-    }
-
-    // Not one-word labels. "Manage" says nothing about erasing a wallet, and
-    // this is the row somebody taps expecting a settings page.
-    expect(screen.getByTestId('wallet-manage').textContent).toContain(
-      'remove its seed from this device'
-    )
-    // And the one that ends in key material on screen says so before the tap.
-    expect(screen.getByTestId('wallet-child').textContent).toContain('shows key material')
-  })
-
-  /**
-   * A handler that was not given leaves no row rather than a row that does
-   * nothing. The multisig route has no optional form and is always present.
-   */
-  it('leaves-out-a-destination-with-nowhere-to-go', () => {
-    render(
-      <WalletScreen
-        fingerprint="73c5da0a"
-        onAddresses={vi.fn(async () => Promise.resolve({ addresses: [] }))}
-        onDescriptor={vi.fn(async () =>
-          Promise.resolve({ descriptor: 'wpkh(xpub.../0/*)#abcdefgh', checksum: 'abcdefgh' })
-        )}
-        onVerifyAddress={vi.fn()}
-        onSignTransaction={vi.fn()}
-        onMultisig={vi.fn()}
-        onLock={vi.fn()}
-      />
-    )
-    fireEvent.click(screen.getByTestId('tab-more'))
-
-    expect(screen.getByTestId('wallet-multisig')).toBeTruthy()
-    for (const testId of [
-      'wallet-prove',
-      'wallet-backup',
-      'wallet-labels',
-      'wallet-manage',
-      'wallet-child',
-    ]) {
-      expect(screen.queryByTestId(testId), testId).toBeNull()
-    }
-  })
-
-  /**
-   * The action bar keeps the way out and the primary action, and nothing else.
-   * That is the whole reason the tab exists, so it is worth holding in place.
-   */
-  it('keeps-the-action-bar-to-the-way-out-and-the-primary-action', () => {
+  it('keeps-the-action-bar-to-what-acts-on-this-screen', () => {
     mount()
     const bar = document.querySelector('.nr-screen__actions')
     const buttons = [...(bar?.querySelectorAll('button') ?? [])].map((b) => b.textContent)
-    // Lock, Sign a transaction, and the address pagination. Nothing else.
-    expect(buttons).toEqual(['Lock', 'Sign a transaction', 'Previous', 'Next'])
+    expect(buttons).toEqual(['Previous', 'Next'])
   })
 })

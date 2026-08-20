@@ -1,0 +1,219 @@
+import { type ReactElement } from 'react'
+import { Screen } from '../components/Screen.js'
+import { Choice } from '../components/Choice.js'
+import { Button } from '../components/Button.js'
+
+/**
+ * Everything that is not the wallet, the signing screen or an address.
+ *
+ * Spec: ui.screens.more
+ *
+ * WHY THIS IS A SCREEN AND NOT A TAB. It used to be the fourth tab of the
+ * wallet screen, which made it a view OF the wallet. It is not: switching
+ * wallets, checking the device, naming the device and deriving a child seed are
+ * not things about the open wallet, and half of them lead away from it
+ * entirely. Once the navigation rail existed, "More" appeared in two places
+ * meaning the same thing, and the tab was the wrong one to keep.
+ *
+ * NOTHING HERE IS NEW. Every entry is the same Choice, with the same words and
+ * the same testid, as the tab carried. What changed is that it is reachable
+ * from every screen rather than from one, and that it no longer competes with
+ * the address list for the same viewport.
+ *
+ * ORDER IS BY DISTANCE FROM THE OPEN WALLET. Things you do to this wallet
+ * first, then things you do to the device, then the one that shows key
+ * material. It is not alphabetical, and it is not by how often somebody taps
+ * them: a list ordered by frequency puts erasing a wallet next to looking at
+ * an address.
+ */
+
+export interface MoreScreenProps {
+  readonly onGuide?: (() => void) | undefined
+  readonly onReceive?: (() => void) | undefined
+  readonly onMultisig: () => void
+  readonly onProveControl?: (() => void) | undefined
+  readonly onCheckProof?: (() => void) | undefined
+  readonly onBackup?: (() => void) | undefined
+  readonly onLabels?: (() => void) | undefined
+  readonly onManage?: (() => void) | undefined
+  readonly onFleet?: (() => void) | undefined
+  /**
+   * How many quorums this device is in.
+   *
+   * Only the count, because that is all this screen decides with: whether the
+   * Quorums entry is worth showing. A device in none should not be offered a
+   * screen that lists none.
+   */
+  readonly quorumCount?: number
+  readonly onSwitchWallet?: (() => void) | undefined
+  readonly onCheckDevice?: (() => void) | undefined
+  readonly onNameDevice?: (() => void) | undefined
+  readonly onChildSeed?: (() => void) | undefined
+  readonly onBack: () => void
+  readonly nav?: ReactElement | null
+  readonly device?: { readonly name: string; readonly colour: string } | undefined
+  readonly banner?: ReactElement | null
+}
+
+export function MoreScreen(props: MoreScreenProps): ReactElement {
+  const {
+    onGuide,
+    onReceive,
+    onMultisig,
+    onProveControl,
+    onCheckProof,
+    onBackup,
+    onLabels,
+    onManage,
+    onFleet,
+    quorumCount = 0,
+    onSwitchWallet,
+    onCheckDevice,
+    onNameDevice,
+    onChildSeed,
+    onBack,
+    nav,
+    device,
+    banner,
+  } = props
+
+  return (
+    <Screen
+      title="More"
+      subtitle="Everything that is not an address or a transaction."
+      banner={banner}
+      nav={nav}
+      device={device}
+      testId="more-screen"
+      actions={
+        <>
+          {/* Only a way back. Every destination on this screen is in the body,
+              where a list of choices belongs, rather than split between a body
+              and a bar. */}
+          <Button onClick={onBack} testId="more-back">
+            Back
+          </Button>
+        </>
+      }
+    >
+      <div className="nr-wlist" data-testid="wallet-more">
+        {onGuide !== undefined && (
+          <Choice
+            title="Walk me through something"
+            description="Pick what you are trying to achieve and the device puts the steps in order."
+            selected={false}
+            onSelect={onGuide}
+            testId="wallet-guide"
+          />
+        )}
+        {onReceive !== undefined && (
+          <Choice
+            title="Receive money"
+            description="One address at a time, large enough to read against the screen that is paying you."
+            selected={false}
+            onSelect={onReceive}
+            testId="wallet-receive"
+          />
+        )}
+        <Choice
+          title="Multisig"
+          description="Hand this device's key to a coordinator, and agree to the quorum that comes back."
+          selected={false}
+          onSelect={onMultisig}
+          testId="wallet-multisig"
+        />
+        {onProveControl !== undefined && (
+          <Choice
+            title="Prove an address"
+            description="Sign a message with one of your addresses, to show somebody it is yours."
+            selected={false}
+            onSelect={onProveControl}
+            testId="wallet-prove"
+          />
+        )}
+        {onCheckProof !== undefined && (
+          <Choice
+            title="Check a proof"
+            description="Somebody sent you an address and a signature. Find out whether it is really theirs."
+            selected={false}
+            onSelect={onCheckProof}
+            testId="wallet-check-proof"
+          />
+        )}
+        {onBackup !== undefined && (
+          <Choice
+            title="Backup"
+            description="Write an encrypted backup of this wallet, or restore one onto this device."
+            selected={false}
+            onSelect={onBackup}
+            testId="wallet-backup"
+          />
+        )}
+        {onLabels !== undefined && (
+          <Choice
+            title="Labels"
+            description="Read and write BIP-329 label files. A label is a note and decides nothing."
+            selected={false}
+            onSelect={onLabels}
+            testId="wallet-labels"
+          />
+        )}
+        {onManage !== undefined && (
+          <Choice
+            title="Name or erase this wallet"
+            description="Change what this wallet is called, or remove its seed from this device."
+            selected={false}
+            onSelect={onManage}
+            testId="wallet-manage"
+          />
+        )}
+        {onFleet !== undefined && quorumCount > 0 && (
+          <Choice
+            title="Quorums"
+            description="Everything this device cosigns, who else is in each, and what it cannot tell you about them."
+            selected={false}
+            onSelect={onFleet}
+            testId="wallet-fleet"
+          />
+        )}
+        {onSwitchWallet !== undefined && (
+          <Choice
+            title="Switch wallet"
+            description="Open a different wallet on this device. Locks this one first."
+            selected={false}
+            onSelect={onSwitchWallet}
+            testId="wallet-switch"
+          />
+        )}
+        {onCheckDevice !== undefined && (
+          <Choice
+            title="Check this device"
+            description="The manifest root and the verification checks, the same ones the lock screen showed."
+            selected={false}
+            onSelect={onCheckDevice}
+            testId="wallet-check-device"
+          />
+        )}
+        {onNameDevice !== undefined && (
+          <Choice
+            title="Name this device"
+            description="So you can tell it from your other ones. Every device in a quorum shows the same wallet name."
+            selected={false}
+            onSelect={onNameDevice}
+            testId="wallet-name-device"
+          />
+        )}
+        {onChildSeed !== undefined && (
+          <Choice
+            title="Derive a child seed"
+            description="BIP-85. Makes another wallet from this one, recoverable from these words and nothing else."
+            selected={false}
+            onSelect={onChildSeed}
+            tag={{ text: 'shows key material', tone: 'warn' }}
+            testId="wallet-child"
+          />
+        )}
+      </div>
+    </Screen>
+  )
+}
