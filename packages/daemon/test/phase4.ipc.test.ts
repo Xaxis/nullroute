@@ -516,3 +516,86 @@ describe('multisig.verifyAddress', () => {
     ).toMatchObject({ found: true, change: true })
   })
 })
+
+/**
+ * Tests for what a seedless restore actually gives back.
+ *
+ * THE OVERCLAIM THESE REPLACE. Both the module docstring and docs/USING.md said
+ * a seedless backup "restores a device that can derive addresses, recognise its
+ * own change and check what belongs to it". It restored a count. The
+ * registrations were read out of the file, reported as a number, and dropped,
+ * because a seedless restore has no wallet for the session to hold them in.
+ *
+ * A descriptor needs no seed to be useful, so the fix was to hand them back
+ * rather than to weaken the format: checking whether an address belongs to a
+ * quorum works without a key, and a 2-of-3 cannot be rebuilt from seed phrases
+ * alone because the other keys and the threshold live only in the descriptor.
+ */
+describe('backup.restore and the quorum descriptors', () => {
+  const DESCRIPTOR =
+    'wsh(sortedmulti(2,[73c5da0a/48h/0h/0h/2h]xpub6E64WfdQwBGz85XhbZryr9gUGUPBgoSu5WV6tJWpzAvgAmpVpdPHkT3XYm9R5J6MeWzvLQoz4q845taC9Q28XutbptxAmg7q8QPkjvTL4oi/<0;1>/*,[aabbccdd/48h/0h/0h/2h]xpub6DiYrfRwNnjeX4vHsWMajJVFKrbEEnu8gAW9vDuQzgTWEsEHE16sGWeXXUV1LBWQE1yCTmeprSNcqZ3W74hqVdgDbtYHUv3eM4W2TEUhpan/<0;1>/*))#a7ec6klf'
+
+  /**
+   * INV-BACKUP-5. The descriptors come back from a seedless restore, which is
+   * the whole reason to keep one: without them a quorum cannot be rebuilt from
+   * mnemonics.
+   */
+  it('hands-back-the-quorum-descriptors-from-a-seedless-backup', async () => {
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+    session.setRegistrations([DESCRIPTOR])
+
+    const made = (await call('backup.create', { passphrase: 'a backup passphrase' })) as {
+      backup: string
+    }
+    session.lock()
+
+    const restored = (await call('backup.restore', {
+      backup: made.backup,
+      passphrase: 'a backup passphrase',
+    })) as { hasSeed: boolean; descriptors: string[]; loaded: boolean; registrations: number }
+
+    expect(restored.hasSeed).toBe(false)
+    expect(restored.registrations).toBe(1)
+    expect(restored.descriptors).toEqual([DESCRIPTOR])
+  })
+
+  /**
+   * INV-BACKUP-5. And it says they were NOT loaded. A screen reporting a
+   * seedless restore as having brought the quorums back would be describing
+   * something that did not happen: there is no wallet to hold them in.
+   */
+  it('says-the-descriptors-were-shown-rather-than-loaded', async () => {
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+    session.setRegistrations([DESCRIPTOR])
+    const made = (await call('backup.create', { passphrase: 'pw' })) as { backup: string }
+    session.lock()
+
+    const restored = (await call('backup.restore', { backup: made.backup, passphrase: 'pw' })) as {
+      loaded: boolean
+    }
+    expect(restored.loaded).toBe(false)
+    expect(session.hasWallet).toBe(false)
+  })
+
+  /**
+   * INV-BACKUP-5. A backup that carried the seed DOES load them, and says so,
+   * because there is a wallet for them to go into.
+   */
+  it('loads-them-into-the-session-when-the-backup-carried-the-seed', async () => {
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+    session.setRegistrations([DESCRIPTOR])
+    const made = (await call('backup.create', {
+      passphrase: 'pw',
+      includeSeed: true,
+    })) as { backup: string }
+    session.lock()
+
+    const restored = (await call('backup.restore', { backup: made.backup, passphrase: 'pw' })) as {
+      loaded: boolean
+      descriptors: string[]
+    }
+    expect(restored.loaded).toBe(true)
+    expect(restored.descriptors).toEqual([DESCRIPTOR])
+    expect(session.registrations).toEqual([DESCRIPTOR])
+  })
+})

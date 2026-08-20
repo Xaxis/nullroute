@@ -279,10 +279,20 @@ Reached from **More** on the wallet screen.
 
 ### Backup
 
-**Seedless by default.** A seedless backup restores a device that can derive
-addresses, recognise its own change and check what belongs to it, and cannot
-spend. A backup with the seed is a second copy of the money under one
-passphrase.
+**Seedless by default.** A seedless backup carries your network, your label and
+your registered quorum descriptors, and no key of any kind. A backup with the
+seed is a second copy of the money under one passphrase.
+
+**What a seedless restore actually gives you**, stated precisely because the
+difference matters: it hands back the descriptors. It does not give you a
+working wallet, because without a seed there is nothing to derive from and
+nothing to sign with. What the descriptors are good for on their own is checking
+whether an address belongs to your quorum, which needs no key, and re-registering
+the quorum once you have restored the seed from your mnemonic.
+
+That last part is the reason to keep one. A 2-of-3 cannot be rebuilt from seed
+phrases alone: you also need the other keys, the threshold and the script type,
+and the descriptor is where those live.
 
 Both are legitimate and the difference is not obvious from outside, so including
 the seed changes the button and says what it means before it happens. A file

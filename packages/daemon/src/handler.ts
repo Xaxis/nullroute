@@ -1877,11 +1877,29 @@ export function createHandler(state: DaemonState): IpcHandler {
           session.loadFromStore(restored.seed)
           session.setRegistrations(restored.registrations)
         }
+
+        // THE DESCRIPTORS, not just how many there were.
+        //
+        // A seedless restore has no wallet for the session to hold them in, so
+        // they were counted and dropped. That made the documented promise of a
+        // seedless backup false: it claimed to restore a device that could
+        // verify addresses and recognise its quorums, and it restored a number.
+        //
+        // Returned to the caller instead. A descriptor needs no seed to be
+        // useful: multisig.verifyAddress and multisig.addresses both work
+        // without one, which is exactly the watch-only capability the format
+        // was described as giving. Public by construction, so returning them
+        // discloses nothing INV-KEY-1 protects.
         return {
           hasSeed: restored.hasSeed,
           label: restored.label,
           network: restored.network.id,
           registrations: restored.registrations.length,
+          descriptors: restored.registrations,
+          // Whether they went into the session or are only being shown. A
+          // screen that said "your quorums are back" on a seedless restore
+          // would be describing something that did not happen.
+          loaded: restored.seed !== undefined,
           createdWith: restored.createdWith,
         }
       }

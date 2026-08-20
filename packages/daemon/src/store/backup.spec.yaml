@@ -66,6 +66,16 @@ invariants:
       - packages/daemon/test/backup.test.ts::describes-a-backup-without-opening-it
       - packages/daemon/test/backup.test.ts::refuses-a-file-that-is-not-a-backup
 
+  - id: INV-BACKUP-5
+    statement: >
+      A seedless restore hands back the quorum descriptors rather than a count
+      of them, and says they were shown rather than loaded. A restore carrying
+      the seed loads them into the session and says so.
+    tests:
+      - packages/daemon/test/phase4.ipc.test.ts::hands-back-the-quorum-descriptors-from-a-seedless-backup
+      - packages/daemon/test/phase4.ipc.test.ts::says-the-descriptors-were-shown-rather-than-loaded
+      - packages/daemon/test/phase4.ipc.test.ts::loads-them-into-the-session-when-the-backup-carried-the-seed
+
 threats:
   - INV-STORE-1
   - INV-STORE-2
@@ -73,11 +83,28 @@ threats:
 
 security_notes: >
   A SEED BACKUP IS A SECOND COPY OF THE MONEY. Seedless is the default and it is
-  the safer one: it restores a device that can derive addresses, verify change
-  and recognise its quorums, and it is worth nothing to whoever finds it. A
-  backup carrying a seed is protected by one passphrase and by Argon2id, exactly
-  as the on-device store is, and every screen that offers one says so in those
-  words rather than describing it as a convenience.
+  the safer one, and it is worth nothing to whoever finds it. A backup carrying
+  a seed is protected by one passphrase and by Argon2id, exactly as the
+  on-device store is, and every screen that offers one says so in those words
+  rather than describing it as a convenience.
+
+  WHAT A SEEDLESS RESTORE GIVES BACK, precisely, because this was overclaimed.
+  It said a seedless backup restored a device that could derive addresses,
+  verify change and recognise its quorums. It restores the descriptors and
+  nothing else, because there is no seed to derive from and no wallet for the
+  session to hold registrations in. Deriving and verifying change both need a
+  key.
+
+  The descriptors alone are still worth having, and that is the honest version
+  of the claim: checking whether an address belongs to a quorum needs no key at
+  all, and a 2-of-3 cannot be rebuilt from seed phrases alone, because the other
+  keys, the threshold and the script type live only in the descriptor. So a
+  seedless backup is the thing that makes a quorum recoverable, and it is not a
+  wallet.
+
+  The response says which happened. `loaded` is true only when the registrations
+  went into the session, so a screen cannot report a seedless restore as having
+  brought the quorums back.
 
   The split between the outer document and the sealed payload is the part worth
   reviewing. A label, a network and a hasSeed flag sit in plaintext because a
