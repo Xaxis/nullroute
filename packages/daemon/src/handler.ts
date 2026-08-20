@@ -43,6 +43,8 @@ import {
   rootFromSeed,
   attributeSignatures,
   describeWaiting,
+  fingerprintsNamedBy,
+  type QuorumKey,
   signTransaction,
   validateRolls,
   withChecksum,
@@ -172,10 +174,18 @@ export function createHandler(state: DaemonState): IpcHandler {
    * "nobody signed" and "this device cannot tell who signed" are different
    * things and a screen must not render the second as the first.
    *
-   * The FIRST registration whose keys the PSBT mentions is used. A device in
-   * two quorums has two lists, and picking by name would be picking by
-   * something nothing verified; picking by whose keys are actually in this
-   * transaction is picking by the transaction.
+   * WHICH quorum, on a device registered in more than one, is decided by how
+   * many of each quorum's fingerprints the transaction actually names.
+   *
+   * The obvious test, "did any cosigner in this quorum sign", is wrong on the
+   * exact setup this feature is for. A device in two quorums holds the SAME
+   * account key in both, so once it signs, both quorums report a signature and
+   * the answer becomes whichever happened to be registered first.
+   *
+   * A PSBT names every key of the quorum being spent from. Another quorum
+   * shares only what the two have in common, which on one device is usually
+   * exactly one key: this one. So the best match wins, a tie is not an answer,
+   * and a single shared key is not a match.
    */
   const whoStillHasToSign = (
     tx: ReturnType<typeof parsePsbt>,
@@ -184,6 +194,9 @@ export function createHandler(state: DaemonState): IpcHandler {
     const names = new Map<string, string>(
       session.cosigners.map((entry) => [entry.xpub, entry.label])
     )
+
+    const named = fingerprintsNamedBy(tx)
+    const candidates: { quorum: QuorumKey[]; score: number }[] = []
 
     for (const descriptor of session.registrations) {
       let review
@@ -212,24 +225,42 @@ export function createHandler(state: DaemonState): IpcHandler {
         }
       })
 
-      const attributed = attributeSignatures(tx, quorum, signedBy)
-      // A quorum none of whose keys this transaction mentions is the wrong
-      // quorum. Skipped rather than reported, so a device in two quorums
-      // answers about the one being spent from.
-      if (attributed.cosigners.some((entry) => entry.signed) || session.registrations.length === 1) {
-        return {
-          cosigners: attributed.cosigners,
-          unattributed: attributed.unattributed,
-          waiting: describeWaiting(attributed),
-        }
+      candidates.push({
+        quorum,
+        score: quorum.filter((key) => named.has(key.fingerprint.toLowerCase())).length,
+      })
+    }
+
+    const ranked = [...candidates].sort((left, right) => right.score - left.score)
+    const best = ranked[0]
+    const runnerUp = ranked[1]
+
+    // TWO CONDITIONS, and both matter. More than one key in common, because one
+    // is what any two quorums on this device share by construction. And a
+    // strictly better match than the next one, because a tie means this device
+    // cannot tell which quorum the transaction belongs to, and naming the wrong
+    // set of cosigners is worse than saying so.
+    const decided =
+      best !== undefined && best.score > 1 && (runnerUp === undefined || best.score > runnerUp.score)
+
+    if (!decided) {
+      const none = attributeSignatures(tx, [], signedBy)
+      return {
+        cosigners: none.cosigners,
+        unattributed: none.unattributed,
+        waiting:
+          candidates.length === 0
+            ? describeWaiting(none)
+            : 'This device is registered in more than one quorum and cannot tell which of them ' +
+              'this transaction spends from, so it will not guess at who still has to sign.',
       }
     }
 
-    const none = attributeSignatures(tx, [], signedBy)
+    const attributed = attributeSignatures(tx, best.quorum, signedBy)
     return {
-      cosigners: none.cosigners,
-      unattributed: none.unattributed,
-      waiting: describeWaiting(none),
+      cosigners: attributed.cosigners,
+      unattributed: attributed.unattributed,
+      waiting: describeWaiting(attributed),
     }
   }
 

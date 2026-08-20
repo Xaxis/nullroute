@@ -91,19 +91,46 @@ function fingerprintsByKey(tx: btc.Transaction): Map<string, string> {
       }
     }
 
+    // TAPROOT NESTS THE FINGERPRINT ONE LEVEL DEEPER, under `der`, where the
+    // classic field has it at the top. Reading it at the top level compiles,
+    // runs, and finds nothing: a taproot quorum attributed no signature at all
+    // and scored zero against every registration, so the device would have
+    // said it could not tell which quorum a transaction belonged to and never
+    // named anybody. Found by a test asserting the set was non-empty.
     const taproot: unknown = input.tapBip32Derivation
     if (Array.isArray(taproot)) {
       for (const entry of taproot as readonly (readonly unknown[])[]) {
         const pubkey = entry[0]
-        const meta = entry[1] as { fingerprint?: unknown } | undefined
-        if (pubkey instanceof Uint8Array && typeof meta?.fingerprint === 'number') {
-          found.set(bytesToHex(pubkey), meta.fingerprint.toString(16).padStart(8, '0'))
+        const meta = entry[1] as { der?: { fingerprint?: unknown } } | undefined
+        const fingerprint = meta?.der?.fingerprint
+        if (pubkey instanceof Uint8Array && typeof fingerprint === 'number') {
+          found.set(bytesToHex(pubkey), fingerprint.toString(16).padStart(8, '0'))
         }
       }
     }
   }
 
   return found
+}
+
+/**
+ * Every master fingerprint the transaction's derivation records name.
+ *
+ * FOR CHOOSING WHICH QUORUM A TRANSACTION BELONGS TO, on a device registered in
+ * more than one. The obvious test, "did any cosigner in this quorum sign", is
+ * wrong and wrong in a way that only shows up on the exact setup this is for: a
+ * device in two quorums holds the SAME account key in both, so after it signs,
+ * both quorums report a signature and the answer becomes whichever was
+ * registered first.
+ *
+ * A PSBT names every key of the quorum being spent from. A quorum that is not
+ * that one shares only the keys the two happen to have in common, which for two
+ * quorums on one device is usually exactly one: this device's. So the right
+ * quorum is the one with the most of its fingerprints present, and a tie or a
+ * single shared key is not an answer.
+ */
+export function fingerprintsNamedBy(tx: btc.Transaction): ReadonlySet<string> {
+  return new Set([...fingerprintsByKey(tx).values()].map((value) => value.toLowerCase()))
 }
 
 export interface QuorumKey {

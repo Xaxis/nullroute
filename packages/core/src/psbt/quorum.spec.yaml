@@ -15,6 +15,7 @@ covers:
   - packages/core/src/psbt/quorum.ts::signatureProgress
   - packages/core/src/psbt/attribution.ts::attributeSignatures
   - packages/core/src/psbt/attribution.ts::describeWaiting
+  - packages/core/src/psbt/attribution.ts::fingerprintsNamedBy
   - packages/core/src/psbt/quorum.ts::alreadySignedBy
 
 algorithm: >
@@ -97,11 +98,36 @@ invariants:
       - packages/daemon/test/phase4.ipc.test.ts::says-how-far-it-searched-rather-than-implying-a-verdict
       - packages/daemon/test/phase4.ipc.test.ts::finds-an-address-on-the-change-branch-as-well
 
+  - id: INV-QUORUM-7
+    statement: >
+      On a device registered in several quorums, the quorum a transaction
+      belongs to is decided by how many of its fingerprints the transaction
+      names, not by which cosigners signed. A single shared key is not a match
+      and a tie is not an answer, and taproot derivations are read as well as
+      classic ones.
+    tests:
+      - packages/core/test/psbt.attribution.multi.test.ts::tells-two-quorums-apart-by-what-the-transaction-names
+      - packages/core/test/psbt.attribution.multi.test.ts::treats-a-single-shared-key-as-no-answer-at-all
+      - packages/core/test/psbt.attribution.multi.test.ts::produces-a-tie-rather-than-a-guess-when-two-quorums-match-equally
+      - packages/core/test/psbt.attribution.multi.test.ts::reads-taproot-derivations-as-well-as-classic-ones
+
 threats:
   - INV-PSBT-2
   - INV-SIG-2
 
 security_notes: >
+  A DEVICE IN TWO QUORUMS HOLDS THE SAME KEY IN BOTH, which breaks the obvious
+  way to decide which quorum a transaction belongs to. Selecting on "did any
+  cosigner in this quorum sign" cannot tell them apart, because this device
+  signs for both, so the answer becomes whichever was registered first and the
+  screen names the wrong cosigners and sends somebody to the wrong device.
+
+  The join is therefore on what the transaction NAMES rather than on what
+  signed it. A PSBT carries a derivation record for every key of the quorum it
+  spends from; another quorum shares only what the two have in common, which on
+  one device is usually exactly one key. So the best match wins, more than one
+  key must match, and a tie is refused rather than guessed at.
+
   ATTRIBUTION DECIDES NOTHING. It produces labels for a screen. Whether a
   transaction is finished is decided by counting signatures against the
   script's own threshold, which never consults a name or a fingerprint, and a
