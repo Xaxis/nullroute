@@ -36,9 +36,28 @@ export function abbreviate(value: string): string {
 
 export function Hash(props: HashProps): ReactElement {
   const { value, expanded = false, onToggle, testId } = props
-  const shown = expanded
-    ? chunk(value)
-    : chunk(value.slice(0, 8)) + ' ... ' + chunk(value.slice(-8))
+
+  /**
+   * Nothing to abbreviate below 20 characters, and abbreviating anyway is
+   * WRONG rather than merely pointless.
+   *
+   * This component sliced the first eight and the last eight unconditionally.
+   * For a 64 character manifest root that is the intent. For an eight
+   * character master fingerprint it produced "73c5 da0a ... 73c5 da0a": the
+   * same value twice, rendered to look like a sixteen character one.
+   *
+   * That is on the screen where somebody compares the fingerprint against what
+   * they wrote down when they made the wallet, and where the text beside it
+   * calls it the one thing on this device that cannot be faked. A person
+   * checking it would have seen something that did not match their note.
+   *
+   * `abbreviate` in this same file has had the guard all along and returns
+   * short values untouched. The component never used it.
+   */
+  const shown =
+    expanded || value.length <= 20
+      ? chunk(value)
+      : chunk(value.slice(0, 8)) + ' ... ' + chunk(value.slice(-8))
 
   if (onToggle === undefined) {
     return (

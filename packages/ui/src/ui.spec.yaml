@@ -118,10 +118,17 @@ invariants:
       - packages/ui/test/lock-screen.test.tsx::states-the-limit-of-what-these-numbers-prove
 
   - id: INV-UI-6
-    statement: Hashes render chunked and abbreviated consistently.
+    statement: >
+      Hashes render chunked and abbreviated consistently, and a value too short
+      to abbreviate is shown whole rather than as its own first and last eight
+      characters twice.
     tests:
       - packages/ui/test/lock-screen.test.tsx::chunks-in-groups-of-four
       - packages/ui/test/lock-screen.test.tsx::abbreviates-to-first-and-last-eight
+      - packages/ui/test/hash.test.tsx::returns-a-short-value-untouched
+      - packages/ui/test/hash.test.tsx::shortens-a-full-manifest-root
+      - packages/ui/test/hash.test.tsx::does-not-repeat-an-eight-character-fingerprint
+      - packages/ui/test/hash.test.tsx::still-abbreviates-a-full-manifest-root
 
   - id: INV-UI-7
     statement: >

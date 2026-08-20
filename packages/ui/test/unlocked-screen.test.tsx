@@ -54,7 +54,7 @@ describe('UnlockedScreen', () => {
     const body = screen.getByTestId('unlocked-screen').textContent
     expect(body).toContain('Compare this with what you wrote down')
     // The honest limit, stated rather than implied.
-    expect(body).toContain('If you never recorded a fingerprint, this screen cannot help you')
+    expect(body).toContain('If you never recorded one, this screen cannot help you')
   })
 
   /**

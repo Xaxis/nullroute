@@ -87,6 +87,12 @@ export function UnlockedScreen(props: UnlockedScreenProps): ReactElement {
         </>
       }
     >
+      {/* The fingerprint, what to do with it, and what it cannot do, in one
+          block. These were three siblings with the instruction below the value
+          and the limit five elements further down, past the fold whenever any
+          warning was showing. This screen exists so somebody notices the wrong
+          wallet, and the sentence explaining when it cannot help them was the
+          first thing to scroll away. */}
       <div className="nr-fp" data-testid="unlocked-fingerprint">
         <span className="nr-fp__label">Fingerprint</span>
         <span className="nr-fp__value">
@@ -95,10 +101,10 @@ export function UnlockedScreen(props: UnlockedScreenProps): ReactElement {
         <span className="nr-wchip__dot" data-colour={colour} />
       </div>
 
-      <p className="nr-note">
-        Compare this with what you wrote down when you made this wallet. It is computed from the
-        keys that just loaded, so it is the one thing on this device that cannot be faked by editing
-        a file.
+      <p className="nr-note" data-testid="unlocked-compare">
+        Compare this with what you wrote down when you made this wallet: it is computed from the
+        keys that just loaded, so it cannot be faked by editing a file. If you never recorded one,
+        this screen cannot help you.
       </p>
 
       {usedPassphrase && (
@@ -135,10 +141,6 @@ export function UnlockedScreen(props: UnlockedScreenProps): ReactElement {
         </div>
       )}
 
-      <p className="nr-hint">
-        If you never recorded a fingerprint, this screen cannot help you. It only lets someone who
-        did notice a mismatch.
-      </p>
     </Screen>
   )
 }
