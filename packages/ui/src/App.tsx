@@ -1072,9 +1072,6 @@ export function App() {
           nav={rail('wallet')}
           device={headerDevice}
           quorums={quorums}
-          onQuorum={(quorum: QuorumView) => {
-            setStage({ at: 'quorum', quorum })
-          }}
           banner={banner}
           fingerprint={status.fingerprint ?? 'unknown'}
           onAddresses={addresses}

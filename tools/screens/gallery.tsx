@@ -411,7 +411,6 @@ const SCREENS: Record<string, () => React.ReactElement> = {
         Promise.resolve({ xpub: XPUB, path: "m/84'/0'/0'", masterFingerprint: '73c5da0a' })
       }
       onVerifyAddress={never}
-      onQuorum={noop}
     />
   ),
   psbt: () => (

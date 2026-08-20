@@ -27,16 +27,24 @@ function withQuorums(quorums: readonly QuorumView[]) {
 }
 
 describe('WalletScreen quorum position', () => {
-  // INV-UI-37. The number that tells three identical devices apart.
+  /**
+   * INV-UI-37. The number that tells three identical devices apart.
+   *
+   * In the SUBTITLE now. It used to be a card at the top of the body, seventy
+   * pixels for one line and a button, on the screen named after an address
+   * list that then began below the fold. The header is fixed and already on
+   * every screen, so the fact rides for free.
+   *
+   * The sentence explaining why the number exists moved to the Quorums screen
+   * and Name this device, which are about that. It was being charged here on
+   * every visit to a screen about something else.
+   */
   it('says-which-cosigner-of-how-many-this-device-is', () => {
     withQuorums([{ descriptor: 'wsh(sortedmulti(2,...))#aaaaaaaa', threshold: 2, total: 3, ourPosition: 2, unreadable: null }])
 
-    const shown = screen.getByTestId('wallet-quorums').textContent
+    const shown = document.querySelector('.nr-screen__subtitle')?.textContent
     expect(shown).toContain('2 of 3')
-    expect(shown).toContain('you are cosigner 2')
-    // And says why the number is there at all, since a bare number invites
-    // the reader to ignore it.
-    expect(shown).toContain('same wallet name')
+    expect(shown).toContain('cosigner 2')
   })
 
   /**
@@ -47,24 +55,44 @@ describe('WalletScreen quorum position', () => {
   it('says-when-it-cannot-place-itself-rather-than-showing-a-number', () => {
     withQuorums([{ descriptor: 'wsh(unreadable)#bbbbbbbb', threshold: null, total: null, ourPosition: null, unreadable: 'no key of ours' }])
 
-    const shown = screen.getByTestId('wallet-quorums').textContent
-    expect(shown).toContain('cannot place itself')
-    expect(shown).not.toContain('you are cosigner')
+    const shown = document.querySelector('.nr-screen__subtitle')?.textContent
+    expect(shown).toContain('cannot read')
+    expect(shown).not.toContain('cosigner')
+    // And not "in 1 quorums", which is what a count would have said here and
+    // which hides that the device does not know whether it holds a key in it.
+    expect(shown).not.toContain('1 quorum')
   })
 
   it('shows-nothing-for-a-single-signature-wallet', () => {
     withQuorums([])
-    expect(screen.queryByTestId('wallet-quorums')).toBeNull()
+    const shown = document.querySelector('.nr-screen__subtitle')?.textContent
+    expect(shown).toContain('Fingerprint')
+    expect(shown).not.toContain('cosigner')
+    expect(shown).not.toContain('quorum')
   })
 
-  it('lists-every-quorum-when-a-device-is-in-more-than-one', () => {
+  /**
+   * Several quorums are counted rather than listed, and the Quorums
+   * destination lists them properly with positions. Three positions in a
+   * subtitle is a subtitle nobody reads.
+   */
+  it('counts-them-when-a-device-is-in-more-than-one', () => {
     withQuorums([
       { descriptor: 'wsh(sortedmulti(2,...))#aaaaaaaa', threshold: 2, total: 3, ourPosition: 1, unreadable: null },
       { descriptor: 'wsh(sortedmulti(3,...))#aaaaaaaa', threshold: 3, total: 5, ourPosition: 4, unreadable: null },
     ])
-    const shown = screen.getByTestId('wallet-quorums').textContent
-    expect(shown).toContain('2 of 3, you are cosigner 1')
-    expect(shown).toContain('3 of 5, you are cosigner 4')
+    expect(document.querySelector('.nr-screen__subtitle')?.textContent).toContain('in 2 quorums')
+  })
+
+  /** And an unreadable one among them is counted separately rather than hidden. */
+  it('says-how-many-of-several-quorums-it-cannot-read', () => {
+    withQuorums([
+      { descriptor: 'wsh(sortedmulti(2,...))#aaaaaaaa', threshold: 2, total: 3, ourPosition: 1, unreadable: null },
+      { descriptor: 'wsh(unreadable)#bbbbbbbb', threshold: null, total: null, ourPosition: null, unreadable: 'no key of ours' },
+    ])
+    const shown = document.querySelector('.nr-screen__subtitle')?.textContent
+    expect(shown).toContain('in 2 quorums')
+    expect(shown).toContain('1 unreadable')
   })
 })
 

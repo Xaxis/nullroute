@@ -444,13 +444,15 @@ invariants:
   - id: INV-UI-37
     statement: >
       A device in a quorum says which cosigner it is and of how many, says so
-      when it cannot place itself rather than showing a guess, and shows nothing
-      for a single-signature wallet.
+      when it cannot place itself rather than showing a guess, shows nothing
+      for a single-signature wallet, and counts several rather than listing
+      them while still saying how many it cannot read.
     tests:
       - packages/ui/test/wallet-screen.test.tsx::says-which-cosigner-of-how-many-this-device-is
       - packages/ui/test/wallet-screen.test.tsx::says-when-it-cannot-place-itself-rather-than-showing-a-number
       - packages/ui/test/wallet-screen.test.tsx::shows-nothing-for-a-single-signature-wallet
-      - packages/ui/test/wallet-screen.test.tsx::lists-every-quorum-when-a-device-is-in-more-than-one
+      - packages/ui/test/wallet-screen.test.tsx::counts-them-when-a-device-is-in-more-than-one
+      - packages/ui/test/wallet-screen.test.tsx::says-how-many-of-several-quorums-it-cannot-read
 
   # --- Proving control of an address ----------------------------------------
   # The signing screen's risk in a smaller package: a signature is a proof that

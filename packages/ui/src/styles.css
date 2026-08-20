@@ -1026,6 +1026,44 @@ body {
   cursor: pointer;
 }
 
+/* A picker: choosing a property of the content below, not a section of the
+   screen. Deliberately NOT styled like .nr-tabs. The wallet screen had two
+   rows of identical-looking controls stacked directly on top of each other,
+   one choosing a view and one choosing a script type, and nothing about them
+   said which was which. */
+.nr-picker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.nr-picker__label {
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-500);
+  margin-right: 0.375rem;
+}
+
+.nr-picker__option {
+  min-height: 44px;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-ink-700);
+  background-color: transparent;
+  color: var(--color-ink-300);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.nr-picker__option[aria-pressed='true'] {
+  background-color: var(--color-ink-800);
+  border-color: var(--color-ink-600);
+  color: var(--color-ink-100);
+}
+
 /* The verdict on the lock screen. Full width and first, because the screen
    exists to deliver one and it used to appear only as a small line in the
    action bar, the same size as every other line on the panel. */

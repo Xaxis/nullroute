@@ -93,13 +93,6 @@ export interface WalletScreenProps {
     searchedTo?: number
   }>
   /**
-   * Leaves for the quorum's addresses.
-   *
-   * The one screen that proves every cosigner registered the same descriptor,
-   * so it is reached from the quorum itself rather than from a menu.
-   */
-  readonly onQuorum?: (quorum: QuorumView) => void
-  /**
    * What this physical device is called. Rendered in the header by Screen.
    *
    * The lock screen is the single most important place for it: it is the first
@@ -158,7 +151,6 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
     onDescriptor,
     onXpub,
     onVerifyAddress,
-    onQuorum,
     device,
     banner,
   } = props
@@ -223,10 +215,54 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
     }
   }, [query, onVerifyAddress])
 
+  /**
+   * The fingerprint, plus where this device sits in its quorums.
+   *
+   * One quorum names the position, because that is the fact somebody needs and
+   * cannot get from anywhere else on the screen. Several give the count
+   * instead: three positions in a subtitle is a subtitle nobody reads, and the
+   * Quorums destination is one tap away and lists them properly.
+   */
+  const quorumSummary = ((): string => {
+    const base = `Fingerprint ${fingerprint}`
+    if (quorums.length === 0) return base
+
+    const only = quorums.length === 1 ? quorums[0] : undefined
+    if (only !== undefined) {
+      // A quorum this device cannot place itself in says exactly that. A
+      // position it had to guess at would be worse than none, and reporting it
+      // as "in 1 quorum" would hide that the device does not know whether it
+      // holds a key in the thing it is telling you about.
+      return only.unreadable !== null
+        ? `${base} \u00b7 in a quorum it cannot read`
+        : `${base} \u00b7 ${String(only.threshold)} of ${String(only.total)}, cosigner ${String(only.ourPosition)}`
+    }
+
+    // Several. The Quorums destination lists them properly with positions;
+    // three of them in a subtitle is a subtitle nobody reads.
+    const unreadable = quorums.filter((quorum) => quorum.unreadable !== null).length
+    const count = `${base} \u00b7 in ${String(quorums.length)} quorums`
+    return unreadable === 0 ? count : `${count}, ${String(unreadable)} unreadable`
+  })()
+
   return (
     <Screen
       title="Wallet"
-      subtitle={`Fingerprint ${fingerprint}`}
+      /*
+       * The quorum summary rides in the SUBTITLE now.
+       *
+       * It used to be a card at the top of the body: seventy pixels of a
+       * 480px panel spent on one line of text and a button, on the screen
+       * named after an address list that then started below the fold. Both
+       * halves already exist elsewhere. The Quorums destination lists every
+       * quorum in full, and its own screen carries the "Compare addresses"
+       * button this card duplicated.
+       *
+       * What is worth keeping at a glance is which cosigner this device is,
+       * because every device in a quorum shows the same wallet name and that
+       * number is what tells them apart. A subtitle holds that for free.
+       */
+      subtitle={quorumSummary}
       banner={banner}
       nav={nav}
       device={device}
@@ -263,40 +299,6 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
         </>
       }
     >
-      {quorums.length > 0 && (
-        <div className="nr-card nr-card--tight" data-testid="wallet-quorums">
-          {quorums.map((quorum, index) => (
-            <div className="nr-row" key={index}>
-              <span className="nr-label">Multisig</span>
-              <span className="nr-value">
-                {quorum.unreadable !== null
-                  ? 'This device cannot place itself in this quorum'
-                  : `${String(quorum.threshold)} of ${String(quorum.total)}, you are cosigner ${String(quorum.ourPosition)}`}
-              </span>
-              {/* Only for a quorum this device can actually place itself in.
-                  Deriving addresses from a descriptor it cannot read would
-                  produce an error, and offering the button anyway would make
-                  the unreadable case look like a display problem. */}
-              {onQuorum !== undefined && quorum.unreadable === null && (
-                <Button
-                  onClick={() => {
-                    onQuorum(quorum)
-                  }}
-                  testId={`wallet-quorum-${String(index)}`}
-                >
-                  Addresses
-                </Button>
-              )}
-            </div>
-          ))}
-          <p className="nr-hint">
-            Every device in this quorum shows the same wallet name, because they hold the same
-            wallet. The cosigner number is what tells them apart, and the addresses are what prove
-            they all registered the same descriptor.
-          </p>
-        </div>
-      )}
-
       <div className="nr-tabs">
         {TABS.map((t) => (
           <button
@@ -314,13 +316,19 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
         ))}
       </div>
 
+      {/* NOT a second row of tabs. These pick a script type, which is a
+          property of the list below rather than a section of the screen, and
+          rendering them identically to the section tabs put two rows of
+          look-alike controls at two different levels of meaning directly on
+          top of each other. Labelled and set apart instead. */}
       {tab !== 'verify' && (
-        <div className="nr-tabs">
+        <div className="nr-picker" data-testid="script-picker">
+          <span className="nr-picker__label">Script type</span>
           {SCRIPT_TYPES.map((s) => (
             <button
               key={s.id}
               type="button"
-              className="nr-tab"
+              className="nr-picker__option"
               aria-pressed={scriptType === s.id}
               onClick={() => {
                 setScriptType(s.id)
@@ -338,7 +346,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
           <div className="nr-spacer" />
           <button
             type="button"
-            className="nr-tab"
+            className="nr-picker__option"
             aria-pressed={change}
             onClick={() => {
               setChange(!change)
@@ -364,9 +372,8 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
           with. */}
       {tab === 'addresses' && quorums.length > 0 && (
         <p className="nr-note" data-testid="addresses-not-the-quorum">
-          These are this device&rsquo;s own addresses, not your quorum&rsquo;s. Money sent to one
-          of these is spendable by this device alone. For an address your quorum controls, use
-          Receive, or open the quorum below.
+          This device&rsquo;s own addresses, not your quorum&rsquo;s: money sent to one is
+          spendable by this device alone. Use Receive for an address your quorum controls.
         </p>
       )}
 
