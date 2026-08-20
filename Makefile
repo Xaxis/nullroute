@@ -301,6 +301,16 @@ ipc-reachable: ## Every IPC method the daemon implements is reachable from the U
 	@node tools/check-ipc-reachable.mjs
 
 screens: ## Build the screen gallery, a layout harness that never ships to the device
+	# TYPECHECKED FIRST. vite builds this with esbuild, which strips types
+	# without reading them, and the gallery is not in tsconfig.build.json
+	# because it never ships. So a fixture could pass a component anything and
+	# three visual guards would go on measuring it: the PSBT fixture spent
+	# months rendering a `fee-high` warning, which is not a kind this device
+	# emits, on the screen those guards exist to check.
+	#
+	# A fixture is a claim about what the device can show. An unchecked one is
+	# a claim about nothing.
+	@npx tsc -p tools/screens/tsconfig.json --noEmit
 	@npx vite build --config tools/screens/vite.config.ts
 
 screen-fit: screens ## Every device screen fits 800x480. Drives a real browser.

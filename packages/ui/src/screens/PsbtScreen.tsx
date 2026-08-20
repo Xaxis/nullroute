@@ -1,4 +1,5 @@
 import { type ReactElement, useState } from 'react'
+import { type ReviewWarning } from '@nullroute/core'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { QrDisplay } from '../components/QrDisplay.js'
@@ -97,9 +98,47 @@ export interface PsbtInputView {
 }
 
 export interface PsbtWarningView {
-  readonly kind: string
+  /**
+   * The core union, not `string`.
+   *
+   * It was `string`, which is what let a machine identifier reach the action
+   * bar as prose (see WARNING_LABELS), and what let the screen gallery render
+   * a `fee-high` warning that this device cannot produce, since the kind is
+   * `high-fee`. A fixture showing an impossible state is a fixture that is not
+   * checking the real one.
+   */
+  readonly kind: ReviewWarning['kind']
   readonly message: string
   readonly blocking: boolean
+}
+
+/**
+ * What to call each refusal in the space beside a button.
+ *
+ * WHY THIS EXISTS. The action bar interpolated `warning.kind` directly, so a
+ * device that would not sign said "Will not sign: high-fee" on the one screen
+ * where somebody has to decide what to do about it. That is an enum leaking
+ * through the last surface before a signature: it reads as a fault code, and a
+ * fault code is something you work around rather than something you read.
+ *
+ * SHORT, because this sits beside the button in a bar that also holds Cancel,
+ * and the full sentence with the actual numbers in it is already in the
+ * warnings list a few hundred pixels above. This says which refusal; that says
+ * how much.
+ *
+ * Typed against the core union, so adding a warning kind in
+ * packages/core/src/psbt/review.ts fails this build until somebody decides
+ * what the device should call it. The alternative is a fallback that silently
+ * prints the slug again, which is where this started.
+ */
+const WARNING_LABELS: Record<ReviewWarning['kind'], string> = {
+  sighash: 'an unusual sighash flag',
+  'high-fee': 'the fee is high',
+  'high-fee-rate': 'the fee rate is high',
+  'unknown-fields': 'unknown fields in the file',
+  'not-replaceable': 'this cannot be replaced',
+  locktime: 'a locktime is set',
+  'no-change-verified': 'change could not be verified',
 }
 
 /**
@@ -419,6 +458,16 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
           <div className="nr-spacer" />
           {review === null ? (
             <Button
+              /* Primary, unlike Sign below it, and that is the point rather
+                 than an inconsistency. This screen's whole claim is that
+                 nothing is signed until you have read what it does, and Review
+                 is the control that shows you. It renders nothing irreversible:
+                 it parses bytes this device already holds. Sign wears `danger`
+                 two states later for the opposite reason.
+                 
+                 It used to be a ghost button the same weight as Cancel, so the
+                 screen offered leaving and reading as equally good ideas. */
+              variant="primary"
               disabled={psbt.trim().length === 0 || busy}
               onClick={() => void doReview()}
               testId="psbt-review"
@@ -437,8 +486,8 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
                     ? 'No input here is yours'
                     : override
                       ? `Overriding ${String(blocking.length)}`
-                      : blocking.length === 1
-                        ? `Will not sign: ${blocking[0]?.kind ?? 'a blocking warning'}`
+                      : blocking.length === 1 && blocking[0] !== undefined
+                        ? `Will not sign: ${WARNING_LABELS[blocking[0].kind]}`
                         : `Will not sign: ${String(blocking.length)} blocking warnings`}
                 </span>
               )}

@@ -206,13 +206,15 @@ const REVIEW = {
   ],
   warnings: [
     {
-      kind: 'fee-high',
+      // The kind this device actually emits. It read 'fee-high' here, which is
+      // not one, so the gallery was showing a refusal the daemon cannot cause.
+      kind: 'high-fee' as const,
       message:
         'The fee is 8.4 percent of what this transaction spends, which is far above anything normal. Check the amounts before signing.',
       blocking: true,
     },
     {
-      kind: 'output-unrecognised',
+      kind: 'unknown-fields' as const,
       message:
         'Output 2 has no address this device can render. It is a bare script, and nothing here can tell you where that money goes.',
       blocking: false,

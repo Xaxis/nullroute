@@ -10,7 +10,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { PsbtScreen, type PsbtReviewView } from '../src/screens/PsbtScreen.js'
+import { PsbtScreen, type PsbtReviewView, type PsbtWarningView } from '../src/screens/PsbtScreen.js'
 
 afterEach(cleanup)
 
@@ -393,8 +393,13 @@ describe('PsbtScreen quorum progress', () => {
  * that spends money.
  */
 describe('ui.screens.psbt refusal', () => {
+  // Typed as the view rather than as a loose shape, so a kind this device
+  // cannot emit fails the build here. All three of these fixtures used to
+  // invent one: `fee-high` for `high-fee`, `sighash-odd` for `sighash`, and
+  // `output-unrecognised` for nothing at all. The refusal path was being
+  // exercised entirely against warnings the daemon never sends.
   const withWarnings = (
-    warnings: readonly { kind: string; message: string; blocking: boolean }[],
+    warnings: readonly PsbtWarningView[],
     signable: boolean
   ): PsbtReviewView => ({
     ...review(),
@@ -402,8 +407,8 @@ describe('ui.screens.psbt refusal', () => {
     warnings,
   })
 
-  const FEE_WARNING = {
-    kind: 'fee-high',
+  const FEE_WARNING: PsbtWarningView = {
+    kind: 'high-fee',
     message: 'The fee is 8.4 percent of what this transaction spends.',
     blocking: true,
   }
@@ -444,11 +449,16 @@ describe('ui.screens.psbt refusal', () => {
    */
   it('says-beside-the-button-why-it-will-not-sign', async () => {
     await reachReview(withWarnings([FEE_WARNING], false))
-    expect(screen.getByTestId('psbt-refusal').textContent).toContain('Will not sign: fee-high')
+    // The human phrase, not the enum. It said "Will not sign: fee-high" on the
+    // last screen before a signature, which reads as a fault code rather than
+    // as a reason.
+    const refusal = screen.getByTestId('psbt-refusal').textContent
+    expect(refusal).toContain('Will not sign: the fee is high')
+    expect(refusal).not.toContain('high-fee')
 
     cleanup()
     await reachReview(
-      withWarnings([FEE_WARNING, { ...FEE_WARNING, kind: 'sighash-odd' }], false)
+      withWarnings([FEE_WARNING, { ...FEE_WARNING, kind: 'sighash' }], false)
     )
     expect(screen.getByTestId('psbt-refusal').textContent).toContain('2 blocking warnings')
   })
@@ -477,7 +487,7 @@ describe('ui.screens.psbt refusal', () => {
    */
   it('does-not-refuse-a-warning-that-is-not-blocking', async () => {
     await reachReview(
-      withWarnings([{ kind: 'output-unrecognised', message: 'Bare script.', blocking: false }], true)
+      withWarnings([{ kind: 'unknown-fields', message: 'Bare script.', blocking: false }], true)
     )
     expect(screen.getByTestId<HTMLButtonElement>('psbt-sign').disabled).toBe(false)
     expect(screen.queryByTestId('psbt-refusal')).toBeNull()
