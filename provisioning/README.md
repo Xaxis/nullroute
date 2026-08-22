@@ -166,5 +166,5 @@ was that INV-PROV-21 asserted the kernel command line matched "the pinned token
 set exactly" and pinned nothing. The check was declared, the parameter was
 absent, and the verifier had nothing to compare against.
 
-See [docs/PROVISIONING.md](../docs/PROVISIONING.md) for the tier model, the
-hardware, and the honest limits.
+See [Building a device](../docs/VERIFICATION.md#building-a-device) for the tier
+model, the hardware, and the honest limits.

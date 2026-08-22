@@ -230,7 +230,7 @@ so a hardening profile is a set of **assertions checked against the built
 image**, not a recipe, which means a second backend is correct when the
 unchanged checks pass against its output rather than when someone reviewed its
 config. See [provisioning/](provisioning/README.md) and
-[docs/PROVISIONING.md](docs/PROVISIONING.md).
+[docs/VERIFICATION.md](docs/VERIFICATION.md#building-a-device).
 
 ---
 
@@ -329,12 +329,9 @@ Start with whichever question you have:
 | Document | Answers |
 | --- | --- |
 | [Threat model](docs/THREAT-MODEL.md) | What is this safe against, and what is it not? |
-| [Verification](docs/VERIFICATION.md) | How do I check the device is honest? |
-| [Entropy](docs/ENTROPY.md) | How do dice become a seed, and how do I check it? |
+| [Checking and building](docs/VERIFICATION.md) | How do I check the device is honest, and build one? |
 | [Using it](docs/USING.md) | What are the screens, and what does each one refuse? |
-| [The air gap](docs/AIR-GAP.md) | How does anything get on and off this thing? |
-| [Running several](docs/FLEET.md) | How do I use more than one of these together? |
-| [Provisioning](docs/PROVISIONING.md) | How do I build and verify the device image? |
+| [Entropy](docs/ENTROPY.md) | How do dice become a seed, and how do I check it? |
 
 All of them are rendered at [nullroute.diy](https://nullroute.diy) directly
 from this repository, so the published page and the file that ships with the

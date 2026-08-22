@@ -44,6 +44,34 @@ export default async function DocPage({ params }: Props) {
             <span className="text-ink-400">{doc.title}</span>
           </div>
 
+          {/* The same contents, for the screens the sidebar is hidden on.
+              A <details> rather than a script: it collapses natively, it works
+              with JavaScript off, and it adds nothing to the inline script
+              hashes the CSP pins.
+
+              These documents got longer when seven of them became four, and a
+              phone with no way to see the shape of a forty thousand character
+              reference is a phone showing an infinite scroll. */}
+          {headings.length > 1 && (
+            <details className="lg:hidden mb-8 border-y border-ink-850 py-3">
+              <summary className="cursor-pointer font-mono text-xs uppercase tracking-widest text-ink-500">
+                On this page
+              </summary>
+              <ul className="mt-3 space-y-2 border-l border-ink-800">
+                {headings.map((heading) => (
+                  <li key={heading.id}>
+                    <a
+                      href={`#${heading.id}`}
+                      className="block pl-3 -ml-px border-l border-transparent text-sm text-ink-400 leading-snug"
+                    >
+                      {heading.text}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+
           {/* The markdown is repository content rendered at build time. There is
               no user input anywhere in this pipeline and no runtime rendering. */}
           <div dangerouslySetInnerHTML={{ __html: html }} />

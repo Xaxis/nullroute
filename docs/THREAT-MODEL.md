@@ -231,7 +231,7 @@ backdoor wants it to say. The application verification system defends the
 application, and it cannot bootstrap trust in the thing that runs it.
 
 This is being addressed rather than merely conceded, and
-[docs/PROVISIONING.md](PROVISIONING.md) states exactly how far each step gets:
+[Building a device](VERIFICATION.md#building-a-device) states exactly how far each step gets:
 
 - **Tier 0** (phase 2) makes the image reproducible and signed, so you can check
   it against a published hash and signature before flashing, and read the card
@@ -267,6 +267,53 @@ how much bitcoin you own are all outside what any device can fix.
 
 ---
 
+## What the air gap does and does not do
+
+### What crosses, and in which direction
+
+| Direction | What | Carries |
+| --- | --- | --- |
+| Out | Extended public keys, addresses, output descriptors | Nothing secret |
+| Out | Signed transactions | Nothing secret |
+| In | Unsigned transactions (PSBT) | Untrusted |
+| In | Output descriptors and coordinator setup files | Untrusted |
+| In | Addresses to check | Untrusted |
+
+Nothing carrying a private key crosses in either direction. The seed is written
+down by you, on paper, once. A backup file can hold an encrypted copy if you ask
+for one, and it says so in those words before it writes anything.
+
+### What it stops, and what it does not
+
+The air gap stops one thing: a remote attacker reaching your keys over a
+network. It is very good at that, because there is no network.
+
+It does not stop:
+
+**A malicious transaction.** Everything arriving is chosen by whoever built it.
+A PSBT can name any output, any amount, any fee. The gap does not review it and
+neither does the transport. That is what the signing screen is for, and it is
+why this device shows you the whole transaction and makes you look at it.
+
+**A malicious address on the other screen.** If the machine that built the
+transaction is compromised, the address it shows you and the address in the
+transaction are both chosen by the attacker. What defeats this is checking the
+address on the device, which re-derives it from your seed rather than comparing
+two things an attacker controls.
+
+**A compromised device.** If the code on the Pi is not the code you think it is,
+nothing about the transport matters. See [Verification](VERIFICATION.md).
+
+**Someone watching the screen.** A QR code is a picture. A camera pointed at the
+device sees everything the device shows, which includes your extended public key
+and therefore every address you will ever use. It does not include your seed.
+
+**Someone with physical access.** See [Out of scope](#out-of-scope) below,
+which is specific about this and about how little any of it helps against a
+determined adversary who has the device and has you.
+
+---
+
 ## The trust boundary between the signer and the wallet layer
 
 nullroute ships in two assurance tiers, and which one you are running is visible
@@ -275,7 +322,7 @@ in the manifest root hash on the lock screen.
 **Tier 1, the signer** (`packages/core`, `packages/daemon`, `packages/ui`) is
 small on purpose. Every parser and every branch that runs near a private key is
 a place where a bug becomes a loss. This tier is verified to the standard
-described in `docs/VERIFICATION.md`, and it is what a default build contains.
+described in [VERIFICATION.md](VERIFICATION.md), and it is what a default build contains.
 
 **Tier 2, the wallet layer** (`packages/wallet`) adds UTXO tracking, coin
 control, and transaction construction. It roughly doubles the code on the

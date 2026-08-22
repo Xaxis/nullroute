@@ -93,7 +93,7 @@ not been told about would otherwise show "Verification passed" in green.
 **What the hash does not prove.** These values are reported by the software you
 are looking at. They catch an accident or a crude substitution. They do not
 catch an attacker who replaced the code that draws them, which is what the tier
-model in [PROVISIONING.md](PROVISIONING.md) is about.
+model in [Building a device](VERIFICATION.md#building-a-device) is about.
 
 The same values stay reachable after unlocking, under **More** then **Check this
 device**. Checking is not something you do once at boot: it is what you do
@@ -260,7 +260,274 @@ imported it. Both are facts about other machines and this one has no network. An
 unfinished quorum receives money exactly like a finished one, so those two are a
 list to confirm yourself rather than a status to read.
 
-See [FLEET.md](FLEET.md) for running several of these together.
+The sections below cover running several of these together.
+
+### Which quorums this device handles
+
+It **builds** `wsh(sortedmulti(...))`, native segwit, which is what Build a
+quorum produces.
+
+It **accepts** a taproot quorum, `tr(NUMS, sortedmulti_a(...))`, from a
+coordinator. Registering, deriving addresses, recognising change and signing the
+script path all work, and the recovery drill proves it against a real Bitcoin
+Core: identical addresses, one signature that does not finalise, two devices
+that do.
+
+It does not build taproot quorums itself. If you want one, your coordinator
+writes the descriptor and every device registers it.
+
+### Setting up a quorum
+
+The device will walk you through this. From the lock screen tap **Guide me**, or
+from the wallet screen open **More** and then **Walk me through something**, and
+pick "Set up a wallet across several devices". It tells you what you need before
+it starts, numbers the steps as you go, and at the end lists what it has not
+finished, because most of this cannot be finished on one device.
+
+The rest of this section is the same procedure written out, for reading before
+you have a device in your hands.
+
+Each device holds one key and none of them holds the whole wallet. The setup is
+therefore a round of exporting, then a round of registering.
+
+1. **On each device, create or import a wallet.** Give them names you can tell
+   apart on sight: `Cosigner A`, `Cosigner B`, `Cosigner C`. Write down each
+   mnemonic separately. Three devices means three backups, not one.
+
+2. **On each device, export its multisig key.** This is the BIP-48 account
+   xpub, deliberately a different branch from the single-signature one so that
+   using a seed both alone and in a quorum does not link the two on chain.
+
+3. **Assemble the descriptor.** Two ways, and the first needs no other computer.
+
+   **On a device.** Multisig, then **I have the other keys, build it here**.
+   Collect each other device's key by camera or paste, choose the threshold, and
+   the device builds the descriptor. Its own key is filled in for you. This is
+   the option that makes a fleet of air-gapped devices self-sufficient: three
+   Pis in a room can agree on a wallet without a fourth machine.
+
+   The order you collect the keys in does not matter. Every device given the
+   same keys produces a byte-identical descriptor, so the checksum you compare
+   in step 5 differs only when the KEYS differ.
+
+   **With a coordinator.** Any software that speaks descriptors, and several
+   that ship their own formats. The device reads Coldcard setup files, BSMS
+   round-two files, Sparrow and Specter JSON, and Bitcoin Core
+   `importdescriptors` arrays. Still the right choice when the other cosigners
+   are other vendors' hardware, or when you want a watching wallet anyway.
+
+   Building is not registering either way. What comes out is a descriptor, and
+   it still goes through the review in step 4.
+
+4. **Register the descriptor on every device.** This is the step people skip and
+   it is the one that matters. A registered descriptor is how a device knows
+   which outputs are change. Without it, an attacker's address in the change
+   position is indistinguishable from money coming back to you.
+
+   Registration refuses a quorum this device holds no key in. It will not let you
+   register a wallet you cannot sign for, because that produces something you can
+   receive into and never spend from.
+
+5. **Compare the checksum on all three screens.** The eight characters after the
+   `#` are a checksum over the whole descriptor. If they differ, one device has a
+   different wallet, and the addresses will differ in ways nothing else on the
+   screen reveals.
+
+### Spending
+
+A PSBT walks from device to device. There is no simultaneous ceremony and
+nothing needs the devices to be in the same room.
+
+1. A coordinator builds an unsigned PSBT.
+2. Device A reviews it and signs. Its screen says how many signatures are
+   present, how many are needed, and whether **its** signature was the last one.
+   For a 2-of-3 it will say the transaction is not finished.
+3. The partly-signed PSBT goes to device B, by QR or on a card.
+4. Device B reviews it. **Its review shows that one signature is already
+   present**, so you know before signing whether you are the last cosigner.
+5. Device B signs. Its signature is added to device A's, not substituted for it.
+   The screen now says the transaction is complete and offers the finished raw
+   transaction as well as the PSBT.
+6. Broadcast it with whatever you use for that.
+
+The third device is not needed and signing with it anyway is harmless. A 2-of-3
+carrying three signatures is still valid, and the device will say so.
+
+#### What each screen tells you, and why it matters
+
+The reason signature progress is on both the review and the result is that
+signing first and signing last are different acts. Signing first produces
+something that has to travel; signing last produces something spendable. The
+expensive mistake is a device implying you are finished when you are not,
+because then you stop carrying the transaction onward and believe the spend
+happened.
+
+For that reason a requirement the device cannot read is reported as **unknown
+and unmet**, never assumed to be satisfied.
+
+### Knowing which device to walk to next
+
+A 2-of-3 signed on one device is not finished, and the screen used to say so
+without saying which of the other two to pick up. On a shelf of identical
+Raspberry Pis that is the whole difficulty.
+
+After signing, the device names the cosigners still waited on, using the names
+you gave them. It works by tracing each signature back to a master fingerprint
+through the transaction's own derivation records, and comparing that against the
+fingerprints in the descriptor you registered.
+
+**A fingerprint is four bytes and is not proof.** It is the first four bytes of
+a hash of a public key, written into the descriptor by whoever assembled it, and
+two distinct keys can collide in it. It is good for telling three devices apart
+in a room, which is the question being asked, and it is a long way from
+cryptographic identification. This device's own position in a quorum is
+different: that one is established by re-deriving its key, and it is proof.
+
+Nothing about the names decides anything. Whether a transaction is finished is
+decided by counting signatures against the script's own threshold.
+
+A signature that cannot be traced is reported separately rather than added to
+the count. A taproot key-path signature names no key at all, so that is expected
+there; anywhere else it is worth asking who produced it.
+
+A device that has not registered the quorum says it cannot tell, rather than
+showing an empty list that would read as nobody else having to sign.
+
+### Receiving to the quorum, not to one device
+
+**A device holding a registered quorum has two different answers to "what is my
+address", and they are not interchangeable.** The quorum's address needs your
+threshold of devices to spend from. This device's own address needs only this
+device, which is exactly what the quorum was set up to prevent.
+
+Both are ordinary bech32 strings and neither looks different from the other.
+
+So Receive asks which one you want, and the quorum is the default. Choosing
+this device alone is allowed, says plainly that the money would be protected by
+one key rather than by the quorum, and is a thing you have to pick.
+
+Money sent to the single-signature address is not lost: this device can spend
+it, and your mnemonic recovers it. It is protected by one key instead of two,
+which is the whole difference you built a fleet for.
+
+**Check the address against the thing that produced it.** For a quorum address
+the device re-derives it from the registered descriptor, which is a different
+question from whether it derives from this device's own keys. A quorum address
+does not derive from one device by construction, so asking the wrong question
+answers no about something perfectly correct.
+
+### Back up the descriptor, not just the words
+
+**Your mnemonics are not enough to rebuild a quorum.** Holding all three seed
+phrases of a 2-of-3 does not let you reconstruct it: you also need the other
+keys, how many must sign, and the script type, and none of that is derivable
+from a seed phrase. The descriptor records it, and without the descriptor the
+money is behind a wallet nobody can describe.
+
+The device shows it under **Export** on a wallet screen, above the
+single-signature descriptor, labelled as the thing to keep. Keep it wherever you
+keep the words. It is not a secret: it holds no private key and cannot spend
+anything, and a copy in a filing cabinet is worth more than the copy nobody
+made.
+
+The single-signature descriptor on the same screen describes a wallet holding
+only this device's key. Backing that up does not back the quorum up.
+
+### Telling the devices apart
+
+**Name the other cosigners too.** On the quorum review screen every other key
+gets a field: call one "the attic Pi" and another "Dad's Coldcard", and the
+quorum stops being a list of extended keys nobody can tell apart. The names are
+sealed with the wallet, so they survive a reboot and a rename.
+
+They are yours and are never checked. A name says nothing about who controls
+that key: only the key does. The screen labels them as yours for that reason,
+and this device is never given a nickname, because it is identified by
+re-deriving its key, which is a stronger claim than a label.
+
+They are sealed rather than kept beside the file, and the reason is privacy
+rather than integrity. A list mapping extended keys to "Dad's Coldcard" and "the
+one at the office", sitting in plaintext next to an encrypted wallet, would tell
+somebody holding the card who the cosigners are and roughly where they live.
+
+**Name each device.** From the wallet picker, or **More** then **Name this
+device**. The name sits in the header of every screen including the lock screen,
+so it answers "which one am I holding" at the moment you pick one up, before any
+passphrase.
+
+This matters more than it sounds. Three devices holding one 2-of-3 hold the
+*same wallet*, so they show the same wallet name, the same colour and the same
+fingerprint. The cosigner position tells them apart only inside a quorum: a
+device with no registrations is anonymous, and a device in two quorums has two
+positions.
+
+The name is **not verified and never will be**. It lives in a plain file beside
+the wallets so it can be read before a passphrase, which is exactly when you
+want it, and that means anyone holding the card can edit it. Nothing on the
+device decides anything from it. It is a label on the outside of a box.
+
+It is deliberately not a "profile" that owns several wallets. Each wallet is
+sealed independently under its own passphrase, so one mistake costs one seed. A
+layer that opened several together would trade that away for tidiness.
+
+
+This is a practical problem and it deserves stating rather than assuming. Three
+identical Raspberry Pis in identical cases, all showing the same wallet name
+because they hold the same wallet, is a way to sign with the wrong key or to
+carry the wrong device somewhere.
+
+What actually distinguishes them:
+
+- **The cosigner number**, shown on the wallet screen once a quorum is
+  registered: `2 of 3, you are cosigner 2`. It is recomputed from the seed every
+  time rather than stored, so it is a statement about the keys actually loaded
+  rather than a label somebody typed. A device that cannot place itself in a
+  registered quorum says that instead of showing a number.
+- **The wallet name you chose**, which is per-device and should differ. Name them
+  by their role in the quorum, not by the wallet: `Cosigner A`, not
+  `Family Vault` on all three.
+- **The fingerprint**, shown after unlock. It is derived from the keys that just
+  loaded and is the one value on the device that cannot be faked by editing a
+  file.
+- **A physical label on the case.** Not a joke. The device cannot help you here
+  and a sticker can.
+
+### What the devices do NOT do for each other
+
+**They do not attest to each other.** Device A cannot tell you device B is
+running verified code. Each device shows its own manifest root hash at unlock,
+and comparing those is a manual act you have to perform. There is no protocol
+here and no plan for one: an attestation exchange between two devices you cannot
+independently trust adds ceremony rather than assurance.
+
+**They do not share a passphrase or a store.** Each device encrypts its own
+wallet under its own passphrase. Compromising one passphrase does not expose the
+others. This means three passphrases to remember, which is a real cost and is
+the intended one.
+
+**They do not agree on labels.** Labels are per-device until you move a BIP-329
+file between them. Nothing synchronises.
+
+**They do not know how many cosigners are on nullroute.** The descriptor names
+keys, not devices. Two of your three keys being on nullroutes and one on another
+vendor's device looks identical to the software.
+
+### Known gaps
+
+Stated because a page about running several devices that only described what
+works would be marketing.
+
+- **Multi-wallet PSBTs are not supported.** A single PSBT with inputs from two
+  wallets one device holds is phase 7. Today, one PSBT is signed against one
+  open wallet.
+- **Batch signing is not supported.** Several PSBTs from one card session, each
+  individually reviewed, is phase 7.
+- **Taproot multisig can be registered and its addresses derived, but message
+  signing for taproot is not implemented.** See `docs/THREAT-MODEL.md` for the
+  full list of what is and is not built.
+- **There is no device-to-device transport.** Everything goes through a
+  coordinator or through you carrying a card or pointing a camera. That is a
+  deliberate consequence of the air gap, not an oversight.
 
 ## Everything else
 
@@ -469,7 +736,75 @@ Anything the device produces is shown as a QR code and, underneath a
 disclosure, as text you can copy onto a card. Large payloads are split across
 several codes automatically.
 
-See [AIR-GAP.md](AIR-GAP.md) for what the gap does and does not stop.
+See [what the air gap does and does not
+do](THREAT-MODEL.md#what-the-air-gap-does-and-does-not-do) for what it stops.
+
+### The two transports
+
+Two, and you can use either.
+
+**QR codes.** The device draws them on screen and reads them with a camera. This
+is the transport that needs no shared hardware, which matters because a USB
+stick or an SD card that has been in both machines is a channel in its own right.
+
+**SD card.** Files, written and read as plain text. Slower, needs a card you are
+willing to move between machines, and works on a device with no camera.
+
+Neither is more trusted than the other. Both produce bytes that go to the same
+parsers and the same review screens.
+
+A build with no camera loses nothing except convenience: the device still
+displays codes for anything leaving it, and transactions arrive on an SD card as
+base64 text. If your threat model includes the camera itself, that is the
+configuration to use.
+
+### Codes too large for one frame
+
+A single QR code holds a few kilobytes at a density a camera can read. An
+extended public key or an address fits in one. A signed transaction usually does
+not, and is split using **BBQr**, the convention the Bitcoin air-gap ecosystem
+already uses, and shown as an animated sequence.
+
+Frames can arrive in any order and can be missed and picked up on the next pass.
+The scanner shows which frames it is still waiting for, by number, so you can
+tell whether to keep waiting or start again.
+
+Three details are deliberate:
+
+**Each frame decodes on its own.** The split happens on the payload bytes, not
+on the encoded text, so a receiver can tell you that frame 5 was misread instead
+of failing at the end with nothing to say.
+
+**The device never writes compressed frames.** BBQr allows a compressed encoding
+and this device reads it, because other wallets write it by default. It does not
+produce it, because compressing would put a compressor in the path that produces
+signed transactions, and the only thing bought is a few fewer frames.
+
+**Frames from two transfers are never merged.** If a second sequence comes into
+shot, or you restart an export while a scan is running, the scanner stops and
+says so. Both sequences produce structurally valid frames, and assembling them
+together would give you a transaction that parses, looks plausible, and is not
+the one either screen was showing.
+
+### The decoder is the one dependency that reads
+
+Drawing a QR code is written in this repository, covered by `MANIFEST.lock`, and
+checked against an independent decoder at every version and error correction
+level. If you verified the manifest hash, you verified the code that drew the
+square you are photographing.
+
+Reading a QR code from a camera is not written here. It uses `zxing-wasm`, a
+long-established decoder, because binarisation under uneven light, perspective
+correction and error correction over a partly misread image is a large amount of
+subtle work whose failure mode is accepting something other than what was on the
+other screen.
+
+That asymmetry is intentional. It is also constrained: the decoder's WebAssembly
+is served from the device itself and never fetched from the internet, and the
+code refuses to load it from any other origin. Nothing the decoder returns is
+trusted. Its output is a candidate payload that goes to the ordinary parser and
+the ordinary review screen, and the file type in a BBQr header tells the device
+what to try first, never what to accept.
 
 ## What the device refuses
 
