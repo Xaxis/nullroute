@@ -1,6 +1,7 @@
 import { type ReactElement, type ReactNode, useCallback, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
+import { Choice } from '../components/Choice.js'
 import { TextKeyboard } from '../components/TextKeyboard.js'
 import { QrDisplay } from '../components/QrDisplay.js'
 
@@ -77,7 +78,18 @@ export interface BackupScreenProps {
 type Mode = 'choose' | 'create' | 'restore'
 
 export function BackupScreen(props: BackupScreenProps): ReactElement {
-  const { onCreate, onDescribe, onRestore, initialText, onScan, onBack, steps, identity, banner, nav } = props
+  const {
+    onCreate,
+    onDescribe,
+    onRestore,
+    initialText,
+    onScan,
+    onBack,
+    steps,
+    identity,
+    banner,
+    nav,
+  } = props
 
   const [mode, setMode] = useState<Mode>('choose')
   const [passphrase, setPassphrase] = useState(initialText ?? '')
@@ -213,22 +225,32 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
           </Button>
         }
       >
-        <Button
-          onClick={() => {
+        {/* DESTINATIONS, not buttons. These were two identical full width
+            buttons carrying two words each, which is the shape this device
+            uses for "do the thing on this screen" and not for "go somewhere".
+            Choice is what More, Start and the wallet picker already use, and
+            it has room for the line saying what each one does.
+
+            One of these erases nothing and the other overwrites what is on the
+            device. Rendered identically, that difference was invisible. */}
+        <Choice
+          title="Write a backup"
+          description="Take what is on this device and put it somewhere else. Nothing here changes."
+          selected={false}
+          onSelect={() => {
             setMode('create')
           }}
           testId="backup-choose-create"
-        >
-          Write a backup
-        </Button>
-        <Button
-          onClick={() => {
+        />
+        <Choice
+          title="Restore from a backup"
+          description="Put a backup back onto this device. What it carries replaces what is here."
+          selected={false}
+          onSelect={() => {
             setMode('restore')
           }}
           testId="backup-choose-restore"
-        >
-          Restore from a backup
-        </Button>
+        />
 
         <p className="nr-note">
           A backup carries your registered cosigners, your network and your labels: the things a

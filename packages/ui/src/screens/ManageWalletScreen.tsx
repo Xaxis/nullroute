@@ -1,6 +1,7 @@
 import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
+import { Choice } from '../components/Choice.js'
 import { TextKeyboard } from '../components/TextKeyboard.js'
 
 /**
@@ -476,19 +477,27 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
         </div>
       )}
 
-      <Button
-        onClick={() => {
+      {/* DESTINATIONS, not buttons, the same way More and Start render theirs.
+          Two identical full width buttons said nothing about the difference
+          between changing a label and changing the thing that decrypts the
+          seed, and this screen's third control erases the wallet. */}
+      <Choice
+        title="Name and colour"
+        description="What this wallet is called on this device, and the dot beside it."
+        selected={false}
+        onSelect={() => {
           setMode('rename')
           setError(null)
         }}
         testId="manage-choose-rename"
-      >
-        Name and colour
-      </Button>
+      />
 
       {onChangePassphrase !== undefined && (
-        <Button
-          onClick={() => {
+        <Choice
+          title="Change the passphrase"
+          description="What decrypts this wallet on this device. The mnemonic behind it does not change."
+          selected={false}
+          onSelect={() => {
             setMode('passphrase')
             setPassphrase('')
             setNextPassphrase('')
@@ -497,9 +506,7 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
             setError(null)
           }}
           testId="manage-choose-passphrase"
-        >
-          Change the passphrase
-        </Button>
+        />
       )}
 
       {/* Separated from the button above by more than a gap. The two actions
