@@ -914,11 +914,15 @@ body {
   gap: 0.4rem;
 }
 
+/* Read, never tapped, so the 44px rule this stylesheet holds everywhere else
+   does not apply and should not: twenty four of these plus the sentence about
+   not photographing them is more than 480px of panel, and the sentence is the
+   part that was losing. */
 .nr-word {
   display: flex;
   align-items: baseline;
   gap: 0.5rem;
-  padding: 0.5rem 0.625rem;
+  padding: 0.3125rem 0.625rem;
   background-color: var(--color-surface-2);
   border: 1px solid var(--color-line);
   border-radius: 5px;

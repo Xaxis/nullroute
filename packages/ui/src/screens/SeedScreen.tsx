@@ -75,16 +75,8 @@ export interface SeedScreenProps {
 const CHECKED_WORDS = 3
 
 export function SeedScreen(props: SeedScreenProps): ReactElement {
-  const {
-    words,
-    fingerprint,
-    onCheckWord,
-    onCheckPositions,
-    onConfirm,
-    steps,
-    identity,
-    banner,
-  } = props
+  const { words, fingerprint, onCheckWord, onCheckPositions, onConfirm, steps, identity, banner } =
+    props
   const [acknowledged, setAcknowledged] = useState(false)
   const [checking, setChecking] = useState(false)
   const [asked, setAsked] = useState<readonly number[]>([])
@@ -266,27 +258,37 @@ export function SeedScreen(props: SeedScreenProps): ReactElement {
         ))}
       </div>
 
-      <div className="nr-card nr-card--tight">
-        <div className="nr-row">
-          <span className="nr-label">Fingerprint</span>
-          <span className="nr-value nr-mono" data-testid="seed-fingerprint">
-            {fingerprint}
+      {/* BOTH ON SCREEN WITH THE WORDS, which they were not.
+
+          Stacked under a grid of twenty four words on a 480px panel, with the
+          network banner a test device always carries, "Paper only" was entirely
+          below the fold. That is the most consequential sentence in this
+          product, on the one screen that displays a seed, and reaching it
+          needed a scroll nobody has a reason to make: the words are already
+          all visible, so the screen looks finished.
+
+          Side by side they both fit under the grid with room to spare. */}
+      <div className="nr-split nr-split--even">
+        <div className="nr-banner nr-banner--testnet" data-testid="seed-paper-only">
+          <strong>Paper only</strong>
+          <span>
+            Do not photograph this screen and do not type these words anywhere. Anyone holding
+            them has your money. There is no recovery: the device will not show them again.
           </span>
         </div>
-        <p className="nr-hint">
-          Write this down too. If you use a passphrase, a mistyped one produces a valid but
-          different and empty wallet with no error, and this number is the only thing that will tell
-          you.
-        </p>
-      </div>
 
-      <div className="nr-banner nr-banner--testnet">
-        <strong>Paper only</strong>
-        <span>
-          Do not photograph this screen, and do not type these words into anything. Anyone with
-          these words has your money. There is no reset and no recovery: the device will not show
-          them again.
-        </span>
+        <div className="nr-card nr-card--tight">
+          <div className="nr-row">
+            <span className="nr-label">Fingerprint</span>
+            <span className="nr-value nr-mono" data-testid="seed-fingerprint">
+              {fingerprint}
+            </span>
+          </div>
+          <p className="nr-hint">
+            Write this down too. A mistyped passphrase opens a different, empty wallet with no
+            error, and this is the only thing that says so.
+          </p>
+        </div>
       </div>
     </Screen>
   )
