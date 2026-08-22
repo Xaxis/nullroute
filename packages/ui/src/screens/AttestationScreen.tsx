@@ -90,84 +90,103 @@ export function AttestationScreen(props: AttestationScreenProps): ReactElement {
         <div className="nr-banner nr-banner--danger" data-testid="attestation-failed">
           <strong>This device is open and should not be</strong>
           <span>
-            Verification is failing now and the wallet is loaded anyway. Lock it, take the card
-            out, and do not sign anything. {failing.map((check) => check.detail).join(' ')}
+            Verification is failing now and the wallet is loaded anyway. Lock it, take the card out,
+            and do not sign anything. {failing.map((check) => check.detail).join(' ')}
           </span>
         </div>
       )}
 
-      <div className="nr-attest" data-testid="attestation-root">
-        <div className="nr-attest__label">Manifest root</div>
-        <Hash
-          value={attestation.rootHash}
-          expanded={expanded}
-          onToggle={onToggleExpanded}
-          testId="attestation-hash"
-        />
-        <div className="nr-attest__hint">
-          {expanded ? 'Tap to shorten.' : 'Tap to show all 64 characters.'}
-        </div>
-      </div>
+      {/* THE HASH AND THE CHECKS SIDE BY SIDE.
 
-      {/* Every check by name, which the lock screen does not have room for. It
+          This screen stacked six blocks: 836px of content in a 333px window,
+          on the screen whose whole job is answering "is this device running
+          what it says it is". All five check rows were below the fold, so the
+          answer was the one thing not on screen.
+
+          The hash is what somebody compares and the table is what they read,
+          and neither is an aside to the other, so they share the row. The table
+          scrolls inside itself rather than taking the hash with it. */}
+      <div className="nr-split nr-split--even nr-fill" data-testid="attestation-split">
+        {/* Scrolls too, because the standing caveats moved in here. They are
+            about the hash directly above them and they were below the split,
+            where they took 100px off a row that had 238 to give. */}
+        <div className="nr-split__col nr-fill">
+          <div className="nr-attest" data-testid="attestation-root">
+            <div className="nr-attest__label">Manifest root</div>
+            <Hash
+              value={attestation.rootHash}
+              expanded={expanded}
+              onToggle={onToggleExpanded}
+              testId="attestation-hash"
+            />
+            <div className="nr-attest__hint">
+              {expanded ? 'Tap to shorten.' : 'Tap to show all 64 characters.'}
+            </div>
+          </div>
+
+          <div className="nr-card nr-card--tight">
+            <div className="nr-row">
+              <span className="nr-label">Specs</span>
+              <span className="nr-value">{attestation.specCount}</span>
+            </div>
+            <div className="nr-row">
+              <span className="nr-label">Invariants</span>
+              <span className="nr-value">{attestation.invariantCount}</span>
+            </div>
+            <div className="nr-row">
+              <span className="nr-label">Build</span>
+              <span className="nr-value" data-testid="attestation-tier">
+                {attestation.tier === 'signer' ? 'signer only, no wallet code' : attestation.tier}
+              </span>
+            </div>
+          </div>
+
+          {/* The same sentence the lock screen carries, deliberately word for word.
+              Two different phrasings of one limit would let a reader believe the
+              weaker one. */}
+          <p className="nr-note" data-testid="attestation-caveat">
+            Compare this hash against the published release. These values are reported by the
+            software you are looking at: they catch an accident or a crude substitution, not an
+            attacker who replaced the code that draws them.
+          </p>
+
+          <p className="nr-hint">
+            Check it yourself with <span className="nr-mono">sha256sum MANIFEST.lock</span> on the
+            source you built from. Three numbers should agree: that one, this one, and the release.
+          </p>
+        </div>
+
+        {/* Every check by name, which the lock screen does not have room for. It
           spends its space on the hash, and by the time somebody is here they
           are asking a more detailed question. */}
-      <table className="nr-table nr-table--dense" data-testid="attestation-checks">
-        <thead>
-          <tr>
-            <th>Check</th>
-            <th>Result</th>
-          </tr>
-        </thead>
-        <tbody>
-          {attestation.checks.map((check) => (
-            <tr key={check.name}>
-              <td className="nr-mono">{check.name}</td>
-              <td>
-                <span
-                  className={`nr-status ${
-                    PASSING.has(check.status) ? 'nr-status--ok' : 'nr-status--fail'
-                  }`}
-                >
-                  {check.status}
-                </span>
-                {check.detail.length > 0 && <div className="nr-hint">{check.detail}</div>}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      <div className="nr-card nr-card--tight">
-        <div className="nr-row">
-          <span className="nr-label">Specs</span>
-          <span className="nr-value">{attestation.specCount}</span>
-        </div>
-        <div className="nr-row">
-          <span className="nr-label">Invariants</span>
-          <span className="nr-value">{attestation.invariantCount}</span>
-        </div>
-        <div className="nr-row">
-          <span className="nr-label">Build</span>
-          <span className="nr-value" data-testid="attestation-tier">
-            {attestation.tier === 'signer' ? 'signer only, no wallet code' : attestation.tier}
-          </span>
+        <div className="nr-split__col nr-fill">
+          <table className="nr-table nr-table--dense" data-testid="attestation-checks">
+            <thead className="nr-table__stick">
+              <tr>
+                <th>Check</th>
+                <th>Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              {attestation.checks.map((check) => (
+                <tr key={check.name}>
+                  <td className="nr-mono">{check.name}</td>
+                  <td>
+                    <span
+                      className={`nr-status ${
+                        PASSING.has(check.status) ? 'nr-status--ok' : 'nr-status--fail'
+                      }`}
+                    >
+                      {check.status}
+                    </span>
+                    {check.detail.length > 0 && <div className="nr-hint">{check.detail}</div>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
-
-      {/* The same sentence the lock screen carries, deliberately word for word.
-          Two different phrasings of one limit would let a reader believe the
-          weaker one. */}
-      <p className="nr-note" data-testid="attestation-caveat">
-        Compare this hash against the published release. These values are reported by the software
-        you are looking at: they catch an accident or a crude substitution, not an attacker who
-        replaced the code that draws them.
-      </p>
-
-      <p className="nr-hint">
-        Check it yourself with <span className="nr-mono">sha256sum MANIFEST.lock</span> on the
-        source you built from. Three numbers should agree: that one, this one, and the release.
-      </p>
     </Screen>
   )
 }

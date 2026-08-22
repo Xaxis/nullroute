@@ -1992,6 +1992,13 @@ body {
   align-items: start;
 }
 
+/* Two halves. For two things of comparable importance: the hash somebody
+   compares and the table of checks they read, neither of which is an aside to
+   the other. */
+.nr-split--even {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
 /* A main column and something fixed beside it. Sized in rem rather than as a
    fraction because the thing in the second column has a natural size, and
    giving it a share of 800px makes it wrong at both ends.

@@ -68,8 +68,8 @@ export function FinishScreen(props: FinishScreenProps): ReactElement {
     >
       {outstanding.length === 0 ? (
         <p className="nr-note" data-testid="finish-complete">
-          Nothing else is needed. That is worth saying out loud on a device where most things have
-          a next step attached.
+          Nothing else is needed. That is worth saying out loud on a device where most things have a
+          next step attached.
         </p>
       ) : (
         <>
@@ -84,24 +84,48 @@ export function FinishScreen(props: FinishScreenProps): ReactElement {
             </span>
           </div>
 
-          <div className="nr-card nr-card--tight">
-            <ol className="nr-list nr-list--numbered" data-testid="finish-steps">
-              {outstanding.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ol>
+          {/* WHAT IS LEFT AND WHAT IS DONE, SIDE BY SIDE.
+
+              Two numbered lists rendered identically, one above the other, on a
+              screen somebody reaches at the end of a flow and reads for five
+              seconds. Stacked they ran 111px past the bottom of the panel, and
+              the one below the fold was the list of things still outstanding,
+              which is the only reason this screen exists.
+
+              Left is what is not finished, because that is what somebody has to
+              act on. Right is what is. */}
+          <div className="nr-split nr-split--even">
+            <div className="nr-card nr-card--tight">
+              <span className="nr-card__label">Still outstanding</span>
+              <ol className="nr-list nr-list--numbered" data-testid="finish-steps">
+                {outstanding.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ol>
+            </div>
+
+            <div className="nr-card nr-card--tight" data-testid="finish-recap">
+              <span className="nr-card__label">What just happened</span>
+              <ol className="nr-list nr-list--numbered">
+                {journey.steps.map((step, index) => (
+                  <li key={`${step.stage}-${String(index)}`}>{step.label}</li>
+                ))}
+              </ol>
+            </div>
           </div>
         </>
       )}
 
-      <div className="nr-card nr-card--tight" data-testid="finish-recap">
-        <span className="nr-card__label">What just happened</span>
-        <ol className="nr-list nr-list--numbered">
-          {journey.steps.map((step, index) => (
-            <li key={`${step.stage}-${String(index)}`}>{step.label}</li>
-          ))}
-        </ol>
-      </div>
+      {outstanding.length === 0 && (
+        <div className="nr-card nr-card--tight" data-testid="finish-recap">
+          <span className="nr-card__label">What just happened</span>
+          <ol className="nr-list nr-list--numbered">
+            {journey.steps.map((step, index) => (
+              <li key={`${step.stage}-${String(index)}`}>{step.label}</li>
+            ))}
+          </ol>
+        </div>
+      )}
     </Screen>
   )
 }

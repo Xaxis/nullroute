@@ -195,41 +195,47 @@ export function ChildSeedScreen(props: ChildSeedScreenProps): ReactElement {
         </>
       }
     >
-      <div className="nr-tabs">
-        {APPLICATIONS.map((app) => (
-          <button
-            key={app.id}
-            type="button"
-            className="nr-tab"
-            aria-pressed={application === app.id}
-            onClick={() => {
-              setApplication(app.id)
-              // Each application allows different sizes, and carrying one over
-              // would send the daemon a value it refuses by name.
-              setSize(SIZES[app.id][0] ?? 12)
-            }}
-            data-testid={`child-app-${app.id}`}
-          >
-            {app.label}
-          </button>
-        ))}
-      </div>
+      {/* Both pickers on one row. They ask what kind of child to derive and how
+          long it should be, which is one question in two parts, and stacked
+          they put the index and the paragraph explaining it past the bottom of
+          the panel. */}
+      <div className="nr-beside">
+        <div className="nr-tabs">
+          {APPLICATIONS.map((app) => (
+            <button
+              key={app.id}
+              type="button"
+              className="nr-tab"
+              aria-pressed={application === app.id}
+              onClick={() => {
+                setApplication(app.id)
+                // Each application allows different sizes, and carrying one over
+                // would send the daemon a value it refuses by name.
+                setSize(SIZES[app.id][0] ?? 12)
+              }}
+              data-testid={`child-app-${app.id}`}
+            >
+              {app.label}
+            </button>
+          ))}
+        </div>
 
-      <div className="nr-tabs" data-testid="child-sizes">
-        {SIZES[application].map((option) => (
-          <button
-            key={option}
-            type="button"
-            className="nr-tab"
-            aria-pressed={size === option}
-            onClick={() => {
-              setSize(option)
-            }}
-            data-testid={`child-size-${String(option)}`}
-          >
-            {option} {unit}
-          </button>
-        ))}
+        <div className="nr-tabs" data-testid="child-sizes">
+          {SIZES[application].map((option) => (
+            <button
+              key={option}
+              type="button"
+              className="nr-tab"
+              aria-pressed={size === option}
+              onClick={() => {
+                setSize(option)
+              }}
+              data-testid={`child-size-${String(option)}`}
+            >
+              {option} {unit}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="nr-card nr-card--tight">
