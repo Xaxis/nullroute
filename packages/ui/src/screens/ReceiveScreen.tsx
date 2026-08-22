@@ -60,8 +60,7 @@ export interface ReceiveScreenProps {
   readonly quorums?: readonly ReceiveSource[]
   /** Derive from one quorum, when a quorum is chosen. */
   readonly onQuorumAddress?:
-    | ((descriptor: string, index: number) => Promise<ReceiveAddress>)
-    | undefined
+    ((descriptor: string, index: number) => Promise<ReceiveAddress>) | undefined
   readonly onAddress: (index: number) => Promise<ReceiveAddress>
   /**
    * Confirms the shown address really derives from this device's keys.
@@ -168,7 +167,7 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
          open wallet on every screen now, so this was the name twice, two
          hundred pixels apart, where the subtitle's job is saying what THIS
          screen is for. */
-      subtitle="An address to give somebody, one at a time." 
+      subtitle="An address to give somebody, one at a time."
       banner={banner}
       nav={nav}
       identity={identity}
@@ -180,6 +179,46 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
             Back
           </Button>
           <div className="nr-spacer" />
+          {/* IN THE BAR, LIKE EVERY OTHER CHECK ON THE DEVICE.
+
+              This was a full width button in the body carrying its whole
+              sentence as a label, so the same act had two treatments: the
+              screen that checks somebody else's proof puts "Check it" in the
+              action bar, and this one put "Check this address is really mine"
+              in the middle of the page. The sentence is not lost, it is the
+              subtitle of the note the check produces.
+
+              It also bought back 56px on the path where this device is in a
+              quorum and somebody picks the single-signature address anyway,
+              which is the path carrying two warnings and a QR code. */}
+          {verified === null && shown !== null && (
+            <Button
+              disabled={busy}
+              onClick={() => {
+                void (async () => {
+                  setBusy(true)
+                  try {
+                    // The right question for the address actually on screen.
+                    // Asking whether a quorum address derives from this device
+                    // alone answers no, correctly, about something that is not
+                    // wrong, and the screen would shout about it.
+                    const verdict =
+                      source === null || onVerifyQuorum === undefined
+                        ? await onVerify(shown.address)
+                        : await onVerifyQuorum(source.descriptor, shown.address)
+                    setVerified(verdict.found)
+                  } catch (err) {
+                    setError((err as Error).message)
+                  } finally {
+                    setBusy(false)
+                  }
+                })()
+              }}
+              testId="receive-verify"
+            >
+              {busy ? 'Checking' : 'Check it'}
+            </Button>
+          )}
           <Button
             disabled={index === 0}
             onClick={() => {
@@ -217,7 +256,11 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
           Only shown when there is a choice: a device in no quorum has one
           answer and a tab bar with one tab is furniture. */}
       {quorums.length > 0 && (
-        <>
+        /* The tabs and the sentence about what they picked, on one line. The
+           sentence describes the chosen source, so it belongs beside the
+           control that chose it rather than on a row of its own, which is
+           where it was costing the QR code below it 41px of the panel. */
+        <div className="nr-beside">
           <div className="nr-tabs" data-testid="receive-sources">
             {quorums.map((quorum) => (
               <button
@@ -263,84 +306,75 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
               {source.threshold} of the devices, and this is one of them.
             </p>
           )}
-        </>
+        </div>
       )}
 
       {shown !== null && (
         <>
-          <div className="nr-receive" data-testid="receive-address">
-            <span className="nr-receive__value">{chunkAddress(shown.address)}</span>
-            <span className="nr-receive__path nr-mono" data-testid="receive-path">
-              {shown.path}
-            </span>
-          </div>
+          {/* THE ADDRESS AND ITS CODE IN ONE ROW, AND THE WARNING UNDER THEM.
 
-          {/* The whole reason the screen exists, and not behind a disclosure.
-              Above the QR code, because the characters are what protect the
-              money and the code is a convenience: on a 480px panel a full size
-              QR put this warning below the fold, which is precisely where it
-              stops working. */}
-          <div className="nr-banner nr-banner--testnet" data-testid="receive-warning">
-            <strong>Read it from this screen, not from the one you paste it into</strong>
-            <span>
-              This device has no network and cannot protect the address on its way to whoever is
-              paying you. Software that swaps an address after it is copied is the ordinary way
-              this money is lost, and every screen involved looks correct. Compare the characters
-              above against what the payer is about to send to.
-            </span>
-          </div>
+              These used to stack, on the reasoning that the characters are what
+              protect the money and the code is a convenience, so the warning
+              took the space above the fold and the code took what was left.
+              Measured on the built gallery, what was left was not enough: 44px
+              of a 144px code sat under the action bar, on the one screen whose
+              job is handing somebody something to point a camera at. A code
+              that is three quarters visible looks scannable and is not.
 
-          <div className="nr-qr--small">
-            <QrDisplay text={shown.address} fileType="unicode" testId="receive-qr" />
-          </div>
+              It was a real trade and it was between the wrong two things. The
+              panel is 800px wide and this is a column down the middle of it.
 
-          {verified === null ? (
-            <Button
-              disabled={busy}
-              onClick={() => {
-                void (async () => {
-                  setBusy(true)
-                  try {
-                    // The right question for the address actually on screen.
-                    // Asking whether a quorum address derives from this device
-                    // alone answers no, correctly, about something that is not
-                    // wrong, and the screen would shout about it.
-                    const verdict =
-                      source === null || onVerifyQuorum === undefined
-                        ? await onVerify(shown.address)
-                        : await onVerifyQuorum(source.descriptor, shown.address)
-                    setVerified(verdict.found)
-                  } catch (err) {
-                    setError((err as Error).message)
-                  } finally {
-                    setBusy(false)
-                  }
-                })()
-              }}
-              testId="receive-verify"
-            >
-              {busy
-                ? 'Checking'
-                : source === null
-                  ? 'Check this address is really mine'
-                  : 'Check this address is really the quorum’s'}
-            </Button>
-          ) : verified === true ? (
-            <p className="nr-note" data-testid="receive-verified">
-              {source === null
-                ? 'Re-derived from this device’s keys and it matches. That proves the address on this screen is yours. It proves nothing about the address on any other screen.'
-                : `Re-derived from the ${String(source.threshold)} of ${String(source.total)} descriptor and it matches. That proves the address on this screen belongs to the quorum. It proves nothing about the address on any other screen.`}
-            </p>
-          ) : (
-            <div className="nr-banner nr-banner--danger" data-testid="receive-unverified">
-              <strong>This device could not find that address</strong>
-              <span>
-                It was shown by this screen and does not re-derive from{' '}
-                {source === null ? 'this wallet' : 'the registered descriptor'}. Do not use it.
-                Something is wrong with this device or with what it just displayed.
-              </span>
+              The address is in the same row as the code because they are one
+              thing in two forms, and on the path where this device is in a
+              quorum and somebody picks the single-signature address anyway,
+              that row is what buys the second warning its room. */}
+          <div className="nr-split nr-split--aside" data-testid="receive-split">
+            <div className="nr-split__col">
+              <div className="nr-receive" data-testid="receive-address">
+                <span className="nr-receive__value">{chunkAddress(shown.address)}</span>
+                <span className="nr-receive__path nr-mono" data-testid="receive-path">
+                  {shown.path}
+                </span>
+              </div>
+
+              <div className="nr-banner nr-banner--testnet" data-testid="receive-warning">
+                <strong>Read it from this screen, not from the one you paste it into</strong>
+                <span>
+                  This device has no network and cannot protect the address on its way to whoever is
+                  paying you. Software that swaps an address after it is copied is the ordinary way
+                  this money is lost, and every screen involved looks correct. Compare the
+                  characters above against what the payer is about to send to.
+                </span>
+              </div>
+
+              {verified === true ? (
+                <p className="nr-note" data-testid="receive-verified">
+                  {source === null
+                    ? 'Re-derived from this device\u2019s keys and it matches. That proves the address on this screen is yours. It proves nothing about the address on any other screen.'
+                    : `Re-derived from the ${String(source.threshold)} of ${String(source.total)} descriptor and it matches. That proves the address on this screen belongs to the quorum. It proves nothing about the address on any other screen.`}
+                </p>
+              ) : verified === false ? (
+                <div className="nr-banner nr-banner--danger" data-testid="receive-unverified">
+                  <strong>This device could not find that address</strong>
+                  <span>
+                    It was shown by this screen and does not re-derive from{' '}
+                    {source === null ? 'this wallet' : 'the registered descriptor'}. Do not use it.
+                    Something is wrong with this device or with what it just displayed.
+                  </span>
+                </div>
+              ) : null}
             </div>
-          )}
+
+            {/* The right column, and last in the DOM on purpose. A screen
+                reader reaches the address, then the warning about reading it
+                off this panel, and only then the code, which is the order
+                somebody should meet them in. Sighted users see the code
+                immediately because it is the only white rectangle on a dark
+                screen. */}
+            <div className="nr-qr--small">
+              <QrDisplay text={shown.address} fileType="unicode" testId="receive-qr" />
+            </div>
+          </div>
         </>
       )}
     </Screen>

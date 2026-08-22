@@ -70,6 +70,25 @@ const HEIGHT = 480
 const MIN_TARGET = 44
 
 /**
+ * The tallest the header may be, in CSS pixels.
+ *
+ * The header is a system rather than a per-screen decision: brand, title,
+ * identity, menu, in that order, on all thirty six states. A header that is 74px
+ * on most screens and 94px on eight of them is not that system, it is that
+ * system with eight exceptions, and the exceptions were not chosen. They were
+ * subtitles four characters too long for the title column, which wrapped to a
+ * second line and took the whole header with them.
+ *
+ * That costs the body 20px on the screens least able to spare it, and it costs
+ * the interface something worse: the title moves between screens, so the one
+ * fixed point on a panel with no browser chrome is not fixed.
+ *
+ * 78 rather than 74, so the floor is set by the type and not by this number.
+ * A subtitle that needs two lines is a subtitle to shorten.
+ */
+const MAX_HEADER = 78
+
+/**
  * The gap two adjacent controls need, in CSS pixels.
  *
  * Targets that meet the size rule and touch each other still produce mis-taps,
@@ -124,6 +143,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const MEASURE = `(() => {
   const MIN_TARGET = ${MIN_TARGET}
   const MIN_GAP = ${MIN_GAP}
+  const MAX_HEADER = ${MAX_HEADER}
   const de = document.documentElement
   const vw = de.clientWidth
   const vh = de.clientHeight
@@ -134,6 +154,19 @@ const MEASURE = `(() => {
       kind: 'sideways',
       detail: 'the document is ' + de.scrollWidth + 'px wide in a ' + vw + 'px panel',
     })
+  }
+
+  const head = document.querySelector('.nr-screen__head')
+  if (head !== null) {
+    const hr = head.getBoundingClientRect()
+    if (hr.height > MAX_HEADER) {
+      const sub = document.querySelector('.nr-screen__subtitle')
+      problems.push({
+        kind: 'header-too-tall',
+        detail: 'the header is ' + Math.round(hr.height) + 'px and every other screen is 74' +
+          (sub === null ? '' : ', because this subtitle wraps: "' + sub.textContent.trim() + '"'),
+      })
+    }
   }
 
   const bar = document.querySelector('.nr-screen__actions')
@@ -414,6 +447,84 @@ const SCROLL_TO_END = `(() => {
   return true
 })()`
 
+/**
+ * The on-screen keyboard, before anything is scrolled.
+ *
+ * This device has no other input device. Everything else on a screen may sit
+ * below the fold and be scrolled to, which is why MEASURE runs after
+ * SCROLL_TO_END, but a keyboard cannot: somebody typing is looking at the keys,
+ * and a keyboard whose bottom row is off the panel is one where the keys move
+ * under the finger between one character and the next.
+ *
+ * It found the unlock gate, which is the first screen anybody touches on a
+ * provisioned device, with Space and Back 242px past the bottom of the panel.
+ * The grid was nine columns wide on a 760px row, spending width it had on
+ * height it did not.
+ *
+ * Measured against the action bar rather than the viewport: the bar is opaque
+ * and fixed, so a key beneath it is as gone as one below the screen edge.
+ */
+const KEYBOARD = `(() => {
+  const bar = document.querySelector('.nr-screen__actions')
+  const limit = bar === null ? document.documentElement.clientHeight : bar.getBoundingClientRect().top
+  const problems = []
+
+  const kb = document.querySelector('.nr-kb__keys')
+  if (kb !== null) {
+    const r = kb.getBoundingClientRect()
+    if (r.bottom > limit + 1) {
+      problems.push({
+        kind: 'keyboard-below-the-fold',
+        detail: 'the keys span ' + Math.round(r.top) + '..' + Math.round(r.bottom) +
+          ' and the action bar starts at ' + Math.round(limit) +
+          ', so ' + Math.round(r.bottom - limit) + 'px of keyboard needs scrolling to',
+      })
+    }
+  }
+
+  /*
+   * A QR code, whole.
+   *
+   * The same rule as the keyboard and for a sharper reason. A code three
+   * quarters on screen looks scannable: it is square, it has its quiet zone on
+   * three sides, and nothing about it says the bottom rows are missing. The
+   * user points a phone at it and gets nothing, and the thing they conclude is
+   * that the camera is bad or the light is wrong, because the screen looks
+   * right.
+   *
+   * This is also the whole outbound half of the air gap. Everything this device
+   * hands back leaves through one of these.
+   */
+  for (const el of document.querySelectorAll('.nr-qr__code')) {
+    const r = el.getBoundingClientRect()
+    if (r.width === 0 && r.height === 0) continue
+    if (r.bottom <= limit + 1) continue
+    /*
+     * Inside a region that declares itself scrollable is the one exception,
+     * and it is a declaration in the markup rather than a list of screen names
+     * here. A class of nr-fill means "this is a reference page you scroll",
+     * which is true of the export tab: the quorum descriptor comes first on
+     * that screen for a reason that has nothing to do with layout, and it is
+     * 250px on its own.
+     *
+     * The exception is narrow on purpose. Everywhere else the code has to be
+     * on the screen when the screen arrives, which is what put it beside the
+     * text on receive, on the signed transaction, and on the export itself
+     * rather than under it.
+     */
+    if (el.closest('.nr-fill') !== null) continue
+    problems.push({
+      kind: 'qr-below-the-fold',
+      detail: 'the code spans ' + Math.round(r.top) + '..' + Math.round(r.bottom) +
+        ' and the action bar starts at ' + Math.round(limit) +
+        ', so ' + Math.round(r.bottom - limit) + 'px of it is under the bar, which looks' +
+        ' like a scannable code and is not',
+    })
+  }
+
+  return JSON.stringify({ problems: problems })
+})()`
+
 async function cdp(ws, method, params, state) {
   const id = (state.seq += 1)
   return new Promise((resolve, reject) => {
@@ -546,6 +657,15 @@ async function main() {
       continue
     }
 
+    // BEFORE the scroll, deliberately. Everything else here asks what the user
+    // can reach; this one asks what they can see while typing.
+    const keys = await cdp(
+      page,
+      'Runtime.evaluate',
+      { expression: KEYBOARD, returnByValue: true },
+      state
+    )
+
     await cdp(page, 'Runtime.evaluate', { expression: SCROLL_TO_END }, state)
     await sleep(150)
 
@@ -555,7 +675,10 @@ async function main() {
       { expression: MEASURE, returnByValue: true },
       state
     )
-    const { problems } = JSON.parse(result.value)
+    const problems = [
+      ...JSON.parse(keys.result.value).problems,
+      ...JSON.parse(result.value).problems,
+    ]
 
     if (problems.length > 0) {
       failed += 1

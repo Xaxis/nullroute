@@ -19,7 +19,10 @@ function disabled(testId: string): boolean {
 }
 
 /** Type letters into a freshly mounted word keyboard, collecting the words. */
-function typeWord(letters: string): { words: readonly string[]; onChange: ReturnType<typeof vi.fn> } {
+function typeWord(letters: string): {
+  words: readonly string[]
+  onChange: ReturnType<typeof vi.fn>
+} {
   const state: { words: readonly string[] } = { words: [] }
   const onChange = vi.fn((next: readonly string[]) => {
     state.words = next
@@ -203,9 +206,7 @@ describe('TextKeyboard', () => {
    * to know a key registered without exposing the value.
    */
   it('hides-the-value-until-asked-and-always-shows-the-length', () => {
-    const { rerender } = render(
-      <TextKeyboard value="hunter2" onChange={vi.fn()} testId="pk" />
-    )
+    const { rerender } = render(<TextKeyboard value="hunter2" onChange={vi.fn()} testId="pk" />)
 
     expect(screen.queryByTestId('pk-plain')).toBeNull()
     expect(screen.getByTestId('pk-hidden').textContent).toBe('•••••••')
@@ -214,6 +215,31 @@ describe('TextKeyboard', () => {
     fireEvent.click(screen.getByTestId('pk-reveal'))
     rerender(<TextKeyboard value="hunter2" onChange={vi.fn()} testId="pk" />)
     expect(screen.getByTestId('pk-plain').textContent).toBe('hunter2')
+  })
+
+  /**
+   * INV-UI-97. Masking is right for the passphrase gate this keyboard was built
+   * for and wrong for the screen that checks somebody else's proof, where the
+   * three values are an address, a signature and the message they signed. It
+   * put bullets under a label reading "exactly what they signed, character for
+   * character".
+   */
+  it('shows-what-is-typed-when-it-is-not-a-secret', () => {
+    render(<TextKeyboard value="hunter2" onChange={vi.fn()} secret={false} testId="pk" />)
+
+    expect(screen.getByTestId('pk-plain').textContent).toBe('hunter2')
+    expect(screen.queryByTestId('pk-hidden')).toBeNull()
+    // Nothing to hide, so nothing offering to.
+    expect(screen.queryByTestId('pk-reveal')).toBeNull()
+  })
+
+  /** INV-UI-97. The default is still the safe one. */
+  it('hides-what-is-typed-by-default', () => {
+    render(<TextKeyboard value="hunter2" onChange={vi.fn()} testId="pk" />)
+
+    expect(screen.queryByTestId('pk-plain')).toBeNull()
+    expect(screen.getByTestId('pk-hidden').textContent).toBe('•••••••')
+    expect(screen.getByTestId('pk-reveal').textContent).toBe('Show')
   })
 
   it('backspaces-and-refuses-to-when-empty', () => {

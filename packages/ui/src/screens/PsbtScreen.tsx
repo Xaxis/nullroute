@@ -207,8 +207,7 @@ export interface PsbtScreenProps {
 }
 
 export function PsbtScreen(props: PsbtScreenProps): ReactElement {
-  const { initialPsbt, onScan, onReview, onSign, onBack, identity, steps, banner, nav } =
-    props
+  const { initialPsbt, onScan, onReview, onSign, onBack, identity, steps, banner, nav } = props
 
   const [psbt, setPsbt] = useState(initialPsbt ?? '')
   const [review, setReview] = useState<PsbtReviewView | null>(null)
@@ -292,8 +291,8 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
             : 'Carry this back to the machine that built it.'
         }
         banner={banner}
-      nav={nav}
-      identity={identity}
+        nav={nav}
+        identity={identity}
         steps={steps}
         testId="psbt-signed"
         actions={
@@ -316,83 +315,100 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
           </>
         }
       >
-        <div className="nr-card nr-card--tight">
-          <div className="nr-row">
-            <span className="nr-label">Signed with</span>
-            <span className="nr-value nr-mono">{signedWith.join(', ')}</span>
-          </div>
-          <p className="nr-hint">
-            These bytes are a pure function of your seed and this transaction. Sign the same
-            transaction again and you get the same string, character for character. Anyone holding
-            the seed can recompute it and confirm nothing was hidden in the signature.
-          </p>
-        </div>
+        {/* THE CODE BESIDE THE EXPLANATION, NOT UNDER IT.
 
-        {/* THE FLEET ANSWER, above everything else on this screen. A user
+            This screen is the outbound half of the air gap: a signed
+            transaction exists here and nowhere else until somebody photographs
+            it. The code was last in a stack of three text blocks, which left
+            30px of a 220px square above the action bar. A code three quarters
+            hidden looks scannable, because it is square and it has its quiet
+            zone on the sides you can see, so the user points a phone at it,
+            gets nothing, and concludes the light is wrong.
+
+            Held by the QR rule in tools/check-screen-fit.mjs. */}
+        <div className="nr-split nr-split--note" data-testid="psbt-signed-split">
+          <div className="nr-split__col">
+            <div className="nr-card nr-card--tight">
+              <div className="nr-row">
+                <span className="nr-label">Signed with</span>
+                <span className="nr-value nr-mono">{signedWith.join(', ')}</span>
+              </div>
+              <p className="nr-hint">
+                These bytes are a pure function of your seed and this transaction. Sign the same
+                transaction again and you get the same string, character for character. Anyone
+                holding the seed can recompute it and confirm nothing was hidden in the signature.
+              </p>
+            </div>
+
+            {/* THE FLEET ANSWER, above everything else on this screen. A user
             holding the second of three devices needs to know whether they are
             finished or carrying this onward, and that is more urgent than the
             bytes. */}
-        {progress !== null &&
-          // `=== true`, so anything else shows "Not finished". Telling somebody
-          // nothing else has to sign a transaction that is not finished is the
-          // failure that matters on this screen.
-          (progress.complete === true ? (
-            <div className="nr-card nr-card--tight" data-testid="psbt-complete">
-              <div className="nr-row">
-                <span className="nr-label">Signatures</span>
-                <span className="nr-status nr-status--ok">
-                  {progress.present} of {progress.required ?? '?'}, complete
-                </span>
-              </div>
-              <p className="nr-hint">
-                Nothing else has to sign this. Take it to whatever will broadcast it.
-              </p>
-            </div>
-          ) : (
-            <div className="nr-banner nr-banner--testnet" data-testid="psbt-incomplete">
-              <strong>Not finished</strong>
-              <span>
-                {progress.present} of {progress.required ?? 'an unknown number of'} signatures are
-                present. This transaction cannot be broadcast yet: carry it to the next cosigner and
-                sign there too.
-              </span>
+            {progress !== null &&
+              // `=== true`, so anything else shows "Not finished". Telling somebody
+              // nothing else has to sign a transaction that is not finished is the
+              // failure that matters on this screen.
+              (progress.complete === true ? (
+                <div className="nr-card nr-card--tight" data-testid="psbt-complete">
+                  <div className="nr-row">
+                    <span className="nr-label">Signatures</span>
+                    <span className="nr-status nr-status--ok">
+                      {progress.present} of {progress.required ?? '?'}, complete
+                    </span>
+                  </div>
+                  <p className="nr-hint">
+                    Nothing else has to sign this. Take it to whatever will broadcast it.
+                  </p>
+                </div>
+              ) : (
+                <div className="nr-banner nr-banner--testnet" data-testid="psbt-incomplete">
+                  <strong>Not finished</strong>
+                  <span>
+                    {progress.present} of {progress.required ?? 'an unknown number of'} signatures
+                    are present. This transaction cannot be broadcast yet: carry it to the next
+                    cosigner and sign there too.
+                  </span>
 
-              {/* WHICH cosigner, not just that there is one. On a fleet of
+                  {/* WHICH cosigner, not just that there is one. On a fleet of
                   identical devices in different rooms, "the next cosigner" is
                   true and is not an answer. Built in core so the awkward
                   phrasings, one unnamed cosigner against three, are tested
                   rather than concatenated here. */}
-              {attribution !== null && (
-                <span data-testid="psbt-waiting-on">{attribution.waiting}</span>
-              )}
-            </div>
-          ))}
+                  {attribution !== null && (
+                    <span data-testid="psbt-waiting-on">{attribution.waiting}</span>
+                  )}
+                </div>
+              ))}
 
-        {/* A signature nobody in the quorum made, which is worth a second look
+            {/* A signature nobody in the quorum made, which is worth a second look
             even though it is usually a taproot key-path spend naming no key.
             Kept out of the count above rather than added to it: "2 of 3 signed"
             with one of them unattributed is two numbers that do not belong
             together. */}
-        {attribution !== null && attribution.unattributed > 0 && (
-          <p className="nr-note" data-testid="psbt-unattributed">
-            {attribution.unattributed} signature
-            {attribution.unattributed === 1 ? '' : 's'} on this transaction could not be traced to
-            a cosigner in your quorum. A taproot key-path signature names no key, so this is
-            expected there. Anywhere else it is worth asking who produced it.
-          </p>
-        )}
+            {attribution !== null && attribution.unattributed > 0 && (
+              <p className="nr-note" data-testid="psbt-unattributed">
+                {attribution.unattributed} signature
+                {attribution.unattributed === 1 ? '' : 's'} on this transaction could not be traced
+                to a cosigner in your quorum. A taproot key-path signature names no key, so this is
+                expected there. Anywhere else it is worth asking who produced it.
+              </p>
+            )}
 
-        {wasAlready && (
-          <p className="nr-note" data-testid="psbt-already-signed">
-            This device had already signed this transaction. Signing again produced exactly the same
-            bytes, which is why doing it twice is safe rather than merely tolerated.
-          </p>
-        )}
+            {wasAlready && (
+              <p className="nr-note" data-testid="psbt-already-signed">
+                This device had already signed this transaction. Signing again produced exactly the
+                same bytes, which is why doing it twice is safe rather than merely tolerated.
+              </p>
+            )}
+          </div>
 
-        {/* The QR comes before the text, because it is how this actually leaves
-            the device. The textarea below it is the fallback for a machine with
-            no camera, and for anyone who would rather read the bytes. */}
-        <QrDisplay text={signed} fileType="psbt" testId="psbt-qr" />
+          {/* Last in the DOM, first on the screen. A reader meets what was
+              signed and whether it is finished before the code; a camera meets
+              the only white square on a dark panel immediately. The textarea
+              further down is the fallback for a machine with no camera, and for
+              anyone who would rather read the bytes. */}
+          <QrDisplay text={signed} fileType="psbt" testId="psbt-qr" />
+        </div>
 
         {finalised !== null && (
           <details className="nr-details" data-testid="psbt-finalised">
@@ -437,7 +453,7 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
   return (
     <Screen
       title="Sign a transaction"
-      subtitle="Nothing is signed until you have read what is below."
+      subtitle="Nothing is signed until you have read it."
       banner={banner}
       /* Safe to leave: nothing has been produced yet. The SIGNED state above
          gets no rail, because a signed PSBT exists only on this screen until
@@ -590,7 +606,10 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
                         {o.address ?? 'no address (raw script)'}
                       </div>
                       {o.label !== undefined && o.label !== null && (
-                        <div className="nr-hint" data-testid={`psbt-output-label-${String(o.index)}`}>
+                        <div
+                          className="nr-hint"
+                          data-testid={`psbt-output-label-${String(o.index)}`}
+                        >
                           Your note: {o.label}
                         </div>
                       )}

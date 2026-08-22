@@ -613,6 +613,43 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     />
   ),
   message: () => <MessageScreen identity={DEVICE} nav={MENU} onReview={never} onSign={never} onBack={noop} />,
+  /*
+   * The same screen with the promises resolving, so the review and the signed
+   * states can be reached and measured.
+   *
+   * They never had been. The fixture above hands this screen two promises that
+   * never settle, which is right for measuring the keyboard and means the two
+   * states after it were invisible to every visual guard in the repo. One of
+   * them carries a QR code holding the address, the message and the signature,
+   * which is the only thing on that screen worth having.
+   */
+  'message-signed': () => (
+    <MessageScreen
+      identity={DEVICE}
+      nav={MENU}
+      onReview={async (message) =>
+        Promise.resolve({
+          message,
+          hashHex: '7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069',
+          characters: message.length,
+          bytes: message.length,
+          refusals: [],
+          warnings: [],
+        })
+      }
+      onSign={async (message, _scriptType, path) =>
+        Promise.resolve({
+          address: 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu',
+          message,
+          signature:
+            'AkgwRQIhAOzyynlqt93lOKJr+wmmxIens//zPzl9tqIOua93wO6MAiBi5n5EyAcPScO' +
+            '+eknGHbJ4jc1Iw1TnAmoBEcdgYlOTAQ==',
+          path,
+        })
+      }
+      onBack={noop}
+    />
+  ),
   backup: () => <BackupScreen identity={DEVICE} onScan={noop} nav={MENU} onCreate={never} onDescribe={never} onRestore={never} onBack={noop} />,
   more: () => (
     <MoreScreen identity={DEVICE}
@@ -941,6 +978,16 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   'psbt-signed-partial': [['psbt-review'], ['psbt-review', 'psbt-sign']],
   // Into the review, which is where the header has the least room to spare.
   'psbt-idle': [['psbt-review']],
+  // Typed, reviewed, and then signed. The signed state is the one that matters:
+  // it holds the QR carrying the address, the message and the signature, and
+  // nothing had ever measured it.
+  // A key first: Review is disabled on an empty message, and a reach list that
+  // taps a disabled control fails loudly rather than measuring the screen it was
+  // already on.
+  'message-signed': [
+    ['pk-key-a', 'message-review'],
+    ['pk-key-a', 'message-review', 'message-sign'],
+  ],
 }
 
 // Published before rendering. A screen that throws must fail loudly as that

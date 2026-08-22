@@ -69,8 +69,7 @@ export interface ManageWalletScreenProps {
    * and loses every registration and cosigner name sealed with it.
    */
   readonly onChangePassphrase?:
-    | ((oldPassphrase: string, newPassphrase: string) => Promise<void>)
-    | undefined
+    ((oldPassphrase: string, newPassphrase: string) => Promise<void>) | undefined
   readonly onDestroy: () => Promise<void>
   readonly onBack: () => void
   /** Who this device is and which wallet it has open. See `Identity`. */
@@ -88,9 +87,11 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
     onChangePassphrase,
     onDestroy,
     onBack,
-    
+
     identity,
-    banner, nav} = props
+    banner,
+    nav,
+  } = props
 
   const [mode, setMode] = useState<Mode>('menu')
   const [label, setLabel] = useState(labelVerified ? wallet.label : '')
@@ -125,7 +126,7 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
     return (
       <Screen
         title="Change the passphrase"
-        subtitle="What unlocks the file. Not what derives your addresses."
+        subtitle="What unlocks the file, not what derives addresses."
         banner={banner}
         nav={nav}
         identity={identity}
@@ -148,7 +149,11 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
             <Button
               variant="primary"
               disabled={
-                passphrase.length === 0 || !matches || same || busy || onChangePassphrase === undefined
+                passphrase.length === 0 ||
+                !matches ||
+                same ||
+                busy ||
+                onChangePassphrase === undefined
               }
               onClick={() =>
                 void run(async () => {
@@ -240,8 +245,8 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
         <p className="nr-note" data-testid="manage-passphrase-cost">
           Write the new one down before you tap. Nothing on this device can recover it, and a
           passphrase nobody remembers makes this wallet exactly as unreachable as one nobody stole.
-          Your mnemonic still restores the seed, and it does not restore the quorums registered
-          here or the names you gave the other cosigners.
+          Your mnemonic still restores the seed, and it does not restore the quorums registered here
+          or the names you gave the other cosigners.
         </p>
 
         {error !== null && (
@@ -259,7 +264,7 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
     return (
       <Screen
         title="Name this wallet"
-        subtitle="The name is sealed with it, so this needs the passphrase."
+        subtitle="Renaming needs the passphrase."
         banner={banner}
         nav={nav}
         identity={identity}
@@ -293,47 +298,63 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
           </>
         }
       >
-        <div className="nr-field">
-          <span className="nr-field__label">Name</span>
-          <input
-            className="nr-input"
-            value={label}
-            maxLength={48}
-            spellCheck={false}
-            onChange={(e) => {
-              setLabel(e.target.value)
-            }}
-            data-testid="manage-label"
-          />
-        </div>
-
-        <div className="nr-swatches" data-testid="manage-colours">
-          {WALLET_COLOUR_NAMES.map((name) => (
-            <button
-              key={name}
-              type="button"
-              className="nr-swatch"
-              data-colour={name}
-              aria-pressed={colour === name}
-              aria-label={name}
-              onClick={() => {
-                setColour(name)
+        {/* The name and the colour on one row. They are the two halves of one
+            answer to one question, and stacked they cost 60px above a keyboard
+            that had nowhere left to go: the bottom four of its five rows were
+            under the action bar. */}
+        <div className="nr-split nr-split--lead">
+          <div className="nr-field">
+            <span className="nr-field__label">Name</span>
+            <input
+              className="nr-input"
+              value={label}
+              maxLength={48}
+              spellCheck={false}
+              onChange={(e) => {
+                setLabel(e.target.value)
               }}
-              data-testid={`manage-colour-${name}`}
+              data-testid="manage-label"
             />
-          ))}
+          </div>
+
+          <div className="nr-field">
+            <span className="nr-field__label">Colour</span>
+            <div className="nr-swatches" data-testid="manage-colours">
+              {WALLET_COLOUR_NAMES.map((name) => (
+                <button
+                  key={name}
+                  type="button"
+                  className="nr-swatch"
+                  data-colour={name}
+                  aria-pressed={colour === name}
+                  aria-label={name}
+                  onClick={() => {
+                    setColour(name)
+                  }}
+                  data-testid={`manage-colour-${name}`}
+                />
+              ))}
+            </div>
+          </div>
         </div>
 
-        <span className="nr-field__label">Passphrase for this wallet</span>
-        <TextKeyboard value={passphrase} onChange={setPassphrase} testId="manage-passphrase" />
+        {/* One field, rather than a label and a keyboard that happen to be
+            adjacent. The body puts 16px between its children and a field puts
+            6px between a label and its input, which is the right distance for
+            two things that are one control. */}
+        <div className="nr-field">
+          <span className="nr-field__label">Passphrase for this wallet</span>
+          <TextKeyboard value={passphrase} onChange={setPassphrase} testId="manage-passphrase" />
+        </div>
 
         {/* Said out loud, because the counter on the unlock screen is
             prominent enough that a user would reasonably assume it applies
             here too, and hesitate to rename anything. */}
         <p className="nr-note" data-testid="manage-rename-safe">
-          A wrong passphrase here is refused and costs nothing. It does not count against the
-          attempts that erase this wallet, because changing a colour must never be a way to lose
-          one.
+          The name and the colour are sealed inside the encrypted file, so changing either means
+          rewriting it. A wrong passphrase here is refused and costs nothing: it does not count
+          against the attempts that erase this wallet, because changing a colour must never be a way
+          to lose one.
         </p>
 
         {error !== null && (

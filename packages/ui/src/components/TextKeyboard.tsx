@@ -27,6 +27,24 @@ export interface TextKeyboardProps {
   readonly onChange: (value: string) => void
   /** Optional, so a caller can make the on-screen return key submit. */
   readonly onSubmit?: () => void
+  /**
+   * Whether what is typed is a secret.
+   *
+   * DEFAULTS TO TRUE, because the first caller was the passphrase gate and a
+   * passphrase on a lit panel is readable across whatever room the device is
+   * in. Revealing it is then a deliberate act.
+   *
+   * FALSE IS NOT A CONVENIENCE. The screen that checks somebody else's proof
+   * uses this keyboard for three values that are not secrets at all: an
+   * address, a signature, and the message they signed. Masking them put a row
+   * of bullets under a label reading "exactly what they signed, character for
+   * character", on the screen whose whole method is comparing characters, and
+   * under a failure message that tells the user to do exactly that. The
+   * instruction and the display contradicted each other and the display won.
+   *
+   * When this is false there is nothing to hide, so the Show key goes with it.
+   */
+  readonly secret?: boolean
   readonly testId?: string
 }
 
@@ -60,7 +78,7 @@ const SYMBOLS: readonly (readonly string[])[] = [
 type Layer = 'lower' | 'upper' | 'symbols'
 
 export function TextKeyboard(props: TextKeyboardProps): ReactElement {
-  const { value, onChange, onSubmit, testId } = props
+  const { value, onChange, onSubmit, secret = true, testId } = props
 
   const [layer, setLayer] = useState<Layer>('lower')
   const [revealed, setRevealed] = useState(false)
@@ -83,7 +101,7 @@ export function TextKeyboard(props: TextKeyboardProps): ReactElement {
       <div className="nr-pk__value" data-testid="pk-value">
         {value.length === 0 ? (
           <span className="nr-hint">Nothing typed</span>
-        ) : revealed ? (
+        ) : !secret || revealed ? (
           <span data-testid="pk-plain">{value}</span>
         ) : (
           <span className="nr-pk__dots" data-testid="pk-hidden">
@@ -156,17 +174,22 @@ export function TextKeyboard(props: TextKeyboardProps): ReactElement {
         >
           Back
         </button>
-        <button
-          type="button"
-          className="nr-kb__key nr-kb__key--wide"
-          aria-pressed={revealed}
-          onClick={() => {
-            setRevealed(!revealed)
-          }}
-          data-testid="pk-reveal"
-        >
-          {revealed ? 'Hide' : 'Show'}
-        </button>
+        {/* Only when there is something to hide. A Show key over a plainly
+            visible address is a control that does nothing, and this keyboard
+            has no room for one. */}
+        {secret && (
+          <button
+            type="button"
+            className="nr-kb__key nr-kb__key--wide"
+            aria-pressed={revealed}
+            onClick={() => {
+              setRevealed(!revealed)
+            }}
+            data-testid="pk-reveal"
+          >
+            {revealed ? 'Hide' : 'Show'}
+          </button>
+        )}
         {onSubmit !== undefined && (
           <button
             type="button"

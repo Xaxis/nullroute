@@ -1112,6 +1112,30 @@ invariants:
       - packages/ui/test/wallets-screen.test.tsx::is-not-a-control-at-all-where-leaving-is-not-free
       - packages/ui/test/app.test.tsx::reaches-the-picker-from-a-device-with-no-name-and-no-wallet
 
+  - id: INV-UI-96
+    statement: >
+      The screen that checks somebody else's proof shows the three values it
+      checked, in full. None of an address, a signature, or the message
+      somebody signed is a secret, and the screen's own method is comparing
+      them character for character, so nothing here is masked and a verdict is
+      shown beside what it is a verdict about rather than beside a keyboard.
+    tests:
+      - packages/ui/test/verify-message-screen.test.tsx::shows-what-was-checked-rather-than-a-keyboard
+      - packages/ui/test/verify-message-screen.test.tsx::shows-the-message-in-full-rather-than-masking-it
+      - packages/ui/test/verify-message-screen.test.tsx::drops-a-result-when-a-field-is-edited-under-it
+
+  - id: INV-UI-97
+    statement: >
+      Every screen fits the panel without hiding the input device. The on-screen
+      keyboard is fully visible before anything is scrolled, because this
+      machine has no other way to type, and the header is one height on every
+      screen so the title does not move between them. Held by
+      tools/check-screen-fit.mjs rather than by a unit test: jsdom computes no
+      box model, so nothing else in the suite can see either.
+    tests:
+      - packages/ui/test/keyboard.test.tsx::hides-what-is-typed-by-default
+      - packages/ui/test/keyboard.test.tsx::shows-what-is-typed-when-it-is-not-a-secret
+
 threats:
   - INV-KEY-1
   - INV-BUILD-1

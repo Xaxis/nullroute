@@ -88,7 +88,7 @@ export function ChildSeedScreen(props: ChildSeedScreenProps): ReactElement {
     return (
       <Screen
         title="Child seed"
-        subtitle="Write down the path with it. Without the path this is unrecoverable."
+        subtitle="Write the path down with it, or this is lost."
         banner={banner}
         nav={nav}
         identity={identity}
@@ -161,7 +161,7 @@ export function ChildSeedScreen(props: ChildSeedScreenProps): ReactElement {
   return (
     <Screen
       title="Derive a child seed"
-      subtitle="BIP-85. One master, many wallets, all recoverable from it."
+      subtitle="BIP-85. One master, many wallets."
       banner={banner}
       nav={nav}
       identity={identity}

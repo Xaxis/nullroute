@@ -156,7 +156,7 @@ export function VerifyMessageScreen(props: VerifyMessageScreenProps): ReactEleme
   return (
     <Screen
       title="Check a proof"
-      subtitle="Whether somebody controls the address they say they do."
+      subtitle="Whether an address is really theirs."
       banner={banner}
       nav={nav}
       identity={identity}
@@ -191,8 +191,7 @@ export function VerifyMessageScreen(props: VerifyMessageScreenProps): ReactEleme
               ? 'Whoever made this signature held the key for that address, and agreed to exactly ' +
                 'the message above. It does not say when they held it, that the address holds ' +
                 'anything, or that the person who gave it to you is the person who made it.'
-              : (result.reason ??
-                'The signature does not match this address and this message.')}
+              : (result.reason ?? 'The signature does not match this address and this message.')}
           </span>
         </div>
       )}
@@ -217,6 +216,16 @@ export function VerifyMessageScreen(props: VerifyMessageScreenProps): ReactEleme
             aria-pressed={editing === field.id}
             onClick={() => {
               setEditing(field.id)
+              // AND BACK TO EDITING. While a result is showing, the keyboard is
+              // replaced by the three values that were checked, so a tab that
+              // only changed which field is active would have moved a highlight
+              // and offered no way to type. That is the dead end this screen
+              // used to avoid by keeping a keyboard nobody could use.
+              //
+              // Clearing here is the same rule the keyboard already follows: a
+              // verdict about a field somebody has gone back to is a verdict
+              // about something that is no longer settled.
+              setResult(null)
             }}
             data-testid={`verify-tab-${field.id}`}
           >
@@ -233,17 +242,51 @@ export function VerifyMessageScreen(props: VerifyMessageScreenProps): ReactEleme
         )}
       </div>
 
-      <span className="nr-field__label">{active.hint}</span>
-      <TextKeyboard
-        value={values[active.id]}
-        onChange={(next) => {
-          setters[active.id](next)
-          // Cleared, because a result sitting under a changed field is a result
-          // about something that is no longer on the screen.
-          setResult(null)
-        }}
-        testId="verify-keyboard"
-      />
+      {/* WHAT WAS CHECKED, WHERE THE KEYBOARD WOULD BE.
+
+          A verdict used to appear above a full keyboard, which is 196px of
+          this panel spent on a control nobody can use while reading the answer:
+          the first key pressed clears the result, by design, because a verdict
+          under a changed field is a verdict about something that is no longer
+          on the screen.
+
+          Worse than wasted. A failure here says the commonest cause is the
+          message rather than the signature, and tells the user to compare it
+          character for character. The screen then showed them a keyboard
+          instead of the message. Now it shows the three values, and a tab
+          takes them back to editing whichever one is wrong. */}
+      {result !== null ? (
+        <div className="nr-card nr-card--tight nr-fill" data-testid="verify-checked">
+          {FIELDS.map((field) => (
+            <div className="nr-field" key={field.id}>
+              <span className="nr-field__label">{field.label}</span>
+              <span className="nr-address nr-break">
+                {values[field.id].length === 0 ? '(empty)' : values[field.id]}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <>
+          <span className="nr-field__label">{active.hint}</span>
+          <TextKeyboard
+            // NOT SECRET. None of the three is: an address, a signature, and the
+            // message somebody signed are all things the other party handed over in
+            // the open. They were masked because this keyboard was built for the
+            // passphrase gate and masks by default, which put bullets under a label
+            // reading "exactly what they signed, character for character".
+            secret={false}
+            value={values[active.id]}
+            onChange={(next) => {
+              setters[active.id](next)
+              // Cleared, because a result sitting under a changed field is a result
+              // about something that is no longer on the screen.
+              setResult(null)
+            }}
+            testId="verify-keyboard"
+          />
+        </>
+      )}
 
       {error !== null && (
         <div className="nr-banner nr-banner--danger" data-testid="verify-error">

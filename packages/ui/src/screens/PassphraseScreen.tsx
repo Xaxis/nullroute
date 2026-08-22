@@ -82,7 +82,8 @@ function guessCost(passphrase: string): { label: string; tone: 'warn' | 'ok' } {
 }
 
 export function PassphraseScreen(props: PassphraseScreenProps): ReactElement {
-  const { mode, attemptsRemaining, maxAttempts, onSubmit, onCancel, steps, identity, banner, nav } = props
+  const { mode, attemptsRemaining, maxAttempts, onSubmit, onCancel, steps, identity, banner, nav } =
+    props
 
   const [value, setValue] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -155,7 +156,17 @@ export function PassphraseScreen(props: PassphraseScreenProps): ReactElement {
       }
     >
       <div className="nr-field">
-        <span className="nr-field__label">Passphrase</span>
+        {/* The readout shares the label's line. See `.nr-field__labelrow`: on
+            its own line it grows the field the moment somebody types, and the
+            keyboard below it has 3px of room. */}
+        <div className="nr-field__labelrow">
+          <span className="nr-field__label">Passphrase</span>
+          {value.length > 0 && (
+            <span className={`nr-hint ${cost.tone === 'ok' ? 'nr-ok' : 'nr-warn'}`}>
+              {value.length} characters, {cost.label}
+            </span>
+          )}
+        </div>
         <input
           className="nr-input"
           type="password"
@@ -172,11 +183,6 @@ export function PassphraseScreen(props: PassphraseScreenProps): ReactElement {
           }}
           data-testid="passphrase-input"
         />
-        {value.length > 0 && (
-          <span className={`nr-hint ${cost.tone === 'ok' ? 'nr-ok' : 'nr-warn'}`}>
-            {value.length} characters, {cost.label}
-          </span>
-        )}
       </div>
 
       {setting && (

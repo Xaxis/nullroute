@@ -329,31 +329,31 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
           look-alike controls at two different levels of meaning directly on
           top of each other. Labelled and set apart instead. */}
       {tab !== 'verify' && (
-        <div className="nr-picker" data-testid="script-picker">
-          <span className="nr-picker__label">Script type</span>
-          {SCRIPT_TYPES.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              className="nr-picker__option"
-              aria-pressed={scriptType === s.id}
-              onClick={() => {
-                setScriptType(s.id)
-                setStart(0)
-                // The xpub on screen belongs to the previous script type, and an
-                // xpub read under the wrong heading is exactly the mistake the
-                // note beneath it warns about.
-                setXpub(null)
-              }}
-              data-testid={`script-${s.id}`}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-      )}
+        <div className="nr-pickers">
+          <div className="nr-picker" data-testid="script-picker">
+            <span className="nr-picker__label">Script type</span>
+            {SCRIPT_TYPES.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                className="nr-picker__option"
+                aria-pressed={scriptType === s.id}
+                onClick={() => {
+                  setScriptType(s.id)
+                  setStart(0)
+                  // The xpub on screen belongs to the previous script type, and an
+                  // xpub read under the wrong heading is exactly the mistake the
+                  // note beneath it warns about.
+                  setXpub(null)
+                }}
+                data-testid={`script-${s.id}`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
 
-      {/* WHICH BRANCH, as its own labelled picker.
+          {/* WHICH BRANCH, as its own labelled picker.
           
           It used to be a single button in the row above, in the same pill as
           the four script types and separated from them only by a spacer, so a
@@ -366,24 +366,24 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
           are looking at change" or "tap to change something", and
           `aria-pressed` was tracking a third thing again. Two options with one
           pressed says which branch you are on and cannot be read as a verb. */}
-      {tab !== 'verify' && (
-        <div className="nr-picker" data-testid="branch-picker">
-          <span className="nr-picker__label">Branch</span>
-          {BRANCHES.map((b) => (
-            <button
-              key={b.label}
-              type="button"
-              className="nr-picker__option"
-              aria-pressed={change === b.change}
-              onClick={() => {
-                setChange(b.change)
-                setStart(0)
-              }}
-              data-testid={b.testId}
-            >
-              {b.label}
-            </button>
-          ))}
+          <div className="nr-picker" data-testid="branch-picker">
+            <span className="nr-picker__label">Branch</span>
+            {BRANCHES.map((b) => (
+              <button
+                key={b.label}
+                type="button"
+                className="nr-picker__option"
+                aria-pressed={change === b.change}
+                onClick={() => {
+                  setChange(b.change)
+                  setStart(0)
+                }}
+                data-testid={b.testId}
+              >
+                {b.label}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -406,10 +406,21 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
         </p>
       )}
 
+      {/* THE LIST SCROLLS, THE CONTROLS DO NOT. `nr-fill` hands this the
+          height left over after the tabs and the pickers, and takes the scroll
+          off the body.
+
+          Before this the whole body scrolled and the column headings went with
+          it, so somebody reading the fifth address had no "Index" above the
+          left column and no sight of whether they were on Receiving or on
+          Change. Both of those are what tells you which address you are
+          looking at. Measured then: ten rows laid out in a 333px window with
+          none of them fully on screen, on the screen named Addresses. */}
       {tab === 'addresses' && (
-        <div className="nr-card nr-card--tight">
+        <div className="nr-card nr-card--tight nr-fill">
           <table className="nr-table nr-table--dense">
-            <thead>
+            {/* Sticky, so the headings survive the scroll they now sit above. */}
+            <thead className="nr-table__stick">
               <tr>
                 <th className="nr-table__index">Index</th>
                 <th>Address</th>
@@ -464,23 +475,32 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
           <p className="nr-hint">
             Your mnemonics are not enough to rebuild a quorum. Recovering one needs this line as
             well: it records the other keys, how many must sign, and the script type, and none of
-            that is derivable from a seed phrase. Keep it wherever you keep the words, and it is
-            not a secret: it holds no private key and cannot spend anything.
+            that is derivable from a seed phrase. Keep it wherever you keep the words, and it is not
+            a secret: it holds no private key and cannot spend anything.
           </p>
         </div>
       )}
 
       {tab === 'export' && descriptor !== null && (
-        <>
-          <div className="nr-card nr-card--tight">
-            <span className="nr-label">
-              {quorums.length > 0 ? 'This device alone, not the quorum' : 'Output descriptor'}
-            </span>
-            <div className="nr-address" data-testid="descriptor">
-              {descriptor.descriptor}
+        <div className="nr-fill">
+          {/* THE CODE BESIDE THE LINE IT ENCODES, the same way the signed
+              transaction and the receive address do it. Everything this device
+              hands out is a block of characters and a square, and they belong
+              in one row: stacked, the square is always below the fold on a
+              screen that already carries a descriptor. */}
+          <div className="nr-split nr-split--aside">
+            <div className="nr-split__col">
+              <div className="nr-card nr-card--tight">
+                <span className="nr-label">
+                  {quorums.length > 0 ? 'This device alone, not the quorum' : 'Output descriptor'}
+                </span>
+                <div className="nr-address" data-testid="descriptor">
+                  {descriptor.descriptor}
+                </div>
+              </div>
             </div>
+            <QrDisplay text={descriptor.descriptor} fileType="unicode" testId="descriptor-qr" />
           </div>
-          <QrDisplay text={descriptor.descriptor} fileType="unicode" testId="descriptor-qr" />
           <p className="nr-note">
             {quorums.length > 0
               ? 'This describes a single-signature wallet holding only this device’s key. It is not your quorum and backing it up does not back your quorum up.'
@@ -548,7 +568,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
               )}
             </details>
           )}
-        </>
+        </div>
       )}
 
       {/* Destinations, as tap targets with a line saying what each does. Every

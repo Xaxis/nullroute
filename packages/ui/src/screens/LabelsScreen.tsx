@@ -134,7 +134,7 @@ export function LabelsScreen(props: LabelsScreenProps): ReactElement {
   return (
     <Screen
       title="Labels"
-      subtitle="Notes about transactions and addresses. They decide nothing."
+      subtitle="Notes about transactions. They decide nothing."
       banner={banner}
       nav={nav}
       identity={identity}

@@ -148,31 +148,45 @@ export function QuorumAddressesScreen(props: QuorumAddressesScreenProps): ReactE
         </div>
       )}
 
-      <table className="nr-table nr-table--dense" data-testid="quorum-rows">
-        <thead>
-          <tr>
-            <th className="nr-table__index">#</th>
-            <th>Address</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.index}>
-              <td className="nr-mono nr-table__index">{row.index}</td>
-              <td className="nr-mono nr-break">{row.address}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {/* THE LIST AND THE REASON FOR IT, SIDE BY SIDE.
 
-      {/* The whole point, said where it is read rather than in a document. */}
-      <p className="nr-note" data-testid="quorum-compare">
-        Read one of these aloud against the same index on another device in this quorum. They are
-        derived from every cosigner&apos;s key at once, so two devices agreeing here is the proof
-        that every one of them registered the same descriptor. If they differ, do not send anything:
-        one of the devices has a descriptor that is off by a character, and coins sent to the wrong
-        address are spendable only by whoever holds that other quorum.
-      </p>
+          Stacked, the instruction sat under a ten row table on a 480px panel,
+          which put the sentence explaining what to do with these addresses
+          below four of the addresses and off the screen. It is not a footnote:
+          comparing one of these against another device is the entire reason
+          this screen exists.
+
+          The table scrolls inside itself rather than taking the instruction
+          and the branch picker with it. */}
+      <div className="nr-split nr-split--note nr-fill" data-testid="quorum-split">
+        <div className="nr-split__col nr-fill">
+          <table className="nr-table nr-table--dense" data-testid="quorum-rows">
+            <thead className="nr-table__stick">
+              <tr>
+                <th className="nr-table__index">#</th>
+                <th>Address</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.index}>
+                  <td className="nr-mono nr-table__index">{row.index}</td>
+                  <td className="nr-mono nr-break">{row.address}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* The whole point, said where it is read rather than in a document. */}
+        <p className="nr-note" data-testid="quorum-compare">
+          Read one of these aloud against the same index on another device in this quorum. They are
+          derived from every cosigner&apos;s key at once, so two devices agreeing here is the proof
+          that every one of them registered the same descriptor. If they differ, do not send
+          anything: one of the devices has a descriptor that is off by a character, and coins sent
+          to the wrong address are spendable only by whoever holds that other quorum.
+        </p>
+      </div>
     </Screen>
   )
 }

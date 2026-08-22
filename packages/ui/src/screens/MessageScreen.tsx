@@ -175,24 +175,34 @@ export function MessageScreen(props: MessageScreenProps): ReactElement {
           </>
         }
       >
-        <div className="nr-card nr-card--tight">
-          <div className="nr-row">
-            <span className="nr-label">Address</span>
-            <span className="nr-value nr-mono nr-break" data-testid="message-address">
-              {signed.address}
-            </span>
+        {/* THE CODE BESIDE THE CARD, as everywhere else this device hands
+            something out. Stacked, 48px of a 221px square sat under the action
+            bar, and nothing had ever noticed: the gallery fixture for this
+            screen handed it two promises that never settle, which is right for
+            measuring the keyboard and left the two states after it invisible to
+            every visual guard in the repo. There is a fixture for them now. */}
+        <div className="nr-split nr-split--note">
+          <div className="nr-split__col">
+            <div className="nr-card nr-card--tight">
+              <div className="nr-row">
+                <span className="nr-label">Address</span>
+                <span className="nr-value nr-mono nr-break" data-testid="message-address">
+                  {signed.address}
+                </span>
+              </div>
+              <div className="nr-row">
+                <span className="nr-label">Path</span>
+                <span className="nr-value nr-mono">{signed.path}</span>
+              </div>
+              <p className="nr-hint">
+                A signature on its own proves nothing. Whoever checks this needs the address, the
+                message and the signature together, which is what the code beside it carries.
+              </p>
+            </div>
           </div>
-          <div className="nr-row">
-            <span className="nr-label">Path</span>
-            <span className="nr-value nr-mono">{signed.path}</span>
-          </div>
-          <p className="nr-hint">
-            A signature on its own proves nothing. Whoever checks this needs the address, the
-            message and the signature together, which is what the code below carries.
-          </p>
-        </div>
 
-        <QrDisplay text={proof} fileType="json" testId="message-qr" />
+          <QrDisplay text={proof} fileType="json" testId="message-qr" />
+        </div>
 
         <details className="nr-details">
           <summary className="nr-details__summary">Show it as text</summary>
@@ -251,7 +261,15 @@ export function MessageScreen(props: MessageScreenProps): ReactElement {
       {review === null && (
         <>
           <span className="nr-field__label">The message</span>
-          <TextKeyboard value={message} onChange={setMessage} testId="message-keyboard" />
+          {/* NOT SECRET. This is text somebody asked you to sign, and the
+              screen tells you to read it twice before you do. Masked, it was
+              a row of bullets under that instruction. */}
+          <TextKeyboard
+            secret={false}
+            value={message}
+            onChange={setMessage}
+            testId="message-keyboard"
+          />
           <p className="nr-hint">
             Type exactly what you were asked to sign. A signature is a proof that you agreed to this
             specific text, so if somebody else chose the wording, read it twice.
@@ -344,9 +362,9 @@ export function MessageScreen(props: MessageScreenProps): ReactElement {
             {scriptType === 'p2pkh' && (
               <p className="nr-note" data-testid="message-legacy-scheme">
                 A legacy address uses the older signmessage scheme rather than BIP-322. It commits
-                to different bytes and produces a different signature, and almost everything
-                accepts it, including Bitcoin Core. If you were asked specifically for a BIP-322
-                proof, use one of the other address types instead.
+                to different bytes and produces a different signature, and almost everything accepts
+                it, including Bitcoin Core. If you were asked specifically for a BIP-322 proof, use
+                one of the other address types instead.
               </p>
             )}
           </div>

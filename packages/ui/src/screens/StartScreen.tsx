@@ -51,7 +51,10 @@ export function StartScreen(props: StartScreenProps): ReactElement {
     return (
       <Screen
         title={chosen.goal}
-        subtitle={chosen.summary}
+        // NO SUBTITLE. A goal's summary is a full sentence, and the header
+        // gives a subtitle about 45 characters before it wraps to a second
+        // line and takes the whole header from 74px to 94px with it. It reads
+        // first in the body instead, where it has the width to be a sentence.
         banner={banner}
         nav={nav}
         identity={identity}
@@ -79,6 +82,14 @@ export function StartScreen(props: StartScreenProps): ReactElement {
           </>
         }
       >
+        {/* What this is, before what it needs. It was the header's subtitle,
+            which is the wrong slot for a sentence: the header is the one fixed
+            thing on a panel with no browser chrome, and a subtitle that wraps
+            moves the title down on the screens that have one. */}
+        <p className="nr-lede" data-testid="start-summary">
+          {chosen.summary}
+        </p>
+
         {chosen.needs.length > 0 && (
           <div className="nr-card nr-card--tight" data-testid="start-needs">
             <span className="nr-card__label">Before you start</span>

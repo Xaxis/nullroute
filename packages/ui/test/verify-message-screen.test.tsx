@@ -103,13 +103,61 @@ describe('VerifyMessageScreen', () => {
     fireEvent.click(screen.getByTestId('verify-run'))
     await waitFor(() => screen.getByTestId('verify-result'))
 
-    // Any key on the on-screen keyboard counts as editing the active field.
+    // While a result is showing, the keyboard is replaced by the three values
+    // that were checked, so going back to a field is what a tab does.
+    expect(screen.queryByTestId('verify-keyboard')).toBeNull()
     fireEvent.click(screen.getByTestId('verify-tab-message'))
+    expect(screen.queryByTestId('verify-result')).toBeNull()
+
+    // And typing under a fresh result drops it too, which is the older half of
+    // the same rule.
     const key = screen.getByTestId('verify-keyboard').querySelector('button')
     if (key === null) throw new Error('the keyboard rendered no keys')
-    fireEvent.click(key)
-
+    fireEvent.click(screen.getByTestId('verify-run'))
+    await waitFor(() => screen.getByTestId('verify-result'))
+    fireEvent.click(screen.getByTestId('verify-tab-message'))
+    fireEvent.click(screen.getByTestId('verify-keyboard').querySelector('button') as HTMLElement)
     expect(screen.queryByTestId('verify-result')).toBeNull()
+  })
+
+  /**
+   * INV-UI-96. A verdict is about three values, and the screen that shows the
+   * verdict shows them. It used to show a keyboard instead, under a failure
+   * message telling the user to compare the message character for character.
+   */
+  it('shows-what-was-checked-rather-than-a-keyboard', async () => {
+    render(
+      <VerifyMessageScreen
+        scannedProof={PROOF}
+        onVerify={async () => Promise.resolve({ valid: false, scriptType: 'p2tr' })}
+        onBack={() => undefined}
+      />
+    )
+    fireEvent.click(screen.getByTestId('verify-run'))
+    await waitFor(() => screen.getByTestId('verify-result'))
+
+    const checked = screen.getByTestId('verify-checked')
+    expect(checked.textContent).toContain(PROOF.address)
+    expect(checked.textContent).toContain(PROOF.message)
+    expect(checked.textContent).toContain(PROOF.signature)
+  })
+
+  /**
+   * INV-UI-96. None of the three is a secret, and the screen tells the user to
+   * compare the message character for character. It was rendering bullets.
+   */
+  it('shows-the-message-in-full-rather-than-masking-it', () => {
+    render(
+      <VerifyMessageScreen
+        scannedProof={PROOF}
+        onVerify={async () => Promise.resolve({ valid: true, scriptType: 'p2tr' })}
+        onBack={() => undefined}
+      />
+    )
+    expect(screen.getByTestId('pk-plain').textContent).toBe(PROOF.message)
+    expect(screen.queryByTestId('pk-hidden')).toBeNull()
+    // Nothing to hide, so no key offering to.
+    expect(screen.queryByTestId('pk-reveal')).toBeNull()
   })
 
   /**
