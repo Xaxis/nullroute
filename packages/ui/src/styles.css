@@ -826,6 +826,16 @@ body {
   gap: 0.5rem;
 }
 
+/* The keypad and what it has produced, as one column. See DiceScreen for why
+   the entropy count and the roll string moved here. */
+.nr-dice__entry {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  min-width: 0;
+  align-self: start;
+}
+
 .nr-dice__side {
   display: flex;
   flex-direction: column;
@@ -2110,6 +2120,22 @@ body {
 .nr-beside > :last-child {
   flex: 1 1 14rem;
   min-width: 0;
+}
+
+/* Options compared side by side rather than stacked.
+
+   Three of equal structure, on the screen that decides how a seed is generated.
+   Stacked they did not fit and the middle one was cut, so the two claims a
+   person is weighing could not be read at once.
+
+   `align-items: stretch` so the cards are the same height whatever their text
+   does: three boxes of different heights read as three different kinds of
+   thing, and these are three answers to one question. */
+.nr-modes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  align-items: stretch;
 }
 
 .nr-split__col {

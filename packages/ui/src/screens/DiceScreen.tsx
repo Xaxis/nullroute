@@ -185,24 +185,64 @@ export function DiceScreen(props: DiceScreenProps): ReactElement {
       }
     >
       <div className="nr-dice">
-        <div className="nr-dice__pad">
-          {FACES.map((face) => (
-            <button
-              key={face}
-              type="button"
-              className="nr-die"
-              onClick={() => {
-                push(face)
-              }}
-              data-testid={`die-${face}`}
-              aria-label={`Roll ${face}`}
-            >
-              {face}
-            </button>
-          ))}
+        {/* THE COUNT AND THE ROLLS UNDER THE KEYPAD THAT MAKES THEM.
+
+            They were at the bottom of the right hand column, which put them
+            about 300px below the fold on the screen somebody spends the longest
+            on. Entropy collected and the exact string entered are the two
+            things a person checks WHILE rolling, and this is the one screen
+            whose whole claim is arithmetic you can redo by hand.
+
+            The left column had the room. The keypad is a fixed six buttons and
+            everything under it was empty panel. */}
+        <div className="nr-dice__entry">
+          <div className="nr-dice__pad">
+            {FACES.map((face) => (
+              <button
+                key={face}
+                type="button"
+                className="nr-die"
+                onClick={() => {
+                  push(face)
+                }}
+                data-testid={`die-${face}`}
+                aria-label={`Roll ${face}`}
+              >
+                {face}
+              </button>
+            ))}
+          </div>
+
+          <div className="nr-card nr-card--tight">
+            <div className="nr-row">
+              <span className="nr-label">Entropy</span>
+              <span className="nr-value nr-mono" data-testid="dice-bits">
+                {bits} of {target} bits
+              </span>
+            </div>
+            <div className="nr-meter">
+              <div
+                className={`nr-meter__fill${sufficient ? ' nr-meter__fill--done' : ''}`}
+                style={{ width: `${String(progress)}%` }}
+              />
+            </div>
+            <p className="nr-hint">
+              {accounting?.rolls ?? 0} rolls. Truncated, never rounded, so this never claims more
+              than you have collected.
+            </p>
+          </div>
         </div>
 
         <div className="nr-dice__side">
+          <div className="nr-card nr-card--tight">
+            <span className="nr-label">Rolls entered</span>
+            <div className="nr-rolls" data-testid="dice-rolls">
+              {rolls.length === 0 ? 'Nothing yet.' : rolls}
+            </div>
+            <p className="nr-hint">
+              Check these against what you rolled. You will hash this exact string later.
+            </p>
+          </div>
           {onRollForMe !== undefined && (
             <div className="nr-card nr-card--tight" data-testid="dice-device">
               <span className="nr-label">Or let the device roll</span>
@@ -237,42 +277,13 @@ export function DiceScreen(props: DiceScreenProps): ReactElement {
                 {fromDevice} of {rolls.length} rolls came from the device
               </strong>
               <span>
-                You did not watch those land. The arithmetic below is still checkable, and the
-                rolls themselves are not: a device that wanted to hand you a seed it had chosen
-                would do it exactly here, and you could not tell. Rolling by hand is the only
-                version of this that does not require trusting the device.
+                You did not watch those land. The arithmetic below is still checkable, and the rolls
+                themselves are not: a device that wanted to hand you a seed it had chosen would do
+                it exactly here, and you could not tell. Rolling by hand is the only version of this
+                that does not require trusting the device.
               </span>
             </div>
           )}
-
-          <div className="nr-card nr-card--tight">
-            <div className="nr-row">
-              <span className="nr-label">Entropy</span>
-              <span className="nr-value nr-mono" data-testid="dice-bits">
-                {bits} of {target} bits
-              </span>
-            </div>
-            <div className="nr-meter">
-              <div
-                className={`nr-meter__fill${sufficient ? ' nr-meter__fill--done' : ''}`}
-                style={{ width: `${String(progress)}%` }}
-              />
-            </div>
-            <p className="nr-hint">
-              {accounting?.rolls ?? 0} rolls. Truncated, never rounded, so this never claims more
-              than you have collected.
-            </p>
-          </div>
-
-          <div className="nr-card nr-card--tight">
-            <span className="nr-label">Rolls entered</span>
-            <div className="nr-rolls" data-testid="dice-rolls">
-              {rolls.length === 0 ? 'Nothing yet.' : rolls}
-            </div>
-            <p className="nr-hint">
-              Check these against what you rolled. You will hash this exact string later.
-            </p>
-          </div>
         </div>
       </div>
 

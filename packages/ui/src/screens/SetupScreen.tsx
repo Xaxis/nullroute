@@ -103,8 +103,10 @@ export function SetupScreen(props: SetupScreenProps): ReactElement {
         </>
       }
     >
-      <div className="nr-field">
-        <span className="nr-field__label">Network</span>
+      {/* The chips and the line about them on one row. The chips are as wide as
+          their four labels and the sentence takes what is left, which is a
+          whole line of a 480px panel back for the three options below. */}
+      <div className="nr-beside">
         <div className="nr-tabs">
           {NETWORKS.map((n) => (
             <button
@@ -122,54 +124,69 @@ export function SetupScreen(props: SetupScreenProps): ReactElement {
           ))}
         </div>
         <p className="nr-hint">
+          <span className="nr-field__label">Network. </span>
           {NETWORKS.find((n) => n.id === network)?.description} Chosen once and locked to this
           wallet: the same seed on a different network derives different addresses.
         </p>
       </div>
 
-      <Choice
-        title="Roll dice"
-        description="100 rolls of a d6. The device shows you the arithmetic, and you can reproduce the result on any machine with sha256sum. This is the only mode where the device can be caught lying to you."
-        tag={{ text: 'recommended', tone: 'ok' }}
-        selected={mode === 'dice'}
-        onSelect={() => {
-          setMode('dice')
-        }}
-        testId="mode-dice"
-      />
+      {/* THREE ACROSS, because this is a comparison.
 
-      {/* Offered, and never level with the dice. The tag and the description
+          Stacked, the screen that decides how your seed is generated showed
+          two of its three options on an 800x480 panel and cut the second one
+          through the middle. Somebody choosing between "the only mode where
+          the device can be caught lying to you" and "you are trusting the
+          hardware, the kernel and this code" could not see both claims at
+          once, which is the one thing this screen exists to let them do.
+
+          The panel is landscape and these are three things of equal
+          structure. Side by side each description reads as a column and the
+          whole choice is on screen. */}
+      <div className="nr-modes" data-testid="setup-modes">
+        <Choice
+          title="Roll dice"
+          description="100 rolls of a d6. The device shows you the arithmetic, and you can reproduce the result on any machine with sha256sum. This is the only mode where the device can be caught lying to you."
+          tag={{ text: 'recommended', tone: 'ok' }}
+          selected={mode === 'dice'}
+          onSelect={() => {
+            setMode('dice')
+          }}
+          testId="mode-dice"
+        />
+
+        {/* Offered, and never level with the dice. The tag and the description
           say what is being given up rather than leaving the two looking like a
           preference. */}
-      <Choice
-        title="Let the device choose"
-        description="A seed from this device's random number generator, with no dice. This is what every other hardware wallet does by default. Nothing about the result can be checked by hand: you are trusting the hardware, the kernel and this code."
-        tag={{ text: 'cannot be verified', tone: 'warn' }}
-        selected={mode === 'machine'}
-        onSelect={() => {
-          setMode('machine')
-        }}
-        testId="mode-machine"
-      />
+        <Choice
+          title="Let the device choose"
+          description="A seed from this device's random number generator, with no dice. This is what every other hardware wallet does by default. Nothing about the result can be checked by hand: you are trusting the hardware, the kernel and this code."
+          tag={{ text: 'cannot be verified', tone: 'warn' }}
+          selected={mode === 'machine'}
+          onSelect={() => {
+            setMode('machine')
+          }}
+          testId="mode-machine"
+        />
 
-      <Choice
-        title="Import an existing mnemonic"
-        description="Recover a wallet, or bring in a seed generated elsewhere. The checksum is validated and the fingerprint is shown so you can confirm it is the wallet you meant."
-        selected={mode === 'import'}
-        onSelect={() => {
-          setMode('import')
-        }}
-        testId="mode-import"
-      />
+        <Choice
+          title="Import an existing mnemonic"
+          description="Recover a wallet, or bring in a seed generated elsewhere. The checksum is validated and the fingerprint is shown so you can confirm it is the wallet you meant."
+          selected={mode === 'import'}
+          onSelect={() => {
+            setMode('import')
+          }}
+          testId="mode-import"
+        />
+      </div>
 
       {mode === 'machine' && (
         <div className="nr-banner nr-banner--danger" data-testid="setup-machine-warning">
           <strong>You will not be able to check this seed</strong>
           <span>
-            The dice path can be reproduced with a die and any machine that has sha256sum, which
-            is the property that makes this device worth using over a black box. This path has
-            none of it. The device will still check that its generator is present and not stuck,
-            and that is a much weaker claim than being able to redo the arithmetic yourself.
+            The dice path can be reproduced with a die and any machine that has sha256sum, which is
+            the property that makes this device worth using over a black box. This path has none of
+            it. The device will still check that its generator is present and not stuck, and that is
+            a much weaker claim than being able to redo the arithmetic yourself.
           </span>
         </div>
       )}
