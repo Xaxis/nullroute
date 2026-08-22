@@ -28,23 +28,12 @@ import { Button } from '../components/Button.js'
  */
 
 export interface MoreScreenProps {
-  readonly onGuide?: (() => void) | undefined
-  readonly onReceive?: (() => void) | undefined
   readonly onMultisig: () => void
   readonly onProveControl?: (() => void) | undefined
   readonly onCheckProof?: (() => void) | undefined
   readonly onBackup?: (() => void) | undefined
   readonly onLabels?: (() => void) | undefined
   readonly onManage?: (() => void) | undefined
-  readonly onFleet?: (() => void) | undefined
-  /**
-   * How many quorums this device is in.
-   *
-   * Only the count, because that is all this screen decides with: whether the
-   * Quorums entry is worth showing. A device in none should not be offered a
-   * screen that lists none.
-   */
-  readonly quorumCount?: number
   readonly onSwitchWallet?: (() => void) | undefined
   readonly onCheckDevice?: (() => void) | undefined
   readonly onNameDevice?: (() => void) | undefined
@@ -68,16 +57,12 @@ export interface MoreScreenProps {
 
 export function MoreScreen(props: MoreScreenProps): ReactElement {
   const {
-    onGuide,
-    onReceive,
     onMultisig,
     onProveControl,
     onCheckProof,
     onBackup,
     onLabels,
     onManage,
-    onFleet,
-    quorumCount = 0,
     onSwitchWallet,
     onCheckDevice,
     onNameDevice,
@@ -139,24 +124,17 @@ export function MoreScreen(props: MoreScreenProps): ReactElement {
       )}
 
       <div className="nr-wlist" data-testid="wallet-more">
-        {onGuide !== undefined && (
-          <Choice
-            title="Walk me through something"
-            description="Pick what you are trying to achieve and the device puts the steps in order."
-            selected={false}
-            onSelect={onGuide}
-            testId="wallet-guide"
-          />
-        )}
-        {onReceive !== undefined && (
-          <Choice
-            title="Receive money"
-            description="One address at a time, large enough to read against the screen that is paying you."
-            selected={false}
-            onSelect={onReceive}
-            testId="wallet-receive"
-          />
-        )}
+        {/* NOT GUIDE ME, NOT RECEIVE, NOT QUORUMS.
+
+            Those three are in the navigation menu, which is in the header of
+            this screen and of every other one, so listing them here was the
+            same destination offered twice on the screen somebody had just used
+            the menu to reach.
+
+            One of them was offered under a second name. The menu says "Guide
+            me" and this said "Walk me through something", which is one feature
+            wearing two labels in an interface whose problem was that nothing
+            matched anything. */}
         <Choice
           title="Multisig"
           description="Hand this device's key to a coordinator, and agree to the quorum that comes back."
@@ -207,15 +185,6 @@ export function MoreScreen(props: MoreScreenProps): ReactElement {
             selected={false}
             onSelect={onManage}
             testId="wallet-manage"
-          />
-        )}
-        {onFleet !== undefined && quorumCount > 0 && (
-          <Choice
-            title="Quorums"
-            description="Everything this device cosigns, who else is in each, and what it cannot tell you about them."
-            selected={false}
-            onSelect={onFleet}
-            testId="wallet-fleet"
           />
         )}
         {onSwitchWallet !== undefined && (

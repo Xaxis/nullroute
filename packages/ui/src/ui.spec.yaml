@@ -620,12 +620,13 @@ invariants:
       Every destination leaving the wallet is reachable and says what it does
       rather than carrying a one-word label, and a destination with no handler
       leaves no control behind. Those destinations moved to the More screen and
-      the navigation rail when "More" stopped being a tab; the wallet's action
-      bar now holds only what acts on the wallet screen itself.
+      the navigation menu when "More" stopped being a tab; the wallet's action
+      bar now holds only what acts on the wallet screen itself. More does not
+      repeat what the menu carries, because the menu is in its header too.
     tests:
       - packages/ui/test/more-screen.test.tsx::reaches-every-destination
       - packages/ui/test/more-screen.test.tsx::leaves-out-a-destination-with-nowhere-to-go
-      - packages/ui/test/more-screen.test.tsx::offers-quorums-only-when-this-device-is-in-one
+      - packages/ui/test/more-screen.test.tsx::does-not-repeat-what-the-menu-already-carries
 
   # --- The verdict fails closed ----------------------------------------------
   - id: INV-UI-53

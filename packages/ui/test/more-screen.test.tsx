@@ -23,22 +23,19 @@ afterEach(() => {
 
 function mount() {
   const handlers = {
-    onGuide: vi.fn(),
-    onReceive: vi.fn(),
     onMultisig: vi.fn(),
     onProveControl: vi.fn(),
     onCheckProof: vi.fn(),
     onBackup: vi.fn(),
     onLabels: vi.fn(),
     onManage: vi.fn(),
-    onFleet: vi.fn(),
     onSwitchWallet: vi.fn(),
     onCheckDevice: vi.fn(),
     onNameDevice: vi.fn(),
     onChildSeed: vi.fn(),
     onBack: vi.fn(),
   }
-  render(<MoreScreen {...handlers} quorumCount={1} />)
+  render(<MoreScreen {...handlers} />)
   return handlers
 }
 
@@ -91,17 +88,22 @@ describe('MoreScreen', () => {
   })
 
   /**
-   * A device in no quorum is not offered a screen that would list none.
-   * Passing the count rather than the quorums themselves is deliberate: this
-   * screen decides one thing with it and has no use for the rest.
+   * Guide me, Receive and Quorums are in the navigation menu, which is in the
+   * header of this screen too, so listing them here offered the same
+   * destination twice on the screen somebody had just used the menu to reach.
+   * One of them wore a second name while it was here.
+   *
+   * The quorum gating that used to live on this screen lives on the menu:
+   * nav-menu.test.tsx::hides-quorums-on-a-device-that-is-in-none.
    */
-  it('offers-quorums-only-when-this-device-is-in-one', () => {
-    render(<MoreScreen onMultisig={vi.fn()} onFleet={vi.fn()} quorumCount={0} onBack={vi.fn()} />)
-    expect(screen.queryByTestId('wallet-fleet')).toBeNull()
+  it('does-not-repeat-what-the-menu-already-carries', () => {
+    render(<MoreScreen onMultisig={vi.fn()} onBack={vi.fn()} />)
 
-    cleanup()
-    render(<MoreScreen onMultisig={vi.fn()} onFleet={vi.fn()} quorumCount={2} onBack={vi.fn()} />)
-    expect(screen.getByTestId('wallet-fleet')).toBeTruthy()
+    expect(screen.queryByTestId('wallet-guide')).toBeNull()
+    expect(screen.queryByTestId('wallet-receive')).toBeNull()
+    expect(screen.queryByTestId('wallet-fleet')).toBeNull()
+    // And the name that was only ever here.
+    expect(screen.queryByText('Walk me through something')).toBeNull()
   })
 
   /**

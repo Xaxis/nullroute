@@ -27,11 +27,7 @@ import {
   type QuorumView,
   type ScriptType,
 } from './screens/WalletScreen.js'
-import {
-  PsbtScreen,
-  type PsbtReviewView,
-  type PsbtSignedView,
-} from './screens/PsbtScreen.js'
+import { PsbtScreen, type PsbtReviewView, type PsbtSignedView } from './screens/PsbtScreen.js'
 import { ScanScreen, type ScanResult } from './screens/ScanScreen.js'
 import { WalletsScreen, type WalletRow } from './screens/WalletsScreen.js'
 import { ManageWalletScreen } from './screens/ManageWalletScreen.js'
@@ -39,23 +35,14 @@ import { StartScreen } from './screens/StartScreen.js'
 import { AttestationScreen } from './screens/AttestationScreen.js'
 import { DeviceNameScreen } from './screens/DeviceNameScreen.js'
 import { FleetScreen, type FleetQuorum } from './screens/FleetScreen.js'
-import {
-  AssembleQuorumScreen,
-  type AssembledView,
-} from './screens/AssembleQuorumScreen.js'
-import {
-  MachineEntropyScreen,
-  type HealthReportView,
-} from './screens/MachineEntropyScreen.js'
+import { AssembleQuorumScreen, type AssembledView } from './screens/AssembleQuorumScreen.js'
+import { MachineEntropyScreen, type HealthReportView } from './screens/MachineEntropyScreen.js'
 import { FinishScreen } from './screens/FinishScreen.js'
 import { ReceiveScreen, type ReceiveAddress } from './screens/ReceiveScreen.js'
 import { Steps } from './components/Steps.js'
 import { journeyById, stepsFor as journeyStepsFor, type JourneyId } from './journeys.js'
 import { LabelsScreen, type ImportedLabels, type LabelRow } from './screens/LabelsScreen.js'
-import {
-  VerifyMessageScreen,
-  type VerificationView,
-} from './screens/VerifyMessageScreen.js'
+import { VerifyMessageScreen, type VerificationView } from './screens/VerifyMessageScreen.js'
 import { parseSignedMessageBlock } from '@nullroute/core'
 import {
   ChildSeedScreen,
@@ -690,46 +677,49 @@ export function App() {
     }
   }, [stage.at])
 
-  const unlockWallet = useCallback(async (id: string, passphrase: string): Promise<void> => {
-    // Cleared BEFORE the call. wallets.unlock locks the session first, so
-    // from the moment it is issued nothing is open; leaving the old value in
-    // place means a failed unlock returns to a picker whose header still
-    // names, and whose list still marks as open, a wallet the daemon has
-    // already closed.
-    setActiveWallet(null)
+  const unlockWallet = useCallback(
+    async (id: string, passphrase: string): Promise<void> => {
+      // Cleared BEFORE the call. wallets.unlock locks the session first, so
+      // from the moment it is issued nothing is open; leaving the old value in
+      // place means a failed unlock returns to a picker whose header still
+      // names, and whose list still marks as open, a wallet the daemon has
+      // already closed.
+      setActiveWallet(null)
 
-    const opened = await call<{
-      active: { id: string; label: string; colour: string }
-      fingerprint: string
-      hintCorrected: boolean
-      labelVerified: boolean
-      bip39Passphrase: boolean
-    }>(transport, 'wallets.unlock', { id, passphrase })
-    setActiveWallet(opened.active)
-    setLabelVerified(opened.labelVerified)
-    setError(null)
-    // The device status, refreshed, because opening a wallet is what changes
-    // it. Without this `status.hasWallet` stayed false for the rest of the
-    // session and three things read it: the idle lock never armed, so the
-    // feature that closes the wallet when nobody is there did not run at all;
-    // a journey begun after unlocking prepended "Open a wallet" to a flow
-    // whose wallet was already open; and the lock screen routed a device with
-    // a loaded wallet back to the picker.
-    //
-    // Nothing looked wrong. That is the whole reason this comment is here
-    // rather than a bare call.
-    await refresh()
-    // Never straight to the wallet. Everything a user needs in order to
-    // notice that the wrong wallet opened is on the next screen, and after
-    // that there is nothing left to notice it with.
-    setStage({
-      at: 'unlocked',
-      fingerprint: opened.fingerprint,
-      usedPassphrase: opened.bip39Passphrase,
-      labelVerified: opened.labelVerified,
-      hintCorrected: opened.hintCorrected,
-    })
-  }, [refresh])
+      const opened = await call<{
+        active: { id: string; label: string; colour: string }
+        fingerprint: string
+        hintCorrected: boolean
+        labelVerified: boolean
+        bip39Passphrase: boolean
+      }>(transport, 'wallets.unlock', { id, passphrase })
+      setActiveWallet(opened.active)
+      setLabelVerified(opened.labelVerified)
+      setError(null)
+      // The device status, refreshed, because opening a wallet is what changes
+      // it. Without this `status.hasWallet` stayed false for the rest of the
+      // session and three things read it: the idle lock never armed, so the
+      // feature that closes the wallet when nobody is there did not run at all;
+      // a journey begun after unlocking prepended "Open a wallet" to a flow
+      // whose wallet was already open; and the lock screen routed a device with
+      // a loaded wallet back to the picker.
+      //
+      // Nothing looked wrong. That is the whole reason this comment is here
+      // rather than a bare call.
+      await refresh()
+      // Never straight to the wallet. Everything a user needs in order to
+      // notice that the wrong wallet opened is on the next screen, and after
+      // that there is nothing left to notice it with.
+      setStage({
+        at: 'unlocked',
+        fingerprint: opened.fingerprint,
+        usedPassphrase: opened.bip39Passphrase,
+        labelVerified: opened.labelVerified,
+        hintCorrected: opened.hintCorrected,
+      })
+    },
+    [refresh]
+  )
 
   // --- IPC-backed callbacks ------------------------------------------------
 
@@ -1097,55 +1087,44 @@ export function App() {
         }
         banner={banner}
         identity={identity}
-        quorumCount={quorums.length}
-        onGuide={() => {
-            setJourney(null)
-            setStage({ at: 'start' })
-          }}
-        onReceive={() => {
-            setStage({ at: 'receive' })
-          }}
         onMultisig={() => {
-            setStage({ at: 'multisig' })
-          }}
+          setStage({ at: 'multisig' })
+        }}
         onProveControl={() => {
-            setStage({ at: 'message' })
-          }}
+          setStage({ at: 'message' })
+        }}
         onCheckProof={() => {
-            setStage({ at: 'verify-message' })
-          }}
+          setStage({ at: 'verify-message' })
+        }}
         onBackup={() => {
-            setStage({ at: 'backup' })
-          }}
+          setStage({ at: 'backup' })
+        }}
         onLabels={() => {
-            setStage({ at: 'labels' })
-          }}
-        onFleet={() => {
-            setStage({ at: 'fleet' })
-          }}
+          setStage({ at: 'labels' })
+        }}
         onSwitchWallet={() => {
-            // Locks first. Two seeds resident at once is the state from which a
-            // device signs with the wrong one, and `wallets.unlock` locks
-            // anyway, so doing it here means the picker is never showing a
-            // wallet as open that the next tap is about to replace.
-            const go = async (): Promise<void> => {
-              await call(transport, 'session.lock')
-              setActiveWallet(null)
-              setQuorums([])
-              await refresh()
-              setStage({ at: 'wallets' })
-            }
-            void go()
-          }}
+          // Locks first. Two seeds resident at once is the state from which a
+          // device signs with the wrong one, and `wallets.unlock` locks
+          // anyway, so doing it here means the picker is never showing a
+          // wallet as open that the next tap is about to replace.
+          const go = async (): Promise<void> => {
+            await call(transport, 'session.lock')
+            setActiveWallet(null)
+            setQuorums([])
+            await refresh()
+            setStage({ at: 'wallets' })
+          }
+          void go()
+        }}
         onCheckDevice={() => {
-            setStage({ at: 'attestation' })
-          }}
+          setStage({ at: 'attestation' })
+        }}
         onNameDevice={() => {
-            setStage({ at: 'device-name' })
-          }}
+          setStage({ at: 'device-name' })
+        }}
         onChildSeed={() => {
-            setStage({ at: 'child' })
-          }}
+          setStage({ at: 'child' })
+        }}
         {...(activeWallet === null
           ? {}
           : {
@@ -1499,7 +1478,7 @@ export function App() {
           const next = journey === null ? undefined : journey.steps[journey.step + 1]
           if (journey !== null && journey.steps[journey.step]?.stage === 'wallets') {
             setJourney({ ...journey, step: journey.step + 1 })
-            setStage({ at: (next?.stage ?? 'wallet') } as Stage)
+            setStage({ at: next?.stage ?? 'wallet' } as Stage)
             return
           }
           setStage({ at: 'wallet' })
