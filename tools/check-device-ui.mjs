@@ -104,6 +104,13 @@ async function main() {
       '--disable-background-networking',
       '--no-sandbox',
       '--disable-dev-shm-usage',
+      // DELIBERATELY NOT 800x480. The panel is 800x480 and every other visual
+      // guard here renders at exactly that, which means none of them could see
+      // that the application had no size of its own: a root at 100% of a
+      // viewport that happens to be the right size comes out right by accident.
+      // In a browser it stretched, and a browser is where this gets developed
+      // and looked at. See the assertion on #root below.
+      '--window-size=1280,860',
       '--remote-debugging-port=9328',
       'about:blank',
     ],
@@ -195,6 +202,13 @@ async function main() {
         mounted: document.querySelector('#root')?.children.length ?? 0,
         text: (document.body.innerText || '').slice(0, 400),
         hasMeta: Boolean(document.querySelector('meta[http-equiv="Content-Security-Policy"]')),
+        panel: (() => {
+          const root = document.querySelector('#root')
+          if (root === null) return null
+          const r = root.getBoundingClientRect()
+          return { w: Math.round(r.width), h: Math.round(r.height) }
+        })(),
+        viewport: [document.documentElement.clientWidth, document.documentElement.clientHeight],
       })`,
       returnByValue: true,
     },
@@ -208,6 +222,30 @@ async function main() {
   const problems = []
 
   if (!state.hasMeta) problems.push('the served document carries no CSP meta tag')
+
+  /*
+   * THE APPLICATION IS 800x480 WHATEVER IT IS RENDERED IN.
+   *
+   * The device is one fixed panel and the frontend did not say so anywhere. On
+   * the hardware that was invisible, because the viewport is 800x480 and a root
+   * sized to 100% of it lands on the right number without meaning to. In a
+   * browser at 1440x900 the header stretched to 1440, so the menu button sat
+   * six hundred pixels from the title it belongs beside and the action bar was
+   * at the bottom of a window twice the height of the panel.
+   *
+   * Checked here rather than in tools/check-screen-fit.mjs on purpose: that one
+   * renders at exactly 800x480, which is the one viewport where this bug cannot
+   * appear. This check runs at 1280x860 so the assertion has something to say.
+   */
+  if (state.panel === null) {
+    problems.push('there is no #root to measure')
+  } else if (state.panel.w !== 800 || state.panel.h !== 480) {
+    problems.push(
+      `#root is ${String(state.panel.w)}x${String(state.panel.h)} in a ` +
+        `${String(state.viewport?.[0])}x${String(state.viewport?.[1])} viewport, and the device ` +
+        `panel is 800x480. The application has no size of its own and is taking the window's.`
+    )
+  }
   if (!state.mounted) {
     problems.push(`nothing rendered into #root. Body text was: ${JSON.stringify(state.text ?? '')}`)
   }
@@ -225,7 +263,8 @@ async function main() {
   }
 
   console.log(
-    `check-device-ui: frontend mounted under its own CSP, ` +
+    `check-device-ui: frontend mounted under its own CSP at 800x480 in a ` +
+      `${String(state.viewport?.[0])}x${String(state.viewport?.[1])} window, ` +
       `no violations, no off-origin requests`
   )
 }

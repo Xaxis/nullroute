@@ -35,6 +35,46 @@ function tokensIn(selector: string): Set<string> {
   return new Set([...block.matchAll(/(--color-[a-z0-9-]+)\s*:/g)].map((m) => m[1] ?? ''))
 }
 
+/**
+ * Every declaration block whose selector is EXACTLY this, joined.
+ *
+ * Not `indexOf('\nbody {')`, which is what this used to do and which started
+ * matching the second line of `html,\nbody {` the moment the panel got a size
+ * of its own. It found a reset rule, saw no colour in it, and failed on a
+ * stylesheet that was correct. A selector list is a list; match it as one.
+ */
+function rulesFor(selector: string): string {
+  // Comments out first. They hold braces and at-rules, and a comment about a
+  // grid template is not a grid template.
+  const bare = CSS.replace(/\/\*[\s\S]*?\*\//g, '')
+  const found: string[] = []
+  // Depth tracked rather than regexed. The stylesheet nests rules inside
+  // @media and @layer, and a flat pattern anchored on braces desynchronises at
+  // the first nested block and then reports a rule that is plainly there as
+  // missing, which is exactly what it did.
+  let depth = 0
+  let headStart = 0
+  const opens: number[] = []
+  for (let i = 0; i < bare.length; i += 1) {
+    const ch = bare[i]
+    if (ch === '{') {
+      const head = bare.slice(headStart, i)
+      const selectors = head.split(',').map((part) => part.trim())
+      opens.push(selectors.includes(selector) ? i : -1)
+      depth += 1
+      headStart = i + 1
+    } else if (ch === '}') {
+      depth -= 1
+      const open = opens.pop()
+      if (open !== undefined && open !== -1) found.push(bare.slice(open + 1, i))
+      headStart = i + 1
+    }
+  }
+  if (depth !== 0) throw new Error('styles.css has unbalanced braces')
+  if (found.length === 0) throw new Error(`no rule for ${selector} in styles.css`)
+  return found.join('\n')
+}
+
 describe('the theme layer', () => {
   /**
    * INV-UI-93. Every colour the stylesheet reads is defined in the DEFAULT
@@ -44,9 +84,7 @@ describe('the theme layer', () => {
    */
   it('defines-every-colour-in-the-default-block', () => {
     const base = tokensIn(':root {')
-    const used = new Set(
-      [...CSS.matchAll(/var\((--color-[a-z0-9-]+)/g)].map((m) => m[1] ?? '')
-    )
+    const used = new Set([...CSS.matchAll(/var\((--color-[a-z0-9-]+)/g)].map((m) => m[1] ?? ''))
 
     const missing = [...used].filter((token) => !base.has(token))
     expect(missing, `defined only in a theme block: ${missing.join(', ')}`).toEqual([])
@@ -85,10 +123,31 @@ describe('the theme layer', () => {
    * INV-UI-93. The ground is painted explicitly rather than inherited. A
    * transparent body borrows whatever is behind the app, which on a kiosk is
    * whatever Chromium last drew.
+   *
+   * TWO GROUNDS NOW, since the application became a fixed 800x480 panel rather
+   * than whatever the window happened to be. The panel paints itself, and the
+   * area around it, which only ever exists in a browser, paints itself
+   * separately. Both from tokens: an unpainted surround is the same bug one
+   * element out.
    */
   it('paints-the-ground-from-a-token', () => {
-    const body = CSS.slice(CSS.indexOf('\nbody {'), CSS.indexOf('}', CSS.indexOf('\nbody {')))
-    expect(body).toContain('var(--color-bg)')
+    expect(rulesFor('body')).toContain('var(--color-surround)')
+    expect(rulesFor('#root')).toContain('var(--color-bg)')
+  })
+
+  /**
+   * INV-UI-93. The panel is the size of the hardware, stated once, in CSS.
+   *
+   * It was not stated anywhere. On the device that never showed, because the
+   * viewport is 800x480 and a root at 100% of it is the right size by accident.
+   * In a browser the header stretched to the window width and the action bar
+   * went to the bottom of it. Held from the other side by check-device-ui.mjs,
+   * which renders at 1280x860 and measures the result.
+   */
+  it('is-the-size-of-the-panel-and-says-so', () => {
+    const panel = rulesFor('#root')
+    expect(panel).toContain('width: 800px')
+    expect(panel).toContain('height: 480px')
   })
 
   /**

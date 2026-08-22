@@ -169,6 +169,55 @@ const MEASURE = `(() => {
     }
   }
 
+  /*
+   * THE BODY FILLS THE PANEL, and the banner strip is not empty.
+   *
+   * Both halves of one bug that shipped and that nothing here could see.
+   *
+   * .nr-screen was a three row grid and Screen renders four children the moment
+   * a banner exists, so grid gave the 1fr to the banner strip and put the body
+   * in an implicit auto row. The strip stretched to fill the panel and the body
+   * shrank to the height of its own text. Separately, App built the banner as a
+   * fragment with two conditional children, which on a mainnet device with no
+   * idle warning is an element that renders nothing, so the strip appeared with
+   * nothing in it and then took 180px of an 800x480 panel.
+   *
+   * Every existing assertion passed throughout. The action bar was still at the
+   * bottom, every control was still on screen, and the body had stopped
+   * overflowing precisely because it had collapsed.
+   *
+   * So: nothing between the body and the bar, and no strip without content.
+   */
+  const screenBody = document.querySelector('.nr-screen__body')
+  const actionBar = document.querySelector('.nr-screen__actions')
+  if (screenBody !== null && actionBar !== null) {
+    const gap = Math.round(actionBar.getBoundingClientRect().top - screenBody.getBoundingClientRect().bottom)
+    if (gap > 1) {
+      problems.push({
+        kind: 'body-does-not-fill',
+        detail: 'there is a ' + gap + 'px gap between the bottom of the body and the action bar, ' +
+          'so something other than the body is taking the panel height',
+      })
+    }
+  }
+
+  const strip = document.querySelector('.nr-screen__banners')
+  if (strip !== null && strip.getBoundingClientRect().height > 0) {
+    let content = 0
+    for (const child of strip.children) {
+      const cr = child.getBoundingClientRect()
+      if (cr.width > 0 && cr.height > 0) content += 1
+    }
+    if (content === 0) {
+      problems.push({
+        kind: 'empty-banner-strip',
+        detail: 'the banner strip is rendered and holds nothing, so it is ' +
+          Math.round(strip.getBoundingClientRect().height) + 'px of border and padding ' +
+          'announcing a warning that is not there',
+      })
+    }
+  }
+
   const bar = document.querySelector('.nr-screen__actions')
   if (bar === null) {
     problems.push({ kind: 'no-action-bar', detail: 'this screen has no action bar at all' })

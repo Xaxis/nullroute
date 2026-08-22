@@ -1076,14 +1076,16 @@ invariants:
     statement: >
       Every colour the stylesheet reads is defined in the default block, light
       redefines exactly what dark defines, text on the accent stays dark in
-      both, the ground is painted from a token rather than inherited, and no
-      palette rung is named directly.
+      both, both grounds are painted from tokens rather than inherited, no
+      palette rung is named directly, and the application is 800x480 whatever it
+      is rendered in.
     tests:
       - packages/ui/test/theme.test.tsx::defines-every-colour-in-the-default-block
       - packages/ui/test/theme.test.tsx::redefines-the-same-tokens-in-light
       - packages/ui/test/theme.test.tsx::keeps-text-on-the-accent-dark-in-both-themes
       - packages/ui/test/theme.test.tsx::paints-the-ground-from-a-token
       - packages/ui/test/theme.test.tsx::names-no-palette-rungs
+      - packages/ui/test/theme.test.tsx::is-the-size-of-the-panel-and-says-so
 
   - id: INV-UI-94
     statement: >

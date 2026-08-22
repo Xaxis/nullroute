@@ -479,13 +479,30 @@ export function App() {
    * A full width strip has room for both warnings at once and takes nothing
    * from the header when there are none.
    */
+  /*
+   * NULL RATHER THAN AN EMPTY FRAGMENT.
+   *
+   * This returned a fragment whose two children were both conditional, so on a
+   * mainnet device with no idle warning it produced an element that rendered
+   * nothing. Screen tests `banner !== null`, which that passes, so the strip
+   * rendered anyway: an empty band with padding and a bottom border, which then
+   * took the whole panel because of the grid bug above it.
+   *
+   * The two failures were independent and each one hid the other. Deciding here
+   * whether there is anything to say means the strip only exists when it has
+   * something in it.
+   */
+  const idleBanner =
+    status !== null && idle.warning && idle.remaining !== null ? (
+      <IdleBanner remaining={idle.remaining} onStayOpen={idle.stayOpen} />
+    ) : null
+  const networkBanner =
+    status !== null && !status.network.isMainnet ? <NetworkBanner network={status.network} /> : null
   const banner =
-    status === null ? null : (
+    idleBanner === null && networkBanner === null ? null : (
       <>
-        {idle.warning && idle.remaining !== null && (
-          <IdleBanner remaining={idle.remaining} onStayOpen={idle.stayOpen} />
-        )}
-        {!status.network.isMainnet && <NetworkBanner network={status.network} />}
+        {idleBanner}
+        {networkBanner}
       </>
     )
 

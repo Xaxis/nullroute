@@ -140,6 +140,26 @@ const CROWDED_HEADER = (
   </>
 )
 
+/**
+ * A banner element that renders nothing.
+ *
+ * THE STATE THE REAL APP IS IN MOST OF THE TIME, and the one no fixture had.
+ * App built its banner as a fragment with two conditional children, so on a
+ * mainnet device with no idle warning it produced an element that is not null
+ * and draws nothing. Screen tested for null, so the strip rendered empty, and
+ * the grid above it then handed that empty strip the whole panel.
+ *
+ * Kept as a fixture rather than deleted with the bug: an empty banner is a
+ * thing a caller can construct, and the guard that now refuses it needs
+ * something to refuse.
+ */
+const EMPTY_BANNER = (
+  <>
+    {false}
+    {null}
+  </>
+)
+
 /** A whole proof, as one scan of an armoured block delivers it. */
 const SCANNED_PROOF = {
   address: 'bc1ppv609nr0vr25u07u95waq5lucwfm6tde4nydujnu8npg4q75mr5sxq8lt3',
@@ -562,6 +582,19 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     <PsbtScreen
       nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
       banner={CROWDED_HEADER}
+      initialPsbt="cHNidP8BAHUCAAAAAQ=="
+      onScan={noop}
+      onReview={async () => Promise.resolve(REVIEW)}
+      onSign={never}
+      onBack={noop}
+    />
+  ),
+  // The same screen with a banner that draws nothing, which is what a mainnet
+  // device with no idle warning actually passes. See EMPTY_BANNER.
+  'psbt-empty-banner': () => (
+    <PsbtScreen
+      nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
+      banner={EMPTY_BANNER}
       initialPsbt="cHNidP8BAHUCAAAAAQ=="
       onScan={noop}
       onReview={async () => Promise.resolve(REVIEW)}

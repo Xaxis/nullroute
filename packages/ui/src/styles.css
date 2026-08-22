@@ -58,6 +58,9 @@
 
      tools/check-ui-constants.mjs now fails the build on an undefined one. */
   --color-bg: #08090b;
+  /* What the panel sits on, when there is anything around it. Only a browser
+     ever sees this: on the device the panel is the whole viewport. */
+  --color-surround: #000000;
   --color-surface-1: #101216;
   --color-surface-2: #171a20;
   --color-surface-3: #1f232b;
@@ -100,6 +103,9 @@
      ========================================================================== */
 
   --color-bg: #08090b;
+  /* What the panel sits on, when there is anything around it. Only a browser
+     ever sees this: on the device the panel is the whole viewport. */
+  --color-surround: #000000;
   --color-surface-1: #101216;
   --color-surface-2: #171a20;
   --color-surface-3: #1f232b;
@@ -165,6 +171,8 @@
    ========================================================================== */
 :root[data-theme='light'] {
   --color-bg: #f5f4f1;
+  /* See the dark theme. Only a browser ever sees this. */
+  --color-surround: #d9d6d0;
   --color-surface-1: #fbfaf8;
   --color-surface-2: #efedea;
   --color-surface-3: #e5e2dd;
@@ -218,14 +226,48 @@
 }
 
 html,
-body,
-#root {
+body {
   height: 100%;
   margin: 0;
 }
 
-body {
+/* --- The panel, at the size it actually is ----------------------------------
+   The device is a fixed 800x480 display and nothing here said so. On the device
+   that did not matter, because the viewport IS 800x480 and a root at 100% of it
+   comes out the right size by accident.
+
+   In a browser it mattered a great deal, and that is where this gets developed
+   and looked at. At 1440x900 the header stretched to 1440, so the menu button
+   ended up six hundred pixels from the title it belongs beside, the action bar
+   sat at the bottom of a window twice the height of the panel, and everything
+   between was empty. Every measurement in tools/check-screen-fit.mjs is taken at
+   800x480, so none of it could see that, and the screenshots I was reading were
+   not the screen anybody else was looking at.
+
+   `margin: auto` rather than centring on the flex container: with a viewport
+   SMALLER than the panel, centring clips the top and left edges beyond reach,
+   and auto margins do not.
+
+   On the device there is no slack on either axis, so this is the same layout it
+   has always had. The shadow has nothing to fall on.
+   --------------------------------------------------------------------------- */
+
+#root {
+  width: 800px;
+  height: 480px;
+  margin: auto;
+  overflow: hidden;
   background-color: var(--color-bg);
+  /* An outline rather than a border: a border would take its width out of the
+     800, and this panel does not have a pixel to give. */
+  box-shadow: 0 0 0 1px var(--color-line);
+}
+
+body {
+  display: flex;
+  /* What the device is sitting on. Never visible on the device itself, where
+     the panel is the whole viewport. */
+  background-color: var(--color-surround);
   color: var(--color-text-strong);
   font-family: var(--font-sans);
   font-size: 15px;
@@ -384,10 +426,33 @@ body {
 }
 
 .nr-screen {
-  display: grid;
-  grid-template-rows: auto 1fr auto;
+  /* FLEX, NOT A ROW TEMPLATE.
+
+     This was `grid-template-rows: auto 1fr auto`, which is three rows, and
+     Screen renders FOUR children the moment a banner exists: head, banners,
+     body, actions. Grid handed the 1fr to the banner strip and put the body in
+     an implicit auto row, so the strip stretched to fill the panel and the body
+     collapsed to the height of its own text. On the wallet picker that was
+     180px of empty band under the header with everything shoved to the bottom.
+
+     Nothing here could see it. The action bar was still at the bottom, every
+     control was still on screen, and the body no longer overflowed because it
+     had shrunk to fit, so tools/check-screen-fit.mjs reported the screen as
+     fitting perfectly.
+
+     A positional template is the wrong tool for a container whose child count
+     is conditional. This says which one grows and does not care how many there
+     are or what order they come in. */
+  display: flex;
+  flex-direction: column;
   height: 100%;
   min-height: 0;
+}
+
+.nr-screen__head,
+.nr-screen__banners,
+.nr-screen__actions {
+  flex: 0 0 auto;
 }
 
 .nr-screen__head {
@@ -429,6 +494,8 @@ body {
 }
 
 .nr-screen__body {
+  /* The one region that grows. See `.nr-screen`. */
+  flex: 1 1 auto;
   overflow-y: auto;
   padding: 1.125rem 1.25rem;
   min-height: 0;
@@ -2086,6 +2153,18 @@ body {
    competed with the title for one row and won: the idle countdown wrapped the
    title onto three lines and pushed the device name off the panel, so a
    warning about the session hid the answer to which session. */
+/* A strip with nothing in it is not a strip.
+
+   Screen cannot tell whether the node it was handed will draw anything: a React
+   fragment whose children are all false is not null, so a null check passes and
+   the element renders. App no longer builds one of those, and this makes it
+   impossible for any other caller to either, rather than relying on every
+   caller getting it right. Held by check-screen-fit.mjs, which also catches the
+   case this cannot see: children that exist and are invisible. */
+.nr-screen__banners:empty {
+  display: none;
+}
+
 .nr-screen__banners {
   display: flex;
   align-items: center;
