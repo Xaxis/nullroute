@@ -168,6 +168,48 @@ describe('ui.app boot', () => {
   })
 })
 
+describe('ui.app when something fails', () => {
+  /**
+   * INV-UI-99. A control that does nothing is worse than an error.
+   *
+   * THE BUG THIS EXISTS FOR. Every asynchronous action in the shell was
+   * launched with `void go()`, in eight places, which drops a rejection on the
+   * floor. Continue on the dice screen, after a hundred rolls, called
+   * `seed.reveal`, was refused, and did nothing at all: the screen did not
+   * change and the device said nothing. Somebody would tap it again, and again,
+   * with no way to learn that the seed they had just generated was gone.
+   *
+   * Driven through `network.set`, which is the first action on the way into
+   * setting a device up, because the point is the routing rather than the
+   * method: they all go through one runner now.
+   */
+  it('says-so-when-an-action-fails', async () => {
+    replies.set('network.set', new Error('The network is locked to this wallet.'))
+    await boot()
+
+    fireEvent.click(screen.getByTestId('unlock'))
+    await waitFor(() => {
+      expect(screen.getByTestId('wallets-add')).toBeTruthy()
+    })
+    fireEvent.click(screen.getByTestId('wallets-add'))
+    await waitFor(() => {
+      expect(screen.getByTestId('setup-start')).toBeTruthy()
+    })
+
+    fireEvent.click(screen.getByTestId('setup-start'))
+
+    const banner = await waitFor(() => screen.getByTestId('action-error'))
+    expect(banner.textContent).toContain('The network is locked to this wallet.')
+
+    // And it can be got rid of, because an error about something you have since
+    // done differently is worse than no error.
+    fireEvent.click(screen.getByTestId('action-error-dismiss'))
+    await waitFor(() => {
+      expect(screen.queryByTestId('action-error')).toBeNull()
+    })
+  })
+})
+
 describe('ui.app journeys', () => {
   /**
    * INV-UI-64. The goal hub is reachable from the lock screen, and starting a
@@ -275,7 +317,10 @@ describe('ui.app the wallet store', () => {
    */
   it('saves-a-new-wallet-through-the-multi-wallet-api', async () => {
     replies.set('entropy.fromDice', { ok: true })
-    replies.set('seed.reveal', { words: Array.from({ length: 12 }, () => 'abandon'), fingerprint: '73c5da0a' })
+    replies.set('seed.reveal', {
+      words: Array.from({ length: 12 }, () => 'abandon'),
+      fingerprint: '73c5da0a',
+    })
     replies.set('seed.confirmBackup', { confirmed: true })
     replies.set('wallets.create', {
       id: 'a'.repeat(16),

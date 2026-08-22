@@ -331,6 +331,20 @@ export function App() {
   const [store, setStore] = useState<StoreStatus | null>(null)
   const [expanded, setExpanded] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /**
+   * The last action that failed, shown until it is dismissed or another runs.
+   *
+   * WHY THIS EXISTS. Every asynchronous action in this component was launched
+   * with `run(go)`, in seven places, which drops a rejection on the floor.
+   * The whole class is dead buttons: the daemon refuses, nothing catches it,
+   * the screen does not change and the device says nothing at all.
+   *
+   * That is not hypothetical. Continue on the dice screen, after a hundred
+   * rolls, called `seed.reveal`, got "No wallet is loaded", and did nothing
+   * visible. Somebody would tap it again, and again, with no way to find out
+   * that the seed they had just generated was gone.
+   */
+  const [actionError, setActionError] = useState<string | null>(null)
   const [wallets, setWallets] = useState<readonly WalletRow[]>([])
   /**
    * Registered quorums, refreshed whenever the wallet screen is entered.
@@ -343,6 +357,21 @@ export function App() {
   /** Why the wallet list may be wrong or incomplete. Never rendered as empty. */
   const [listFailure, setListFailure] = useState<string | null>(null)
   const [maxWallets, setMaxWallets] = useState(8)
+
+  /**
+   * Run an action and put any failure on the screen.
+   *
+   * Use this instead of `void promise`. The rule this enforces is the one
+   * CLAUDE.md states for signing paths and which is worth just as much
+   * everywhere else on a device with no console and no log a user can read: a
+   * swallowed exception is indistinguishable from a control that does nothing.
+   */
+  const run = useCallback((action: () => Promise<void>): void => {
+    setActionError(null)
+    void action().catch((cause: unknown) => {
+      setActionError(cause instanceof Error ? cause.message : String(cause))
+    })
+  }, [])
   /**
    * The open wallet, as the daemon reports it.
    *
@@ -459,7 +488,7 @@ export function App() {
         await refresh()
         setStage({ at: 'wallets' })
       }
-      void go()
+      run(go)
     }, [refresh]),
   })
 
@@ -498,9 +527,39 @@ export function App() {
     ) : null
   const networkBanner =
     status !== null && !status.network.isMainnet ? <NetworkBanner network={status.network} /> : null
+  /*
+   * A failed action, on whatever screen you are standing on.
+   *
+   * In the strip rather than inside a screen because the failure belongs to
+   * the tap, not to the layout: the seven actions that can fail here are spread
+   * across nine screens, and each one growing its own error slot is how they
+   * end up with nine different treatments and two with none.
+   *
+   * Dismissable, and cleared by the next action, because an error about
+   * something you have since done differently is worse than no error.
+   */
+  const failureBanner =
+    actionError === null ? null : (
+      <div className="nr-banner nr-banner--danger" data-testid="action-error">
+        <strong>That did not work</strong>
+        <span>{actionError}</span>
+        <button
+          type="button"
+          className="nr-banner__dismiss"
+          onClick={() => {
+            setActionError(null)
+          }}
+          data-testid="action-error-dismiss"
+        >
+          Dismiss
+        </button>
+      </div>
+    )
+
   const banner =
-    idleBanner === null && networkBanner === null ? null : (
+    idleBanner === null && networkBanner === null && failureBanner === null ? null : (
       <>
+        {failureBanner}
         {idleBanner}
         {networkBanner}
       </>
@@ -580,7 +639,7 @@ export function App() {
       await refresh()
       setStage({ at: 'lock' })
     }
-    void go()
+    run(go)
   }, [refresh])
 
   /**
@@ -946,7 +1005,7 @@ export function App() {
                   : { at: 'import' }
             )
           }
-          void go()
+          run(go)
         }}
       />
     )
@@ -976,7 +1035,7 @@ export function App() {
             advance('dice')
             setStage({ at: 'seed', words: revealed.words, fingerprint: revealed.fingerprint })
           }
-          void go()
+          run(go)
         }}
       />
     )
@@ -1069,7 +1128,7 @@ export function App() {
             advance('seed')
             setStage({ at: 'protect' })
           }
-          void go()
+          run(go)
         }}
       />
     )
@@ -1131,7 +1190,7 @@ export function App() {
             await refresh()
             setStage({ at: 'wallets' })
           }
-          void go()
+          run(go)
         }}
         onCheckDevice={() => {
           setStage({ at: 'attestation' })
@@ -1510,7 +1569,7 @@ export function App() {
             await refresh()
             setStage({ at: 'wallets' })
           }
-          void go()
+          run(go)
         }}
       />
     )

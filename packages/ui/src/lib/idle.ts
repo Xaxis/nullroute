@@ -104,8 +104,27 @@ export function useIdleLock(options: UseIdleLockOptions): IdleState {
 
   // Touches and keys, on the whole document, in the capture phase so a control
   // that stops propagation does not also stop the device noticing a person.
+  //
+  // NOT GATED ON `unlocked`, AND THAT WAS A BUG THAT BROKE WALLET CREATION.
+  //
+  // This used to return early while locked, on the reading that a clock about
+  // an open wallet has nothing to do while none is open. The daemon's clock
+  // starts at boot and only `session.heartbeat` resets it, so on a device left
+  // alone for ten minutes it was already expired, and nothing during setup sent
+  // a heartbeat because no wallet was open yet.
+  //
+  // Then `entropy.fromDice` loads the seed it has just derived, the session has
+  // a wallet for the first time, and the very next request runs the daemon's
+  // pre-dispatch check: expired, and hasWallet, so lock. `seed.reveal` answers
+  // "No wallet is loaded" and the words are gone. Rolling a hundred dice and
+  // getting nothing.
+  //
+  // The window is meant to mean "ten minutes since a person last touched this",
+  // and that sentence has nothing to do with whether a wallet happens to be
+  // open. Somebody rolling dice is as present as somebody reading a
+  // transaction. The `unlocked` gate belongs on the countdown and the warning
+  // banner, which are about an open wallet, and it is still on both.
   useEffect(() => {
-    if (!unlocked) return
     const onActivity = (): void => {
       send(false)
     }
@@ -115,7 +134,7 @@ export function useIdleLock(options: UseIdleLockOptions): IdleState {
       document.removeEventListener('pointerdown', onActivity, true)
       document.removeEventListener('keydown', onActivity, true)
     }
-  }, [unlocked, send])
+  }, [send])
 
   // One heartbeat when a wallet opens, to learn the window and start the clock.
   useEffect(() => {

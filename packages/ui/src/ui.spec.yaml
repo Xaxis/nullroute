@@ -1139,6 +1139,27 @@ invariants:
       - packages/ui/test/keyboard.test.tsx::hides-what-is-typed-by-default
       - packages/ui/test/keyboard.test.tsx::shows-what-is-typed-when-it-is-not-a-secret
 
+  - id: INV-UI-98
+    statement: >
+      The idle window means the time since a person last touched the device,
+      which is a fact about a person and not about whether a wallet is open. The
+      frontend sends a heartbeat on a touch or a key whether or not one is,
+      throttled, and the countdown and its warning remain about an open wallet.
+    tests:
+      - packages/ui/test/idle-lock.test.tsx::tells-the-daemon-a-person-is-here-even-with-no-wallet-open
+      - packages/ui/test/idle-lock.test.tsx::tells-the-daemon-a-person-is-here-with-a-wallet-open
+      - packages/ui/test/idle-lock.test.tsx::does-not-send-a-heartbeat-for-every-tap
+      - packages/ui/test/idle-lock.test.tsx::counts-down-only-when-there-is-a-wallet-to-lock
+
+  - id: INV-UI-99
+    statement: >
+      An action that fails says so. Every asynchronous action the application
+      launches is routed through one runner that catches a rejection and puts
+      its message on the screen, on whatever screen the user is standing on,
+      rather than leaving a control that does nothing.
+    tests:
+      - packages/ui/test/app.test.tsx::says-so-when-an-action-fails
+
 threats:
   - INV-KEY-1
   - INV-BUILD-1

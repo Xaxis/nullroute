@@ -2161,6 +2161,26 @@ body {
    impossible for any other caller to either, rather than relying on every
    caller getting it right. Held by check-screen-fit.mjs, which also catches the
    case this cannot see: children that exist and are invisible. */
+/* The way out of a failure banner. 44px like everything else: it sits in the
+   strip above whatever screen you were on, and the mis-tap lands on that
+   screen's controls. */
+.nr-banner__dismiss {
+  min-height: 44px;
+  padding: 0 0.875rem;
+  border-radius: 6px;
+  border: 1px solid var(--color-danger-line);
+  background-color: transparent;
+  color: var(--color-danger-text);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.nr-banner__dismiss:active {
+  background-color: color-mix(in srgb, var(--color-danger-line) 25%, transparent);
+}
+
 .nr-screen__banners:empty {
   display: none;
 }
