@@ -180,8 +180,8 @@ export function MoreScreen(props: MoreScreenProps): ReactElement {
         )}
         {onManage !== undefined && (
           <Choice
-            title="Name or erase this wallet"
-            description="Change what this wallet is called, or remove its seed from this device."
+            title="Erase or rename this wallet"
+            description="Remove its seed from this device, or change what it is called and the colour beside it. Both need the passphrase."
             selected={false}
             onSelect={onManage}
             testId="wallet-manage"

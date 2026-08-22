@@ -1,5 +1,6 @@
 import { type ReactElement, type ReactNode } from 'react'
 import { Screen } from '../components/Screen.js'
+import { tierLabel, tierExplanation } from '../lib/tier.js'
 import { Button } from '../components/Button.js'
 import { Hash } from '../components/Hash.js'
 import { type AttestationView } from './LockScreen.js'
@@ -124,6 +125,17 @@ export function AttestationScreen(props: AttestationScreenProps): ReactElement {
             </div>
           </div>
 
+          {/* What the one word in the Build row above actually means. This
+              screen is where somebody has come to ask a more detailed question,
+              and "signing only" is a claim about what code is on the device
+              rather than a version string. The lock screen has room for the
+              label and not for this. */}
+          {tierExplanation(attestation.tier) !== null && (
+            <p className="nr-hint" data-testid="attestation-tier-explained">
+              {tierExplanation(attestation.tier)}
+            </p>
+          )}
+
           <div className="nr-card nr-card--tight">
             <div className="nr-row">
               <span className="nr-label">Specs</span>
@@ -136,7 +148,7 @@ export function AttestationScreen(props: AttestationScreenProps): ReactElement {
             <div className="nr-row">
               <span className="nr-label">Build</span>
               <span className="nr-value" data-testid="attestation-tier">
-                {attestation.tier === 'signer' ? 'signer only, no wallet code' : attestation.tier}
+                {tierLabel(attestation.tier)}
               </span>
             </div>
           </div>

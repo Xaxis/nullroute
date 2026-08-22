@@ -61,8 +61,14 @@ describe('MoreScreen', () => {
 
     // Not one-word labels. "Manage" says nothing about erasing a wallet, and
     // this is the row somebody taps expecting a settings page.
+    //
+    // ERASE FIRST, in the title as well as the description. It read "Name or
+    // erase this wallet", which leads with the cosmetic half of a screen
+    // somebody arrives at looking for the destructive one, and a user who went
+    // hunting for how to delete a wallet did not find it here.
+    expect(screen.getByTestId('wallet-manage').textContent).toContain('Erase')
     expect(screen.getByTestId('wallet-manage').textContent).toContain(
-      'remove its seed from this device'
+      'Remove its seed from this device'
     )
     // And the one that ends in key material on screen says so before the tap.
     expect(screen.getByTestId('wallet-child').textContent).toContain('shows key material')

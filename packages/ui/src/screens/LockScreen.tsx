@@ -42,6 +42,7 @@
 import { type ReactElement, type ReactNode } from 'react'
 import { type NetworkId } from '@nullroute/core'
 import { Screen } from '../components/Screen.js'
+import { tierLabel } from '../lib/tier.js'
 import { Button } from '../components/Button.js'
 import { Hash } from '../components/Hash.js'
 import { NetworkBanner } from '../components/NetworkBanner.js'
@@ -141,18 +142,15 @@ export function LockScreen(props: LockScreenProps): ReactElement {
               button is: the reason you cannot proceed belongs beside the
               control that will not let you. */}
           {!verified && (
-            <span
-              className="nr-status nr-status--fail"
-              data-testid="verification-status"
-            >
+            <span className="nr-status nr-status--fail" data-testid="verification-status">
               {`Verification FAILED: ${failing
-                    .map((c) =>
-                    // An unrecognised status is named, because "integrity
-                    // failed" and "nobody here knows what integrity said" are
-                    // different problems and the second one is worse.
-                    c.status === 'failed' ? c.name : `${c.name} (status: ${c.status})`
-                  )
-                    .join(', ')}`}
+                .map((c) =>
+                  // An unrecognised status is named, because "integrity
+                  // failed" and "nobody here knows what integrity said" are
+                  // different problems and the second one is worse.
+                  c.status === 'failed' ? c.name : `${c.name} (status: ${c.status})`
+                )
+                .join(', ')}`}
             </span>
           )}
           <div className="nr-spacer" />
@@ -259,7 +257,7 @@ export function LockScreen(props: LockScreenProps): ReactElement {
         <div className="nr-fact">
           <span className="nr-fact__key">Build</span>
           <span className="nr-fact__val" data-testid="tier">
-            {attestation.tier === 'signer' ? 'signer only, no wallet code' : attestation.tier}
+            {tierLabel(attestation.tier)}
           </span>
         </div>
         {/* Only when the verdict banner is NOT on screen. On a passing device
@@ -287,7 +285,6 @@ export function LockScreen(props: LockScreenProps): ReactElement {
           </div>
         )}
       </div>
-
     </Screen>
   )
 }

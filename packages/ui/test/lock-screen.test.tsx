@@ -70,7 +70,13 @@ describe('ui.screens.lock', () => {
     // the bottom of a 480px panel, which was the wrong sentence to lose.
     expect(screen.getByTestId('attestation-facts').textContent).not.toContain('38')
     // A user can still tell from this screen whether wallet code is present.
-    expect(screen.getByTestId('tier').textContent).toContain('signer only')
+    //
+    // In words rather than in the tier's own vocabulary. "signer only, no
+    // wallet code" was accurate and was written for somebody who already knew
+    // there was a wallet package to leave out; nobody reading a lock screen
+    // does. See lib/tier.ts.
+    expect(screen.getByTestId('tier').textContent).toContain('Signing only')
+    expect(screen.getByTestId('tier').textContent).toContain('no transaction building')
   })
 
   // INV-UI-2: a failed verification blocks the wallet. It does not warn.

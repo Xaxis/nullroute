@@ -110,7 +110,7 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
     onCheckProof,
     failure,
     steps,
-    
+
     identity,
     nav,
     banner,
@@ -168,7 +168,7 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
         title="Clear this row"
         subtitle={tombstone.label}
         banner={banner}
-      steps={steps}
+        steps={steps}
         nav={nav}
         identity={identity}
         testId="wallets-forget"
@@ -220,7 +220,7 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
         title={selected.label}
         subtitle="This name is not confirmed until the wallet opens."
         banner={banner}
-      steps={steps}
+        steps={steps}
         nav={nav}
         identity={identity}
         testId="wallet-unlock-screen"
@@ -373,6 +373,26 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
           </p>
         )}
       </div>
+
+      {/* WHERE ERASING IS, said here because here is where people look for it.
+
+          This screen lists the wallets, so it is the obvious place to remove
+          one, and it does not remove one. That is deliberate at the daemon:
+          `registry.forget` refuses while a sealed seed is present, so that
+          erasing cannot happen anywhere except from inside the wallet being
+          erased, with its passphrase and its name typed out. The rule is right
+          and nothing said it, so the feature read as missing.
+
+          A sentence rather than a control. A tap target that erases a wallet,
+          in a list of tap targets that open one, on a touchscreen, is the
+          mis-tap this whole stylesheet keeps 44px and 6px of air for. */}
+      {wallets.some((wallet) => !wallet.destroyed) && (
+        <p className="nr-hint" data-testid="wallets-where-erase">
+          To erase a wallet, open it and use Erase or rename this wallet under More. A wallet can
+          only be erased from inside itself, so this device cannot lose one without being asked for
+          its passphrase and its name.
+        </p>
+      )}
 
       {/* In the body rather than the action bar, which already holds three
           controls on an 800px panel. This is an occasional thing somebody
