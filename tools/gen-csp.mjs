@@ -31,6 +31,21 @@
  * hashes, and a committed policy would break on the next deploy. Verified by
  * building twice from clean and diffing.
  *
+ * THE HASHES ARE STABLE ACROSS BUILDS AND NOT ACROSS COMMITS, and the
+ * difference matters to anybody wondering why this failed. The home page
+ * renders the real `make verify` transcript, read out of
+ * verification-report.json at build time, and the last line of that transcript
+ * is the manifest root. The root is a hash of every file in packages/ and
+ * spec/, so it moves on any device commit, so one of the inline blocks moves
+ * with it. Nothing in apps/web has to have been touched.
+ *
+ * That coupling is deliberate and it is the point of the page: the site quotes
+ * the number the device prints on its lock screen rather than describing it.
+ * The cost is that vercel.json is downstream of the device source, and
+ * regenerating it is part of preparing a release rather than part of working on
+ * the website. `make deploy` runs `web-check` first, so a stale policy blocks
+ * the deploy instead of shipping a site that will not hydrate.
+ *
  *   node tools/gen-csp.mjs           update vercel.json
  *   node tools/gen-csp.mjs --check   fail if the committed policy has drifted
  *
@@ -155,6 +170,14 @@ if (check) {
     console.error(`  built script-src hashes:     script-src 'self' ${hashes.join(' ')}\n`)
     console.error('  Next inlines an RSC bootstrap into every page. If those blocks changed,')
     console.error('  the deployed policy would block them and the site would fail to hydrate.')
+    console.error('')
+    console.error('  THE USUAL CAUSE IS A CHANGE TO THE DEVICE, NOT TO THE WEBSITE. The home')
+    console.error('  page renders the real verification transcript, read out of')
+    console.error('  verification-report.json at build time, and its last line is the manifest')
+    console.error('  root. That root is a hash of every file in packages/ and spec/, so any')
+    console.error('  device commit at all moves one of the hashes above. Nothing about')
+    console.error('  apps/web has to have changed.')
+    console.error('')
     console.error('  Regenerate with: node tools/gen-csp.mjs')
     process.exit(1)
   }
