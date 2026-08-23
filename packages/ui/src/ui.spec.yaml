@@ -1160,6 +1160,31 @@ invariants:
     tests:
       - packages/ui/test/app.test.tsx::says-so-when-an-action-fails
 
+  - id: INV-UI-100
+    statement: >
+      A word still being typed is not presented as a word that has been entered.
+      49 of the 2048 BIP-39 words are a prefix of another, so typing one of them
+      leaves the keyboard unable to commit and the suggestion strip is the only
+      way forward. The half typed word carries no index, the counter is the only
+      authority on how many words exist, and the screen says to tap the word
+      when tapping it is the only thing that will work.
+    tests:
+      - packages/ui/test/keyboard.test.tsx::does-not-number-a-word-that-is-still-being-typed
+      - packages/ui/test/keyboard.test.tsx::says-to-tap-the-word-when-typing-cannot-finish-it
+      - packages/ui/test/keyboard.test.tsx::commits-the-suggestion-the-user-taps
+
+  - id: INV-UI-101
+    statement: >
+      The header names the wallet the daemon says is open, on every screen and
+      after every refresh, rather than only after the paths that open one. A
+      frontend that restarts while the daemon keeps running still names it. The
+      daemon is the authority: an answer of null is a lock and is believed, and
+      no answer at all changes nothing.
+    tests:
+      - packages/ui/test/app.test.tsx::names-the-open-wallet-after-the-frontend-restarts
+      - packages/ui/test/app.test.tsx::says-no-wallet-is-open-when-the-daemon-says-none-is
+      - packages/ui/test/app.test.tsx::walks-through-opening-a-wallet-and-continues-the-flow
+
 threats:
   - INV-KEY-1
   - INV-BUILD-1

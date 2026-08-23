@@ -977,6 +977,17 @@ body {
   gap: 0.375rem;
 }
 
+/* The field the on-screen keyboard is typing into.
+
+   This device has no hardware keyboard, so "which box am I filling" is a real
+   question with no cursor to answer it. A pair of tabs used to answer it, at
+   44px plus a gap on a screen that did not have them to spare. The field says
+   it about itself now. */
+.nr-field--active .nr-input {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent-soft);
+}
+
 .nr-field__label {
   font-size: 0.75rem;
   text-transform: uppercase;
@@ -1650,9 +1661,13 @@ body {
   text-align: right;
 }
 
+/* The instruction on the left, the count on the right. Both were on the right
+   when the count was the only thing here. */
 .nr-kb__status {
   display: flex;
-  justify-content: flex-end;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 /* Fixed height whether or not there are suggestions, so the key grid never

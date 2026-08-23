@@ -96,9 +96,16 @@ export function WordKeyboard(props: WordKeyboardProps): ReactElement {
             {word}
           </span>
         ))}
+        {/* NOT NUMBERED. It used to carry `words.length + 1`, so a half typed
+            word appeared as a chip reading "1 top" while the counter below it
+            said "0 of 1 words". Two numbers on one screen contradicting each
+            other, and the button disabled, with nothing saying why.
+
+            The number is what made it read as an entered word. Without it the
+            chip is plainly something in progress and the counter is the only
+            authority on how many words exist. */}
         {prefix.length > 0 && (
           <span className="nr-kb__word nr-kb__word--typing" data-testid="kb-prefix">
-            <span className="nr-kb__wordnum">{words.length + 1}</span>
             {prefix}
           </span>
         )}
@@ -108,6 +115,22 @@ export function WordKeyboard(props: WordKeyboardProps): ReactElement {
       </div>
 
       <div className="nr-kb__status">
+        {/* WHAT TO DO NEXT, when there is something to do and it is not obvious.
+            49 of the 2048 words are a prefix of another one: act, add, car,
+            top. Type one of those and the keyboard cannot commit it, because
+            `topic` and `topple` are still reachable, so the only way forward is
+            the suggestion strip. Nothing said so. A user saw their word on
+            screen, a counter reading zero, and a dead button.
+
+            That is 7% of wallet creations, where the backup check asks for
+            three words, and 44% of twenty four word restores. */}
+        {prefix.length > 0 && suggestions.length > 0 ? (
+          <span className="nr-hint" data-testid="kb-pick">
+            Tap the word below to enter it
+          </span>
+        ) : (
+          <span className="nr-hint" data-testid="kb-hint-blank" />
+        )}
         <span className="nr-hint" data-testid="kb-count">
           {words.length}
           {target === undefined ? '' : ` of ${String(target)}`} words

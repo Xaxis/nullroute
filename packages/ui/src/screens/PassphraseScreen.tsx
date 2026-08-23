@@ -155,39 +155,31 @@ export function PassphraseScreen(props: PassphraseScreenProps): ReactElement {
         </>
       }
     >
-      <div className="nr-field">
-        {/* The readout shares the label's line. See `.nr-field__labelrow`: on
-            its own line it grows the field the moment somebody types, and the
-            keyboard below it has 3px of room. */}
-        <div className="nr-field__labelrow">
-          <span className="nr-field__label">Passphrase</span>
-          {value.length > 0 && (
-            <span className={`nr-hint ${cost.tone === 'ok' ? 'nr-ok' : 'nr-warn'}`}>
-              {value.length} characters, {cost.label}
-            </span>
-          )}
-        </div>
-        <input
-          className="nr-input"
-          type="password"
-          autoComplete="off"
-          autoCapitalize="off"
-          autoCorrect="off"
-          spellCheck={false}
-          value={value}
-          onChange={(e) => {
-            setValue(e.target.value)
-          }}
-          onFocus={() => {
-            setField('value')
-          }}
-          data-testid="passphrase-input"
-        />
-      </div>
+      {/* BOTH FIELDS ON ONE ROW, AND THE ROW IS ALSO THE SELECTOR.
 
-      {setting && (
-        <div className="nr-field">
-          <span className="nr-field__label">Again</span>
+          This screen stacked two labelled fields and then a pair of tabs to say
+          which one the on-screen keyboard was filling: four controls for two
+          values, costing 180px of a 317px body on a screen whose keyboard needs
+          196px on its own. Measured on the real device, 271px of it was below
+          the fold, including every key. Step 4 of 4 of setting a wallet up, and
+          you could not type.
+
+          The tabs are gone because tapping a field is what selects it, and the
+          field that the keyboard is filling says so rather than a separate
+          control saying it on the field's behalf. */}
+      <div className={setting ? 'nr-split nr-split--even' : ''}>
+        <div className={`nr-field${setting && field === 'value' ? ' nr-field--active' : ''}`}>
+          {/* The readout shares the label's line. See `.nr-field__labelrow`: on
+              its own line it grows the field the moment somebody types, and the
+              keyboard below it has no room to give. */}
+          <div className="nr-field__labelrow">
+            <span className="nr-field__label">Passphrase</span>
+            {value.length > 0 && (
+              <span className={`nr-hint ${cost.tone === 'ok' ? 'nr-ok' : 'nr-warn'}`}>
+                {value.length} characters, {cost.label}
+              </span>
+            )}
+          </div>
           <input
             className="nr-input"
             type="password"
@@ -195,39 +187,49 @@ export function PassphraseScreen(props: PassphraseScreenProps): ReactElement {
             autoCapitalize="off"
             autoCorrect="off"
             spellCheck={false}
-            value={confirm}
+            value={value}
             onChange={(e) => {
-              setConfirm(e.target.value)
+              setValue(e.target.value)
             }}
             onFocus={() => {
-              setField('confirm')
+              setField('value')
             }}
-            data-testid="passphrase-confirm"
+            onClick={() => {
+              setField('value')
+            }}
+            data-testid="passphrase-input"
           />
-          {mismatch && <span className="nr-hint nr-warn">These do not match.</span>}
         </div>
-      )}
 
-      {/* The device has no keyboard, so this is the real input. The fields
-          above stay editable for a workstation and for tests. */}
-      {setting && (
-        <div className="nr-tabs">
-          {(['value', 'confirm'] as const).map((which) => (
-            <button
-              key={which}
-              type="button"
-              className="nr-tab"
-              aria-pressed={field === which}
-              onClick={() => {
-                setField(which)
+        {setting && (
+          <div className={`nr-field${field === 'confirm' ? ' nr-field--active' : ''}`}>
+            <div className="nr-field__labelrow">
+              <span className="nr-field__label">Again</span>
+              {mismatch && <span className="nr-hint nr-warn">These do not match.</span>}
+            </div>
+            <input
+              className="nr-input"
+              type="password"
+              autoComplete="off"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              value={confirm}
+              onChange={(e) => {
+                setConfirm(e.target.value)
               }}
-              data-testid={`passphrase-field-${which}`}
-            >
-              {which === 'value' ? 'Passphrase' : 'Again'}
-            </button>
-          ))}
-        </div>
-      )}
+              onFocus={() => {
+                setField('confirm')
+              }}
+              onClick={() => {
+                setField('confirm')
+              }}
+              data-testid="passphrase-confirm"
+            />
+          </div>
+        )}
+      </div>
+
       <TextKeyboard
         value={field === 'confirm' ? confirm : value}
         onChange={field === 'confirm' ? setConfirm : setValue}

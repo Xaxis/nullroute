@@ -94,6 +94,34 @@ interface DeviceStatus {
   readonly backupConfirmed: boolean
   readonly fingerprint: string | null
   readonly network: NetworkView
+  /**
+   * Which wallet is open, from the daemon rather than from the row that was
+   * tapped to open it.
+   *
+   * THIS FIELD WAS MISSING AND THE DAEMON HAS ALWAYS SENT IT. The third time a
+   * type here has drifted from what the daemon returns, and the first time it
+   * cost something a user could see: the identity chip is set only by the paths
+   * that open a wallet, so after the frontend restarted while the daemon kept
+   * running, the header said "No wallet open" while the daemon reported
+   * hasWallet, unlocked, and the wallet's name.
+   *
+   * The header is the one thing on every screen that answers "which wallet is
+   * this", and it was answering "none" about an open one. Reading it from
+   * status means every refresh corrects it rather than only the two paths that
+   * happen to set it.
+   */
+  /*
+   * OPTIONAL, and that is a statement about this boundary rather than about the
+   * daemon. `call()` casts JSON, it does not validate it, so every field here
+   * is a promise this file makes on the daemon's behalf. Declaring it required
+   * would let `next.activeWallet` read as never-undefined while a fake, an
+   * older daemon, or a truncated response makes it exactly that.
+   */
+  readonly activeWallet?: {
+    readonly id: string
+    readonly label: string
+    readonly colour: string
+  } | null
 }
 
 type Stage =
@@ -420,6 +448,15 @@ export function App() {
   const refresh = useCallback(async (): Promise<DeviceStatus> => {
     const next = await call<DeviceStatus>(transport, 'device.status')
     setStatus(next)
+    // The daemon is the authority on which wallet is open, so every refresh
+    // corrects the header rather than only the two paths that open one.
+    //
+    // ONLY WHEN IT ACTUALLY SAID SO. call() casts JSON rather than validating
+    // it, so an absent field arrives as undefined, and treating that as "no
+    // wallet" would let a refresh landing just after an unlock wipe the name
+    // the unlock had set. Present-and-null is a lock and is believed; absent is
+    // no answer and changes nothing.
+    if (next.activeWallet !== undefined) setActiveWallet(next.activeWallet)
     return next
   }, [])
 
@@ -452,6 +489,7 @@ export function App() {
         setTheme(named.identity?.theme ?? 'dark')
         setAttestation(att)
         setStatus(st)
+        setActiveWallet(st.activeWallet ?? null)
         setStore(store)
         setStage({ at: 'lock' })
       } catch (err) {

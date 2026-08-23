@@ -168,6 +168,44 @@ describe('ui.app boot', () => {
   })
 })
 
+describe('ui.app what the header says about the wallet', () => {
+  /**
+   * INV-UI-101. The header is the one control on every screen that answers
+   * "which wallet is this", and it was answering "none" about an open one.
+   *
+   * THE BUG THIS EXISTS FOR. `DeviceStatus` here did not declare
+   * `activeWallet`, which the daemon has always sent, so nothing read it from
+   * status: the chip was set only by the two paths that open a wallet. Restart
+   * the frontend while the daemon keeps running, which is what a kiosk crash
+   * looks like, and the device drew a header reading "No wallet open" while the
+   * daemon reported hasWallet, unlocked, and the wallet's name.
+   *
+   * A person reading "No wallet open" concludes the seed is not in memory. It
+   * was. That is the one question this device exists to answer honestly.
+   */
+  it('names-the-open-wallet-after-the-frontend-restarts', async () => {
+    replies.set('device.status', {
+      hasWallet: true,
+      unlocked: true,
+      backupConfirmed: true,
+      fingerprint: '73c5da0a',
+      network: { id: 'mainnet', label: 'Mainnet', isMainnet: true },
+      activeWallet: { id: 'w1', label: 'Cold storage', colour: 'teal' },
+    })
+
+    await boot()
+
+    expect(screen.getByTestId('identity-switch').textContent).toContain('Cold storage')
+    expect(screen.getByTestId('identity-switch').textContent).not.toContain('No wallet open')
+  })
+
+  /** INV-UI-101. And says so plainly when there genuinely is not one. */
+  it('says-no-wallet-is-open-when-the-daemon-says-none-is', async () => {
+    await boot()
+    expect(screen.getByTestId('identity-switch').textContent).toContain('No wallet open')
+  })
+})
+
 describe('ui.app when something fails', () => {
   /**
    * INV-UI-99. A control that does nothing is worse than an error.

@@ -87,6 +87,48 @@ describe('WordKeyboard', () => {
     expect(screen.getByTestId('kb-suggest-actual')).toBeTruthy()
   })
 
+  /**
+   * INV-UI-100. 49 of the 2048 BIP-39 words are a prefix of another one: act,
+   * add, car, top. Typing one of those leaves the keyboard unable to commit,
+   * because a longer word is still reachable, so the suggestion strip is the
+   * only way forward.
+   *
+   * THE BUG THIS EXISTS FOR. The half typed word was rendered as a chip
+   * numbered `words.length + 1`, so the screen showed a chip reading "1 top"
+   * above a counter reading "0 of 1 words", with the submit button disabled and
+   * nothing explaining why. Two numbers contradicting each other on the screen
+   * that decides whether somebody's seed backup is real.
+   *
+   * It is 7% of wallet creations, where the check asks for three words, and 44%
+   * of twenty four word restores.
+   */
+  it('does-not-number-a-word-that-is-still-being-typed', () => {
+    render(<WordKeyboard words={[]} onChange={vi.fn()} target={1} testId="kb" />)
+
+    fireEvent.click(screen.getByTestId('kb-key-t'))
+    fireEvent.click(screen.getByTestId('kb-key-o'))
+    fireEvent.click(screen.getByTestId('kb-key-p'))
+
+    const prefix = screen.getByTestId('kb-prefix')
+    expect(prefix.textContent).toBe('top')
+    // No index. The counter is the only thing that says how many words exist.
+    expect(screen.getByTestId('kb-count').textContent).toContain('0 of 1')
+  })
+
+  /** INV-UI-100. And it says what to do, because the button is disabled. */
+  it('says-to-tap-the-word-when-typing-cannot-finish-it', () => {
+    render(<WordKeyboard words={[]} onChange={vi.fn()} target={1} testId="kb" />)
+    expect(screen.queryByTestId('kb-pick')).toBeNull()
+
+    fireEvent.click(screen.getByTestId('kb-key-t'))
+    fireEvent.click(screen.getByTestId('kb-key-o'))
+    fireEvent.click(screen.getByTestId('kb-key-p'))
+
+    // "top" is a word, and so are "topic" and "topple", so nothing commits.
+    expect(screen.getByTestId('kb-suggest-top')).toBeTruthy()
+    expect(screen.getByTestId('kb-pick').textContent).toContain('Tap the word')
+  })
+
   it('commits-the-suggestion-the-user-taps', () => {
     const state: { words: readonly string[] } = { words: [] }
     const onChange = vi.fn((next: readonly string[]) => {
