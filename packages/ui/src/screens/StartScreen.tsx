@@ -90,24 +90,32 @@ export function StartScreen(props: StartScreenProps): ReactElement {
           {chosen.summary}
         </p>
 
-        {chosen.needs.length > 0 && (
-          <div className="nr-card nr-card--tight" data-testid="start-needs">
-            <span className="nr-card__label">Before you start</span>
-            <ul className="nr-list">
-              {chosen.needs.map((need) => (
-                <li key={need}>{need}</li>
-              ))}
-            </ul>
-          </div>
-        )}
+        {/* WHAT IT NEEDS AND WHAT IT DOES, SIDE BY SIDE.
 
-        <div className="nr-card nr-card--tight" data-testid="start-steps">
-          <span className="nr-card__label">The steps</span>
-          <ol className="nr-list nr-list--numbered">
-            {steps.map((step, index) => (
-              <li key={`${step.stage}-${String(index)}`}>{step.label}</li>
-            ))}
-          </ol>
+            Four stacked blocks ran 213px past the panel on the longest journey,
+            so a preamble whose whole job is "here is what you are about to
+            commit to" showed the first half and hid the rest, including the
+            part that says what it still will not finish. */}
+        <div className="nr-split nr-split--even">
+          {chosen.needs.length > 0 && (
+            <div className="nr-card nr-card--tight" data-testid="start-needs">
+              <span className="nr-card__label">Before you start</span>
+              <ul className="nr-list">
+                {chosen.needs.map((need) => (
+                  <li key={need}>{need}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="nr-card nr-card--tight" data-testid="start-steps">
+            <span className="nr-card__label">The steps</span>
+            <ol className="nr-list nr-list--numbered">
+              {steps.map((step, index) => (
+                <li key={`${step.stage}-${String(index)}`}>{step.label}</li>
+              ))}
+            </ol>
+          </div>
         </div>
 
         {/* Said before starting as well as at the end. A flow whose last screen
@@ -154,7 +162,12 @@ export function StartScreen(props: StartScreenProps): ReactElement {
           bar. The wallet picker gets away with it because it holds three rows
           and a hard limit of eight. Letting the screen body scroll is what the
           rest of the device does. */}
-      <div className="nr-wlist" data-testid="start-goals">
+      {/* TWO COLUMNS. Six goals in one column is 204px past the bottom of the
+          panel, so three of them were off screen on the hub every guided
+          journey starts from: a menu whose second half you have to know is
+          there. The panel is 800px wide and these are six things of equal
+          structure, which is the same shape as the seed modes on setup. */}
+      <div className="nr-goals" data-testid="start-goals">
         {JOURNEYS.map((journey) => (
           <Choice
             key={journey.id}

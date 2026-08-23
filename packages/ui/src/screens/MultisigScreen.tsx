@@ -151,9 +151,11 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
     onScan,
     onBack,
     steps,
-    
+
     identity,
-    banner, nav} = props
+    banner,
+    nav,
+  } = props
 
   const [ourKey, setOurKey] = useState<OurKeyView | null>(null)
   const [descriptor, setDescriptor] = useState(initialText ?? '')
@@ -426,86 +428,110 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
         </>
       }
     >
-      {review === null && ourKey !== null && (
-        <div className="nr-card nr-card--tight" data-testid="multisig-our-key">
-          <div className="nr-row">
-            <span className="nr-label">Our key</span>
-            <span className="nr-value nr-mono">{ourKey.path}</span>
+      {/* THE KEY YOU HAND OVER AND THE ONE THAT COMES BACK, SIDE BY SIDE.
+
+          Stacked, this screen was 548px of content in a 317px body, and what
+          the panel showed was a card and an empty textarea: the three ways to
+          get a descriptor in were all below the fold, on a device where typing
+          one by hand is not among them. They are two halves of one exchange and
+          they belong in one view. */}
+      <div className={review === null ? 'nr-split nr-split--even' : ''}>
+        {review === null && ourKey !== null && (
+          <div className="nr-card nr-card--tight" data-testid="multisig-our-key">
+            <div className="nr-row">
+              <span className="nr-label">Our key</span>
+              <span className="nr-value nr-mono">{ourKey.path}</span>
+            </div>
+            <div className="nr-row">
+              <span className="nr-label">Fingerprint</span>
+              <span className="nr-value nr-mono">{ourKey.masterFingerprint}</span>
+            </div>
+            <Hash value={ourKey.xpub} />
+            <p className="nr-hint">
+              Give this to the coordinator. It is a public key: it can derive addresses and cannot
+              spend anything.
+            </p>
           </div>
-          <div className="nr-row">
-            <span className="nr-label">Fingerprint</span>
-            <span className="nr-value nr-mono">{ourKey.masterFingerprint}</span>
-          </div>
-          <Hash value={ourKey.xpub} />
-          <p className="nr-hint">
-            Give this to the coordinator. It is a public key: it can derive addresses and cannot
-            spend anything.
-          </p>
-        </div>
-      )}
+        )}
 
-      {review === null && onExportBundle !== undefined && registeredCount > 0 && (
-        <Button
-          onClick={() =>
-            void run(async () => {
-              setBundle((await onExportBundle()).bundle)
-            })
-          }
-          testId="multisig-export"
-        >
-          {busy ? 'Writing' : `For the coordinator (${String(registeredCount)} registered)`}
-        </Button>
-      )}
+        {review === null && onExportBundle !== undefined && registeredCount > 0 && (
+          <Button
+            onClick={() =>
+              void run(async () => {
+                setBundle((await onExportBundle()).bundle)
+              })
+            }
+            testId="multisig-export"
+          >
+            {busy ? 'Writing' : `For the coordinator (${String(registeredCount)} registered)`}
+          </Button>
+        )}
 
-      {review === null && (
-        <div className="nr-field">
-          <span className="nr-field__label">Quorum descriptor</span>
-          <textarea
-            className="nr-input nr-input--area nr-break"
-            rows={5}
-            spellCheck={false}
-            autoCapitalize="off"
-            autoCorrect="off"
-            placeholder="wsh(sortedmulti(2,[...]xpub.../<0;1>/*,...))#checksum"
-            value={descriptor}
-            onChange={(e) => {
-              setDescriptor(e.target.value)
-            }}
-            data-testid="multisig-input"
-          />
-          {onScan !== undefined && (
-            <Button onClick={onScan} testId="multisig-scan">
-              Scan it with the camera
-            </Button>
-          )}
-          <p className="nr-hint">
-            The checksum is required. It is the only thing standing between a mistyped character and
-            a valid descriptor for a completely different wallet.
-          </p>
+        {/* THE WAYS IN, BESIDE THE BOX RATHER THAN UNDER IT.
 
-          {/* The same field. A coordinator export is usually a wrapper around
+          Every one of them was below the fold. The screen showed a large empty
+          textarea and nothing else, on a device with no keyboard, where typing
+          a descriptor by hand is not a thing anybody does: you scan it, or you
+          read a coordinator file, or you build it from keys you already hold.
+          The box was the only visible affordance and it was the one that does
+          not work here.
+
+          Three rows rather than five for the same reason. It is a paste and
+          scan target, not something typed into. */}
+        {review === null && (
+          <div className="nr-field">
+            <span className="nr-field__label">Quorum descriptor</span>
+            <div className="nr-split__col">
+              <textarea
+                className="nr-input nr-input--area nr-break"
+                rows={3}
+                spellCheck={false}
+                autoCapitalize="off"
+                autoCorrect="off"
+                placeholder="wsh(sortedmulti(2,[...]xpub.../<0;1>/*,...))#checksum"
+                value={descriptor}
+                onChange={(e) => {
+                  setDescriptor(e.target.value)
+                }}
+                data-testid="multisig-input"
+              />
+              <div className="nr-split__col">
+                {onScan !== undefined && (
+                  <Button onClick={onScan} testId="multisig-scan">
+                    Scan it with the camera
+                  </Button>
+                )}
+
+                {/* The same field. A coordinator export is usually a wrapper around
               the descriptor above, and pasting either into one box is fewer
               decisions than choosing which box to paste into. */}
-          {onAssemble !== undefined && (
-            <Button onClick={onAssemble} testId="multisig-assemble">
-              I have the other keys, build it here
-            </Button>
-          )}
-          {onImportFile !== undefined && (
-            <Button
-              disabled={descriptor.trim().length === 0 || busy}
-              onClick={() =>
-                void run(async () => {
-                  setImported(await onImportFile(descriptor))
-                })
-              }
-              testId="multisig-import"
-            >
-              {busy ? 'Reading' : 'That is a coordinator file, read it'}
-            </Button>
-          )}
-        </div>
-      )}
+                {onAssemble !== undefined && (
+                  <Button onClick={onAssemble} testId="multisig-assemble">
+                    I have the other keys, build it here
+                  </Button>
+                )}
+                {onImportFile !== undefined && (
+                  <Button
+                    disabled={descriptor.trim().length === 0 || busy}
+                    onClick={() =>
+                      void run(async () => {
+                        setImported(await onImportFile(descriptor))
+                      })
+                    }
+                    testId="multisig-import"
+                  >
+                    {busy ? 'Reading' : 'That is a coordinator file, read it'}
+                  </Button>
+                )}
+              </div>
+            </div>
+            <p className="nr-hint">
+              The checksum is required. It is the only thing standing between a mistyped character
+              and a valid descriptor for a completely different wallet.
+            </p>
+          </div>
+        )}
+      </div>
 
       {error !== null && (
         <div className="nr-banner nr-banner--danger" data-testid="multisig-error">

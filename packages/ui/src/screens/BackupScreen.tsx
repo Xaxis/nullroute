@@ -298,20 +298,33 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
           </>
         }
       >
-        <span className="nr-field__label">Passphrase for this file</span>
-        <TextKeyboard value={passphrase} onChange={setPassphrase} testId="backup-passphrase" />
+        {/* THE CHOICE ABOVE THE KEYBOARD, NOT UNDER IT.
 
-        <button
-          type="button"
-          className="nr-tab"
-          aria-pressed={includeSeed}
-          onClick={() => {
-            setIncludeSeed(!includeSeed)
-          }}
-          data-testid="backup-include-seed"
-        >
-          {includeSeed ? 'Including the seed' : 'Not including the seed'}
-        </button>
+            Whether this file carries the seed is the only consequential
+            decision on the screen: with it, the file is a second copy of the
+            money, protected by one passphrase. It sat below a 196px keyboard
+            and was off the bottom of the panel, so the screen a person actually
+            saw offered a passphrase box and no visible choice at all, with the
+            default silently applied.
+
+            INV-BACKUP-1 says including the seed changes the action and states
+            what it means beforehand. It cannot state it beforehand from below
+            the fold. */}
+        <div className="nr-beside">
+          <span className="nr-field__label">Passphrase for this file</span>
+          <button
+            type="button"
+            className="nr-tab"
+            aria-pressed={includeSeed}
+            onClick={() => {
+              setIncludeSeed(!includeSeed)
+            }}
+            data-testid="backup-include-seed"
+          >
+            {includeSeed ? 'Including the seed' : 'Not including the seed'}
+          </button>
+        </div>
+        <TextKeyboard value={passphrase} onChange={setPassphrase} testId="backup-passphrase" />
 
         {includeSeed ? (
           <div className="nr-banner nr-banner--danger" data-testid="backup-seed-warning">

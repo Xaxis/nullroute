@@ -2141,6 +2141,16 @@ body {
   min-width: 0;
 }
 
+/* Six goals, two abreast. One column runs 204px off a 480px panel, which on the
+   screen every guided journey begins from means three of the six are somewhere
+   the reader has to scroll to find. */
+.nr-goals {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
 /* Options compared side by side rather than stacked.
 
    Three of equal structure, on the screen that decides how a seed is generated.
