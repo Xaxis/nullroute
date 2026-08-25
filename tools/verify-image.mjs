@@ -169,8 +169,14 @@ function notChecked(why) {
 function classify(verifiers) {
   const reasons = verifiers.map((entry) => {
     if (NEEDS_NOTHING.has(entry.check)) return 'checked by "make profiles" instead'
-    if (RUNTIME_ONLY.has(entry.check)) return 'needs a booted device'
     const declared = VERIFIERS[entry.check]
+    // The registry's own status first, then the RUNTIME_ONLY set. Reading the
+    // set alone put `daemon-starts-under-mdwe` in the "nobody has written it"
+    // pile, and it is written down as needing a device: the same small false
+    // statement this breakdown was added to stop, one line further along.
+    if (declared?.status === 'needs-device' || RUNTIME_ONLY.has(entry.check)) {
+      return 'needs a booted device'
+    }
     if (declared === undefined || declared.status !== 'implemented') return 'no verifier written yet'
     return NEEDS_IMAGE.has(entry.check) ? 'no image was given' : 'no root filesystem was given'
   })
