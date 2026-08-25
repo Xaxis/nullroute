@@ -159,12 +159,20 @@ const MEASURE = `(() => {
   const head = document.querySelector('.nr-screen__head')
   if (head !== null) {
     const hr = head.getBoundingClientRect()
-    if (hr.height > MAX_HEADER) {
+    // A step counter is a deliberate extra line above the title, on the screens
+    // a guided journey passes through, so those headers are legitimately one
+    // line taller. The rule is that the header is one of TWO heights and never
+    // a third: what it exists to catch is a subtitle four characters too long
+    // wrapping and taking the header with it.
+    const steps = document.querySelector('.nr-steps')
+    const limit = steps === null ? MAX_HEADER : MAX_HEADER + 20
+    if (hr.height > limit) {
       const sub = document.querySelector('.nr-screen__subtitle')
       problems.push({
         kind: 'header-too-tall',
-        detail: 'the header is ' + Math.round(hr.height) + 'px and every other screen is 74' +
-          (sub === null ? '' : ', because this subtitle wraps: "' + sub.textContent.trim() + '"'),
+        detail: 'the header is ' + Math.round(hr.height) + 'px and the limit ' +
+          (steps === null ? 'without' : 'with') + ' a step counter is ' + limit +
+          (sub === null ? '' : ', so this subtitle wraps: "' + sub.textContent.trim() + '"'),
       })
     }
   }

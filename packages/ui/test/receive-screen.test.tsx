@@ -59,7 +59,7 @@ describe('ReceiveScreen', () => {
 
     const warning = screen.getByTestId('receive-warning').textContent
     expect(warning).toContain('Read it from this screen')
-    expect(warning).toContain('swaps an address after it is copied')
+    expect(warning).toContain('swaps a copied address')
     expect(warning).toContain('every screen involved looks correct')
   })
 

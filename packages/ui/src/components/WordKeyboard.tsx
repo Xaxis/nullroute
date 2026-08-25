@@ -112,9 +112,7 @@ export function WordKeyboard(props: WordKeyboardProps): ReactElement {
         {words.length === 0 && prefix.length === 0 && (
           <span className="nr-hint">Tap letters to begin.</span>
         )}
-      </div>
 
-      <div className="nr-kb__status">
         {/* WHAT TO DO NEXT, when there is something to do and it is not obvious.
             49 of the 2048 words are a prefix of another one: act, add, car,
             top. Type one of those and the keyboard cannot commit it, because
@@ -131,7 +129,7 @@ export function WordKeyboard(props: WordKeyboardProps): ReactElement {
         ) : (
           <span className="nr-hint" data-testid="kb-hint-blank" />
         )}
-        <span className="nr-hint" data-testid="kb-count">
+        <span className="nr-hint nr-kb__count" data-testid="kb-count">
           {words.length}
           {target === undefined ? '' : ` of ${String(target)}`} words
         </span>

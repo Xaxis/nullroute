@@ -31,6 +31,7 @@ import {
   IdleBanner,
   NavMenu,
   Identity,
+  Steps,
   NetworkBanner,
   DiceScreen,
   ImportScreen,
@@ -1163,6 +1164,49 @@ const render = SCREENS[name]
  * An explicit banner in a fixture wins, so the idle-warning and empty-banner
  * states still measure what they were written to measure.
  */
+/**
+ * Screens a guided journey passes through, by gallery name.
+ *
+ * Taken from the stages in packages/ui/src/journeys.ts. A screen reached inside
+ * a journey renders a step counter above its title, which makes the header 90px
+ * instead of 74, and NO fixture set one: sixteen more pixels the harness could
+ * not see, on top of the thirty four the network banner costs.
+ *
+ * Only these, rather than all of them. The banner is universal on any device
+ * that is not on mainnet, so measuring every state with one is measuring the
+ * truth. A step counter is not: it appears only inside a journey, and holding
+ * the attestation screen to a standard it will never face would be inventing
+ * work rather than finding it.
+ */
+const IN_A_JOURNEY = new Set([
+  'setup',
+  'dice',
+  'machine',
+  'seed',
+  'import',
+  'psbt',
+  'psbt-idle',
+  'psbt-review',
+  'psbt-signed-partial',
+  'receive',
+  'receive-quorum',
+  'multisig',
+  'quorum',
+  'backup',
+  'wallets',
+])
+
+function withSteps(element: React.ReactElement, name: string): React.ReactElement {
+  if (!IN_A_JOURNEY.has(name)) return element
+  const existing = (element.props as { steps?: unknown }).steps
+  if (existing !== undefined) return element
+  return cloneElement(element as React.ReactElement<{ steps?: React.ReactNode }>, {
+    // Four of five, because the label is the longest thing this line ever
+    // carries and a two digit count is the widest it gets.
+    steps: <Steps current={4} total={5} label="Write the words down" />,
+  })
+}
+
 function withBanner(element: React.ReactElement): React.ReactElement {
   const existing = (element.props as { banner?: unknown }).banner
   if (existing !== undefined) return element
@@ -1181,7 +1225,7 @@ root.render(
         {`No screen called ${name}. Known: ${Object.keys(SCREENS).join(', ')}`}
       </pre>
     ) : (
-      withBanner(render())
+      withBanner(withSteps(render(), name))
     )}
   </StrictMode>
 )

@@ -1668,13 +1668,13 @@ body {
   text-align: right;
 }
 
-/* The instruction on the left, the count on the right. Both were on the right
-   when the count was the only thing here. */
-.nr-kb__status {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
+/* The count sits at the end of the row of words rather than on a line of its
+   own, which is what the text keyboard already does with its length readout.
+   A separate row cost 26px for one short sentence, on the screens where the
+   keyboard leaves the least to spare. */
+.nr-kb__count {
+  margin-left: auto;
+  align-self: flex-end;
 }
 
 /* Fixed height whether or not there are suggestions, so the key grid never

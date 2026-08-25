@@ -289,17 +289,7 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
             </button>
           </div>
 
-          {source === null ? (
-            /* Chosen deliberately, and said plainly, because it is the weaker
-               answer on a device that holds a quorum. */
-            <div className="nr-banner nr-banner--danger" data-testid="receive-single-warning">
-              <strong>This address is protected by this device alone</strong>
-              <span>
-                Not by your quorum. Whoever holds this one device can spend anything sent here,
-                which is the thing the quorum was set up to prevent. Use it only if you meant to.
-              </span>
-            </div>
-          ) : (
+          {source !== null && (
             <p className="nr-hint" data-testid="receive-quorum-note">
               A {source.threshold} of {source.total} address, from the quorum whose checksum is{' '}
               <span className="nr-mono">{source.checksum}</span>. Spending from it needs{' '}
@@ -330,6 +320,27 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
               that row is what buys the second warning its room. */}
           <div className="nr-split nr-split--aside" data-testid="receive-split">
             <div className="nr-split__col">
+              {/* ABOVE THE ADDRESS, NOT BESIDE THE TABS.
+                  Chosen deliberately, and said plainly, because it is the
+                  weaker answer on a device that holds a quorum.
+
+                  It used to share the row with the source tabs, where it is
+                  three lines wide and pushed everything below it down: the QR
+                  code ended 3px under the action bar, which is the one thing
+                  the code must never do. It belongs above the address it is a
+                  warning about anyway. On this path it is the more urgent of
+                  the two warnings on the screen, because it is about the
+                  choice just made rather than about receiving in general. */}
+              {source === null && quorums.length > 0 && (
+                <div className="nr-banner nr-banner--danger" data-testid="receive-single-warning">
+                  <strong>This address is protected by this device alone</strong>
+                  <span>
+                    Not by your quorum. Whoever holds this one device can spend anything sent here,
+                    which is what the quorum prevents. Use it only if you meant to.
+                  </span>
+                </div>
+              )}
+
               <div className="nr-receive" data-testid="receive-address">
                 <span className="nr-receive__value">{chunkAddress(shown.address)}</span>
                 <span className="nr-receive__path nr-mono" data-testid="receive-path">
@@ -340,10 +351,10 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
               <div className="nr-banner nr-banner--testnet" data-testid="receive-warning">
                 <strong>Read it from this screen, not from the one you paste it into</strong>
                 <span>
-                  This device has no network and cannot protect the address on its way to whoever is
-                  paying you. Software that swaps an address after it is copied is the ordinary way
-                  this money is lost, and every screen involved looks correct. Compare the
-                  characters above against what the payer is about to send to.
+                  This device has no network and cannot protect the address in transit. Software
+                  that swaps a copied address is the ordinary way this money is lost, and every
+                  screen involved looks correct. Compare the characters above against the
+                  payer&rsquo;s screen.
                 </span>
               </div>
 

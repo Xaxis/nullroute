@@ -79,7 +79,7 @@ describe('ReceiveScreen on a device holding a quorum', () => {
     expect(onAddress).toHaveBeenCalled()
     const warning = screen.getByTestId('receive-single-warning').textContent
     expect(warning).toContain('protected by this device alone')
-    expect(warning).toContain('the thing the quorum was set up to prevent')
+    expect(warning).toContain('what the quorum prevents')
   })
 
   /**
