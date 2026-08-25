@@ -210,6 +210,41 @@ for (const problem of profileSelfCheck(loaded)) fail('provisioning/checks', prob
 for (const problem of verifierIgnoresBackends(CHECKS_DIR)) fail('provisioning/checks', problem)
 for (const problem of documentedWeakness(loaded)) fail('provisioning/checks', problem)
 
+const built = implemented()
+
+/**
+ * provisioning/README.md states these counts in prose, and prose goes stale the
+ * first time somebody writes a verifier and does not think to count again. It
+ * had: "Eight of the sixteen verifiers are written" survived until twelve of
+ * fifteen were, which understates the work and, worse, is a number a reader
+ * uses to judge how much of this directory is real.
+ *
+ * Only the two totals are checked. Pinning every sentence would make the
+ * document unwritable, and these are the two that carry the claim.
+ */
+{
+  const readme = readFileSync(join(ROOT, 'provisioning/README.md'), 'utf8')
+  const WORDS = [
+    'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight',
+    'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen',
+    'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty',
+  ]
+  const spell = (n) => WORDS[n] ?? String(n)
+  const stated = new RegExp(
+    `${spell(built.length)} of the ${spell(Object.keys(VERIFIERS).length)} verifiers are written`,
+    'i'
+  )
+  if (!stated.test(readme)) {
+    fail(
+      'provisioning/README.md',
+      `does not say "${spell(built.length)} of the ${spell(Object.keys(VERIFIERS).length)} ` +
+        `verifiers are written", which is what the registry now holds. The status paragraph ` +
+        `is a claim about how much of this directory is real, so it is checked rather than ` +
+        `remembered.`
+    )
+  }
+}
+
 if (problems > 0) {
   console.error(`check-profiles: ${problems} problem${problems === 1 ? '' : 's'} in ${files.length} profile(s)`)
   process.exit(1)
@@ -219,7 +254,6 @@ if (problems > 0) {
 // profiles assert and what can currently be checked IS the status of this work.
 // A run that said only "valid" would be hiding the number that matters.
 const declared = Object.keys(VERIFIERS).length
-const built = implemented()
 // Split, because "implemented" and "running in CI right now" are different
 // numbers and reporting only the first would claim four verifiers are checking
 // an image that does not exist yet.

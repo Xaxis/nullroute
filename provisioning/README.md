@@ -149,17 +149,26 @@ backend, so that the first backend is written against a contract rather than the
 contract being reverse-engineered from whatever the first backend happened to
 do.
 
-Eight of the sixteen verifiers are written. Three inspect the profiles
-themselves and run on every commit. Five read a root filesystem and are
-exercised against a fixture tree in `test/provisioning`, so on the day a backend
-produces a rootfs the only new thing is the artifact. One of the five,
-`systemd-exposure`, also needs `systemd-analyze` on the machine running it, and
-reports could-not-run rather than passing when that is absent. The remaining
-eight need the whole image (two builds to compare, a partition table, a verity
-superblock)
-or a booted device (mount options, listening sockets, swap), and the second
-group stays that way on purpose: reading them from an unbooted rootfs is the
-false pass described above.
+Twelve of the fifteen verifiers are written. Three inspect the profiles
+themselves and run on every commit. Five read a root filesystem, four read a
+whole image (two builds to compare, a partition table, a verity superblock), and
+the remaining three need a booted device: mount options, listening sockets and
+swap. That last group stays unwritten on purpose, because reading any of them
+from an unbooted rootfs is the false pass described above.
+
+One of the five rootfs verifiers, `systemd-exposure`, also needs
+`systemd-analyze` on the machine running it, and reports could-not-run rather
+than passing when it is absent. That is not a hypothetical. `make image-system`
+builds a real rootfs and `make verify-image` checks seven assertions against it,
+but INV-PROV-18 and INV-PROV-19, the two exposure thresholds for the units, have
+never actually been checked by a verifier: `systemd-analyze` is a Linux tool,
+much of this project is written on macOS, and CI has no job that builds an
+image. The units were measured by hand once. A hand measurement is evidence, not
+verification, and the difference is the whole point of this directory.
+
+These counts are checked against the registry by `make profiles`, because a
+status paragraph is exactly the kind of prose that goes stale the first time
+somebody writes a verifier and does not think to count again.
 
 The first thing `make verify-image` found, on its first run against a fixture,
 was that INV-PROV-21 asserted the kernel command line matched "the pinned token
