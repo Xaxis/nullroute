@@ -30,10 +30,16 @@ The last one is the most important, and it is the one people skip.
 
 ### What the manifest is
 
-`MANIFEST.lock` is a SHA-256 of every tracked source file that ships to the
-device, one per line, sorted by path. It is deliberately in the exact output
-format of `sha256sum`, so you can check it with `sha256sum` itself rather than
-with our tool:
+`MANIFEST.lock` is a SHA-256 of every file git tracks under `packages/`,
+`spec/` and `provisioning/`, one per line, sorted by path.
+
+Tracked, rather than a list of source extensions. An allowlist of extensions
+silently omits any file type nobody thought to add, and this one did: among the
+files it left outside the hash was `packages/ui/index.html`, which carries the
+content security policy the device frontend runs under.
+
+The file is deliberately in the exact output format of `sha256sum`, so you can
+check it with `sha256sum` itself rather than with our tool:
 
 ```
 f5603a6435f46cecb5040b2afb318027528b4e87b81afade0c260cf7ed7066b2  packages/core/src/entropy/combine.ts
@@ -59,14 +65,14 @@ Compute the root hash:
 
 ```console
 $ sha256sum MANIFEST.lock
-70fe6285eb5c67d1d22508a69637167e221406f92d6d17465f9fc7ac7acb39df  MANIFEST.lock
+40d8d4cfafa47b916a8390155a916c6bc4eaf920b12b54d0a05d7e2ca28bc206  MANIFEST.lock
 ```
 
 Regenerate the manifest from scratch and confirm it matches what is committed:
 
 ```console
-$ find packages spec -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum
-70fe6285eb5c67d1d22508a69637167e221406f92d6d17465f9fc7ac7acb39df  -
+$ git ls-files -z packages spec provisioning | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum
+40d8d4cfafa47b916a8390155a916c6bc4eaf920b12b54d0a05d7e2ca28bc206  -
 ```
 
 On macOS use `shasum -a 256` in place of `sha256sum`. The values are identical.
@@ -92,7 +98,8 @@ system's language settings.
 
 ### What the manifest deliberately excludes
 
-The manifest covers `packages/` and `spec/`. It does not cover:
+The manifest covers `packages/`, `spec/` and `provisioning/`. It does not
+cover:
 
 - `apps/web`, the public website, which never ships to the device
 - `node_modules`, which is covered separately by the lockfile's integrity hashes

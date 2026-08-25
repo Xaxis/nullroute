@@ -16,6 +16,7 @@ SHELL := /bin/bash
 MANIFEST_ROOTS := packages spec provisioning
 
 .PHONY: help install dev build check check-fast verify manifest manifest-check \
+	manifest-recipe print-manifest-roots \
         lint ui-classes type-check test test-report test-vectors test-differential test-repro \
         test-recovery-drill \
         prose links profiles sbom sbom-check repro-check clean dev-daemon build-app web web-build web-lint web-type-check \
@@ -45,15 +46,38 @@ test-report: ## Run the suite and emit the machine-readable report verify consum
 	# exit-code check would certify invariants that never ran.
 	@npx vitest run --reporter=json --outputFile=test-report.json > /dev/null
 
+print-manifest-roots: ## The directories MANIFEST.lock covers (for check-manifest-recipe)
+	@echo '$(MANIFEST_ROOTS)'
+
 manifest: ## Regenerate MANIFEST.lock from the tracked sources
 	# Plain `sha256sum` output format, sorted under LC_ALL=C, so a third party
 	# can check it with coreutils rather than with our tool. The root hash is
 	# then just `sha256sum MANIFEST.lock`. See docs/VERIFICATION.md.
-	@find $(MANIFEST_ROOTS) -type f \
-	  \( -name '*.ts' -o -name '*.tsx' -o -name '*.yaml' -o -name '*.json' \) \
-	  -not -path '*/node_modules/*' -not -path '*/dist/*' -print0 \
+	#
+	# `git ls-files`, not `find` with a list of extensions. The extension list
+	# covered .ts/.tsx/.yaml/.json and so left eighteen tracked files unhashed,
+	# including packages/ui/index.html (which carries the device CSP), the
+	# stylesheet that lays out every screen, all five provisioning verifiers,
+	# the digest-pinned Dockerfile, the two patches that pin the verity salt
+	# and the ext4 hash seed, and both systemd units. An allowlist of
+	# extensions fails open: a file type nobody thought of is silently outside
+	# the hash a user compares before entering their PIN. Tracked-or-not is the
+	# property that matters, and it is what this target's description has
+	# always claimed to use.
+	@git ls-files -z $(MANIFEST_ROOTS) \
 	  | LC_ALL=C sort -z | xargs -0 shasum -a 256 > MANIFEST.lock
 	@printf 'root hash: '; shasum -a 256 MANIFEST.lock | cut -d' ' -f1
+	# docs/VERIFICATION.md prints this hash in a transcript a reader is told to
+	# reproduce. Updating it here means it is never a thing someone remembered
+	# to do, which is how it came to be four commits out of date.
+	@node tools/check-manifest-recipe.mjs --write
+
+manifest-recipe: ## The commands docs/VERIFICATION.md tells you to run print what it says
+	# A document is not executable, so the page teaching a stranger how to
+	# recompute the root hash had drifted from the tool in four ways at once,
+	# including printing a command that omitted a third of the manifest. This
+	# runs every transcript in that section.
+	@node tools/check-manifest-recipe.mjs
 
 manifest-check: ## Every tracked source still matches MANIFEST.lock
 	@shasum -a 256 -c MANIFEST.lock --status \
@@ -498,6 +522,6 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 
 # --- aggregates --------------------------------------------------------------
 
-check-fast: lint ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims make-targets ipc-reachable device-csp test manifest-check ## Everything except the slow suites
+check-fast: lint ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims make-targets ipc-reachable device-csp test manifest-check manifest-recipe ## Everything except the slow suites
 
 check: check-fast build verify test-vectors test-differential repro-check sbom device-ui screen-fit journeys dev-check web-check ## Everything CI runs
