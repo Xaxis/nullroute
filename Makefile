@@ -20,7 +20,7 @@ MANIFEST_ROOTS := packages spec provisioning
         test-recovery-drill \
         prose links profiles sbom sbom-check repro-check clean dev-daemon build-app web web-build web-lint web-type-check \
         screens screen-fit ui-constants dev-check verify-image docs-reachable no-dead-ends \
-        image-env image-shell image-system image-repro \
+        image-env image-shell image-system image-repro journeys \
         web-isolation web-csp web-responsive web-check web-live-check deploy image
 
 help: ## List available targets
@@ -404,6 +404,17 @@ screens: ## Build the screen gallery, a layout harness that never ships to the d
 	@npx tsc -p tools/screens/tsconfig.json --noEmit
 	@npx vite build --config tools/screens/vite.config.ts
 
+journeys: ## Every guided journey completes, in the real app against a real daemon
+	# The check that would have caught the device shipping unable to create a
+	# wallet. Unit tests run in jsdom, which has no daemon and computes no
+	# layout; check-screen-fit measures hand-written fixtures; check-device-ui
+	# drives the real frontend and stops at the lock screen because there is
+	# nothing behind it. This is the missing half.
+	#
+	# Its own store directory and its own socket, both temporary, so it never
+	# touches wallets on the machine it runs on.
+	@node tools/check-journeys.mjs
+
 screen-fit: screens ## Every device screen fits 800x480. Drives a real browser.
 	# The panel is fixed hardware: no scrollbar, no window to resize. A control
 	# that does not fit is a control that does not exist. jsdom computes no box
@@ -489,4 +500,4 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 
 check-fast: lint ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims make-targets ipc-reachable device-csp test manifest-check ## Everything except the slow suites
 
-check: check-fast build verify test-vectors test-differential repro-check sbom device-ui screen-fit dev-check web-check ## Everything CI runs
+check: check-fast build verify test-vectors test-differential repro-check sbom device-ui screen-fit journeys dev-check web-check ## Everything CI runs
