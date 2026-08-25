@@ -23,7 +23,7 @@
  * it is most important to be readable.
  */
 
-import { StrictMode } from 'react'
+import { StrictMode, cloneElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
   BackupScreen,
@@ -1140,6 +1140,37 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
 const name = new URLSearchParams(window.location.search).get('screen') ?? 'wallet'
 const render = SCREENS[name]
 
+/**
+ * Every state carries the network banner, unless its fixture set one already.
+ *
+ * WHY THIS IS NOT A DECORATION. Two of sixty eight states used to carry a
+ * banner. A real device on signet, testnet4 or regtest carries one on EVERY
+ * screen, permanently, and the strip costs about 50px of a 480px panel. So the
+ * fit harness was measuring a screen 50px taller than the one a person
+ * developing against this device actually looks at, and reporting it as
+ * fitting.
+ *
+ * That is not a hypothetical gap. Walking the real application turned up the
+ * seed screen 40px over with its "Paper only" warning cut, the word keyboard
+ * clipped on the backup check, and the goal hub hiding three of its six goals,
+ * every one of them reported as fitting by check-screen-fit.
+ *
+ * MEASURING THE TIGHTER CASE IS ENOUGH. A banner only ever adds height, so a
+ * screen that fits with one fits without. Mainnet, which is the shipping
+ * configuration, has more room rather than less, and does not need its own
+ * sixty eight fixtures to prove it.
+ *
+ * An explicit banner in a fixture wins, so the idle-warning and empty-banner
+ * states still measure what they were written to measure.
+ */
+function withBanner(element: React.ReactElement): React.ReactElement {
+  const existing = (element.props as { banner?: unknown }).banner
+  if (existing !== undefined) return element
+  return cloneElement(element as React.ReactElement<{ banner?: React.ReactNode }>, {
+    banner: <NetworkBanner network={{ id: 'signet', label: 'Signet', isMainnet: false }} />,
+  })
+}
+
 const mount = document.getElementById('root')
 if (mount === null) throw new Error('The gallery page has no #root.')
 const root = createRoot(mount)
@@ -1150,7 +1181,7 @@ root.render(
         {`No screen called ${name}. Known: ${Object.keys(SCREENS).join(', ')}`}
       </pre>
     ) : (
-      render()
+      withBanner(render())
     )}
   </StrictMode>
 )

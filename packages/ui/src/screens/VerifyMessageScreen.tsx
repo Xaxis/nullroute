@@ -207,39 +207,45 @@ export function VerifyMessageScreen(props: VerifyMessageScreenProps): ReactEleme
       {/* Which field the keyboard fills. Each tab shows whether that field has
           anything in it, because the check button being disabled is otherwise
           the only clue about which one was missed. */}
-      <div className="nr-tabs">
-        {FIELDS.map((field) => (
-          <button
-            key={field.id}
-            type="button"
-            className="nr-tab"
-            aria-pressed={editing === field.id}
-            onClick={() => {
-              setEditing(field.id)
-              // AND BACK TO EDITING. While a result is showing, the keyboard is
-              // replaced by the three values that were checked, so a tab that
-              // only changed which field is active would have moved a highlight
-              // and offered no way to type. That is the dead end this screen
-              // used to avoid by keeping a keyboard nobody could use.
-              //
-              // Clearing here is the same rule the keyboard already follows: a
-              // verdict about a field somebody has gone back to is a verdict
-              // about something that is no longer settled.
-              setResult(null)
-            }}
-            data-testid={`verify-tab-${field.id}`}
-          >
-            {values[field.id].length > 0 ? `${field.label} set` : field.label}
-          </button>
-        ))}
-        {onScan !== undefined && (
-          <>
-            <div className="nr-spacer" />
-            <button type="button" className="nr-tab" onClick={onScan} data-testid="verify-scan">
-              Scan
+      {/* The tabs and the line about the field they picked, on one row. Stacked
+          they cost 34px above a keyboard that needs 190 of a 287px body once
+          the network banner is on screen. */}
+      <div className="nr-beside">
+        <div className="nr-tabs">
+          {FIELDS.map((field) => (
+            <button
+              key={field.id}
+              type="button"
+              className="nr-tab"
+              aria-pressed={editing === field.id}
+              onClick={() => {
+                setEditing(field.id)
+                // AND BACK TO EDITING. While a result is showing, the keyboard is
+                // replaced by the three values that were checked, so a tab that
+                // only changed which field is active would have moved a highlight
+                // and offered no way to type. That is the dead end this screen
+                // used to avoid by keeping a keyboard nobody could use.
+                //
+                // Clearing here is the same rule the keyboard already follows: a
+                // verdict about a field somebody has gone back to is a verdict
+                // about something that is no longer settled.
+                setResult(null)
+              }}
+              data-testid={`verify-tab-${field.id}`}
+            >
+              {values[field.id].length > 0 ? `${field.label} set` : field.label}
             </button>
-          </>
-        )}
+          ))}
+          {onScan !== undefined && (
+            <>
+              <div className="nr-spacer" />
+              <button type="button" className="nr-tab" onClick={onScan} data-testid="verify-scan">
+                Scan
+              </button>
+            </>
+          )}
+        </div>
+        <span className="nr-field__label">{active.hint}</span>
       </div>
 
       {/* WHAT WAS CHECKED, WHERE THE KEYBOARD WOULD BE.
@@ -268,7 +274,6 @@ export function VerifyMessageScreen(props: VerifyMessageScreenProps): ReactEleme
         </div>
       ) : (
         <>
-          <span className="nr-field__label">{active.hint}</span>
           <TextKeyboard
             // NOT SECRET. None of the three is: an address, a signature, and the
             // message somebody signed are all things the other party handed over in

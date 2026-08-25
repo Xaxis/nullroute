@@ -45,6 +45,15 @@ export interface TextKeyboardProps {
    * When this is false there is nothing to hide, so the Show key goes with it.
    */
   readonly secret?: boolean
+  /**
+   * What the readout says before anything is typed.
+   *
+   * Defaults to "Nothing typed", which is right when a label above already
+   * says which field this is. When it does not, the readout is the only thing
+   * that can, and a separate label costs 24px on a screen whose keyboard needs
+   * 190 of a 287px body.
+   */
+  readonly placeholder?: string
   readonly testId?: string
 }
 
@@ -78,7 +87,7 @@ const SYMBOLS: readonly (readonly string[])[] = [
 type Layer = 'lower' | 'upper' | 'symbols'
 
 export function TextKeyboard(props: TextKeyboardProps): ReactElement {
-  const { value, onChange, onSubmit, secret = true, testId } = props
+  const { value, onChange, onSubmit, secret = true, placeholder = 'Nothing typed', testId } = props
 
   const [layer, setLayer] = useState<Layer>('lower')
   const [revealed, setRevealed] = useState(false)
@@ -100,7 +109,7 @@ export function TextKeyboard(props: TextKeyboardProps): ReactElement {
     <div className="nr-kb" data-testid={testId}>
       <div className="nr-pk__value" data-testid="pk-value">
         {value.length === 0 ? (
-          <span className="nr-hint">Nothing typed</span>
+          <span className="nr-hint">{placeholder}</span>
         ) : !secret || revealed ? (
           <span data-testid="pk-plain">{value}</span>
         ) : (

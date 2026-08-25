@@ -339,14 +339,17 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
           </div>
         </div>
 
-        {/* One field, rather than a label and a keyboard that happen to be
-            adjacent. The body puts 16px between its children and a field puts
-            6px between a label and its input, which is the right distance for
-            two things that are one control. */}
-        <div className="nr-field">
-          <span className="nr-field__label">Passphrase for this wallet</span>
-          <TextKeyboard value={passphrase} onChange={setPassphrase} testId="manage-passphrase" />
-        </div>
+        {/* THE LABEL IS THE KEYBOARD'S OWN READOUT.
+            A separate label above it costs 24px, and on a device carrying the
+            network banner this screen was 37px over with its bottom row of keys
+            off the panel. The readout has to say something before anything is
+            typed, so it says which field this is. */}
+        <TextKeyboard
+          value={passphrase}
+          onChange={setPassphrase}
+          placeholder="Passphrase for this wallet"
+          testId="manage-passphrase"
+        />
 
         {/* Said out loud, because the counter on the unlock screen is
             prominent enough that a user would reasonably assume it applies
