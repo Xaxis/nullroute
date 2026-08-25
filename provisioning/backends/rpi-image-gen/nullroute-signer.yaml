@@ -23,12 +23,23 @@ image:
   layer: image-gpt-ab-userdata
   name: nullroute-signer
 
-  # ext4 rather than the erofs default. erofs is the better choice for an
-  # immutable partition and it is the one whose reproducibility this project has
-  # not established: the hash seed defect above is an ext4 problem with a known
-  # fix, and the equivalent question for erofs has not been answered. Revisit
-  # when there is an image to measure rather than deciding it here.
-  rootfs_type: ext4
+  # EROFS, WHICH REVERSES WHAT THIS FILE USED TO SAY.
+  #
+  # It said ext4, on the grounds that erofs is the better choice for an immutable
+  # partition and is the one whose reproducibility this project had not
+  # established, and that the question should be revisited when there was an
+  # image to measure rather than decided here. There is one now, and the answer
+  # went the other way.
+  #
+  # ext4 does not reproduce. mkfs.ext4 stamps wall-clock time into three
+  # superblock fields and e2fsprogs 1.47.0 ignores SOURCE_DATE_EPOCH, so two
+  # builds of identical content give different root hashes even with the salt,
+  # the UUID and the hash seed all pinned. See ../rpi-image-gen/README.md for the
+  # measurement and for why debugfs cannot repair it afterwards.
+  #
+  # erofs takes the build time as an argument and is byte-identical across
+  # builds. It is also upstream's default, so this line stops being a deviation.
+  rootfs_type: erofs
 
   # 200% and 300% are upstream's defaults and they size the partition from the
   # content, which makes the partition size a function of the build. Fixed sizes

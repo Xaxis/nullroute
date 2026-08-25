@@ -1,11 +1,54 @@
 # rpi-image-gen backend
 
-**Nothing here has ever been run.** It is written, reviewed, and unexecuted.
-`provisioning/profiles/os-signer.yaml` lists this backend with `status: planned`
-and that is accurate: the build needs `mmdebstrap`, `veritysetup` and `genimage`,
-which are Linux tools, and this repository is developed on macOS. The status
-changes when somebody runs it on Linux and `make verify-image` passes against the
-output, not before.
+**This backend has still never been run.** `provisioning/profiles/os-signer.yaml`
+lists it with `status: planned` and that remains accurate.
+
+What HAS changed is the reason. This file used to say the build needs
+`mmdebstrap`, `veritysetup` and `genimage`, which are Linux tools, and that this
+repository is developed on macOS. A pinned Linux container is a Linux machine,
+and there is one now in `provisioning/build/`, so that excuse is gone. What has
+not happened is anybody feeding rpi-image-gen's own recipe to rpi-image-gen.
+
+`provisioning/build/build-system.sh` builds a system partition without it:
+mmdebstrap for the root filesystem, erofs for the image, `veritysetup format`
+for the hash tree. `make image-repro` builds it twice and asserts one root hash.
+That is not this backend, and it does not produce a flashable card. It exists
+because the assertions below could be answered without waiting for the whole of
+somebody else's build system, and two of them turned out to be wrong.
+
+## What running a build actually found
+
+**There is a third defect, and it is the one that mattered.** The two patches in
+`patches/` pin the verity salt and the ext4 hash seed. Both were applied, by
+hand, to a real build, and the root hash still moved between two builds of
+identical content.
+
+`mkfs.ext4` stamps wall-clock time into three superblock fields, and e2fsprogs
+1.47.0 ignores `SOURCE_DATE_EPOCH`. Measured: with the salt pinned, the UUID
+pinned and the hash seed pinned, 75 bytes still differed, and they were those
+timestamps plus the superblock checksums computed over them. Setting them
+afterwards with `debugfs` does not work either: `debugfs` stamps the last write
+time again as it closes.
+
+**So the recipe's choice of ext4 is wrong, and it said so itself.** From
+`nullroute-signer.yaml`:
+
+> ext4 rather than the erofs default. erofs is the better choice for an
+> immutable partition and it is the one whose reproducibility this project has
+> not established.
+
+It is established now, in both directions. erofs takes the build time as an
+argument, and two builds two seconds apart are byte-for-byte identical.
+`rootfs_type` should be erofs, which is also upstream's default and the right
+filesystem for a partition that is read-only by design under a hash tree that
+already guarantees its integrity.
+
+**And `veritysetup` randomises its own superblock UUID.** Not the root hash,
+which is computed over the data, but the hash tree file differs between builds
+unless `--uuid` is pinned. The hash tree ships on the card, so it counts.
+
+The mmdebstrap half was fine: two runs produced byte-identical file contents.
+Their mtimes differed, which matters for ext4 and not for erofs built with `-T`.
 
 Read `../../README.md` first. A backend in this design is **advisory**. It is a
 hint about how to reach the assertions; the verifiers are the contract, and

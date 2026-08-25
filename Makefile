@@ -20,6 +20,7 @@ MANIFEST_ROOTS := packages spec provisioning
         test-recovery-drill \
         prose links profiles sbom sbom-check repro-check clean dev-daemon build-app web web-build web-lint web-type-check \
         screens screen-fit ui-constants dev-check verify-image docs-reachable no-dead-ends \
+        image-env image-shell image-system image-repro \
         web-isolation web-csp web-responsive web-check web-live-check deploy image
 
 help: ## List available targets
@@ -192,18 +193,86 @@ dev-daemon: build manifest verify ## Just the daemon, on a Unix socket in /tmp
 build-app: ## Production build of the device UI
 	@npm run build:app --workspace @nullroute/ui
 
+# --- the image build host ----------------------------------------------------
+# The recipe in provisioning/backends/ needs mmdebstrap, veritysetup and
+# genimage, and its README said for months that this repository is developed on
+# macOS and therefore cannot run them. A pinned Linux container is a Linux
+# machine, and a better one than a borrowed VM: a stranger reproduces it from a
+# digest rather than from a description of somebody's laptop.
+#
+# arm64 on purpose. The target is a Raspberry Pi 5 and cross-building a rootfs
+# is a different exercise with different failure modes; on Apple silicon this
+# runs natively.
+IMAGE_ENV := nullroute-build:local
+
+image-env: ## Build the pinned Linux host the image is built on
+	@docker build --platform linux/arm64 -t $(IMAGE_ENV) \
+		-f provisioning/build/Dockerfile provisioning/build
+	@echo
+	@docker run --rm --platform linux/arm64 $(IMAGE_ENV) sh -c '\
+		echo "  mmdebstrap  $$(mmdebstrap --version)"; \
+		echo "  genimage    $$(genimage --version)"; \
+		echo "  veritysetup $$(veritysetup --version)"'
+	@echo
+	@echo '  Build half only. This kernel has no dm-verity target, so'
+	@echo '  "veritysetup format" computes a root hash here and "veritysetup open"'
+	@echo '  does not work. Nothing in this container can show that a device boots'
+	@echo '  with an immutable root. provisioning/README.md says which assertions'
+	@echo '  that leaves uncounted.'
+
+image-shell: image-env ## A shell in the build host, with the repository mounted
+	# --privileged for loop devices, which mmdebstrap and genimage both need.
+	# SOURCE_DATE_EPOCH from the repository's own last commit, so two builds of
+	# one commit produce the same bytes rather than two different timestamps.
+	@docker run --rm -it --privileged --platform linux/arm64 \
+		-v "$(CURDIR)":/work \
+		-e SOURCE_DATE_EPOCH="$$(git log -1 --format=%ct)" \
+		$(IMAGE_ENV) bash
+
+image-system: image-env ## Build the system partition and print its verity root hash
+	@docker run --rm --privileged --platform linux/arm64 \
+		-v "$(CURDIR)":/work \
+		-e SOURCE_DATE_EPOCH="$$(git log -1 --format=%ct)" \
+		$(IMAGE_ENV) /work/provisioning/build/build-system.sh /work/out/system
+
+image-repro: image-env ## Build the system partition TWICE and prove the root hash is the same
+	# THE ASSERTION THIS WHOLE DIRECTORY EXISTS FOR. A dm-verity root hash that
+	# changes between builds of one commit is a number nobody can compare
+	# against anything, which makes the lock screen's central claim decorative.
+	#
+	# Two builds from scratch, not one build hashed twice: the question is
+	# whether the pipeline is deterministic, and a second hash of the same bytes
+	# cannot answer it.
+	#
+	# Both builds stay inside the container. Copying two 150MB images across a
+	# bind mount to compare them on the host would be slower than building them.
+	@docker run --rm --privileged --platform linux/arm64 \
+		-v "$(CURDIR)":/work \
+		-e SOURCE_DATE_EPOCH="$$(git log -1 --format=%ct)" \
+		$(IMAGE_ENV) sh -c '\
+			NULLROUTE_WORK=/build-a /work/provisioning/build/build-system.sh /out-a >/dev/null && \
+			NULLROUTE_WORK=/build-b /work/provisioning/build/build-system.sh /out-b >/dev/null && \
+			A=$$(cat /out-a/root-hash) && B=$$(cat /out-b/root-hash) && \
+			echo "  build A  $$A" && \
+			echo "  build B  $$B" && echo && \
+			if [ "$$A" = "$$B" ] && cmp -s /out-a/system.erofs /out-b/system.erofs; then \
+				echo "  reproducible: two builds, one root hash, byte-identical images"; \
+			else \
+				echo "  NOT REPRODUCIBLE" && exit 1; \
+			fi'
+
 image: ## Build the hardened Raspberry Pi image. NOT IMPLEMENTED YET.
 	# Fails on purpose, and says so, rather than calling a script that is not
 	# there. This target used to run tools/build-image/build.sh, which was never
 	# written, so `make image` produced a bash "no such file" that reads as a
 	# broken checkout rather than as a feature in design.
 	#
-	# docs/PROVISIONING.md is honest that the build system is being designed. The
+	# The documentation is honest that the build system is being designed. The
 	# Makefile was not, and the Makefile is what somebody actually runs.
 	@echo 'make image: the image build system is not implemented yet.'
 	@echo
 	@echo '  The hardware, the hardening controls and the constraints are settled'
-	@echo '  and written up in docs/PROVISIONING.md. The build system that turns'
+	@echo '  and written up in docs/VERIFICATION.md. The build system that turns'
 	@echo '  them into a flashable image is still being designed, and this target'
 	@echo '  exists so that is a sentence rather than a missing file.'
 	@echo
