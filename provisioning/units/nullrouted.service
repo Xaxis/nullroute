@@ -1,0 +1,103 @@
+# The signing daemon.
+#
+# WHY THIS FILE EXISTS AT ALL. provisioning/profiles/os-signer.yaml has asserted
+# things about `nullrouted.service` since the profile system was written, and
+# the unit did not exist. An assertion about a file nobody has written is a
+# claim, not a check, which is the exact species of thing that whole directory
+# was built to stop.
+#
+# WHAT THE DIRECTIVES ARE FOR. This process holds key material and talks to
+# exactly two things: one Unix socket and one device node. It has no reason to
+# retain a capability, an address family beyond AF_UNIX, or any view of the rest
+# of the filesystem. INV-PROV-18 puts a number on that with `systemd-analyze
+# security`, and the number is a configuration lint rather than a measurement of
+# behaviour: see the limits that verifier prints.
+#
+# MemoryDenyWriteExecute IS DELIBERATELY ABSENT. It is the single most effective
+# directive available here and it crashes Node outright, because V8's baseline
+# compiler needs writable-then-executable pages. It works under `node --jitless`,
+# and that is no longer an acceptable trade: the wallet store stretches its
+# passphrase with Argon2id from @noble/hashes, which is pure JavaScript, and an
+# interpreter with no JIT runs it about fifty times slower. Measured at the
+# shipped parameters of 64 MiB and three passes, 643ms with the JIT and 34.4
+# seconds without, on a machine considerably faster than a Pi. Adopting it costs
+# minutes per unlock attempt, a much weaker key derivation, or a native Argon2
+# and the supply chain review that comes with it. See docs/VERIFICATION.md.
+
+[Unit]
+Description=nullroute signing daemon
+Documentation=https://nullroute.diy/docs/verification
+# Nothing else may order itself in front of this. INV-PROV-17 reads every unit
+# in the image and fails if one does, because a unit that runs first on a device
+# whose whole claim is verified boot is a unit nobody verified.
+DefaultDependencies=no
+After=local-fs.target
+Requires=local-fs.target
+
+[Service]
+Type=notify
+NotifyAccess=main
+# --jitless is NOT passed. See the note above.
+ExecStart=/usr/lib/nullroute/bin/node /usr/lib/nullroute/daemon/main.js
+Restart=on-failure
+RestartSec=2
+
+User=nullroute
+Group=nullroute
+RuntimeDirectory=nullroute
+RuntimeDirectoryMode=0710
+StateDirectory=nullroute
+StateDirectoryMode=0700
+
+# --- The filesystem ---------------------------------------------------------
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=false
+ProtectProc=invisible
+ProcSubset=pid
+ReadWritePaths=/var/lib/nullroute
+InaccessiblePaths=/boot
+
+# --- Privileges -------------------------------------------------------------
+NoNewPrivileges=true
+PrivateUsers=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+RemoveIPC=true
+KeyringMode=private
+UMask=0077
+
+# --- The network that is not there ------------------------------------------
+# The application has no code that can open a socket and a lint rule fails the
+# build if anyone adds one (INV-NET-2). These two are the kernel saying no as
+# well, so a defeat of every application-level defence still cannot reach a
+# network. A loopback IPC socket is a Unix socket and is unaffected.
+PrivateNetwork=true
+RestrictAddressFamilies=AF_UNIX
+IPAddressDeny=any
+
+# --- Devices ----------------------------------------------------------------
+# One node, read only: the hardware random number generator. Nothing else, which
+# includes the SD card reader and the camera.
+DevicePolicy=closed
+DeviceAllow=/dev/hwrng r
+
+# --- Syscalls ---------------------------------------------------------------
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources @obsolete @debug @mount @swap @reboot
+SystemCallErrorNumber=EPERM
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

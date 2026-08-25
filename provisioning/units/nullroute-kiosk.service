@@ -1,0 +1,106 @@
+# The frontend, in a kiosk browser.
+#
+# THE WEAKEST COMPONENT ON THE DEVICE, and the profile says so in a threshold
+# rather than in a paragraph: INV-PROV-19 allows this unit an exposure of 3.0
+# where the daemon is held to 0.5. Averaging the two would hide the difference,
+# which is why they are separate assertions.
+#
+# WHY IT CANNOT BE HARDENED LIKE THE DAEMON. Chromium's own sandbox needs
+# unprivileged user namespaces. The directives that make nullrouted safe,
+# PrivateUsers=true and RestrictNamespaces, force --no-sandbox, and a browser
+# with no sandbox is strictly worse than a slightly higher exposure score. So
+# this unit keeps the namespace directives off and keeps Chromium's sandbox on.
+#
+# The design response to that is not a better unit file. It is keeping trust out
+# of the browser: the daemon holds the keys, and this process receives xpubs,
+# addresses, descriptors and PSBTs and nothing else (INV-KEY-1).
+
+[Unit]
+Description=nullroute kiosk frontend
+Documentation=https://nullroute.diy/docs/verification
+# After the daemon, never before it. INV-PROV-17 fails any unit that orders
+# itself in front of nullrouted.service.
+After=nullrouted.service
+Requires=nullrouted.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/chromium \
+  --kiosk \
+  --incognito \
+  --noerrdialogs \
+  --disable-infobars \
+  --disable-features=TranslateUI,AutofillServerCommunication \
+  --check-for-update-interval=31536000 \
+  --disable-background-networking \
+  --disable-sync \
+  --disable-component-update \
+  --window-size=800,480 \
+  http://127.0.0.1:5180/
+Restart=on-failure
+RestartSec=2
+
+User=nullroute-ui
+Group=nullroute-ui
+RuntimeDirectory=nullroute-ui
+StateDirectory=nullroute-ui
+StateDirectoryMode=0700
+
+# --- What can still be applied ----------------------------------------------
+# Everything that does not break Chromium's own sandbox. PrivateUsers and
+# RestrictNamespaces are the two that would, and they are absent on purpose.
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectProc=invisible
+ReadWritePaths=/var/lib/nullroute-ui
+InaccessiblePaths=/boot /var/lib/nullroute
+
+NoNewPrivileges=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+RemoveIPC=true
+UMask=0077
+
+# Loopback only. The frontend talks to the daemon and to nothing else, and there
+# is no network on this device for it to reach anyway.
+IPAddressDeny=any
+IPAddressAllow=localhost
+
+# The panel and the input devices, and nothing else. No hardware random number
+# generator here: entropy is the daemon's business.
+DevicePolicy=closed
+DeviceAllow=/dev/dri/card0 rw
+DeviceAllow=/dev/dri/renderD128 rw
+DeviceAllow=char-input r
+
+# --- What Chromium's sandbox does not need ----------------------------------
+# Its sandbox works by entering a user namespace and dropping into it. It does
+# not need capabilities on the host, it does not need the syscalls below, and it
+# does not need an address family beyond the loopback it reaches the daemon on.
+# These are the directives that close most of the exposure gap without touching
+# the namespaces the sandbox is built out of.
+#
+# NOT VALIDATED BY RUNNING CHROMIUM. There is no browser on this image yet and
+# no server behind the URL above, so what follows is reasoned from how the
+# sandbox works rather than from watching it start. The first boot is what
+# settles it, and if one of these has to come off, the exposure number in
+# provisioning/profiles/os-signer.yaml moves with it rather than the other way
+# around.
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @obsolete @debug @mount @swap @reboot @raw-io @resources @cpu-emulation @module @clock
+SystemCallErrorNumber=EPERM
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=graphical.target

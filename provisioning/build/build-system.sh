@@ -66,6 +66,21 @@ echo "  SOURCE_DATE_EPOCH $SOURCE_DATE_EPOCH"
 mmdebstrap --variant="$VARIANT" --mode=root --format=directory \
   "$SUITE" "$ROOTFS" "$MIRROR" >/dev/null 2>&1
 
+# The units the profiles assert about.
+#
+# provisioning/profiles/os-signer.yaml has held assertions about
+# nullrouted.service and nullroute-kiosk.service since the profile system was
+# written, and neither file existed, so INV-PROV-18 and INV-PROV-19 had nothing
+# to measure even on a machine with systemd-analyze. They are real files now and
+# they ship in the image.
+#
+# This does NOT make the image bootable. There is no kernel, no firmware, no
+# initramfs and no nullroute binary here: what the units give is something for
+# the exposure verifiers to read.
+mkdir -p "$ROOTFS/usr/lib/systemd/system"
+cp /work/provisioning/units/nullrouted.service "$ROOTFS/usr/lib/systemd/system/"
+cp /work/provisioning/units/nullroute-kiosk.service "$ROOTFS/usr/lib/systemd/system/"
+
 # The pinned kernel command line, at the path the device will read it from.
 #
 # On a Raspberry Pi /boot/firmware is where the FAT boot partition is mounted,
