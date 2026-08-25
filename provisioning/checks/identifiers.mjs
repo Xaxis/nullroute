@@ -126,6 +126,12 @@ export function pinnedIdentifiers(version, partitions) {
       ...(partition.filesystem === 'ext'
         ? { fsUuid: filesystemUuid(version, partition.name) }
         : {}),
+      // Same derivation, different superblock to read it out of. The system
+      // partition is erofs rather than ext4 because ext4 does not reproduce:
+      // see provisioning/checks/image.mjs, readErofsUuid.
+      ...(partition.filesystem === 'erofs'
+        ? { erofsUuid: filesystemUuid(version, partition.name) }
+        : {}),
       ...(partition.filesystem === 'fat' ? { fatVolumeId: fatVolumeId(version, partition.name) } : {}),
     })),
   }

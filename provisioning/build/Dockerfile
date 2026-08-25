@@ -40,8 +40,9 @@ RUN apt-get update \
       python3=3.11.2-1+b1 \
       zstd=1.5.4+dfsg2-5 \
       erofs-utils=1.5-1 \
+      mtools=4.0.33-1+really4.0.32-1 \
       e2fsprogs \
-      dosfstools \
+      dosfstools=4.2-1 \
       uuid-runtime \
  && rm -rf /var/lib/apt/lists/*
 

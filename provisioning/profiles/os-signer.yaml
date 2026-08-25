@@ -140,7 +140,7 @@ assertions:
           derive: true
           partitions:
             - { name: boot, filesystem: fat }
-            - { name: system, filesystem: ext }
+            - { name: system, filesystem: erofs }
     rationale: >
       Randomly generated identifiers are the most common single cause of an
       otherwise reproducible image failing to reproduce, and they are invisible

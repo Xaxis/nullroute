@@ -137,7 +137,13 @@ function buildImage(spec: ImageSpec = {}): Buffer {
   }
 
   // A dm-verity superblock on `hash`: signature, version, algorithm at 32,
-  // block sizes, salt size at 88, salt at 96.
+  // block sizes, salt size at 80, salt at 88.
+  //
+  // These were 88 and 96, the same eight byte error the verifier and the
+  // synthetic fixture both carried. Three places agreeing with each other and
+  // all three disagreeing with cryptsetup is what let it survive: the padding
+  // in `verity_sb` follows salt_size rather than preceding it, and the first
+  // run against a real veritysetup image is what found it.
   const hashAt = at('hash')
   const salt = spec.salt ?? PINNED_SALT
   if (hashAt !== -1 && salt !== '') {
@@ -149,8 +155,8 @@ function buildImage(spec: ImageSpec = {}): Buffer {
     image.writeUInt32LE(4096, hashAt + 68)
     image.writeBigUInt64LE(1000n, hashAt + 72)
     const bytes = Buffer.from(salt, 'hex')
-    image.writeUInt16LE(bytes.length, hashAt + 88)
-    bytes.copy(image, hashAt + 96)
+    image.writeUInt16LE(bytes.length, hashAt + 80)
+    bytes.copy(image, hashAt + 88)
   }
 
   return spec.tail === undefined ? image : Buffer.concat([image, Buffer.from(spec.tail)])

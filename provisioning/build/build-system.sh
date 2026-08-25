@@ -9,13 +9,18 @@
 #   $OUT/system.verity  its hash tree
 #   $OUT/root-hash      the number the device displays and a user compares
 #
-# WHY EVERY CONSTANT IS A HASH OF A STRING. The salt, the filesystem UUID and
-# the verity UUID all have to be pinned or the output moves between builds, and
-# a pinned constant that is just a random-looking literal is a constant nobody
-# can check. These are sha256 of a namespaced string, so a third party recomputes
-# them with coreutils exactly the way they check MANIFEST.lock:
+# WHERE THE PINNED IDENTIFIERS COME FROM. Not from here. The salt, the
+# filesystem UUID and the partition GUIDs are derived by
+# provisioning/checks/identifiers.mjs, whose own header states the rule: one
+# definition, two consumers, the backend to SET them and the verifier to CHECK
+# them. This script runs in a container with no Node, so it spends the values
+# and never computes one; provisioning/build/identifiers.mjs prints them on the
+# host and the Makefile passes them in.
 #
-#   printf 'nullroute/verity-salt/0.1.0' | sha256sum
+# The first draft of this file did derive them in shell, and got the filesystem
+# UUID wrong: it invented a domain string of its own and sliced the digest by
+# hand without setting the UUID version bits. It produced a value the verifier
+# would have rejected, which is the failure mode a second definition always has.
 #
 # WHAT IT DOES NOT DO. It does not prove a device boots with an immutable root.
 # `veritysetup format` computes a hash tree; `veritysetup open` needs a kernel
@@ -31,12 +36,18 @@ VARIANT="${NULLROUTE_VARIANT:-essential}"
 
 : "${SOURCE_DATE_EPOCH:?SOURCE_DATE_EPOCH must be set, or the build is not reproducible}"
 
-hex32() { printf '%s' "$1" | sha256sum | cut -c1-32; }
-as_uuid() { echo "$1" | sed -E 's/^(.{8})(.{4})(.{4})(.{4})(.{12})$/\1-\2-\3-\4-\5/'; }
+: "${NULLROUTE_VERITY_SALT:?run through the Makefile, which sets the pinned identifiers}"
+: "${NULLROUTE_SYSTEM_FS_UUID:?run through the Makefile, which sets the pinned identifiers}"
 
-VERITY_SALT=$(printf 'nullroute/verity-salt/0.1.0' | sha256sum | cut -d' ' -f1)
-FS_UUID=$(as_uuid "$(hex32 'nullroute/erofs-uuid/0.1.0')")
-VERITY_UUID=$(as_uuid "$(hex32 'nullroute/verity-uuid/0.1.0')")
+VERITY_SALT="$NULLROUTE_VERITY_SALT"
+FS_UUID="$NULLROUTE_SYSTEM_FS_UUID"
+
+# The verity superblock carries a UUID of its own, which veritysetup generates
+# randomly per invocation. It is not the root hash, which is computed over the
+# data, but the hash tree ships on the card and differs between builds without
+# this. Reusing the system partition's GUID keeps it one pinned value rather
+# than adding another domain to derive.
+VERITY_UUID="${NULLROUTE_SYSTEM_HASH_PART_GUID:?run through the Makefile}"
 
 # BUILT IN THE CONTAINER'S OWN FILESYSTEM, NOT IN THE OUTPUT DIRECTORY.
 #
@@ -54,6 +65,17 @@ echo "  SOURCE_DATE_EPOCH $SOURCE_DATE_EPOCH"
 
 mmdebstrap --variant="$VARIANT" --mode=root --format=directory \
   "$SUITE" "$ROOTFS" "$MIRROR" >/dev/null 2>&1
+
+# The pinned kernel command line, at the path the device will read it from.
+#
+# On a Raspberry Pi /boot/firmware is where the FAT boot partition is mounted,
+# so a file at that path in the root filesystem is what the running device sees
+# and is where INV-PROV-21's verifier looks. The same string is written to the
+# boot partition itself further down, from the same variable, so the two cannot
+# drift: what the firmware reads and what the verifier reads are one value
+# derived from provisioning/profiles/os-signer.yaml.
+mkdir -p "$ROOTFS/boot/firmware"
+printf '%s\n' "${NULLROUTE_CMDLINE:?run through the Makefile}" > "$ROOTFS/boot/firmware/cmdline.txt"
 
 # EROFS RATHER THAN EXT4, and this reverses what the backend recipe asked for.
 #
@@ -98,3 +120,96 @@ fi
 
 echo "  system image     $(wc -c < "$OUT/system.erofs") bytes"
 echo "  root hash        $(cat "$OUT/root-hash")"
+
+# --- the card ---------------------------------------------------------------
+#
+# A GPT disk with the three partitions the profiles name: boot, system, and the
+# verity hash tree beside it. Built with genimage, which is the tool the backend
+# recipe uses, so the layout is produced the way the recipe would produce it
+# rather than by a second mechanism that might differ.
+#
+# NOT A BOOTABLE CARD. There is no firmware, no kernel and no initramfs here:
+# this exists so the image-level verifiers have a real artifact to read instead
+# of a synthetic fixture. What it does carry is the partition table, the pinned
+# GUIDs, the verity superblock and the pinned kernel command line, which is
+# every byte those four assertions read.
+GEN="$WORK/gen"
+mkdir -p "$GEN/input" "$GEN/images" "$GEN/root"
+
+# The pinned command line, from provisioning/profiles/os-signer.yaml. Passed in
+# rather than written here, for the same reason the identifiers are.
+printf '%s\n' "${NULLROUTE_CMDLINE:?run through the Makefile}" > "$GEN/input/cmdline.txt"
+cp "$WORK/system.erofs" "$GEN/input/system.img"
+
+# PADDED TO 8 MiB. The hash tree for a 150MiB system partition is about 1.2MiB,
+# and INV-PROV-9 requires the partition to be at least 8. That is not padding
+# for its own sake: the partition has to hold the tree for a system image that
+# grows, and repartitioning a card in the field is not a thing this device asks
+# anybody to do. The verifier reads the partition, so the partition is what has
+# to be right.
+cp "$WORK/system.verity" "$GEN/input/hash.img"
+HASH_MIN=$((8 * 1024 * 1024))
+HASH_NOW=$(wc -c < "$GEN/input/hash.img")
+if [ "$HASH_NOW" -lt "$HASH_MIN" ]; then
+  dd if=/dev/zero bs=1 count=$((HASH_MIN - HASH_NOW)) >> "$GEN/input/hash.img" 2>/dev/null
+fi
+
+
+cat > "$GEN/genimage.cfg" <<CFG
+image boot.vfat {
+  vfat {
+    # NO VOLUME LABEL, AND THAT IS A TRADE RATHER THAN AN OVERSIGHT.
+    #
+    # A label is stored as a directory entry, and mkfs.vfat stamps that entry
+    # with the wall clock. dosfstools 4.2 does not honour SOURCE_DATE_EPOCH, so
+    # two builds of one commit differed by exactly two bytes, both inside the
+    # label's timestamp. Without a label there is no such entry and the
+    # filesystem is byte-identical.
+    #
+    # What is lost is a human-readable name when the card is plugged into
+    # another machine. What is kept is a card image that reproduces, which is
+    # what the whole verification story rests on. Nothing on the device reads
+    # the label: the kernel command line names the root partition by device.
+    # -i pins the FAT volume id. Without it mkfs.vfat derives one from the
+    # clock, which fails INV-PROV-5 and, more quietly, makes the card image
+    # differ between two builds of one commit. A four byte serial nobody looks
+    # at is exactly the kind of thing that breaks reproducibility invisibly.
+    extraargs = "-i ${NULLROUTE_BOOT_VOLUME_ID:?}"
+    file "cmdline.txt" { image = "cmdline.txt" }
+  }
+  size = 64M
+}
+image nullroute.img {
+  hdimage {
+    partition-table-type = "gpt"
+    gpt-location = 1M
+    disk-uuid = "${NULLROUTE_DISK_GUID:?}"
+  }
+  partition boot {
+    image = "boot.vfat"
+    partition-uuid = "${NULLROUTE_BOOT_PART_GUID:?}"
+  }
+  partition system {
+    image = "system.img"
+    partition-uuid = "${NULLROUTE_SYSTEM_PART_GUID:?}"
+  }
+  partition system-hash {
+    image = "hash.img"
+    partition-uuid = "${NULLROUTE_SYSTEM_HASH_PART_GUID:?}"
+  }
+}
+CFG
+
+# Every input file's mtime to SOURCE_DATE_EPOCH before genimage runs.
+#
+# mcopy writes the source file's modification time into the FAT directory
+# entry, so a cmdline.txt stamped with the build clock puts the build clock on
+# the card. Measured: two builds of one commit differed by exactly two bytes,
+# both inside that directory entry.
+find "$GEN/input" -exec touch -h -d "@$SOURCE_DATE_EPOCH" {} +
+
+( cd "$GEN" && genimage --config genimage.cfg \
+    --inputpath input --outputpath images --rootpath root --tmppath tmp ) >/dev/null 2>&1
+
+cp "$GEN/images/nullroute.img" "$OUT/nullroute.img"
+echo "  card image       $(wc -c < "$OUT/nullroute.img") bytes"

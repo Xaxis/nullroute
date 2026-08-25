@@ -229,13 +229,28 @@ image-shell: image-env ## A shell in the build host, with the repository mounted
 		-e SOURCE_DATE_EPOCH="$$(git log -1 --format=%ct)" \
 		$(IMAGE_ENV) bash
 
-image-system: image-env ## Build the system partition and print its verity root hash
+# The pinned identifiers, derived once on the host by the same module the
+# verifiers use. See provisioning/build/identifiers.mjs for why they are not
+# computed in the container.
+#
+# Through a file rather than repeated -e flags: one of the values is the kernel
+# command line, which contains spaces, and a shell that word-splits it hands
+# docker seven broken arguments instead of one variable.
+IMAGE_ENVFILE := out/build.env
+
+$(IMAGE_ENVFILE):
+	@mkdir -p out
+	@node provisioning/build/identifiers.mjs > $@
+
+image-system: image-env $(IMAGE_ENVFILE) ## Build the system partition and print its verity root hash
 	@docker run --rm --privileged --platform linux/arm64 \
 		-v "$(CURDIR)":/work \
 		-e SOURCE_DATE_EPOCH="$$(git log -1 --format=%ct)" \
+		-e NULLROUTE_EXPORT_ROOTFS="$${NULLROUTE_EXPORT_ROOTFS:-0}" \
+		--env-file $(IMAGE_ENVFILE) \
 		$(IMAGE_ENV) /work/provisioning/build/build-system.sh /work/out/system
 
-image-repro: image-env ## Build the system partition TWICE and prove the root hash is the same
+image-repro: image-env $(IMAGE_ENVFILE) ## Build the card TWICE and run the reproducibility verifier
 	# THE ASSERTION THIS WHOLE DIRECTORY EXISTS FOR. A dm-verity root hash that
 	# changes between builds of one commit is a number nobody can compare
 	# against anything, which makes the lock screen's central claim decorative.
@@ -244,22 +259,21 @@ image-repro: image-env ## Build the system partition TWICE and prove the root ha
 	# whether the pipeline is deterministic, and a second hash of the same bytes
 	# cannot answer it.
 	#
-	# Both builds stay inside the container. Copying two 150MB images across a
-	# bind mount to compare them on the host would be slower than building them.
+	# Judged by provisioning/checks/, not by a cmp in this file. The whole
+	# design rests on the unchanged verifiers deciding, and a Makefile that
+	# graded its own output would be the backend influencing its own verdict.
 	@docker run --rm --privileged --platform linux/arm64 \
 		-v "$(CURDIR)":/work \
 		-e SOURCE_DATE_EPOCH="$$(git log -1 --format=%ct)" \
+		--env-file $(IMAGE_ENVFILE) \
 		$(IMAGE_ENV) sh -c '\
-			NULLROUTE_WORK=/build-a /work/provisioning/build/build-system.sh /out-a >/dev/null && \
-			NULLROUTE_WORK=/build-b /work/provisioning/build/build-system.sh /out-b >/dev/null && \
-			A=$$(cat /out-a/root-hash) && B=$$(cat /out-b/root-hash) && \
-			echo "  build A  $$A" && \
-			echo "  build B  $$B" && echo && \
-			if [ "$$A" = "$$B" ] && cmp -s /out-a/system.erofs /out-b/system.erofs; then \
-				echo "  reproducible: two builds, one root hash, byte-identical images"; \
-			else \
-				echo "  NOT REPRODUCIBLE" && exit 1; \
-			fi'
+			NULLROUTE_WORK=/build-a /work/provisioning/build/build-system.sh /work/out/repro-a >/dev/null && \
+			NULLROUTE_WORK=/build-b /work/provisioning/build/build-system.sh /work/out/repro-b >/dev/null'
+	@echo "  build A  $$(cat out/repro-a/root-hash)"
+	@echo "  build B  $$(cat out/repro-b/root-hash)"
+	@echo
+	@$(MAKE) --no-print-directory verify-image \
+		IMAGE=out/repro-a/nullroute.img COMPARE=out/repro-b/nullroute.img
 
 image: ## Build the hardened Raspberry Pi image. NOT IMPLEMENTED YET.
 	# Fails on purpose, and says so, rather than calling a script that is not

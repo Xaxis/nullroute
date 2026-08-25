@@ -71,12 +71,12 @@ function guidBytes(text) {
   ])
 }
 
-// The layout the profiles assert: a FAT boot partition, an ext system
+// The layout the profiles assert: a FAT boot partition, an erofs system
 // partition, and the verity hash tree on its own partition rather than left
 // beside the image as a build artifact (INV-PROV-9).
 const LAYOUT = [
   { name: 'boot', filesystem: 'fat', firstLba: 2048, sectors: 1024 * 1024 },
-  { name: 'system', filesystem: 'ext', firstLba: 2048 + 1024 * 1024, sectors: 2048 },
+  { name: 'system', filesystem: 'erofs', firstLba: 2048 + 1024 * 1024, sectors: 2048 },
   { name: 'system-hash', filesystem: 'verity', firstLba: 2048 + 1024 * 1024 + 2048, sectors: 32768 },
 ]
 
@@ -115,6 +115,21 @@ LAYOUT.forEach((partition, index) => {
     )
   }
 
+  // EROFS, because the system partition is erofs now. ext4 does not reproduce:
+  // mkfs.ext4 stamps wall-clock time into three superblock fields and
+  // e2fsprogs 1.47.0 ignores SOURCE_DATE_EPOCH. See
+  // provisioning/backends/rpi-image-gen/README.md.
+  //
+  // Superblock at 1024 into the partition, magic 0xe0f5e1e2 little-endian at
+  // its offset 0, uuid as sixteen flat bytes at its offset 0x30.
+  if (partition.filesystem === 'erofs') {
+    image.writeUInt32LE(0xe0f5e1e2, at + 1024)
+    Buffer.from(filesystemUuid(release, partition.name).replaceAll('-', ''), 'hex').copy(
+      image,
+      at + 1024 + 48
+    )
+  }
+
   if (partition.filesystem === 'verity') {
     // The salt is the whole point. --drift writes a fresh one, which is exactly
     // what rpi-image-gen does today and exactly what has to fail.
@@ -126,9 +141,16 @@ LAYOUT.forEach((partition, index) => {
     image.writeUInt32LE(4096, at + 64)
     image.writeUInt32LE(4096, at + 68)
     image.writeBigUInt64LE(BigInt(partition.sectors / 8), at + 72)
+    // OFFSET 80 AND 88, NOT 88 AND 96.
+    //
+    // This fixture carried the same eight byte error as the verifier that reads
+    // it, which is why nothing caught it: the two agreed with each other and
+    // both disagreed with cryptsetup. The padding in `verity_sb` follows
+    // salt_size rather than preceding it. A fixture that encodes the reader's
+    // mistake is a fixture that certifies the mistake.
     const bytes = Buffer.from(salt, 'hex')
-    image.writeUInt16LE(bytes.length, at + 88)
-    bytes.copy(image, at + 96)
+    image.writeUInt16LE(bytes.length, at + 80)
+    bytes.copy(image, at + 88)
   }
 })
 
