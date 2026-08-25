@@ -40,7 +40,9 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse } from 'yaml'
-import { VERIFIERS, RUNTIME_ONLY, NEEDS_IMAGE } from '../provisioning/checks/registry.mjs'
+import { VERIFIERS, RUNTIME_ONLY, NEEDS_IMAGE,
+  NEEDS_NOTHING,
+} from '../provisioning/checks/registry.mjs'
 import { ROOTFS_VERIFIERS } from '../provisioning/checks/rootfs.mjs'
 import { IMAGE_VERIFIERS } from '../provisioning/checks/image.mjs'
 import { pinnedIdentifiers, veritySalt } from '../provisioning/checks/identifiers.mjs'
@@ -136,6 +138,52 @@ let failed = 0
 let checked = 0
 let unchecked = 0
 
+/**
+ * Why each unchecked assertion was not checked, counted by class.
+ *
+ * A single "8 not checked" is a number somebody has to go and interpret, and
+ * the four reasons are not equivalent: one of them is work outstanding in this
+ * repository and three of them are not. Needing a booted device is a property
+ * of the assertion and will never change here. Not being given an image is a
+ * property of the invocation. An unwritten verifier is the only one that is a
+ * gap somebody should close.
+ *
+ * The distinction was already made per assertion, a line at a time. It was not
+ * made in the summary, which is the line anybody actually reads.
+ */
+const NOT_CHECKED = new Map()
+function notChecked(why) {
+  unchecked += 1
+  NOT_CHECKED.set(why, (NOT_CHECKED.get(why) ?? 0) + 1)
+}
+
+/**
+ * The single reason an assertion with no results was not checked.
+ *
+ * An assertion can name several verifiers. If any of them needs a booted
+ * device that is the honest headline, because no invocation here will ever
+ * satisfy it; an unwritten verifier is next, because that is the one that is
+ * work; and being handed no artifact is last, because it is a property of how
+ * the command was run rather than of the repository.
+ */
+function classify(verifiers) {
+  const reasons = verifiers.map((entry) => {
+    if (NEEDS_NOTHING.has(entry.check)) return 'checked by "make profiles" instead'
+    if (RUNTIME_ONLY.has(entry.check)) return 'needs a booted device'
+    const declared = VERIFIERS[entry.check]
+    if (declared === undefined || declared.status !== 'implemented') return 'no verifier written yet'
+    return NEEDS_IMAGE.has(entry.check) ? 'no image was given' : 'no root filesystem was given'
+  })
+  for (const rank of [
+    'needs a booted device',
+    'no verifier written yet',
+    'checked by "make profiles" instead',
+  ]) {
+    if (reasons.includes(rank)) return rank
+  }
+  return reasons[0] ?? 'no verifier ran'
+}
+
 for (const { file, profile } of profiles) {
   console.log(`\n${profile.id}  ${DIM}${file}${OFF}`)
   if (rootfs !== undefined) console.log(`  root     ${rootfs}`)
@@ -170,6 +218,10 @@ for (const { file, profile } of profiles) {
       // device" and "nobody has written it" are different states and only one
       // of them is work outstanding here.
       const reasons = verifiers.map((entry) => {
+        // Checked, just not here. See NEEDS_NOTHING in the registry.
+        if (NEEDS_NOTHING.has(entry.check)) {
+          return `${entry.check}: checked by "make profiles", which needs no artifact`
+        }
         if (RUNTIME_ONLY.has(entry.check)) return `${entry.check}: needs a booted device`
         const declared = VERIFIERS[entry.check]
         if (declared === undefined) return `${entry.check}: not declared`
@@ -182,7 +234,7 @@ for (const { file, profile } of profiles) {
         }
         return `${entry.check}: ${declared.status}`
       })
-      unchecked += 1
+      notChecked(classify(verifiers))
       console.log(`  ${DIM}--${OFF}  ${assertion.id}  ${DIM}${reasons.join(', ')}${OFF}`)
       continue
     }
@@ -192,7 +244,7 @@ for (const { file, profile } of profiles) {
     // the pressure to clear it is pressure to make a missing tool return true.
     const blind = results.filter((r) => r.unavailable === true)
     if (blind.length === results.length) {
-      unchecked += 1
+      notChecked('a verifier could not run on this machine')
       console.log(`  ${DIM}--${OFF}  ${assertion.id}`)
       for (const result of blind) console.log(`        ${DIM}${result.check}: ${result.detail}${OFF}`)
       continue
@@ -208,7 +260,7 @@ for (const { file, profile } of profiles) {
       // Some ran and agreed, some could not run. Not satisfied: the assertion
       // is only as strong as its weakest verifier and one of them was blind.
       checked -= 1
-      unchecked += 1
+      notChecked('only some of its verifiers could run')
       console.log(`  ${DIM}--${OFF}  ${assertion.id}  ${DIM}partly checked${OFF}`)
       for (const result of results) {
         const mark = result.unavailable === true ? 'could not run' : 'agreed'
@@ -248,3 +300,11 @@ console.log(
   `${DIM}  A satisfied assertion is one whose verifiers ran and agreed. An unchecked` +
     ` one is not a passing one.${OFF}`
 )
+if (NOT_CHECKED.size > 0) {
+  console.log('')
+  // Sorted by count so the largest class of missing coverage is the first
+  // thing read, rather than whichever profile happened to be parsed first.
+  for (const [why, count] of [...NOT_CHECKED.entries()].sort((a, b) => b[1] - a[1])) {
+    console.log(`${DIM}    ${String(count).padStart(2)}  ${why}${OFF}`)
+  }
+}

@@ -152,6 +152,21 @@ export const NEEDS_IMAGE = new Set([
   'rebuild-identical',
 ])
 
+/**
+ * Verifiers that need no artifact at all.
+ *
+ * They read the profiles and the verifier sources rather than a build, so they
+ * run in `make profiles` on every commit and are already satisfied by the time
+ * anybody points `verify-image` at anything.
+ *
+ * NAMED HERE BECAUSE verify-image WAS LYING ABOUT THEM. Anything it could not
+ * run was reported as "no --root given", so these two printed that even when a
+ * root filesystem had been given, which is the class of small false statement
+ * this whole directory exists to prevent. They are not unchecked; they are
+ * checked somewhere else.
+ */
+export const NEEDS_NOTHING = new Set(['profile-self-check', 'verifier-ignores-backends'])
+
 export const NEEDS_ROOTFS = new Set([
   'absent-packages',
   'absent-paths',
