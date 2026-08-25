@@ -107,8 +107,22 @@ const XPUB =
   'xpub6BosfCnifzxcFwrSzQiqu2DBVTshkCXacvNsWGYJVVhhawA7d4R5WSWGFNbi8Aw6ZRc1brxMyWMzG3DSSSSoekkudhUd9yLb6qx39T9nMdj'
 const DESCRIPTOR = `wsh(sortedmulti(2,[73c5da0a/48h/0h/0h/2h]${XPUB}/<0;1>/*,[aabbccdd/48h/0h/0h/2h]${XPUB}/<0;1>/*,[11223344/48h/0h/0h/2h]${XPUB}/<0;1>/*))#8rf6pq2t`
 const ADDRESS = 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'
+/**
+ * TWENTY FOUR WORDS, because that is what the device makes.
+ *
+ * This was the twelve word test vector, so the seed screen was measured with
+ * two fewer rows of chips than it ever renders on a real device: 66px the
+ * harness could not see, on the one screen in this product that displays a
+ * seed. Twelve word wallets exist here only by import, which is the case with
+ * more room rather than less.
+ *
+ * The official all-abandon vector at 256 bits, so it is a real mnemonic with a
+ * valid checksum rather than a plausible-looking string.
+ */
 const MNEMONIC =
-  'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
+  'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon ' +
+  'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon ' +
+  'abandon art'
 
 /**
  * A transaction worth reading carefully.
