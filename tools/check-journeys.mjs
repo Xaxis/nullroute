@@ -45,6 +45,8 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs
 import { tmpdir } from 'node:os'
 import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import * as btc from '@scure/btc-signer'
+import { base64, hex } from '@scure/base'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const DIST = join(ROOT, 'packages/ui/dist-app')
@@ -151,14 +153,92 @@ const JOURNEYS = [
   {
     id: 'sign',
     goal: 'start-goal-sign',
-    steps: ['start-begin'],
-    ends: 'psbt-screen',
+    // `paste` puts a transaction built for the open wallet into the field, the
+    // way a camera or an SD card would. See buildPsbt.
+    steps: ['start-begin', 'paste', 'psbt-review', 'psbt-sign'],
+    ends: 'psbt-signed',
     needsWallet: true,
-    stopsShort: 'signing needs a PSBT, and building one needs a wallet layer this build omits',
   },
 ]
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * Address parameters per network, asked of the daemon rather than assumed.
+ *
+ * The first version hard-coded regtest and the journey sets the device to
+ * signet, so every address came back as tb1 and the decoder rejected it. The
+ * device is the authority on which network it is on; this reads it.
+ */
+const NETWORKS = {
+  mainnet: btc.NETWORK,
+  testnet4: btc.TEST_NETWORK,
+  signet: btc.TEST_NETWORK,
+  regtest: { bech32: 'bcrt', pubKeyHash: 0x6f, scriptHash: 0xc4, wif: 0xef },
+}
+
+/**
+ * A transaction for the wallet that is open, so the signing journey has
+ * something to sign.
+ *
+ * THIS DEVICE CANNOT BUILD ONE. Choosing coins and setting a fee is the wallet
+ * layer, which is phase 5 and deliberately absent: the signer proposes nothing
+ * and signs what it is handed. So the check hands it one, which is exactly the
+ * position a coordinator is in.
+ *
+ * The input is fabricated. That is not a shortcut, it is what the device sees:
+ * it has no network, so it cannot know whether an outpoint exists, and a PSBT
+ * naming one that does not is indistinguishable to it from one that does. The
+ * script is the wallet's own, because that is what makes the input signable.
+ */
+async function buildPsbt(rpc) {
+  const status = await rpc('device.status')
+  const params = NETWORKS[status.network?.id]
+  if (params === undefined) {
+    throw new Error(`no address parameters for network "${String(status.network?.id)}"`)
+  }
+  const listed = await rpc('wallet.addresses', {
+    scriptType: 'p2wpkh',
+    change: false,
+    start: 0,
+    count: 2,
+  })
+  const [from, to] = listed.addresses
+  const tx = new btc.Transaction()
+  tx.addInput({
+    txid: hex.decode('11'.repeat(32)),
+    index: 0,
+    witnessUtxo: {
+      script: btc.OutScript.encode(btc.Address(params).decode(from.address)),
+      amount: 100_000n,
+    },
+  })
+  tx.addOutputAddress(to.address, 99_000n, params)
+  return base64.encode(tx.toPSBT())
+}
+
+/** One request to the daemon, over its socket, the way the proxy does it. */
+function daemonRpc(socketPath) {
+  let id = 0
+  return (method, params = {}) =>
+    new Promise((resolve, reject) => {
+      const socket = connect(socketPath)
+      let buffer = ''
+      socket.on('connect', () => {
+        socket.write(`${JSON.stringify({ id: String((id += 1)), method, params })}\n`)
+      })
+      socket.on('data', (chunk) => {
+        buffer += chunk.toString('utf8')
+        const newline = buffer.indexOf('\n')
+        if (newline === -1) return
+        socket.end()
+        const message = JSON.parse(buffer.slice(0, newline))
+        if (message.error) reject(new Error(`${method}: ${message.error.message}`))
+        else resolve(message.result)
+      })
+      socket.on('error', reject)
+    })
+}
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -253,6 +333,7 @@ async function main() {
   })
 
   const server = serve(socketPath)
+  const rpc = daemonRpc(socketPath)
   const failures = []
 
   try {
@@ -434,6 +515,28 @@ async function main() {
             break
           }
           await sleep(800)
+          continue
+        }
+
+        if (step === 'paste') {
+          const psbt = await buildPsbt(rpc)
+          // Through the native setter and an input event, because React tracks
+          // the value it last rendered and ignores one assigned around it.
+          const filled = await evaluate(`(() => {
+            const field = document.querySelector('[data-testid="psbt-input"]')
+            if (field === null) return 'missing'
+            const setter = Object.getOwnPropertyDescriptor(
+              window.HTMLTextAreaElement.prototype, 'value'
+            ).set
+            setter.call(field, ${JSON.stringify(psbt)})
+            field.dispatchEvent(new Event('input', { bubbles: true }))
+            return 'ok'
+          })()`)
+          if (filled !== 'ok') {
+            broke = `paste: the transaction field was ${String(filled)}`
+            break
+          }
+          await sleep(300)
           continue
         }
 
