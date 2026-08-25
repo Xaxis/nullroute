@@ -35,7 +35,7 @@ const require = createRequire(join(ROOT, 'packages/verify/package.json'))
 const { VERIFIERS, implemented, NEEDS_ROOTFS } = await import(
   join(ROOT, 'provisioning/checks/registry.mjs')
 )
-const { NEEDS_IMAGE } = await import(join(ROOT, 'provisioning/checks/registry.mjs'))
+const { NEEDS_IMAGE, NEEDS_NOTHING } = await import(join(ROOT, 'provisioning/checks/registry.mjs'))
 const { profileSelfCheck, verifierIgnoresBackends, documentedWeakness } = await import(
   join(ROOT, 'provisioning/checks/meta.mjs')
 )
@@ -87,6 +87,8 @@ const invariantOwner = new Map()
 
 /** Every profile that parsed, for the meta verifiers to inspect as a set. */
 const loaded = []
+/** Verifier name -> the first assertion that asks for it. */
+const named = new Map()
 
 for (const file of files) {
   const rel = `provisioning/profiles/${file}`
@@ -109,6 +111,10 @@ for (const file of files) {
 
   for (const assertion of profile.assertions) {
     const where = `${rel}  ${assertion.id}`
+
+    for (const v of assertion.verify) {
+      if (typeof v.check === 'string' && !named.has(v.check)) named.set(v.check, where)
+    }
 
     // INV-PROV-1. The schema already requires a non-empty array; this catches
     // the subtler form where every entry is missing its implementation name.
@@ -174,6 +180,32 @@ for (const file of files) {
  * about itself in the document whose whole thesis is that unfalsifiable
  * abstractions are worthless.
  */
+/**
+ * Every verifier in the registry has to be named by some assertion.
+ *
+ * profileSelfCheck already runs the other direction, catching an assertion that
+ * names a verifier the registry does not have. This is the residue case: a
+ * control gets dropped or reworded and its verifier stays behind. That is how
+ * "daemon-starts-under-mdwe" came to sit in the registry describing "the daemon
+ * starts under MemoryDenyWriteExecute, which it currently does not", a verifier
+ * whose own description says it would fail if anything ever ran it.
+ *
+ * Nothing was broken enough to notice, and that is the problem. An unused entry
+ * inflates the denominator of the coverage line below, so retiring a control
+ * correctly made the ratio this project publishes as its status look worse.
+ * Removing that one entry moved it from 12 of 16 to 12 of 15 without a single
+ * verifier being written.
+ */
+for (const name of Object.keys(VERIFIERS)) {
+  if (!named.has(name) && !NEEDS_NOTHING.has(name)) {
+    fail(
+      'provisioning/checks/registry.mjs',
+      `declares the verifier "${name}", which no assertion names. Either an assertion should use ` +
+        `it, or it is left over from one that was removed and belongs in excluded_controls instead.`
+    )
+  }
+}
+
 for (const problem of profileSelfCheck(loaded)) fail('provisioning/checks', problem)
 for (const problem of verifierIgnoresBackends(CHECKS_DIR)) fail('provisioning/checks', problem)
 for (const problem of documentedWeakness(loaded)) fail('provisioning/checks', problem)

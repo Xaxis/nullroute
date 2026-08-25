@@ -291,7 +291,7 @@ assertions:
         tool: systemd-analyze
         params: { unit: nullroute-kiosk.service, max_exposure: 3.0 }
       - check: documented-weakness
-        params: { document: docs/PROVISIONING.md, claim: weakest-component }
+        params: { document: docs/VERIFICATION.md, claim: weakest-component }
     rationale: >
       Chromium's own sandbox needs unprivileged user namespaces, so the
       directives that make the daemon safe force --no-sandbox, which is a net
@@ -301,24 +301,6 @@ assertions:
       Any claim that the browser is adequately hardened. It is not, and the
       design response is to keep trust out of it rather than to harden it
       further.
-
-  - id: INV-PROV-20
-    statement: >
-      The daemon starts with --jitless under MemoryDenyWriteExecute=true, and a
-      build-time test proves it starts under both.
-    stage: image
-    verify:
-      - check: daemon-starts-under-mdwe
-    rationale: >
-      MemoryDenyWriteExecute is the single most effective directive available
-      and it crashes Node outright, because V8's baseline compiler needs
-      writable-then-executable pages. Running --jitless makes the directive
-      usable for a workload that is not throughput bound. Asserting both
-      together is what stops someone quietly dropping one of them.
-    does_not_cover: >
-      Whether the crypto layer's constant-time assumptions still hold under the
-      interpreter, which takes different code paths and must be re-validated
-      separately. Until that is done this assertion is not enabled.
 
   - id: INV-PROV-21
     statement: >
@@ -357,6 +339,32 @@ assertions:
       partition and is only covered once the boot chain is signed.
 
 excluded_controls:
+  - family: MemoryDenyWriteExecute on the signing daemon
+    control_count: 1
+    reason: >
+      This was an assertion until a measurement retired it, and it is here
+      rather than deleted because a control this strong being absent is
+      something a reader should find written down.
+
+      It is the single most effective directive systemd offers and it crashes
+      Node outright: V8's baseline compiler needs writable-then-executable
+      pages. It works under `node --jitless`, which the assertion required, and
+      that was described as an acceptable trade for a workload that is not
+      throughput bound. It is not one. The wallet store stretches its passphrase
+      with Argon2id from @noble/hashes, which is pure JavaScript, and an
+      interpreter with no JIT runs it about fifty times slower. Measured at the
+      shipped parameters of 64 MiB and three passes: 643ms with the JIT and 34.4
+      seconds without, on a machine considerably faster than a Pi.
+
+      Adopting it now costs one of three things: minutes per unlock attempt, a
+      much weaker key derivation, or a native or WASM Argon2 and the supply
+      chain review that comes with it. None is obviously right. The constant
+      time re-validation problem also still applies, because the interpreter
+      takes different code paths through the crypto layer.
+
+      provisioning/units/nullrouted.service says the same thing at the point
+      where somebody would otherwise add the directive back.
+
   - family: Audit daemon (auditd)
     control_count: 55
     reason: >

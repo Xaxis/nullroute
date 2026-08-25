@@ -114,10 +114,6 @@ export const VERIFIERS = {
   'mount-options': { status: 'needs-device', describes: 'noexec and nosuid are actually enforced' },
   'no-listening-sockets': { status: 'needs-device', describes: 'nothing listens beyond loopback' },
   'no-swap': { status: 'needs-device', describes: 'no swap is active' },
-  'daemon-starts-under-mdwe': {
-    status: 'needs-device',
-    describes: 'the daemon starts under MemoryDenyWriteExecute, which it currently does not',
-  },
 }
 
 /** Verifiers that run today. */
