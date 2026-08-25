@@ -97,15 +97,33 @@ async function cdp(ws, method, params, state) {
 let vite
 let chrome
 
+/**
+ * SIGTERM, then SIGKILL, and never wait to find out which one worked.
+ *
+ * Headless Chrome does not reliably die on SIGTERM. When it does not, its
+ * process handle keeps this script's event loop alive, so the check prints
+ * "the dev server renders a styled application" and then never exits. `make
+ * check` sits there behind a check that has already passed. Observed at twenty
+ * minutes before anyone thought to look at `ps`, and the tell is that the
+ * result line is already on screen.
+ *
+ * A check that can hang forever gets switched off, which is the same argument
+ * this file already makes about which port to use.
+ */
 function stop() {
   // The whole tree: npx forks the real binary, and killing the wrapper leaves
   // the server holding the port.
-  for (const child of [vite, chrome]) {
-    if (child?.pid !== undefined) {
+  for (const signal of ['SIGTERM', 'SIGKILL']) {
+    for (const child of [vite, chrome]) {
+      if (child?.pid === undefined) continue
       try {
-        process.kill(-child.pid, 'SIGTERM')
+        process.kill(-child.pid, signal)
       } catch {
-        child.kill('SIGTERM')
+        try {
+          child.kill(signal)
+        } catch {
+          // Already gone, which is the outcome this is trying to produce.
+        }
       }
     }
   }
@@ -239,6 +257,11 @@ async function main() {
     `check-dev-server: the dev server renders a styled application ` +
       `(${String(measured.rules)} CSS rules, background ${measured.background}, no CSP violation)`
   )
+
+  // Explicit, because the verdict is printed and there is nothing left to wait
+  // for. Anything still holding the event loop open at this point is a stray
+  // handle on a subprocess we have already killed, not work in progress.
+  process.exit(0)
 }
 
 main().catch((err) => {
