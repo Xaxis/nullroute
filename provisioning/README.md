@@ -5,6 +5,18 @@ The build system that turns a supported board into a verified nullroute device.
 Two ideas govern the design, and both come from what already makes
 `MANIFEST.lock` worth having.
 
+| File | What it is |
+| --- | --- |
+| [HARDENING.md](HARDENING.md) | Every control the image applies, why, and what three of them are worth on this hardware, which is less than they look |
+| `profiles/*.yaml` | Assertions about the built artifact, each with a verifier |
+| `checks/*.mjs` | The verifiers. They read artifacts, never recipes |
+| `build/` | The pinned Linux host and the script that builds a system partition |
+| `units/` | The systemd units that ship in the image |
+
+HARDENING.md is the reasoning; the profiles assert a subset of it. A verifier
+measuring the wrong thing is easiest to spot by reading why the control exists,
+so the two belong next to each other.
+
 ## 1. A profile is a set of assertions, not a recipe
 
 The obvious way to support more than one distribution is a templating layer: one
