@@ -327,7 +327,7 @@ image: ## Build the hardened Raspberry Pi image. NOT IMPLEMENTED YET.
 	@echo '  the daemon and the frontend on this machine.'
 	@exit 1
 
-verify-image: ## Check a built artifact against the provisioning profiles. ROOT=<dir> and/or IMAGE=<file>
+verify-image: ## Check a built artifact against the provisioning profiles. ROOT=<dir> and/or IMAGE=<file>, REQUIRE=<ids>
 	# ROOT answers what is in the FILES: packages, paths, unit directives, the
 	# kernel command line. IMAGE answers what is in the BYTES between and
 	# underneath filesystems: the partition table, the verity superblock,
@@ -342,6 +342,13 @@ verify-image: ## Check a built artifact against the provisioning profiles. ROOT=
 	#
 	# An assertion whose verifiers are unwritten prints as "not checked" and is
 	# never counted as satisfied. The gap is the status of this work.
+	#
+	# REQUIRE=INV-PROV-18,INV-PROV-19 names assertions that must come back
+	# CHECKED here, not merely not-failing. Reporting could-not-run and exiting
+	# zero is this tool's correct behaviour and makes it useless as a gate on its
+	# own: a job that exists to check unit exposure goes green on a machine
+	# without systemd-analyze, having checked nothing. Whoever runs it knows what
+	# their machine was supposed to see, so they say so.
 	@test -n "$(ROOT)$(IMAGE)" || { \
 	  echo 'make verify-image: pass ROOT=<directory>, IMAGE=<file>, or both.'; \
 	  echo; \
@@ -355,7 +362,8 @@ verify-image: ## Check a built artifact against the provisioning profiles. ROOT=
 	  $(if $(ROOT),--root "$(ROOT)") \
 	  $(if $(IMAGE),--image "$(IMAGE)") \
 	  $(if $(COMPARE),--compare "$(COMPARE)") \
-	  $(if $(RELEASE),--release "$(RELEASE)")
+	  $(if $(RELEASE),--release "$(RELEASE)") \
+	  $(if $(REQUIRE),--require-checked "$(REQUIRE)")
 
 fixture-image: ## Write a synthetic image and run the image verifiers against it
 	# Not a build. It writes the superblocks and the partition table at the

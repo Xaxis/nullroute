@@ -151,6 +151,9 @@ let unchecked = 0
  * The distinction was already made per assertion, a line at a time. It was not
  * made in the summary, which is the line anybody actually reads.
  */
+/** Assertion ids whose verifiers all ran and agreed. See --require-checked. */
+const SATISFIED = new Set()
+
 const NOT_CHECKED = new Map()
 function notChecked(why) {
   unchecked += 1
@@ -273,6 +276,7 @@ for (const { file, profile } of profiles) {
         console.log(`        ${DIM}${result.check}: ${mark}, ${result.detail}${OFF}`)
       }
     } else {
+      SATISFIED.add(assertion.id)
       console.log(`  ${GREEN}ok${OFF}    ${assertion.id}`)
       for (const result of results) {
         console.log(`        ${DIM}${result.check}: ${result.detail}${OFF}`)
@@ -285,6 +289,44 @@ for (const { file, profile } of profiles) {
       }
     }
   }
+}
+
+/**
+ * --require-checked INV-PROV-18,INV-PROV-19
+ *
+ * Assertions the caller is running this command in order to check, which must
+ * therefore end up checked and satisfied rather than merely not failing.
+ *
+ * Without this the tool is unusable as a build gate, because its normal and
+ * correct behaviour is to report could-not-run and exit zero. A CI job that
+ * exists to verify unit exposure would go green on a runner where
+ * systemd-analyze is missing, having verified nothing, and print a reassuring
+ * summary while doing it. That is the exact false pass this whole directory
+ * argues against, and it would be this tool producing it.
+ *
+ * The caller names the ids rather than the tool guessing, because only the
+ * caller knows what its machine was supposed to be able to see.
+ */
+const required = (argument('require-checked') ?? '')
+  .split(',')
+  .map((id) => id.trim())
+  .filter((id) => id.length > 0)
+
+const missing = required.filter((id) => !SATISFIED.has(id))
+if (missing.length > 0) {
+  console.log('')
+  console.log(
+    `${RED}verify-image: ${String(missing.length)} assertion(s) were required to be checked ` +
+      `here and were not: ${missing.join(', ')}${OFF}`
+  )
+  console.log(
+    `  Each is listed above with the reason. This is a failure of the machine or the
+` +
+      `  invocation, not of the artifact: something that was supposed to be able to look
+` +
+      `  at it could not, and a green result would have meant nothing.`
+  )
+  process.exit(1)
 }
 
 console.log('')

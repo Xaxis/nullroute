@@ -22,8 +22,11 @@ env:
   NPM_CONFIG_IGNORE_SCRIPTS: 'true'
   # Note: SOURCE_DATE_EPOCH is deliberately NOT set. It is honored by nothing in
   # the Node toolchain (not tsc, not npm, not node), so setting it here would be
-  # a build variable that looks load-bearing and does nothing. It becomes
-  # relevant when the Debian image build lands, where it genuinely applies.
+  # a build variable that looks load-bearing and does nothing. The Debian image
+  # build does honor it, and the `image` job below still does not read it from
+  # here: the Makefile derives it from the commit being built, so two builds of
+  # one commit agree whether they run in CI or on a workstation. Setting it in
+  # this block would let the two disagree.
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -239,6 +242,59 @@ jobs:
       # to check at build time a fact only a running device can answer.
       - name: Hardening profiles are falsifiable
         run: make profiles
+
+  # ---------------------------------------------------------------------------
+  # The image. Builds a real rootfs and lets the unchanged verifiers judge it.
+  #
+  # This job exists because two assertions had never been checked by anything.
+  # INV-PROV-18 and INV-PROV-19 name systemd-analyze exposure thresholds for the
+  # two units, and systemd-analyze is a Linux tool while much of this project is
+  # written on macOS. `make verify-image` there reports could-not-run and exits
+  # zero, correctly, which means the local answer had been "not checked" for as
+  # long as the assertions existed. The units were measured by hand once. A hand
+  # measurement is evidence and not verification.
+  # ---------------------------------------------------------------------------
+  image:
+    name: the built artifact satisfies its profile
+    runs-on: ubuntu-latest
+    # mmdebstrap under emulation. Generous rather than tuned: a timeout that
+    # trips on a slow mirror teaches people to re-run jobs without reading them.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+
+      # arm64 on purpose: the target is a Raspberry Pi 5, and cross-building a
+      # rootfs is a different exercise with different failure modes. The runner
+      # is x86_64, so the arm64 container needs binfmt.
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      # NULLROUTE_EXPORT_ROOTFS gives the file-reading verifiers a tree to read.
+      # Without it there is only an erofs blob, and every rootfs assertion
+      # reports could-not-run.
+      - name: Build the system partition
+        run: NULLROUTE_EXPORT_ROOTFS=1 make image-system
+
+      # REQUIRE is what makes this job mean something. Without it the command
+      # goes green on a runner missing a tool, having verified nothing and
+      # printed a reassuring summary, which is the exact false pass the
+      # provisioning directory argues against. Naming the two assertions this
+      # job exists for turns a missing tool into a failure.
+      #
+      # Only those two. The others are satisfied here as a side effect and
+      # requiring them would make this job fail for reasons it is not about.
+      - name: The artifact satisfies its profile
+        run: |
+          make verify-image \
+            ROOT=out/system/rootfs \
+            IMAGE=out/system/nullroute.img \
+            REQUIRE=INV-PROV-18,INV-PROV-19
 
   # ---------------------------------------------------------------------------
   # nullroute.diy. Never ships to the device and never enters MANIFEST.lock,
