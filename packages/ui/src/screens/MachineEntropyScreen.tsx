@@ -118,7 +118,7 @@ export function MachineEntropyScreen(props: MachineEntropyScreenProps): ReactEle
       {/* First, and not behind a disclosure. Somebody arrives here having tapped
           past one warning already, and this is the last screen before a seed
           exists that nobody can audit. */}
-      <div className="nr-banner nr-banner--danger" data-testid="machine-warning">
+      <div data-must-see className="nr-banner nr-banner--danger" data-testid="machine-warning">
         <strong>A seed you cannot check</strong>
         <span>
           The dice path can be reproduced with a die and any machine that has sha256sum. That is

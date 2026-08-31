@@ -102,7 +102,7 @@ export function UnlockedScreen(props: UnlockedScreenProps): ReactElement {
       </p>
 
       {usedPassphrase && (
-        <div className="nr-banner nr-banner--testnet" data-testid="unlocked-passphrase-warning">
+        <div data-must-see className="nr-banner nr-banner--testnet" data-testid="unlocked-passphrase-warning">
           <strong>This wallet uses a passphrase</strong>
           <span>
             A wrong passphrase does not produce an error. It opens a different, valid, empty wallet,

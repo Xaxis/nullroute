@@ -12,7 +12,15 @@ export interface ChoiceProps {
   readonly description: string
   readonly selected: boolean
   readonly onSelect: () => void
-  readonly tag?: { readonly text: string; readonly tone: 'ok' | 'warn' }
+  /**
+   * A short label beside the title.
+   *
+   * `note` is the one to reach for by default. `ok` is the green this device
+   * uses for a passing verification and `warn` is the amber it uses for money
+   * leaving, and both mean something here: spending either on a procedural
+   * remark is how a colour stops being read.
+   */
+  readonly tag?: { readonly text: string; readonly tone: 'ok' | 'warn' | 'note' }
   readonly testId?: string
   readonly children?: ReactNode
 }

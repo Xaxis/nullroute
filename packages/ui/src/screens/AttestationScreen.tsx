@@ -123,7 +123,7 @@ export function AttestationScreen(props: AttestationScreenProps): ReactElement {
           on the screen something has gone badly wrong and saying so plainly
           matters more than anything else here. */}
       {!verified && (
-        <div className="nr-banner nr-banner--danger" data-testid="attestation-failed">
+        <div data-must-see className="nr-banner nr-banner--danger" data-testid="attestation-failed">
           <strong>This device is open and should not be</strong>
           <span>
             Verification is failing now and the wallet is loaded anyway. Lock it, take the card out,

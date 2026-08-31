@@ -184,7 +184,7 @@ export function LockScreen(props: LockScreenProps): ReactElement {
           proceed. On a device that has just failed verification, nothing
           outranks this. */}
       {!verified && (
-        <div className="nr-banner nr-banner--danger" data-testid="blocked">
+        <div data-must-see className="nr-banner nr-banner--danger" data-testid="blocked">
           <strong>Do not enter your passphrase</strong>
           <span>
             Verification failed, so the wallet will not load. This device is not running the code it

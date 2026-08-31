@@ -332,11 +332,12 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
                   the two warnings on the screen, because it is about the
                   choice just made rather than about receiving in general. */}
               {source === null && quorums.length > 0 && (
-                <div className="nr-banner nr-banner--danger" data-testid="receive-single-warning">
+                <div data-must-see className="nr-banner nr-banner--danger" data-testid="receive-single-warning">
                   <strong>This address is protected by this device alone</strong>
                   <span>
-                    Not by your quorum. Whoever holds this one device can spend anything sent here,
-                    which is what the quorum prevents. Use it only if you meant to.
+                    Whoever holds this one device can spend anything sent here, which is what the
+                    quorum prevents. Use it only if you meant to, and read the address from this
+                    screen rather than from the one you paste it into.
                   </span>
                 </div>
               )}
@@ -348,15 +349,45 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
                 </span>
               </div>
 
-              <div className="nr-banner nr-banner--testnet" data-testid="receive-warning">
+              {/* ONE RED BOX ON THIS PATH, NOT TWO.
+
+                  Picking the single-signature address on a quorum device puts a
+                  danger banner above the address, and this one under it. That
+                  is 81px and 39px of warning, either side of a 93px address, in
+                  a column 242px tall beside a 144px code: this one ended 34px
+                  under the fold, which is the state it exists to prevent
+                  somebody being in.
+
+                  Two warnings competing in the same red is also worse than one
+                  that says both things. On that path the instruction moves into
+                  the banner above, which is about the choice just made and is
+                  therefore the one being read. */}
+              {!(source === null && quorums.length > 0) && (
+              <div data-must-see className="nr-banner nr-banner--testnet" data-testid="receive-warning">
                 <strong>Read it from this screen, not from the one you paste it into</strong>
+                {/* TWO LINES, NOT FOUR, AND NONE WHEN SOMETHING BEATS IT.
+
+                    This is the warning between somebody and the ordinary way
+                    money is lost here, and it was running under the fold on four
+                    of the receive states, cut mid-sentence. The sentence it lost
+                    first is the one about the device having no network, which is
+                    context rather than instruction. What survives is that
+                    swapping happens, that every screen involved looks correct,
+                    and that the answer is to compare the characters.
+
+                    On the single-device path it loses the rest. That path puts a
+                    second danger banner above the address, about the choice just
+                    made rather than about receiving in general, and the comment
+                    on that banner already calls it the more urgent of the two.
+                    Two full banners plus an address and a QR do not fit in 270px,
+                    and the heading above is the instruction: the body is why. */}
                 <span>
-                  This device has no network and cannot protect the address in transit. Software
-                  that swaps a copied address is the ordinary way this money is lost, and every
-                  screen involved looks correct. Compare the characters above against the
+                  Software that swaps a copied address is the ordinary way this money is lost, and
+                  every screen involved looks correct. Compare these characters against the
                   payer&rsquo;s screen.
                 </span>
               </div>
+              )}
 
               {verified === true ? (
                 <p className="nr-note" data-testid="receive-verified">

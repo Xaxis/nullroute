@@ -178,7 +178,7 @@ export function StartScreen(props: StartScreenProps): ReactElement {
               setChosen(journey)
             }}
             {...(journey.operatesOnAWallet && !walletOpen
-              ? { tag: { text: 'opens a wallet first', tone: 'ok' as const } }
+              ? { tag: { text: 'opens a wallet first', tone: 'note' as const } }
               : {})}
             testId={`start-goal-${journey.id}`}
           />
