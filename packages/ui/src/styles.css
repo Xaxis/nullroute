@@ -58,6 +58,19 @@
 
      tools/check-ui-constants.mjs now fails the build on an undefined one. */
   --color-bg: #08090b;
+  /* The scroll shadow at the top and bottom of a scrolling region.
+
+     A SCRIM HAS TO CONTRAST WITH ITS GROUND, WHICH MEANS IT CHANGES WITH THE
+     THEME. This was a hardcoded rgb(0 0 0 / 45%), a black shadow, which over
+     this ground moves a pixel from (8,9,11) to (5,5,6). Measured off a
+     screenshot that is a luminance swing of about 3 out of 255, so on the
+     default theme the affordance was not there at all. It is obvious in light
+     mode, which is how it survived: it was looked at in the theme that is not
+     the default.
+
+     It matters because most screens on this device have content below the fold,
+     and this shadow is the only thing that says so. */
+  --color-scroll-scrim: rgb(255 255 255 / 18%);
   /* What the panel sits on, when there is anything around it. Only a browser
      ever sees this: on the device the panel is the whole viewport. */
   --color-surround: #000000;
@@ -103,6 +116,19 @@
      ========================================================================== */
 
   --color-bg: #08090b;
+  /* The scroll shadow at the top and bottom of a scrolling region.
+
+     A SCRIM HAS TO CONTRAST WITH ITS GROUND, WHICH MEANS IT CHANGES WITH THE
+     THEME. This was a hardcoded rgb(0 0 0 / 45%), a black shadow, which over
+     this ground moves a pixel from (8,9,11) to (5,5,6). Measured off a
+     screenshot that is a luminance swing of about 3 out of 255, so on the
+     default theme the affordance was not there at all. It is obvious in light
+     mode, which is how it survived: it was looked at in the theme that is not
+     the default.
+
+     It matters because most screens on this device have content below the fold,
+     and this shadow is the only thing that says so. */
+  --color-scroll-scrim: rgb(255 255 255 / 18%);
   /* What the panel sits on, when there is anything around it. Only a browser
      ever sees this: on the device the panel is the whole viewport. */
   --color-surround: #000000;
@@ -171,6 +197,9 @@
    ========================================================================== */
 :root[data-theme='light'] {
   --color-bg: #f5f4f1;
+  /* Dark over a light ground, the mirror of the dark theme's light-over-dark.
+     See the dark theme for why this is a token and not a literal. */
+  --color-scroll-scrim: rgb(0 0 0 / 42%);
   /* See the dark theme. Only a browser ever sees this. */
   --color-surround: #d9d6d0;
   --color-surface-1: #fbfaf8;
@@ -707,7 +736,15 @@ body {
 .nr-hash {
   font-size: 0.9375rem;
   color: var(--color-text);
-  word-break: break-all;
+  /* NOT `break-all`. Hash.tsx joins the value into space-separated groups of
+     four so it can be read off against a published release, and break-all
+     ignores those spaces and breaks wherever the line runs out. The lock screen
+     rendered the expanded root as "... 7081 360" with a lone "d" beneath it, on
+     the one screen whose whole job is comparing a hash before a passphrase is
+     entered, and a group split across two lines is exactly how that comparison
+     goes wrong. The spaces are already break opportunities, so ordinary
+     wrapping is both sufficient and correct: it keeps every group whole. */
+  overflow-wrap: break-word;
   line-height: 1.65;
   text-align: left;
 }
@@ -1294,10 +1331,10 @@ body {
   background:
     linear-gradient(var(--color-bg) 30%, transparent) top / 100% 1.5rem no-repeat local,
     linear-gradient(transparent, var(--color-bg) 70%) bottom / 100% 1.5rem no-repeat local,
-    radial-gradient(farthest-side at 50% 0, rgb(0 0 0 / 45%), transparent) top / 100% 0.75rem
-      no-repeat scroll,
-    radial-gradient(farthest-side at 50% 100%, rgb(0 0 0 / 45%), transparent) bottom / 100% 0.75rem
-      no-repeat scroll;
+    radial-gradient(farthest-side at 50% 0, var(--color-scroll-scrim), transparent) top / 100%
+      0.75rem no-repeat scroll,
+    radial-gradient(farthest-side at 50% 100%, var(--color-scroll-scrim), transparent) bottom /
+      100% 0.75rem no-repeat scroll;
 }
 
 /* The persistent network indicator. One line, always visible, never scrolls

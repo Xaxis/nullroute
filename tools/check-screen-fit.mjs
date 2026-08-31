@@ -41,6 +41,7 @@ import { createServer } from 'node:http'
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { finish, reap } from './lib/reap.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const DIST = join(ROOT, 'tools/screens/dist')
@@ -48,6 +49,57 @@ const DIST = join(ROOT, 'tools/screens/dist')
 // of ports it considers unsafe, and does it by failing the navigation while
 // Page.navigate still returns a loaderId and no errorText, so the page comes
 // back blank and every diagnostic says the load succeeded.
+/**
+ * Is the scroll shadow actually visible against the ground it is painted on?
+ *
+ * Most states on this device have content below the fold, and that gradient at
+ * the bottom of the body is the only thing that says so. It was written as a
+ * literal rgb(0 0 0 / 45%), a black shadow, which over the dark theme's #08090b
+ * moves a pixel from (8,9,11) to (5,5,6): a luminance difference of about 3 out
+ * of 255, which nobody can see. It was obvious in light mode, which is how it
+ * survived being looked at.
+ *
+ * Composited here rather than sampled from a screenshot, because the question
+ * is about two colours and not about a rendering: read the scrim and the ground
+ * as the browser resolves them, put one over the other, and compare. That also
+ * means it can be asked of a theme without rendering a screen in it.
+ */
+const SCRIM = `(() => {
+  const probe = document.createElement('div')
+  document.body.appendChild(probe)
+  const read = (value) => {
+    probe.style.backgroundColor = ''
+    probe.style.backgroundColor = value
+    const shown = getComputedStyle(probe).backgroundColor
+    const n = shown.match(/[0-9.]+/g)
+    if (n === null) return null
+    return { r: +n[0], g: +n[1], b: +n[2], a: n.length > 3 ? +n[3] : 1 }
+  }
+  const style = getComputedStyle(document.documentElement)
+  const scrim = read(style.getPropertyValue('--color-scroll-scrim').trim())
+  const ground = read(style.getPropertyValue('--color-bg').trim())
+  probe.remove()
+  if (scrim === null || ground === null) return JSON.stringify({ missing: true })
+
+  // Source-over, which is what the gradient does to the ground beneath it.
+  const over = (c) => scrim[c] * scrim.a + ground[c] * (1 - scrim.a)
+  const lum = (o) => 0.2126 * o.r + 0.7152 * o.g + 0.0722 * o.b
+  const blended = { r: over('r'), g: over('g'), b: over('b') }
+  return JSON.stringify({
+    delta: Math.abs(lum(blended) - lum(ground)),
+    scrim: scrim,
+    ground: ground,
+  })
+})()`
+
+/* Comfortably above the 3 the black-on-black scrim produced and well under the
+   40 and 94 the themes measure now. It is a floor on perceptibility, not a
+   design target. */
+const MIN_SCRIM_DELTA = 12
+
+const DIM = '\u001b[2m'
+const OFF = '\u001b[0m'
+
 const PORT = 8931
 const DEBUG_PORT = 9413
 
@@ -479,7 +531,17 @@ const MEASURE = `(() => {
     }
   }
 
-  return JSON.stringify({ problems: problems.slice(0, 10) })
+  /* How far this screen runs past the fold.
+     NOT a failure. Some screens are genuinely lists: a transaction with eight
+     outputs does not fit in 480px and should not be made to, and the seed is
+     twenty four words. What was wrong was that nobody could see the number.
+     This harness printed "68 screen states fit 800x480" while 52 of them had
+     content below the fold, which is a different sentence from the one it was
+     printing. The body element above is this same one, read after the scroll,
+     which changes neither measurement. */
+  const overflow = body === null ? 0 : Math.max(0, body.scrollHeight - body.clientHeight)
+
+  return JSON.stringify({ problems: problems.slice(0, 10), overflow: overflow })
 })()`
 
 /**
@@ -663,6 +725,54 @@ async function main() {
   }
 
   let failed = 0
+  /** States whose body scrolls, with how far. Reported, never failed. */
+  const below = []
+
+  /*
+   * The affordance those scrolling states depend on, checked once per theme.
+   *
+   * Asked here rather than in a stylesheet test because the value is a token
+   * whose meaning depends on the theme resolving around it, and asked at all
+   * because a scrim the same colour as its ground is not a subtle bug: it looks
+   * finished in the source and does nothing on the device.
+   */
+  for (const theme of ['dark', 'light']) {
+    await cdp(
+      page,
+      'Runtime.evaluate',
+      { expression: `document.documentElement.setAttribute('data-theme', '${theme}')` },
+      state
+    )
+    const measured = JSON.parse(
+      (await cdp(page, 'Runtime.evaluate', { expression: SCRIM, returnByValue: true }, state))
+        .result.value
+    )
+    if (measured.missing === true) {
+      failed += 1
+      console.error(
+        `\nthe ${theme} theme defines no --color-scroll-scrim, so nothing marks ` +
+          `the edge of a scrolling screen.`
+      )
+      continue
+    }
+    if (measured.delta < MIN_SCRIM_DELTA) {
+      failed += 1
+      console.error(
+        `\nthe ${theme} theme's scroll shadow is invisible against its own ground:\n` +
+          `    --color-scroll-scrim over --color-bg differs by ${measured.delta.toFixed(1)} ` +
+          `of 255, and ${String(MIN_SCRIM_DELTA)} is the floor.\n` +
+          `    Most states here have content below the fold and this gradient is the only\n` +
+          `    thing that says so. A scrim has to contrast with the ground it sits on, which\n` +
+          `    means it is a per-theme token and never a literal colour.`
+      )
+    }
+  }
+  await cdp(
+    page,
+    'Runtime.evaluate',
+    { expression: `document.documentElement.removeAttribute('data-theme')` },
+    state
+  )
   for (const { name, reach } of screens) {
     const label = reach.length === 0 ? name : `${name} after ${reach.join(' then ')}`
 
@@ -732,10 +842,12 @@ async function main() {
       { expression: MEASURE, returnByValue: true },
       state
     )
+    const measured = JSON.parse(result.value)
     const problems = [
       ...JSON.parse(keys.result.value).problems,
-      ...JSON.parse(result.value).problems,
+      ...measured.problems,
     ]
+    if (measured.overflow > 0) below.push({ label, px: measured.overflow })
 
     if (problems.length > 0) {
       failed += 1
@@ -748,7 +860,7 @@ async function main() {
 
   page.close()
   browser.close()
-  chrome.kill()
+  reap(chrome)
   server.close()
 
   if (failed > 0) {
@@ -773,8 +885,37 @@ async function main() {
   }
   console.log(
     `check-screen-fit: ${String(screens.length)} screen states fit ` +
-      `${String(WIDTH)}x${String(HEIGHT)}`
+      `${String(WIDTH)}x${String(HEIGHT)}` +
+      (below.length === 0
+        ? ''
+        : `, ${String(below.length)} with content below the fold`)
   )
+
+  /*
+   * The states that scroll, deepest first, printed rather than counted.
+   *
+   * "Fit" was doing two jobs and only saying one. Everything this harness
+   * fails on is a control somebody cannot reach; a screen that scrolls is a
+   * screen somebody has to scroll, which is a different and much weaker claim.
+   * Reporting the second as the first is how 52 of 68 states came to have
+   * content under the fold with a green line above them.
+   *
+   * Not a failure and not a cap. A transaction with eight outputs does not fit
+   * in 480px and should not be made to. What this is for is the next person
+   * adding a paragraph to a screen that already ran 300px over.
+   */
+  if (below.length > 0) {
+    const deepest = [...below].sort((a, b) => b.px - a.px).slice(0, 8)
+    for (const { label, px } of deepest) {
+      console.log(`${DIM}    ${String(px).padStart(4)}px  ${label}${OFF}`)
+    }
+    if (below.length > deepest.length) {
+      console.log(`${DIM}    and ${String(below.length - deepest.length)} more${OFF}`)
+    }
+  }
+
+  // The verdict is printed and nothing is left to wait for. See tools/lib/reap.mjs.
+  finish(0)
 }
 
 main().catch((err) => {
