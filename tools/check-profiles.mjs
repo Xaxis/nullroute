@@ -213,17 +213,22 @@ for (const problem of documentedWeakness(loaded)) fail('provisioning/checks', pr
 const built = implemented()
 
 /**
- * provisioning/README.md states these counts in prose, and prose goes stale the
- * first time somebody writes a verifier and does not think to count again. It
- * had: "Eight of the sixteen verifiers are written" survived until twelve of
- * fifteen were, which understates the work and, worse, is a number a reader
- * uses to judge how much of this directory is real.
+ * Both READMEs state this count in prose, and prose goes stale the first time
+ * somebody writes a verifier and does not think to count again. "Eight of the
+ * sixteen verifiers are written" survived in provisioning/README.md until
+ * twelve of fifteen were, and the root README said "twelve of the sixteen"
+ * after retiring an assertion took it to fifteen.
  *
- * Only the two totals are checked. Pinning every sentence would make the
- * document unwritable, and these are the two that carry the claim.
+ * The root README is checked too because guarding one file and not the other is
+ * how the second one drifts: the fix for the first drift was written, and the
+ * same sentence three directories up went stale anyway, in the most read
+ * document in the repository.
+ *
+ * Only this total is checked. Pinning every sentence would make the documents
+ * unwritable, and this is the one that carries the claim.
  */
-{
-  const readme = readFileSync(join(ROOT, 'provisioning/README.md'), 'utf8')
+for (const where of ['provisioning/README.md', 'README.md']) {
+  const readme = readFileSync(join(ROOT, where), 'utf8')
   const WORDS = [
     'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight',
     'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen',
@@ -236,7 +241,7 @@ const built = implemented()
   )
   if (!stated.test(readme)) {
     fail(
-      'provisioning/README.md',
+      where,
       `does not say "${spell(built.length)} of the ${spell(Object.keys(VERIFIERS).length)} ` +
         `verifiers are written", which is what the registry now holds. The status paragraph ` +
         `is a claim about how much of this directory is real, so it is checked rather than ` +

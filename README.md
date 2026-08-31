@@ -304,11 +304,15 @@ signmessage scheme for legacy addresses, and a screen for checking somebody
 else's proof. Verification needs no key and works with the wallet locked:
 checking a stranger's signature should not cost the passphrase to your money.
 
-*Building one.* Nothing yet. `make image` refuses, and what exists instead is
-the contract that build has to satisfy: twelve of the sixteen provisioning
-assertions carry a verifier that executes, including the ones that catch a
-dm-verity salt regenerated per build. `make fixture-image` runs them, and runs
-one that fails on purpose.
+*Building one.* Not a flashable device yet. `make image` still refuses, because
+the boot firmware, the kernel and the initramfs are not wired up. What does
+exist is the half that can be checked: `make image-system` builds a Debian root
+filesystem in a digest-pinned container and produces a system partition with a
+dm-verity root hash, and `make verify-image` then judges it against the profiles,
+satisfying seven assertions including the one that catches a verity salt
+regenerated per build. Twelve of the fifteen verifiers are written, and CI builds
+the artifact and runs them on every commit. `make fixture-image` runs the image
+verifiers against a synthetic card, and runs one that fails on purpose.
 
 **Not working yet, and needed before this is safe for funds:** the dm-verity
 boot attestation of tier 1. The seed is encrypted
