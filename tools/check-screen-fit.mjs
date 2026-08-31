@@ -583,6 +583,56 @@ const SCROLL_TO_END = `(() => {
  * Measured against the action bar rather than the viewport: the bar is opaque
  * and fixed, so a key beneath it is as gone as one below the screen edge.
  */
+/**
+ * Statements that have to be on the panel when the screen arrives.
+ *
+ * Almost everything here may sit below the fold and be scrolled to. A few
+ * things may not, and they are the ones where acting without having read them
+ * loses the money: the seed screen's "do not photograph this", the fingerprint
+ * that is the only thing distinguishing a mistyped passphrase from the right
+ * one, the note that a signature on this transaction belongs to nobody in the
+ * quorum.
+ *
+ * WHAT WENT WRONG WITHOUT THIS. SeedScreen carries a comment reading "Side by
+ * side they both fit under the grid with room to spare". They do not. Both were
+ * cut through the middle of a sentence, on the one screen in the product that
+ * shows a seed and then never shows it again. Somebody measured once, a network
+ * banner and a step counter arrived later, and nothing re-measured. That is
+ * what a comment is worth against a check.
+ *
+ * Marked in the markup rather than guessed at from the class, because there is
+ * no way to tell a warning from a caption by looking: the untraced-signature
+ * note was a plain nr-note, the same class as ordinary secondary text.
+ *
+ * Runs BEFORE the scroll, for the same reason the keyboard does: reachable by
+ * scrolling is not the claim being made.
+ */
+const MUST_SEE = `(() => {
+  const body = document.querySelector('.nr-screen__body')
+  if (body === null) return JSON.stringify({ problems: [] })
+  const limit = body.getBoundingClientRect()
+  const problems = []
+  for (const el of document.querySelectorAll('[data-must-see]')) {
+    const r = el.getBoundingClientRect()
+    if (r.height === 0) continue
+    const under = Math.round(r.bottom - limit.bottom)
+    const over = Math.round(limit.top - r.top)
+    if (under <= 1 && over <= 1) continue
+    // Doubled, because this is a template literal: the browser has to receive
+    // \\s. Written singly it collapsed to the letter s, so the regex replaced
+    // every s in the sentence with a space and the failure read "1 ignature on
+    // thi tran action". Lint caught it.
+    const text = (el.textContent || '').trim().replace(/\\s+/g, ' ').slice(0, 60)
+    problems.push({
+      kind: 'must-see-below-the-fold',
+      detail:
+        (under > 1 ? under + 'px of it is under the fold' : over + 'px of it is above the top') +
+        ' when the screen arrives: "' + text + '"',
+    })
+  }
+  return JSON.stringify({ problems: problems })
+})()`
+
 const KEYBOARD = `(() => {
   const bar = document.querySelector('.nr-screen__actions')
   const limit = bar === null ? document.documentElement.clientHeight : bar.getBoundingClientRect().top
@@ -832,6 +882,12 @@ async function main() {
       { expression: KEYBOARD, returnByValue: true },
       state
     )
+    const seen = await cdp(
+      page,
+      'Runtime.evaluate',
+      { expression: MUST_SEE, returnByValue: true },
+      state
+    )
 
     await cdp(page, 'Runtime.evaluate', { expression: SCROLL_TO_END }, state)
     await sleep(150)
@@ -845,6 +901,7 @@ async function main() {
     const measured = JSON.parse(result.value)
     const problems = [
       ...JSON.parse(keys.result.value).problems,
+      ...JSON.parse(seen.result.value).problems,
       ...measured.problems,
     ]
     if (measured.overflow > 0) below.push({ label, px: measured.overflow })
@@ -875,6 +932,11 @@ async function main() {
         `  finger, with no cursor, no hover and no keyboard. The mis-tap lands on\n` +
         `  whatever is beside it, and on several of these screens what is beside\n` +
         `  it erases a wallet. Give it ${String(MIN_TARGET)}px of box and ${String(MIN_GAP)}px of air.\n\n` +
+        `  A must-see statement below the fold: something marked data-must-see is\n` +
+        `  not fully on the panel when the screen arrives. That marking means acting\n` +
+        `  without having read it loses the money, so scrolling to it is not the\n` +
+        `  claim. Shorten it or give it the room, and do not remove the marker to\n` +
+        `  make this pass.\n\n` +
         `  A state reported unreachable: the tap list in tools/screens/gallery.tsx\n` +
         `  names a testid that is gone, or one that is disabled in that state.\n` +
         `  Either is a state the harness never reached, so what it measured was\n` +

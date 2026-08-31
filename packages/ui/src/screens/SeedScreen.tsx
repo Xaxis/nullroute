@@ -269,24 +269,32 @@ export function SeedScreen(props: SeedScreenProps): ReactElement {
 
           Side by side they both fit under the grid with room to spare. */}
       <div className="nr-split nr-split--even">
-        <div className="nr-banner nr-banner--testnet" data-testid="seed-paper-only">
+        {/* SHORT ENOUGH TO BE ON THE PANEL, which is the only property that
+            matters for a sentence like this one. The longer version ran 29px
+            under the fold and was cut mid-word, so the part somebody actually
+            read was "do not photograph this screen and do not type the". A
+            warning that does not fit is a warning that gets truncated at
+            whatever word the panel ends on. data-must-see is what measures it. */}
+        <div className="nr-banner nr-banner--testnet" data-must-see data-testid="seed-paper-only">
           <strong>Paper only</strong>
           <span>
-            Do not photograph this screen and do not type these words anywhere. Anyone holding
-            them has your money. There is no recovery: the device will not show them again.
+            Do not photograph these words or type them anywhere. Anyone holding them has your
+            money, and this device will not show them again.
           </span>
         </div>
 
-        <div className="nr-card nr-card--tight">
+        <div className="nr-card nr-card--tight nr-card--snug" data-must-see>
           <div className="nr-row">
             <span className="nr-label">Fingerprint</span>
             <span className="nr-value nr-mono" data-testid="seed-fingerprint">
               {fingerprint}
             </span>
           </div>
+          {/* Two lines, not three. The third ran under the fold, and this is
+              the only thing on the device that catches a mistyped passphrase. */}
           <p className="nr-hint">
-            Write this down too. A mistyped passphrase opens a different, empty wallet with no
-            error, and this is the only thing that says so.
+            Write this down too. A mistyped passphrase silently opens a different, empty wallet,
+            and only this catches it.
           </p>
         </div>
       </div>

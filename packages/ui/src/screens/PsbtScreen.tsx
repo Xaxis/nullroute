@@ -333,11 +333,25 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
                 <span className="nr-label">Signed with</span>
                 <span className="nr-value nr-mono">{signedWith.join(', ')}</span>
               </div>
-              <p className="nr-hint">
-                These bytes are a pure function of your seed and this transaction. Sign the same
-                transaction again and you get the same string, character for character. Anyone
-                holding the seed can recompute it and confirm nothing was hidden in the signature.
-              </p>
+              {/* SHOWN WHEN THERE IS NOTHING MORE URGENT TO SAY.
+
+                  What this paragraph says is true and worth saying, and it is a
+                  thing to know rather than a thing to do. Underneath it on an
+                  unfinished transaction sit two things that are the opposite:
+                  which cosigners have still to sign, and whether a signature on
+                  this transaction belongs to nobody in the quorum. Those were
+                  110px under the fold, on the screen where somebody decides
+                  what to carry where.
+
+                  So it yields. A finished transaction has room for it, an
+                  unfinished one does not, and the ordering between an
+                  explanation and a warning is not a close call. */}
+              {progress?.complete === true && (
+                <p className="nr-hint">
+                  A pure function of your seed and this transaction: signing again gives the same
+                  bytes, so anyone with the seed can recompute them and see nothing was hidden.
+                </p>
+              )}
             </div>
 
             {/* THE FLEET ANSWER, above everything else on this screen. A user
@@ -363,10 +377,14 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
               ) : (
                 <div className="nr-banner nr-banner--testnet" data-testid="psbt-incomplete">
                   <strong>Not finished</strong>
+                  {/* Three lines became two. The left column here is half the
+                      panel, the right half is a QR, and under this sits the
+                      note about a signature belonging to nobody in the quorum,
+                      which has to be on screen. */}
                   <span>
-                    {progress.present} of {progress.required ?? 'an unknown number of'} signatures
-                    are present. This transaction cannot be broadcast yet: carry it to the next
-                    cosigner and sign there too.
+                    {progress.present} of {progress.required ?? 'an unknown number of'} signatures,
+                    and it cannot be broadcast yet: carry it to the next cosigner and sign there
+                    too.
                   </span>
 
                   {/* WHICH cosigner, not just that there is one. On a fleet of
@@ -386,11 +404,11 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
             with one of them unattributed is two numbers that do not belong
             together. */}
             {attribution !== null && attribution.unattributed > 0 && (
-              <p className="nr-note" data-testid="psbt-unattributed">
+              <p className="nr-note nr-warn" data-must-see data-testid="psbt-unattributed">
                 {attribution.unattributed} signature
                 {attribution.unattributed === 1 ? '' : 's'} on this transaction could not be traced
-                to a cosigner in your quorum. A taproot key-path signature names no key, so this is
-                expected there. Anywhere else it is worth asking who produced it.
+                to a cosigner in your quorum. Expected for a taproot key-path spend, which names no
+                key. Anywhere else, ask who produced it.
               </p>
             )}
 
