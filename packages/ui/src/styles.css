@@ -557,6 +557,21 @@ body {
 /* Column headings that survive the scroll under them. Opaque, because rows
    pass beneath and a translucent heading reads as a row with a heading printed
    over it. */
+/* A fact that qualifies a column, sitting in its heading. Dim and normal
+   weight, so the heading still reads as the heading. */
+.nr-th__note {
+  margin-left: 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 400;
+  color: var(--color-text-faint);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.nr-th__slot {
+  color: var(--color-text-dim);
+}
+
 .nr-table__stick th {
   position: sticky;
   top: 0;
@@ -1070,6 +1085,13 @@ body {
   color: inherit;
   width: 100%;
 }
+/* A card that presents a control rather than being one. Same box as its
+   neighbours so a group reads as a group, without the pointer or the hover. */
+.nr-choice--static {
+  cursor: default;
+  gap: 0.5rem;
+}
+
 .nr-choice:hover {
   border-color: var(--color-border-strong);
 }
@@ -1508,7 +1530,13 @@ body {
 /* Address rows: the wallet screen exists to show these, so more than two
    should fit on a 480px panel. */
 .nr-table--dense td {
-  padding: 0.4375rem 0.75rem;
+  padding: 0.375rem 0.75rem;
+}
+
+/* An address inside a dense row does not get the airy line-height it gets when
+   it is the subject of a screen. Two fitted at 1.7 on a 480px panel. */
+.nr-table--dense .nr-address {
+  line-height: 1.35;
 }
 
 /* ---------------------------------------------------------------------------
@@ -2195,6 +2223,37 @@ body {
 /* Six goals, two abreast. One column runs 204px off a 480px panel, which on the
    screen every guided journey begins from means three of the six are somewhere
    the reader has to scroll to find. */
+/* A named group of destinations, two across.
+
+   MoreScreen was eleven destinations in one flat column, 606px past the fold,
+   under a subtitle that read "Everything that is not an address or a
+   transaction", which is an admission and not a description. A pile that long
+   is not read, it is scanned for one word and abandoned.
+
+   Two columns because the panel has 800px of width and almost none of height,
+   and this screen was spending the width on nothing. Headings because the
+   eleven divide cleanly by what they act on, and knowing that Backup and Erase
+   both act on the open wallet is most of what somebody needs to find either. */
+.nr-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.nr-section__title {
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+}
+
+.nr-section__items {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.375rem;
+  align-items: stretch;
+}
+
 .nr-goals {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

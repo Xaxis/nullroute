@@ -78,7 +78,7 @@ export function MoreScreen(props: MoreScreenProps): ReactElement {
   return (
     <Screen
       title="More"
-      subtitle="Everything that is not an address or a transaction."
+      subtitle="Grouped by what each one acts on."
       banner={banner}
       nav={nav}
       identity={identity}
@@ -94,136 +94,149 @@ export function MoreScreen(props: MoreScreenProps): ReactElement {
         </>
       }
     >
-      {/* The theme, at the top, because it is the only thing on this screen
-          that changes the screen you are looking at. Everything below is a
-          destination. */}
-      <div className="nr-picker" data-testid="theme-picker">
-        <span className="nr-picker__label">Theme</span>
-        {(['dark', 'light'] as const).map((option) => (
-          <button
-            key={option}
-            type="button"
-            className="nr-picker__option"
-            aria-pressed={theme === option}
-            disabled={onSetTheme === undefined}
-            onClick={() => {
-              void onSetTheme?.(option)
-            }}
-            data-testid={`theme-${option}`}
-          >
-            {option === 'dark' ? 'Dark' : 'Light'}
-          </button>
-        ))}
-      </div>
-
-      {onSetTheme === undefined && (
-        <p className="nr-hint" data-testid="theme-needs-a-name">
-          The theme is kept in the same file as this device&rsquo;s name, so that the lock screen
-          can render in it before you type a passphrase. Name this device to choose one.
-        </p>
-      )}
-
       <div className="nr-wlist" data-testid="wallet-more">
-        {/* NOT GUIDE ME, NOT RECEIVE, NOT QUORUMS.
+        <section className="nr-section" data-testid="more-group-wallet">
+          <h2 className="nr-section__title">This wallet</h2>
+          <div className="nr-section__items">
+            {onBackup !== undefined && (
+              <Choice
+                title="Backup"
+                description="Write an encrypted backup of this wallet, or restore one onto this device."
+                selected={false}
+                onSelect={onBackup}
+                testId="wallet-backup"
+              />
+            )}
+            {onLabels !== undefined && (
+              <Choice
+                title="Labels"
+                description="Read and write BIP-329 label files. A label is a note and decides nothing."
+                selected={false}
+                onSelect={onLabels}
+                testId="wallet-labels"
+              />
+            )}
+            {onChildSeed !== undefined && (
+              <Choice
+                title="Derive a child seed"
+                description="BIP-85. Makes another wallet from this one, recoverable from these words and nothing else."
+                selected={false}
+                onSelect={onChildSeed}
+                tag={{ text: 'shows key material', tone: 'warn' }}
+                testId="wallet-child"
+              />
+            )}
+            {/* Last in its group on purpose: it is the only one here that can
+                take a wallet off this device. */}
+            {onManage !== undefined && (
+              <Choice
+                title="Erase or rename this wallet"
+                description="Remove its seed from this device, or change what it is called and the colour beside it. Both need the passphrase."
+                selected={false}
+                onSelect={onManage}
+                testId="wallet-manage"
+              />
+            )}
+          </div>
+        </section>
 
-            Those three are in the navigation menu, which is in the header of
-            this screen and of every other one, so listing them here was the
-            same destination offered twice on the screen somebody had just used
-            the menu to reach.
+        <section className="nr-section" data-testid="more-group-proofs">
+          <h2 className="nr-section__title">Signatures and other devices</h2>
+          <div className="nr-section__items">
+            {onProveControl !== undefined && (
+              <Choice
+                title="Prove an address"
+                description="Sign a message with one of your addresses, to show somebody it is yours."
+                selected={false}
+                onSelect={onProveControl}
+                testId="wallet-prove"
+              />
+            )}
+            {onCheckProof !== undefined && (
+              <Choice
+                title="Check a proof"
+                description="Somebody sent you an address and a signature. Find out whether it is really theirs."
+                selected={false}
+                onSelect={onCheckProof}
+                testId="wallet-check-proof"
+              />
+            )}
+            <Choice
+              title="Multisig"
+              description="Hand this device's key to a coordinator, and agree to the quorum that comes back."
+              selected={false}
+              onSelect={onMultisig}
+              testId="wallet-multisig"
+            />
+          </div>
+        </section>
 
-            One of them was offered under a second name. The menu says "Guide
-            me" and this said "Walk me through something", which is one feature
-            wearing two labels in an interface whose problem was that nothing
-            matched anything. */}
-        <Choice
-          title="Multisig"
-          description="Hand this device's key to a coordinator, and agree to the quorum that comes back."
-          selected={false}
-          onSelect={onMultisig}
-          testId="wallet-multisig"
-        />
-        {onProveControl !== undefined && (
-          <Choice
-            title="Prove an address"
-            description="Sign a message with one of your addresses, to show somebody it is yours."
-            selected={false}
-            onSelect={onProveControl}
-            testId="wallet-prove"
-          />
-        )}
-        {onCheckProof !== undefined && (
-          <Choice
-            title="Check a proof"
-            description="Somebody sent you an address and a signature. Find out whether it is really theirs."
-            selected={false}
-            onSelect={onCheckProof}
-            testId="wallet-check-proof"
-          />
-        )}
-        {onBackup !== undefined && (
-          <Choice
-            title="Backup"
-            description="Write an encrypted backup of this wallet, or restore one onto this device."
-            selected={false}
-            onSelect={onBackup}
-            testId="wallet-backup"
-          />
-        )}
-        {onLabels !== undefined && (
-          <Choice
-            title="Labels"
-            description="Read and write BIP-329 label files. A label is a note and decides nothing."
-            selected={false}
-            onSelect={onLabels}
-            testId="wallet-labels"
-          />
-        )}
-        {onManage !== undefined && (
-          <Choice
-            title="Erase or rename this wallet"
-            description="Remove its seed from this device, or change what it is called and the colour beside it. Both need the passphrase."
-            selected={false}
-            onSelect={onManage}
-            testId="wallet-manage"
-          />
-        )}
-        {onSwitchWallet !== undefined && (
-          <Choice
-            title="Switch wallet"
-            description="Open a different wallet on this device. Locks this one first."
-            selected={false}
-            onSelect={onSwitchWallet}
-            testId="wallet-switch"
-          />
-        )}
-        {onCheckDevice !== undefined && (
-          <Choice
-            title="Check this device"
-            description="The manifest root and the verification checks, the same ones the lock screen showed."
-            selected={false}
-            onSelect={onCheckDevice}
-            testId="wallet-check-device"
-          />
-        )}
-        {onNameDevice !== undefined && (
-          <Choice
-            title="Name this device"
-            description="So you can tell it from your other ones. Every device in a quorum shows the same wallet name."
-            selected={false}
-            onSelect={onNameDevice}
-            testId="wallet-name-device"
-          />
-        )}
-        {onChildSeed !== undefined && (
-          <Choice
-            title="Derive a child seed"
-            description="BIP-85. Makes another wallet from this one, recoverable from these words and nothing else."
-            selected={false}
-            onSelect={onChildSeed}
-            tag={{ text: 'shows key material', tone: 'warn' }}
-            testId="wallet-child"
-          />
-        )}
+        <section className="nr-section" data-testid="more-group-device">
+          <h2 className="nr-section__title">This device</h2>
+          <div className="nr-section__items">
+            {onSwitchWallet !== undefined && (
+              <Choice
+                title="Switch wallet"
+                description="Open a different wallet on this device. Locks this one first."
+                selected={false}
+                onSelect={onSwitchWallet}
+                testId="wallet-switch"
+              />
+            )}
+            {onCheckDevice !== undefined && (
+              <Choice
+                title="Check this device"
+                description="The manifest root and the verification checks, the same ones the lock screen showed."
+                selected={false}
+                onSelect={onCheckDevice}
+                testId="wallet-check-device"
+              />
+            )}
+            {/* THE THEME LIVES HERE, NOT AT THE TOP.
+
+                It used to have the first slot on the screen, ahead of every
+                destination, on the reasoning that it is the only control here
+                that changes the screen you are looking at. That is true and it
+                is not worth the best position on a panel with no vertical room:
+                it is a setting somebody touches once. It is a property of the
+                device, so it sits with the rest of them. */}
+            <div className="nr-choice nr-choice--static" data-testid="theme-picker">
+              <span className="nr-choice__title">Theme</span>
+              <div className="nr-picker">
+                {(['dark', 'light'] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    className="nr-picker__option"
+                    aria-pressed={theme === option}
+                    disabled={onSetTheme === undefined}
+                    onClick={() => {
+                      void onSetTheme?.(option)
+                    }}
+                    data-testid={`theme-${option}`}
+                  >
+                    {option === 'dark' ? 'Dark' : 'Light'}
+                  </button>
+                ))}
+              </div>
+              {onSetTheme === undefined && (
+                <span className="nr-choice__desc" data-testid="theme-needs-a-name">
+                  Kept in the same file as this device&rsquo;s name, so the lock screen can render
+                  in it before you type a passphrase. Name this device to choose one.
+                </span>
+              )}
+            </div>
+            {onNameDevice !== undefined && (
+              <Choice
+                title="Name this device"
+                description="So you can tell it from your other ones. Every device in a quorum shows the same wallet name."
+                selected={false}
+                onSelect={onNameDevice}
+                testId="wallet-name-device"
+              />
+            )}
+          </div>
+        </section>
       </div>
     </Screen>
   )

@@ -252,6 +252,11 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
     return unreadable === 0 ? count : `${count}, ${String(unreadable)} unreadable`
   })()
 
+  /* The part of the derivation path that every row on show has in common,
+     which is all of it but the index. Taken from the rows rather than rebuilt
+     from the pickers, so it cannot disagree with what the daemon derived. */
+  const pathPrefix = rows.length === 0 ? null : (rows[0]?.path.replace(/\/\d+$/, '') ?? null)
+
   return (
     <Screen
       title="Wallet"
@@ -387,25 +392,6 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
         </div>
       )}
 
-      {/* WHICH ADDRESSES THESE ARE, on a device that holds more than one
-          answer. This list is derived from this device's own key: taking one
-          and receiving to it puts money behind one key rather than behind the
-          quorum, which is the mistake the Receive screen was making until it
-          learned to ask. Only shown when there is something to confuse it
-          with.
-          
-          ONE LINE. It was two, above a table that only had room for one row on
-          a 480px panel, on the screen whose whole job is showing addresses. A
-          permanent explanation that pushes the thing it explains off the
-          screen is a explanation that costs more than it pays. The claim that
-          matters survives: this key alone can spend it, and Receive is where
-          the quorum's addresses are. */}
-      {tab === 'addresses' && quorums.length > 0 && (
-        <p className="nr-note nr-note--tight" data-testid="addresses-not-the-quorum">
-          This device&rsquo;s own key alone can spend these. Use Receive for your quorum&rsquo;s.
-        </p>
-      )}
-
       {/* THE LIST SCROLLS, THE CONTROLS DO NOT. `nr-fill` hands this the
           height left over after the tabs and the pickers, and takes the scroll
           off the body.
@@ -423,7 +409,44 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
             <thead className="nr-table__stick">
               <tr>
                 <th className="nr-table__index">Index</th>
-                <th>Address</th>
+                {/* THE PATH ONCE, IN THE HEADING, NOT UNDER EVERY ROW.
+
+                    Every row carried its own derivation path, and every one of
+                    them was the same string with the index changed: the script
+                    type is a chip above this table, the branch is the chip
+                    beside it, and the index is the column to the left, so the
+                    path is fully determined by what is already on screen. It
+                    was repetition, and it doubled the height of a row on the
+                    screen whose whole job is showing addresses. One row fitted.
+
+                    It is not dropped, because somebody restoring in other
+                    software needs it. It is stated once, where it is true for
+                    every row beneath it. */}
+                <th>
+                  Address
+                  {pathPrefix !== null && (
+                    <span className="nr-th__note nr-mono" data-testid="addresses-path">
+                      {pathPrefix}/<span className="nr-th__slot">index</span>
+                    </span>
+                  )}
+                  {/* WHICH ADDRESSES THESE ARE, on a device that holds more
+                      than one answer. This list comes from this device's own
+                      key: receiving to one of these puts money behind one key
+                      rather than behind the quorum, which is the mistake the
+                      Receive screen made until it learned to ask.
+
+                      In the heading rather than above the card, for the same
+                      reason as the path. It was a body child, so it cost its
+                      own line plus a gap on a screen that had room for one
+                      address, and it qualifies these rows rather than the
+                      screen. */}
+                  {quorums.length > 0 && (
+                    <span className="nr-th__note" data-testid="addresses-not-the-quorum">
+                      this device&rsquo;s own key alone can spend these, use Receive for the
+                      quorum&rsquo;s
+                    </span>
+                  )}
+                </th>
               </tr>
             </thead>
             <tbody data-testid="address-rows">
@@ -432,7 +455,6 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
                   <td className="nr-mono nr-table__index">{row.index}</td>
                   <td>
                     <span className="nr-address">{row.address}</span>
-                    <div className="nr-hint nr-mono">{row.path}</div>
                     {row.label !== undefined && row.label !== null && (
                       <div className="nr-hint" data-testid={`address-label-${String(row.index)}`}>
                         Your note: {row.label}
