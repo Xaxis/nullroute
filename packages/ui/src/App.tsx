@@ -1698,6 +1698,10 @@ export function App() {
         onBack={() => {
           setStage({ at: 'wallet' })
         }}
+        // Only when there is a wallet open. Otherwise the banner that asks for
+        // this cannot be on screen, and a lock control with nothing to lock is
+        // a button that does nothing.
+        onLock={status?.hasWallet === true ? lockSession : undefined}
       />
     )
   }

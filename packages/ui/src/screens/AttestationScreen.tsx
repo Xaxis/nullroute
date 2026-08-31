@@ -42,6 +42,15 @@ export interface AttestationScreenProps {
   readonly expanded?: boolean
   readonly onToggleExpanded?: () => void
   readonly onBack: () => void
+
+  /**
+   * Close the wallet and forget the seed.
+   *
+   * Optional, because this screen is also reachable on a device with nothing
+   * open, where there is nothing to lock and a button offering to would be a
+   * control that does nothing.
+   */
+  readonly onLock?: (() => void) | undefined
   /** Who this device is and which wallet it has open. See `Identity`. */
   readonly identity?: ReactNode
   readonly banner?: ReactElement | null
@@ -51,7 +60,16 @@ export interface AttestationScreenProps {
 const PASSING = new Set(['passed', 'not-applicable'])
 
 export function AttestationScreen(props: AttestationScreenProps): ReactElement {
-  const { attestation, expanded = false, onToggleExpanded, onBack, identity, banner, nav } = props
+  const {
+    attestation,
+    expanded = false,
+    onToggleExpanded,
+    onBack,
+    onLock,
+    identity,
+    banner,
+    nav,
+  } = props
 
   // Fail closed, for the reason the lock screen does: a status this file has
   // not been told about must not read as a pass. See INV-UI-53.
@@ -71,6 +89,23 @@ export function AttestationScreen(props: AttestationScreenProps): ReactElement {
           <Button onClick={onBack} testId="attestation-back">
             Back
           </Button>
+          {/* THE BANNER SAYS "LOCK IT", SO LOCKING IS HERE.
+
+              This screen tells somebody, in the strongest words the product
+              uses, to lock the device and stop. It then offered Back and a
+              status label. Locking lives in the navigation menu, so the
+              instruction was followable, and following it meant opening a
+              popdown and finding the right entry during the state the banner
+              calls badly wrong.
+
+              Only when it is failing. On a device that verified there is
+              nothing urgent to do here, and a danger-styled button on a passing
+              screen teaches somebody to ignore the colour. */}
+          {!verified && onLock !== undefined && (
+            <Button variant="danger" onClick={onLock} testId="attestation-lock">
+              Lock now
+            </Button>
+          )}
           <div className="nr-spacer" />
           <span
             className={`nr-status ${verified ? 'nr-status--ok' : 'nr-status--fail'}`}

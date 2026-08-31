@@ -982,6 +982,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
           },
         ],
       }}
+      onLock={noop}
       expanded
       onToggleExpanded={noop}
       onBack={noop}

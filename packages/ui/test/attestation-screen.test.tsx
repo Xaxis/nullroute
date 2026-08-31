@@ -110,6 +110,35 @@ describe('AttestationScreen', () => {
     expect(screen.queryByTestId('attestation-failed')).toBeNull()
   })
 
+  /**
+   * The banner tells somebody to lock this device immediately. Offering Back
+   * and a status label, with locking two taps away inside a popdown, is the
+   * instruction and not the means.
+   */
+  it('offers-a-lock-when-it-is-telling-you-to-lock', () => {
+    const onLock = vi.fn()
+    render(
+      <AttestationScreen
+        attestation={attestation({
+          checks: [{ name: 'integrity', status: 'failed', detail: 'a file does not match.' }],
+        })}
+        onBack={vi.fn()}
+        onLock={onLock}
+      />
+    )
+    fireEvent.click(screen.getByTestId('attestation-lock'))
+    expect(onLock).toHaveBeenCalled()
+  })
+
+  /**
+   * And not on a device that verified. A danger-styled control on a passing
+   * screen is how somebody learns to stop reading the colour.
+   */
+  it('offers-no-lock-on-a-device-that-verified', () => {
+    render(<AttestationScreen attestation={attestation()} onBack={vi.fn()} onLock={vi.fn()} />)
+    expect(screen.queryByTestId('attestation-lock')).toBeNull()
+  })
+
   it('expands-the-hash-on-request', () => {
     const onToggleExpanded = vi.fn()
     render(
