@@ -41,18 +41,45 @@
 import { spawn } from 'node:child_process'
 import { createServer } from 'node:http'
 import { connect } from 'node:net'
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import * as btc from '@scure/btc-signer'
 import { base64, hex } from '@scure/base'
+import { finish, reap } from './lib/reap.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const DIST = join(ROOT, 'packages/ui/dist-app')
 const DAEMON = join(ROOT, 'packages/daemon/dist/main.js')
 
 /** Not 5180. A developer's own `make dev` must not be disturbed by a check. */
+/**
+ * --shots <dir> writes a PNG after every step of every journey.
+ *
+ * The gallery in tools/screens is hand-written fixtures, and it has drifted
+ * from the real application three separate ways at once: no verification
+ * banner, no step counter, and twelve seed words where the device shows twenty
+ * four. Every visual check in the repository was green while the device could
+ * not create a wallet. So when a screenshot of the gallery shows something
+ * wrong, the first question is whether the device does that or whether the
+ * fixture does, and answering it by hand means rebuilding this walk manually.
+ *
+ * This is the same walk against the same daemon, so the images are the product.
+ * Off by default: it is for looking at, not for CI.
+ */
+const SHOTS = (() => {
+  const at = process.argv.indexOf('--shots')
+  if (at === -1) return null
+  const dir = process.argv[at + 1]
+  if (dir === undefined) {
+    console.error('check-journeys: --shots needs a directory')
+    process.exit(2)
+  }
+  mkdirSync(dir, { recursive: true })
+  return dir
+})()
+
 const PORT = 5188
 const DEBUG_PORT = 9424
 
@@ -427,6 +454,22 @@ async function main() {
 
     let words = []
 
+    /**
+     * Named by journey, order and the screen actually on show, so a directory
+     * listing reads as the walk and a wrong screen is visible without opening
+     * anything.
+     */
+    let shotSeq = 0
+    const capture = async (label) => {
+      if (SHOTS === null) return
+      const on = String(await screenOf())
+      const name =
+        `${String(shotSeq).padStart(3, '0')}-${label}-${on}`.replace(/[^a-zA-Z0-9._-]/g, '_')
+      shotSeq += 1
+      const shot = await cdp(page, 'Page.captureScreenshot', { format: 'png' }, state)
+      writeFileSync(join(SHOTS, `${name}.png`), Buffer.from(shot.data, 'base64'))
+    }
+
     for (const journey of JOURNEYS) {
       thrown.length = 0
       called.length = 0
@@ -600,6 +643,7 @@ async function main() {
           break
         }
         await sleep(800)
+        await capture(`${journey.id}-${step}`)
       }
 
       if (broke !== null) {
@@ -654,15 +698,17 @@ async function main() {
         }
       }
 
+      await capture(`${journey.id}-ARRIVED`)
+
       const note = journey.stopsShort === undefined ? '' : `  (stops at ${journey.ends}: ${journey.stopsShort})`
       console.log(`  ok    ${journey.id}${note}`)
     }
 
     page.close()
-    chrome.kill()
+    reap(chrome)
   } finally {
     server.close()
-    daemon.kill()
+    reap(daemon)
     // Chrome writes to its profile directory for a moment after it is killed,
     // so a removal straight away fails with ENOTEMPTY and takes the whole run
     // down after every journey has already passed. Retried, and a temporary
@@ -689,6 +735,8 @@ async function main() {
   }
 
   console.log(`\ncheck-journeys: ${String(JOURNEYS.length)} guided journeys complete`)
+  // The verdict is printed and nothing is left to wait for. See tools/lib/reap.mjs.
+  finish(0)
 }
 
 await main()
