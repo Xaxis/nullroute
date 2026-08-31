@@ -806,6 +806,33 @@ trusted. Its output is a candidate payload that goes to the ordinary parser and
 the ordinary review screen, and the file type in a BBQr header tells the device
 what to try first, never what to accept.
 
+### When something else reads a code wrong
+
+The section above is about this device reading. The other direction is a camera
+reading a code off this panel into software on a machine that has a network, and
+the question is what happens if that read is wrong. A wrong read that produces
+something plausible is the one that costs money.
+
+There is no checksum printed under the codes, and that is deliberate. A digest
+this device invented would be a convention no coordinator implements, so it
+would sit under the code looking like a check while being one only between two
+nullroutes. What follows is what the receiving software already does, which is
+different for each payload:
+
+| Code | What a misread does |
+| --- | --- |
+| Encrypted backup | AES-256-GCM. A wrong byte fails the tag and restore refuses, rather than restoring something plausible |
+| Signed transaction | Fails to parse in the coordinator. One that somehow parsed still has to be broadcast, and the transaction it names was reviewed here first |
+| Cosigner bundle | Produces a descriptor this device holds no key in, and registration refuses that rather than making a wallet that receives and never spends (INV-MULTI-6) |
+| Address | The characters are on screen beside the code, grouped in fours, under the warning telling you to compare them against the payer's screen |
+| Descriptor | Carries its own BIP-380 checksum, and the software reading it shows that checksum. The one case where the comparison is standard rather than ours |
+| Message proof | A corrupted signature fails verification, which is what the proof is for |
+| Labels | BIP-329 is one JSON document per line, so a corrupted read stops parsing. A label also decides nothing |
+
+`make qr-readback` keeps that set closed: a new code on a new screen has to say
+what makes a misread loud before it ships, and an entry that no screen renders
+any more is removed rather than left making the list look longer than it is.
+
 ## What the device refuses
 
 Collected in one place, because the refusals are the design:

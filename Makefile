@@ -16,6 +16,7 @@ SHELL := /bin/bash
 MANIFEST_ROOTS := packages spec provisioning
 
 .PHONY: help install dev build check check-fast verify manifest manifest-check \
+	qr-readback \
 	manifest-recipe print-manifest-roots \
         lint ui-classes type-check test test-report test-vectors test-differential test-repro \
         test-recovery-drill \
@@ -103,6 +104,15 @@ device-ui: ## The device frontend actually boots under its own CSP. Drives a rea
 	# everywhere else: the build succeeds, jsdom tests pass, the panel is black.
 	@npm run build:app --workspace @nullroute/ui >/dev/null
 	@node tools/check-device-ui.mjs
+
+qr-readback: ## Every code leaving this device fails loudly when it is misread
+	# A camera reads a code off this panel into software on a networked machine.
+	# If that read is wrong, a plausible-looking result is the failure that costs
+	# money. The answer is per payload rather than general, which is why it was
+	# never written down: seven codes, seven reasons a misread cannot pass. This
+	# keeps the set closed rather than checking the mechanisms, which live in the
+	# receiving software and in invariants of this one.
+	@node tools/check-qr-readback.mjs
 
 device-csp: ## The device frontend really has the policy INV-NET-3 claims
 	# The threat model claimed this policy while packages/ui/index.html carried
@@ -530,6 +540,6 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 
 # --- aggregates --------------------------------------------------------------
 
-check-fast: lint ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims make-targets ipc-reachable device-csp test manifest-check manifest-recipe ## Everything except the slow suites
+check-fast: lint ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims make-targets ipc-reachable device-csp qr-readback test manifest-check manifest-recipe ## Everything except the slow suites
 
 check: check-fast build verify test-vectors test-differential repro-check sbom device-ui screen-fit journeys dev-check web-check ## Everything CI runs
