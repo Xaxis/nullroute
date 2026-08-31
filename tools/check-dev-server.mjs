@@ -30,6 +30,7 @@
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { finish, reap } from './lib/reap.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 
@@ -98,35 +99,12 @@ let vite
 let chrome
 
 /**
- * SIGTERM, then SIGKILL, and never wait to find out which one worked.
- *
- * Headless Chrome does not reliably die on SIGTERM. When it does not, its
- * process handle keeps this script's event loop alive, so the check prints
- * "the dev server renders a styled application" and then never exits. `make
- * check` sits there behind a check that has already passed. Observed at twenty
- * minutes before anyone thought to look at `ps`, and the tell is that the
- * result line is already on screen.
- *
- * A check that can hang forever gets switched off, which is the same argument
- * this file already makes about which port to use.
+ * Kill vite and Chrome. See tools/lib/reap.mjs for why this is not a polite
+ * SIGTERM: this file is where that hang was first diagnosed, and the other five
+ * browser checks turned out to have the same shape.
  */
 function stop() {
-  // The whole tree: npx forks the real binary, and killing the wrapper leaves
-  // the server holding the port.
-  for (const signal of ['SIGTERM', 'SIGKILL']) {
-    for (const child of [vite, chrome]) {
-      if (child?.pid === undefined) continue
-      try {
-        process.kill(-child.pid, signal)
-      } catch {
-        try {
-          child.kill(signal)
-        } catch {
-          // Already gone, which is the outcome this is trying to produce.
-        }
-      }
-    }
-  }
+  reap(vite, chrome)
 }
 
 async function main() {
@@ -258,10 +236,8 @@ async function main() {
       `(${String(measured.rules)} CSS rules, background ${measured.background}, no CSP violation)`
   )
 
-  // Explicit, because the verdict is printed and there is nothing left to wait
-  // for. Anything still holding the event loop open at this point is a stray
-  // handle on a subprocess we have already killed, not work in progress.
-  process.exit(0)
+  // The verdict is printed and nothing is left to wait for. See tools/lib/reap.mjs.
+  finish(0)
 }
 
 main().catch((err) => {

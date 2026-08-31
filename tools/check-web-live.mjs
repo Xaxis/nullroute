@@ -26,6 +26,7 @@ import { spawn } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
+import { finish, reap } from './lib/reap.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const ORIGIN = process.argv[2] ?? process.env['NULLROUTE_SITE'] ?? 'https://nullroute.diy'
@@ -184,13 +185,15 @@ async function main() {
 
   page.close()
   browser.close()
-  chrome.kill()
+  reap(chrome)
 
   if (failures > 0) {
     console.error(`check-web-live: ${failures} of ${PAGES.length} pages are broken at ${ORIGIN}`)
     process.exit(1)
   }
   console.log(`check-web-live: ${PAGES.length} pages render clean at ${ORIGIN}`)
+  // The verdict is printed and nothing is left to wait for. See tools/lib/reap.mjs.
+  finish(0)
 }
 
 main().catch((err) => {

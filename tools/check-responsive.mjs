@@ -23,6 +23,7 @@ import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
+import { finish, reap } from './lib/reap.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const OUT = join(ROOT, 'apps/web/out')
@@ -266,7 +267,7 @@ async function main() {
 
   page.close()
   browserWs.close()
-  chrome.kill()
+  reap(chrome)
   server.close()
 
   if (failures > 0) {
@@ -274,6 +275,8 @@ async function main() {
     process.exit(1)
   }
   console.log(`check-responsive: ${checked} page renders fit at ${WIDTHS.join('px and ')}px`)
+  // The verdict is printed and nothing is left to wait for. See tools/lib/reap.mjs.
+  finish(0)
 }
 
 main().catch((err) => {
