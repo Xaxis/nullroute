@@ -91,6 +91,32 @@ export function MachineEntropyScreen(props: MachineEntropyScreenProps): ReactEle
           <Button onClick={onBack} testId="machine-back">
             Back
           </Button>
+
+          {/* THE GATE BESIDE THE THING IT GATES, as on the seed screen.
+
+              This was the last element in the body, under a danger banner, a
+              health table, a paragraph about what those checks do not mean, and
+              up to two more banners, on a screen running 302px past the fold.
+              So the primary action was greyed out and the control that ungates
+              it was off the panel, along with the reasons. Somebody arriving
+              here saw a refusal and nothing to do about it.
+
+              The whole label is the target, not the 18px box: this is a finger
+              on a 7 inch panel, and it gates something irreversible. */}
+          <label className="nr-check">
+            <input
+              type="checkbox"
+              checked={acknowledged}
+              onChange={(e) => {
+                setAcknowledged(e.target.checked)
+              }}
+              data-testid="machine-acknowledge"
+            />
+            <span className="nr-hint">
+              I understand this seed cannot be checked by hand, and my written words are the only
+              record of it.
+            </span>
+          </label>
           <div className="nr-spacer" />
           <Button
             variant="danger"
@@ -129,6 +155,36 @@ export function MachineEntropyScreen(props: MachineEntropyScreenProps): ReactEle
 
       {health !== null && (
         <>
+          {/* THE REFUSAL ABOVE THE EVIDENCE.
+
+              These two say the seed will not be generated, and they sat under a
+              five row table and a paragraph about what that table does not
+              prove: 223px past the fold on a panel where the button they
+              explain is greyed out in the bar. The table is why, and it can be
+              scrolled to. Whether the device is going to do the thing cannot. */}
+
+          {health.unknown && (
+            <div data-must-see className="nr-banner nr-banner--testnet" data-testid="machine-unknown">
+              <strong>Some sources could not be checked here</strong>
+              <span>
+                The rows marked unknown were not observed, which is not the same as being fine.
+                This happens off a real device, where the Linux paths these checks read do not
+                exist. The seed will not be generated while anything is unknown.
+              </span>
+            </div>
+          )}
+
+          {/* `!== true`, not `!healthy`. This banner is the one that stops
+              somebody generating a seed from sources the device could not
+              vouch for, and a health report whose `healthy` field arrived as
+              anything other than a boolean would have hidden it. See
+              nullroute/no-truthy-verdict. */}
+          {health.healthy !== true && health.unknown !== true && (
+            <div data-must-see className="nr-banner nr-banner--danger" data-testid="machine-unhealthy">
+              <strong>This device will not generate a seed from these sources</strong>
+              <span>Roll dice instead. That path does not depend on any of this.</span>
+            </div>
+          )}
           <table className="nr-table nr-table--dense" data-testid="machine-health">
             <thead>
               <tr>
@@ -164,48 +220,8 @@ export function MachineEntropyScreen(props: MachineEntropyScreenProps): ReactEle
             generator producing well-formed but predictable output passes all of them, and that is
             precisely the attack rolling dice makes impossible.
           </p>
-
-          {health.unknown && (
-            <div className="nr-banner nr-banner--testnet" data-testid="machine-unknown">
-              <strong>Some sources could not be checked here</strong>
-              <span>
-                The rows marked unknown were not observed, which is not the same as being fine.
-                This happens off a real device, where the Linux paths these checks read do not
-                exist. The seed will not be generated while anything is unknown.
-              </span>
-            </div>
-          )}
-
-          {/* `!== true`, not `!healthy`. This banner is the one that stops
-              somebody generating a seed from sources the device could not
-              vouch for, and a health report whose `healthy` field arrived as
-              anything other than a boolean would have hidden it. See
-              nullroute/no-truthy-verdict. */}
-          {health.healthy !== true && health.unknown !== true && (
-            <div className="nr-banner nr-banner--danger" data-testid="machine-unhealthy">
-              <strong>This device will not generate a seed from these sources</strong>
-              <span>Roll dice instead. That path does not depend on any of this.</span>
-            </div>
-          )}
         </>
       )}
-
-      {/* The whole label is the target, as on the seed screen, because this
-          gates something irreversible on a panel operated by a finger. */}
-      <label className="nr-check">
-        <input
-          type="checkbox"
-          checked={acknowledged}
-          onChange={(e) => {
-            setAcknowledged(e.target.checked)
-          }}
-          data-testid="machine-acknowledge"
-        />
-        <span className="nr-hint">
-          I understand this seed cannot be reproduced or checked by hand, and that my written
-          mnemonic will be the only record of it.
-        </span>
-      </label>
 
       {error !== null && (
         <div className="nr-banner nr-banner--danger" data-testid="machine-error">
