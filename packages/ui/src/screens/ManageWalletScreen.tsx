@@ -252,7 +252,7 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
         </Info>
 
         {error !== null && (
-          <div className="nr-banner nr-banner--danger" data-testid="manage-passphrase-error">
+          <div data-must-see className="nr-banner nr-banner--danger" data-testid="manage-passphrase-error">
             <strong>Not changed</strong>
             <span>{error}</span>
           </div>
@@ -363,7 +363,7 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
         </Info>
 
         {error !== null && (
-          <div className="nr-banner nr-banner--danger" data-testid="manage-error">
+          <div data-must-see className="nr-banner nr-banner--danger" data-testid="manage-error">
             <strong>Not saved</strong>
             <span>{error}</span>
           </div>
@@ -439,7 +439,7 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
         </div>
 
         {error !== null && (
-          <div className="nr-banner nr-banner--danger" data-testid="manage-error">
+          <div data-must-see className="nr-banner nr-banner--danger" data-testid="manage-error">
             <strong>Not erased</strong>
             <span>{error}</span>
           </div>

@@ -593,6 +593,47 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   // The same screen a minute before the device locks itself: an idle warning,
   // a testnet banner and the wallet chip all in a header that has to leave room
   // for a transaction underneath.
+  /* ==========================================================================
+     WHAT THE DEVICE LOOKS LIKE WHEN SOMETHING FAILS.
+
+     Nineteen screens carry an error banner and not one of them had ever been
+     rendered here. They are asserted in unit tests, which run in jsdom: no
+     cascade, no box model, so a banner off the bottom of the panel or drawn in
+     a colour nobody can read passes every one of them. That is exactly how the
+     lock screen once shipped with no styling at all.
+
+     These states use handlers that reject, which is what the gallery's `never`
+     already does, and a reach list that taps the control which calls them. The
+     failure path is then measured by the same checks as everything else: it has
+     to fit, to be legible in both themes, and to use the same three roles.
+     ========================================================================== */
+  'psbt-failed': () => (
+    <PsbtScreen
+      identity={DEVICE}
+      nav={MENU}
+      initialPsbt="cHNidP8BAHUCAAAAAQ=="
+      onScan={noop}
+      onReview={never}
+      onSign={never}
+      onBack={noop}
+    />
+  ),
+  'multisig-failed': () => (
+    <MultisigScreen
+      identity={DEVICE}
+      nav={MENU}
+      onScan={noop}
+      initialText={DESCRIPTOR}
+      onOurKey={never}
+      onReview={never}
+      onRegister={never}
+      onBack={noop}
+    />
+  ),
+  'receive-failed': () => (
+    <ReceiveScreen identity={DEVICE} nav={MENU} onAddress={never} onVerify={never} onBack={noop} />
+  ),
+
   'psbt-idle': () => (
     <PsbtScreen
       nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
@@ -1129,6 +1170,10 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   'psbt-signed-partial': [['psbt-review'], ['psbt-review', 'psbt-sign']],
   // Into the review, which is where the header has the least room to spare.
   'psbt-idle': [['psbt-review']],
+  // The failure paths. Each taps the control whose handler rejects, so the
+  // banner the screen draws on a failed call is on screen and measurable.
+  'psbt-failed': [['psbt-review']],
+  'multisig-failed': [['multisig-review']],
   // Typed, reviewed, and then signed. The signed state is the one that matters:
   // it holds the QR carrying the address, the message and the signature, and
   // nothing had ever measured it.

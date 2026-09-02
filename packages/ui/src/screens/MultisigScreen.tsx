@@ -323,7 +323,7 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
         </p>
 
         {error !== null && (
-          <div className="nr-banner nr-banner--danger" data-testid="multisig-error">
+          <div data-must-see className="nr-banner nr-banner--danger" data-testid="multisig-error">
             <strong>Not registered</strong>
             <span>{error}</span>
           </div>
@@ -429,6 +429,20 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
         </>
       }
     >
+      {/* FIRST, because it is the answer to what just happened.
+
+          This sat after the whole input block and landed 14px under the fold,
+          which on a screen somebody has just tapped Review on means the screen
+          appears not to have responded. Same shape as the signing screen had.
+          data-must-see is what noticed, once the gallery had a state whose
+          handlers reject. */}
+      {error !== null && (
+        <div data-must-see className="nr-banner nr-banner--danger" data-testid="multisig-error">
+          <strong>Not registered</strong>
+          <span>{error}</span>
+        </div>
+      )}
+
       {/* THE KEY YOU HAND OVER AND THE ONE THAT COMES BACK, SIDE BY SIDE.
 
           Stacked, this screen was 548px of content in a 317px body, and what
@@ -533,13 +547,6 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
           </div>
         )}
       </div>
-
-      {error !== null && (
-        <div className="nr-banner nr-banner--danger" data-testid="multisig-error">
-          <strong>Not registered</strong>
-          <span>{error}</span>
-        </div>
-      )}
 
       {review !== null && (
         <>

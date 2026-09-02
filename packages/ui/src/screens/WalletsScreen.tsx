@@ -205,7 +205,7 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
         </p>
 
         {error !== null && (
-          <div className="nr-banner nr-banner--danger" data-testid="wallets-forget-error">
+          <div data-must-see className="nr-banner nr-banner--danger" data-testid="wallets-forget-error">
             <strong>Not cleared</strong>
             <span>{error}</span>
           </div>
@@ -264,7 +264,7 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
         />
 
         {error !== null && (
-          <div className="nr-banner nr-banner--danger" data-testid="wallet-unlock-error">
+          <div data-must-see className="nr-banner nr-banner--danger" data-testid="wallet-unlock-error">
             <strong>Not opened</strong>
             <span>{error}</span>
           </div>

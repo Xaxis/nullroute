@@ -146,7 +146,7 @@ export function DeviceNameScreen(props: DeviceNameScreenProps): ReactElement {
       </Info>
 
       {error !== null && (
-        <div className="nr-banner nr-banner--danger" data-testid="device-name-error">
+        <div data-must-see className="nr-banner nr-banner--danger" data-testid="device-name-error">
           <strong>Not saved</strong>
           <span>{error}</span>
         </div>

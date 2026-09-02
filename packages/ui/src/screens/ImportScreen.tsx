@@ -145,7 +145,7 @@ export function ImportScreen(props: ImportScreenProps): ReactElement {
       )}
 
       {error !== null && (
-        <div className="nr-banner nr-banner--testnet" data-testid="import-error">
+        <div data-must-see className="nr-banner nr-banner--testnet" data-testid="import-error">
           <strong>Refused</strong>
           <span>{error}</span>
         </div>

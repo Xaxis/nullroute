@@ -243,7 +243,7 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
       }
     >
       {error !== null && (
-        <div className="nr-banner nr-banner--danger" data-testid="receive-error">
+        <div data-must-see className="nr-banner nr-banner--danger" data-testid="receive-error">
           <strong>Not derived</strong>
           <span>{error}</span>
         </div>

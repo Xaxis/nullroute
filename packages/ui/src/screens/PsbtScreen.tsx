@@ -534,6 +534,25 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
         </>
       }
     >
+      {/* ABOVE THE INPUT IT IS ABOUT, AND IT HAS TO BE ON THE PANEL.
+
+          This sat after the paste field, the scan button and a three line hint,
+          which put it below the fold. The code was already correct: the review
+          handler catches, clears any stale review and sets the message rather
+          than swallowing it. The panel showed nothing. Somebody tapped Review,
+          the screen did not change, and the reason was off the bottom, on the
+          screen where the rule is that an error fails loudly.
+
+          It was never rendered here at all until the gallery got a state whose
+          handlers reject. Nineteen screens have one of these and jsdom cannot
+          see any of them. */}
+      {error !== null && (
+        <div data-must-see className="nr-banner nr-banner--danger" data-testid="psbt-error">
+          <strong>Not signed</strong>
+          <span>{error}</span>
+        </div>
+      )}
+
       {review === null && (
         <div className="nr-field">
           <span className="nr-field__label">Paste the PSBT</span>
@@ -560,13 +579,6 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
             network and never fetches anything about this transaction, so everything below is
             computed from these bytes and your seed alone.
           </p>
-        </div>
-      )}
-
-      {error !== null && (
-        <div className="nr-banner nr-banner--danger" data-testid="psbt-error">
-          <strong>Not signed</strong>
-          <span>{error}</span>
         </div>
       )}
 

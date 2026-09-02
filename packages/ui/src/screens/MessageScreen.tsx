@@ -373,7 +373,7 @@ export function MessageScreen(props: MessageScreenProps): ReactElement {
       )}
 
       {error !== null && (
-        <div className="nr-banner nr-banner--danger" data-testid="message-error">
+        <div data-must-see className="nr-banner nr-banner--danger" data-testid="message-error">
           <strong>Not signed</strong>
           <span>{error}</span>
         </div>

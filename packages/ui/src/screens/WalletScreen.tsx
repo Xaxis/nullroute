@@ -568,7 +568,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
                     Show the account xpub
                   </Button>
                   {xpubError !== null && (
-                    <div className="nr-banner nr-banner--danger" data-testid="xpub-error">
+                    <div data-must-see className="nr-banner nr-banner--danger" data-testid="xpub-error">
                       <strong>Not derived</strong>
                       <span>{xpubError}</span>
                     </div>

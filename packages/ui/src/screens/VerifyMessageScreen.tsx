@@ -295,7 +295,7 @@ export function VerifyMessageScreen(props: VerifyMessageScreenProps): ReactEleme
       )}
 
       {error !== null && (
-        <div className="nr-banner nr-banner--danger" data-testid="verify-error">
+        <div data-must-see className="nr-banner nr-banner--danger" data-testid="verify-error">
           <strong>Could not check it</strong>
           <span>{error}</span>
         </div>

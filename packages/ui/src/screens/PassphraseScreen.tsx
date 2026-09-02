@@ -241,7 +241,7 @@ export function PassphraseScreen(props: PassphraseScreenProps): ReactElement {
       />
 
       {error !== null && (
-        <div className="nr-banner nr-banner--danger" data-testid="passphrase-error">
+        <div data-must-see className="nr-banner nr-banner--danger" data-testid="passphrase-error">
           <strong>Not accepted</strong>
           <span>{error}</span>
         </div>

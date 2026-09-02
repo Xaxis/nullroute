@@ -332,7 +332,7 @@ export function AssembleQuorumScreen(props: AssembleQuorumScreenProps): ReactEle
       </Info>
 
       {error !== null && (
-        <div className="nr-banner nr-banner--danger" data-testid="assemble-error">
+        <div data-must-see className="nr-banner nr-banner--danger" data-testid="assemble-error">
           <strong>Not built</strong>
           <span>{error}</span>
         </div>

@@ -332,7 +332,7 @@ export function ScanScreen(props: ScanScreenProps): ReactElement {
       )}
 
       {error !== null && status === 'scanning' && (
-        <div className="nr-banner nr-banner--testnet" data-testid="scan-error">
+        <div data-must-see className="nr-banner nr-banner--testnet" data-testid="scan-error">
           <strong>Frames did not match</strong>
           <span>{error}</span>
         </div>

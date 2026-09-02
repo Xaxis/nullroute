@@ -277,7 +277,7 @@ export function ChildSeedScreen(props: ChildSeedScreenProps): ReactElement {
       </Info>
 
       {error !== null && (
-        <div className="nr-banner nr-banner--danger" data-testid="child-error">
+        <div data-must-see className="nr-banner nr-banner--danger" data-testid="child-error">
           <strong>Not derived</strong>
           <span>{error}</span>
         </div>

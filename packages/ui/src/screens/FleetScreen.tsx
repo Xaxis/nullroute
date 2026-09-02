@@ -155,7 +155,7 @@ export function FleetScreen(props: FleetScreenProps): ReactElement {
         </div>
 
         {error !== null && (
-          <div className="nr-banner nr-banner--danger" data-testid="fleet-forget-error">
+          <div data-must-see className="nr-banner nr-banner--danger" data-testid="fleet-forget-error">
             <strong>Not forgotten</strong>
             <span>{error}</span>
           </div>

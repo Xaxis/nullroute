@@ -143,7 +143,7 @@ export function QuorumAddressesScreen(props: QuorumAddressesScreenProps): ReactE
       </div>
 
       {error !== null && (
-        <div className="nr-banner nr-banner--danger" data-testid="quorum-error">
+        <div data-must-see className="nr-banner nr-banner--danger" data-testid="quorum-error">
           <strong>Not derived</strong>
           <span>{error}</span>
         </div>

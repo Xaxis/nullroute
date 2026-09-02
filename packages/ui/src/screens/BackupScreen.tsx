@@ -345,7 +345,7 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
         )}
 
         {error !== null && (
-          <div className="nr-banner nr-banner--danger" data-testid="backup-error">
+          <div data-must-see className="nr-banner nr-banner--danger" data-testid="backup-error">
             <strong>Not written</strong>
             <span>{error}</span>
           </div>
@@ -459,7 +459,7 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
       )}
 
       {error !== null && (
-        <div className="nr-banner nr-banner--danger" data-testid="backup-error">
+        <div data-must-see className="nr-banner nr-banner--danger" data-testid="backup-error">
           <strong>Not restored</strong>
           <span>{error}</span>
         </div>

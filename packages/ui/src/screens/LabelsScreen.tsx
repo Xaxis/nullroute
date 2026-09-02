@@ -268,7 +268,7 @@ export function LabelsScreen(props: LabelsScreenProps): ReactElement {
       )}
 
       {error !== null && (
-        <div className="nr-banner nr-banner--danger" data-testid="labels-error">
+        <div data-must-see className="nr-banner nr-banner--danger" data-testid="labels-error">
           <strong>Not read</strong>
           <span>{error}</span>
         </div>

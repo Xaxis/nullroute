@@ -225,7 +225,7 @@ export function MachineEntropyScreen(props: MachineEntropyScreenProps): ReactEle
       )}
 
       {error !== null && (
-        <div className="nr-banner nr-banner--danger" data-testid="machine-error">
+        <div data-must-see className="nr-banner nr-banner--danger" data-testid="machine-error">
           <strong>Not generated</strong>
           <span>{error}</span>
         </div>
