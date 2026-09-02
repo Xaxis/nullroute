@@ -59,6 +59,15 @@ export interface AssembleQuorumScreenProps {
   readonly banner?: ReactElement | null
 }
 
+/**
+ * The most cosigners this screen will collect.
+ *
+ * Not a consensus limit: a descriptor can name more. It is the point past which
+ * a list of keys on a 480px panel stops being something somebody checks, and
+ * checking them is the whole reason they are shown.
+ */
+const MAX_COSIGNERS = 20
+
 export function AssembleQuorumScreen(props: AssembleQuorumScreenProps): ReactElement {
   const { onOurKey, onAssemble, onReview, onScan, scanned, onBack, identity, banner, nav } = props
 
@@ -297,7 +306,7 @@ export function AssembleQuorumScreen(props: AssembleQuorumScreenProps): ReactEle
           </Button>
         )}
         <Button
-          disabled={keys.length >= 20}
+          disabled={keys.length >= MAX_COSIGNERS}
           onClick={() => {
             setKeys((current) => [...current, ''])
           }}
@@ -305,6 +314,14 @@ export function AssembleQuorumScreen(props: AssembleQuorumScreenProps): ReactEle
         >
           Another cosigner
         </Button>
+        {/* SAYS SO RATHER THAN JUST GOING DEAD. A control that stops responding
+            with no reason beside it reads as a broken screen, and the reason
+            here is a number nobody could guess. */}
+        {keys.length >= MAX_COSIGNERS && (
+          <span className="nr-hint" data-testid="assemble-at-limit">
+            {MAX_COSIGNERS} is the most this screen builds.
+          </span>
+        )}
       </div>
 
       <p className="nr-note" data-testid="assemble-what-to-collect">

@@ -16,6 +16,7 @@ SHELL := /bin/bash
 MANIFEST_ROOTS := packages spec provisioning
 
 .PHONY: help install dev build check check-fast verify manifest manifest-check \
+	contrast \
 	qr-readback \
 	manifest-recipe print-manifest-roots \
         lint ui-classes type-check test test-report test-vectors test-differential test-repro \
@@ -457,6 +458,16 @@ journeys: ## Every guided journey completes, in the real app against a real daem
 	# touches wallets on the machine it runs on.
 	@node tools/check-journeys.mjs
 
+contrast: screens ## No text on the panel is below WCAG AA, in either theme
+	# The whole interface is somebody reading characters off a 7 inch panel and
+	# acting on them: seed words copied in order, an address compared against a
+	# payer's screen, a manifest root compared against a release. In whatever
+	# light the room has. Dim text here is the failure mode, not a preference.
+	#
+	# Measured against what composites under the text rather than read off the
+	# tokens, because most of these sit on a translucent mix over a card.
+	@node tools/check-contrast.mjs
+
 screen-fit: screens ## Every device screen fits 800x480. Drives a real browser.
 	# The panel is fixed hardware: no scrollbar, no window to resize. A control
 	# that does not fit is a control that does not exist. jsdom computes no box
@@ -542,4 +553,4 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 
 check-fast: lint ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims make-targets ipc-reachable device-csp qr-readback test manifest-check manifest-recipe ## Everything except the slow suites
 
-check: check-fast build verify test-vectors test-differential repro-check sbom device-ui screen-fit journeys dev-check web-check ## Everything CI runs
+check: check-fast build verify test-vectors test-differential repro-check sbom device-ui screen-fit contrast journeys dev-check web-check ## Everything CI runs

@@ -150,7 +150,7 @@
   --color-text-strong: #e2e6ec;
   --color-text-soft: #c2c8d2;
   --color-text-dim: #949cab;
-  --color-text-faint: #5f6878;
+  --color-text-faint: #7c8493;
   --color-text-faintest: #414856;
 
   /* Dark on orange, in both themes. */
@@ -220,7 +220,7 @@
   --color-text-strong: #24272d;
   --color-text-soft: #3d424b;
   --color-text-dim: #5c626d;
-  --color-text-faint: #7d838f;
+  --color-text-faint: #626877;
   --color-text-faintest: #a8ada1;
 
   /* Unchanged: still dark type on an orange fill. */
@@ -1001,7 +1001,15 @@ body {
 .nr-word__index {
   font-family: var(--font-mono);
   font-size: 0.6875rem;
-  color: var(--color-text-faintest);
+  /* NOT `faintest`, which is the colour of a control that does nothing.
+
+     These numbers are how somebody keeps twenty four words in order while
+     copying them onto paper, on the one screen that shows a seed and then never
+     shows it again. They were sharing a token with `:disabled`, and measured
+     1.9:1 against the chip behind them in both themes, which is below the point
+     where small text is reliably legible at arm's length on a 7 inch panel in
+     whatever light the room has. */
+  color: var(--color-text-dim);
   min-width: 1.25rem;
   text-align: right;
 }
@@ -2086,11 +2094,15 @@ body {
 }
 
 .nr-steps__count {
+  /* `accent-text`, not `accent-bright`. Bright is the fill colour of a button,
+     and on the light theme it is a mid orange that reads at 2.9:1 against the
+     header behind this counter. `accent-text` is the one meant to be read on a
+     ground rather than to be a ground. */
   font-family: var(--font-mono);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--color-accent-bright);
+  color: var(--color-accent-text);
   flex: 0 0 auto;
 }
 
