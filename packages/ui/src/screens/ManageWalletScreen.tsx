@@ -3,6 +3,7 @@ import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { Choice } from '../components/Choice.js'
 import { TextKeyboard } from '../components/TextKeyboard.js'
+import { Info } from '../components/Info.js'
 
 /**
  * Renaming, recolouring and erasing the open wallet.
@@ -243,12 +244,12 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
           )}
         </div>
 
-        <p className="nr-note" data-testid="manage-passphrase-cost">
+        <Info testId="manage-passphrase-cost">
           Write the new one down before you tap. Nothing on this device can recover it, and a
           passphrase nobody remembers makes this wallet exactly as unreachable as one nobody stole.
           Your mnemonic still restores the seed, and it does not restore the quorums registered here
           or the names you gave the other cosigners.
-        </p>
+        </Info>
 
         {error !== null && (
           <div className="nr-banner nr-banner--danger" data-testid="manage-passphrase-error">
@@ -354,12 +355,12 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
         {/* Said out loud, because the counter on the unlock screen is
             prominent enough that a user would reasonably assume it applies
             here too, and hesitate to rename anything. */}
-        <p className="nr-note" data-testid="manage-rename-safe">
+        <Info testId="manage-rename-safe">
           The name and the colour are sealed inside the encrypted file, so changing either means
           rewriting it. A wrong passphrase here is refused and costs nothing: it does not count
           against the attempts that erase this wallet, because changing a colour must never be a way
           to lose one.
-        </p>
+        </Info>
 
         {error !== null && (
           <div className="nr-banner nr-banner--danger" data-testid="manage-error">
@@ -463,11 +464,11 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
       }
     >
       {!labelVerified && (
-        <p className="nr-note" data-testid="manage-unnamed">
+        <Info testId="manage-unnamed">
           This wallet was saved before names were sealed with them, so it has no confirmed name.
           Giving it one now writes it inside the encryption, where nobody holding the card can
           change it.
-        </p>
+        </Info>
       )}
 
       {changed && (

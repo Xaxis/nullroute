@@ -2,6 +2,7 @@ import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { WALLET_COLOUR_NAMES } from './ManageWalletScreen.js'
+import { Info } from '../components/Info.js'
 
 /**
  * Naming this physical device.
@@ -130,19 +131,19 @@ export function DeviceNameScreen(props: DeviceNameScreenProps): ReactElement {
           header of every screen, including the one where a transaction is
           authorised, and somebody who read it there should know what it is
           worth. */}
-      <p className="nr-note" data-testid="device-name-unverified">
+      <Info label="This name is not a claim" testId="device-name-unverified">
         This name is not verified and never will be. It sits in a plain file beside your wallets so
         the device can show it before you type a passphrase, which is when you want it, and that
         means anyone holding the card can change it. Nothing on this device decides anything from
         it. A device that let an editable name influence signing would have turned a convenience
         into an attack.
-      </p>
+      </Info>
 
-      <p className="nr-hint">
+      <Info>
         Useful when you hold more than one. Every device in a quorum holds the same wallet, so they
         all show the same wallet name and the same colour: this is the only thing that tells the
         objects apart before one is unlocked.
-      </p>
+      </Info>
 
       {error !== null && (
         <div className="nr-banner nr-banner--danger" data-testid="device-name-error">

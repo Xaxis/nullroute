@@ -4,6 +4,7 @@ import { tierLabel, tierExplanation } from '../lib/tier.js'
 import { Button } from '../components/Button.js'
 import { Hash } from '../components/Hash.js'
 import { type AttestationView } from './LockScreen.js'
+import { Info } from '../components/Info.js'
 
 /**
  * Check the device, after it is open.
@@ -191,11 +192,11 @@ export function AttestationScreen(props: AttestationScreenProps): ReactElement {
           {/* The same sentence the lock screen carries, deliberately word for word.
               Two different phrasings of one limit would let a reader believe the
               weaker one. */}
-          <p className="nr-note" data-testid="attestation-caveat">
+          <Info label="What this proves" testId="attestation-caveat">
             Compare this hash against the published release. These values are reported by the
             software you are looking at: they catch an accident or a crude substitution, not an
             attacker who replaced the code that draws them.
-          </p>
+          </Info>
 
           <p className="nr-hint">
             Check it yourself with <span className="nr-mono">sha256sum MANIFEST.lock</span> on the

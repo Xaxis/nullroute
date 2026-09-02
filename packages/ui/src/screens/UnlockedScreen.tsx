@@ -2,6 +2,7 @@ import { type ReactElement, type ReactNode } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { Hash } from '../components/Hash.js'
+import { Info } from '../components/Info.js'
 
 /**
  * What just opened, shown once, before anything can be done with it.
@@ -95,11 +96,11 @@ export function UnlockedScreen(props: UnlockedScreenProps): ReactElement {
         <span className="nr-dot" data-colour={colour} />
       </div>
 
-      <p className="nr-note" data-testid="unlocked-compare">
+      <Info label="Check the fingerprint" testId="unlocked-compare">
         Compare this with what you wrote down when you made this wallet: it is computed from the
         keys that just loaded, so it cannot be faked by editing a file. If you never recorded one,
         this screen cannot help you.
-      </p>
+      </Info>
 
       {usedPassphrase && (
         <div data-must-see className="nr-banner nr-banner--testnet" data-testid="unlocked-passphrase-warning">

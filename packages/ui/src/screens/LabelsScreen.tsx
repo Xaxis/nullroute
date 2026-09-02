@@ -2,6 +2,7 @@ import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { QrDisplay } from '../components/QrDisplay.js'
+import { Info } from '../components/Info.js'
 
 /**
  * BIP-329 labels, in and out.
@@ -122,11 +123,11 @@ export function LabelsScreen(props: LabelsScreenProps): ReactElement {
           </div>
         </details>
 
-        <p className="nr-note">
+        <Info label="The file format">
           One JSON object per line, and a trailing newline, so this file can be appended to rather
           than rewritten. Writing what was read gives the same bytes, which means an export can be
           compared against the last one.
-        </p>
+        </Info>
       </Screen>
     )
   }
@@ -244,20 +245,25 @@ export function LabelsScreen(props: LabelsScreenProps): ReactElement {
           </table>
 
           {/* Straight from the daemon rather than written here, so the screen
-              cannot forget to say it. */}
-          <p className="nr-note" data-testid="labels-note">
+              cannot forget to say it.
+
+              A RESULT, NOT GUIDANCE, which is why it stays a note rather than
+              becoming an Info: it says what just happened to this file, and it
+              changes every time. check-ui-roles is told so explicitly, because
+              from the outside a paragraph is a paragraph. */}
+          <p className="nr-note" data-prose="result" data-testid="labels-note">
             {imported.note}
           </p>
 
           {/* Said where the labels were loaded, because the next place they
               appear is the signing screen and somebody who saw one there
               should know it will not be there tomorrow. */}
-          <p className="nr-hint" data-testid="labels-session-only">
+          <Info testId="labels-session-only">
             These are held for this session only and are not saved to the device. A label file can
             hold thousands of entries about transactions this device has never seen, and none of
             them decides anything, so they are not written into the encrypted wallet. Load the file
             again after a reboot.
-          </p>
+          </Info>
         </>
       )}
 

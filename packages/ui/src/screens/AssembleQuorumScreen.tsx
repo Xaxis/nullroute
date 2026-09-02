@@ -2,6 +2,7 @@ import { type ReactElement, type ReactNode, useCallback, useEffect, useState } f
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { Hash } from '../components/Hash.js'
+import { Info } from '../components/Info.js'
 
 /**
  * Building a quorum here, without a coordinator.
@@ -166,11 +167,11 @@ export function AssembleQuorumScreen(props: AssembleQuorumScreenProps): ReactEle
           </div>
         </div>
 
-        <p className="nr-note" data-testid="assemble-order-note">
+        <Info label="Why the checksum is the check" testId="assemble-order-note">
           The order you collected the keys in does not matter. Every device given the same keys
           produces this same descriptor, character for character, so a checksum that differs means
           the keys differ rather than the sequence.
-        </p>
+        </Info>
 
         <details className="nr-details">
           <summary className="nr-details__summary">Show the descriptor</summary>
@@ -324,11 +325,11 @@ export function AssembleQuorumScreen(props: AssembleQuorumScreenProps): ReactEle
         )}
       </div>
 
-      <p className="nr-note" data-testid="assemble-what-to-collect">
+      <Info label="What to collect" testId="assemble-what-to-collect">
         Each device shows its own key under Multisig. Read it here by camera, or paste it. It is a
         public key: it derives addresses and cannot spend anything, so carrying it between devices
         risks nothing.
-      </p>
+      </Info>
 
       {error !== null && (
         <div className="nr-banner nr-banner--danger" data-testid="assemble-error">

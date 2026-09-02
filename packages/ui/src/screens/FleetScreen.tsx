@@ -1,6 +1,7 @@
 import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
+import { Info } from '../components/Info.js'
 
 /**
  * Every quorum this device is in, and what it cannot tell you about them.
@@ -182,11 +183,11 @@ export function FleetScreen(props: FleetScreenProps): ReactElement {
       }
     >
       {quorums.length === 0 && (
-        <p className="nr-note" data-testid="fleet-empty">
+        <Info testId="fleet-empty">
           This device is not in any quorum yet. Registering one is what makes it recognise that
           quorum&rsquo;s change as its own, and until then it can sign for a single-signature
           wallet and nothing else.
-        </p>
+        </Info>
       )}
 
       {quorums.map((quorum) => (

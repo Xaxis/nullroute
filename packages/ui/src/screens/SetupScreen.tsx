@@ -2,6 +2,7 @@ import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { Choice } from '../components/Choice.js'
+import { Info } from '../components/Info.js'
 
 /**
  * First run: choose a network, then choose how the seed comes into being.
@@ -123,11 +124,10 @@ export function SetupScreen(props: SetupScreenProps): ReactElement {
             </button>
           ))}
         </div>
-        <p className="nr-hint">
-          <span className="nr-field__label">Network. </span>
+        <Info label="Network" testId="setup-network-info">
           {NETWORKS.find((n) => n.id === network)?.description} Chosen once and locked to this
           wallet: the same seed on a different network derives different addresses.
-        </p>
+        </Info>
       </div>
 
       {/* THREE ACROSS, because this is a comparison.

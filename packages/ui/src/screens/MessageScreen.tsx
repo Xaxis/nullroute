@@ -4,6 +4,7 @@ import { Button } from '../components/Button.js'
 import { TextKeyboard } from '../components/TextKeyboard.js'
 import { QrDisplay } from '../components/QrDisplay.js'
 import { Hash } from '../components/Hash.js'
+import { Info } from '../components/Info.js'
 
 /**
  * Proving you control an address, by signing a message with it.
@@ -270,10 +271,10 @@ export function MessageScreen(props: MessageScreenProps): ReactElement {
             onChange={setMessage}
             testId="message-keyboard"
           />
-          <p className="nr-hint">
+          <Info label="What you are signing">
             Type exactly what you were asked to sign. A signature is a proof that you agreed to this
             specific text, so if somebody else chose the wording, read it twice.
-          </p>
+          </Info>
         </>
       )}
 

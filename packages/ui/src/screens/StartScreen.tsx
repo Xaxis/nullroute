@@ -3,6 +3,7 @@ import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { Choice } from '../components/Choice.js'
 import { JOURNEYS, stepsFor, type Journey, type JourneyId } from '../journeys.js'
+import { Info } from '../components/Info.js'
 
 /**
  * What are you trying to do?
@@ -129,10 +130,10 @@ export function StartScreen(props: StartScreenProps): ReactElement {
         )}
 
         {chosen.operatesOnAWallet && !walletOpen && (
-          <p className="nr-note" data-testid="start-opens-a-wallet">
+          <Info testId="start-opens-a-wallet">
             No wallet is open, so this starts by opening one. That is a step rather than an
             obstacle: everything below it works on a wallet, which is what this device is for.
-          </p>
+          </Info>
         )}
       </Screen>
     )

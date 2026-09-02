@@ -16,7 +16,7 @@ SHELL := /bin/bash
 MANIFEST_ROOTS := packages spec provisioning
 
 .PHONY: help install dev build check check-fast verify manifest manifest-check \
-	contrast \
+	contrast ui-roles \
 	qr-readback \
 	manifest-recipe print-manifest-roots \
         lint ui-classes type-check test test-report test-vectors test-differential test-repro \
@@ -447,7 +447,13 @@ screens: ## Build the screen gallery, a layout harness that never ships to the d
 	@npx tsc -p tools/screens/tsconfig.json --noEmit
 	@npx vite build --config tools/screens/vite.config.ts
 
-journeys: ## Every guided journey completes, in the real app against a real daemon
+journeys: build-app ## Every guided journey completes, in the real app against a real daemon
+	# BUILD FIRST, DECLARED RATHER THAN LUCKY. This serves packages/ui/dist-app,
+	# so without the dependency it walks whatever was built last. In a full `make
+	# check` that happened to be fresh, because device-ui builds the app inline
+	# and runs earlier; on its own it silently drove a stale frontend. That cost
+	# real time: a stylesheet change looked like it was not rendering in the real
+	# app when it had simply never been built into it.
 	# The check that would have caught the device shipping unable to create a
 	# wallet. Unit tests run in jsdom, which has no daemon and computes no
 	# layout; check-screen-fit measures hand-written fixtures; check-device-ui
@@ -457,6 +463,13 @@ journeys: ## Every guided journey completes, in the real app against a real daem
 	# Its own store directory and its own socket, both temporary, so it never
 	# touches wallets on the machine it runs on.
 	@node tools/check-journeys.mjs
+
+ui-roles: screens ## Guidance is an info box, not whichever prose style came to hand
+	# Three roles, on purpose: a banner means something is wrong, an info box says
+	# what the screen is for, a hint is micro-copy beside one control. Before the
+	# info box existed there were only the other two, so seventeen paragraphs of
+	# screen-level guidance were written as whichever came to hand.
+	@node tools/check-ui-roles.mjs
 
 contrast: screens ## No text on the panel is below WCAG AA, in either theme
 	# The whole interface is somebody reading characters off a 7 inch panel and
@@ -482,7 +495,9 @@ dev-check: ## `make dev` still renders a styled application. Drives a real brows
 	# build, where Vite emits an external stylesheet the policy allows.
 	@node tools/check-dev-server.mjs
 
-ui-constants: ## Values the frontend restates agree with the daemon that enforces them
+ui-constants: build-app ## Values the frontend restates agree with the daemon that enforces them
+	# Same reason as journeys: this reads the built stylesheet, so it has to be
+	# built. It was relying on somebody having run build-app first.
 	# The UI may not import from packages/daemon, so a few lists exist twice.
 	# A colour on one side and not the other is a swatch that produces an
 	# error when tapped, and nothing else in the suite looks at both.
@@ -553,4 +568,4 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 
 check-fast: lint ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims make-targets ipc-reachable device-csp qr-readback test manifest-check manifest-recipe ## Everything except the slow suites
 
-check: check-fast build verify test-vectors test-differential repro-check sbom device-ui screen-fit contrast journeys dev-check web-check ## Everything CI runs
+check: check-fast build verify test-vectors test-differential repro-check sbom device-ui screen-fit contrast ui-roles journeys dev-check web-check ## Everything CI runs

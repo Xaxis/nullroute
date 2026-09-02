@@ -2,6 +2,7 @@ import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { TextKeyboard } from '../components/TextKeyboard.js'
+import { Info } from '../components/Info.js'
 
 /**
  * Setting a passphrase, and entering one.
@@ -247,17 +248,13 @@ export function PassphraseScreen(props: PassphraseScreenProps): ReactElement {
       )}
 
       {setting ? (
-        <div className="nr-card nr-card--tight">
-          <p className="nr-hint">
-            This encrypts the seed on this device so the card is useless to whoever picks it up. It
-            is not a second backup. If you forget it, the words you wrote down are the only way
-            back, and there is no reset.
-          </p>
-          <p className="nr-hint">
-            Length is what matters here, not symbols. Each guess costs an attacker about half a
-            second of real work, so a sentence you can remember beats a short string you cannot.
-          </p>
-        </div>
+        <Info label="What a passphrase is for" testId="passphrase-info">
+          This encrypts the seed on this device so the card is useless to whoever picks it up. It is
+          not a second backup: if you forget it, the words you wrote down are the only way back, and
+          there is no reset. Length is what matters, not symbols. Each guess costs an attacker about
+          half a second of real work, so a sentence you can remember beats a short string you
+          cannot.
+        </Info>
       ) : (
         <div className="nr-card nr-card--tight">
           <p className="nr-hint">

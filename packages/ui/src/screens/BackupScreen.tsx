@@ -4,6 +4,7 @@ import { Button } from '../components/Button.js'
 import { Choice } from '../components/Choice.js'
 import { TextKeyboard } from '../components/TextKeyboard.js'
 import { QrDisplay } from '../components/QrDisplay.js'
+import { Info } from '../components/Info.js'
 
 /**
  * Writing a backup, and restoring one.
@@ -252,11 +253,11 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
           testId="backup-choose-restore"
         />
 
-        <p className="nr-note">
+        <Info label="What a backup holds">
           A backup carries your registered cosigners, your network and your labels: the things a
           seed alone cannot recreate. It does not have to carry the seed, and by default it does
           not.
-        </p>
+        </Info>
       </Screen>
     )
   }
@@ -336,11 +337,11 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
             </span>
           </div>
         ) : (
-          <p className="nr-note" data-testid="backup-watching-note">
+          <Info testId="backup-watching-note">
             The file will hold your cosigners, your network and your labels, and no key. Restoring
             it gives a device that can check what is yours and cannot spend. Your mnemonic is what
             restores the ability to sign.
-          </p>
+          </Info>
         )}
 
         {error !== null && (

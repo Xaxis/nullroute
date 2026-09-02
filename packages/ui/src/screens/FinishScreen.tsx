@@ -2,6 +2,7 @@ import { type ReactElement, type ReactNode } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { type Journey } from '../journeys.js'
+import { Info } from '../components/Info.js'
 
 /**
  * The last step of a journey is done. Here is what is not.
@@ -67,10 +68,10 @@ export function FinishScreen(props: FinishScreenProps): ReactElement {
       }
     >
       {outstanding.length === 0 ? (
-        <p className="nr-note" data-testid="finish-complete">
+        <Info testId="finish-complete">
           Nothing else is needed. That is worth saying out loud on a device where most things have a
           next step attached.
-        </p>
+        </Info>
       ) : (
         <>
           {/* A banner rather than a note. The whole point is that somebody is

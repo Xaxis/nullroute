@@ -2,6 +2,7 @@ import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { WordKeyboard } from '../components/WordKeyboard.js'
+import { Info } from '../components/Info.js'
 
 /**
  * The seed, shown once.
@@ -169,10 +170,10 @@ export function SeedScreen(props: SeedScreenProps): ReactElement {
           </>
         }
       >
-        <p className="nr-note" data-testid="seed-check-ask">
+        <Info testId="seed-check-ask">
           Read word {(position ?? 0) + 1} off the paper you just wrote. If you have to remember it
           rather than read it, you do not have a backup yet.
-        </p>
+        </Info>
 
         <WordKeyboard
           words={typed}

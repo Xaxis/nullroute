@@ -2,6 +2,7 @@ import { type ReactElement, type ReactNode, useCallback, useEffect, useState } f
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { TextKeyboard } from '../components/TextKeyboard.js'
+import { Info } from '../components/Info.js'
 
 /**
  * Checking somebody else's proof that they control an address.
@@ -197,11 +198,11 @@ export function VerifyMessageScreen(props: VerifyMessageScreenProps): ReactEleme
       )}
 
       {result !== null && !passed && (
-        <p className="nr-hint" data-testid="verify-usual-cause">
+        <Info label="Where to look first" testId="verify-usual-cause">
           The commonest cause is the message, not the signature. A trailing space, a missing line
           break, or a smart quote where a straight one was signed all produce this. Compare the
           message character for character before concluding anything about the other party.
-        </p>
+        </Info>
       )}
 
       {/* Which field the keyboard fills. Each tab shows whether that field has
@@ -300,10 +301,10 @@ export function VerifyMessageScreen(props: VerifyMessageScreenProps): ReactEleme
         </div>
       )}
 
-      <p className="nr-note" data-testid="verify-no-key">
+      <Info label="What this checks" testId="verify-no-key">
         This uses no key and needs no wallet open. It is arithmetic on what you typed, which is why
         it works on a device with no network and why it can be done before unlocking anything.
-      </p>
+      </Info>
     </Screen>
   )
 }

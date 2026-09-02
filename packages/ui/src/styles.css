@@ -149,6 +149,9 @@
   --color-text: #f4f6f9;
   --color-text-strong: #e2e6ec;
   --color-text-soft: #c2c8d2;
+  /* The rule down the side of an info box. Visible against the panel without
+     competing with a banner's border, which is the distinction it carries. */
+  --color-info-rule: #39414f;
   --color-text-dim: #949cab;
   --color-text-faint: #7c8493;
   --color-text-faintest: #414856;
@@ -219,6 +222,8 @@
   --color-text: #14161a;
   --color-text-strong: #24272d;
   --color-text-soft: #3d424b;
+  /* See the dark theme. */
+  --color-info-rule: #cfccc5;
   --color-text-dim: #5c626d;
   --color-text-faint: #626877;
   --color-text-faintest: #a8ada1;
@@ -733,6 +738,40 @@ body {
   line-height: 1.5;
   color: var(--color-text-faint);
   margin: 0;
+}
+
+/* ==========================================================================
+   Info: what this screen is for and what to do.
+
+   The neutral member of a set of three that had only two. A banner is toned and
+   means something is wrong; a hint is micro-copy belonging to one control; this
+   is guidance about the screen, and before it existed guidance was written as
+   whichever of the other two came to hand.
+
+   A LEFT RULE RATHER THAN A BOX. Most screens here already run past a 480px
+   fold, so a border on four sides plus symmetric padding would cost twenty
+   pixels per screen to say the same words. The rule reads as one element, costs
+   two pixels of width and none of height, and cannot be mistaken for a banner.
+   ========================================================================== */
+.nr-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1875rem;
+  padding: 0.125rem 0 0.125rem 0.75rem;
+  border-left: 2px solid var(--color-info-rule);
+}
+
+.nr-info__label {
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+}
+
+.nr-info__body {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--color-text-soft);
 }
 
 .nr-note {

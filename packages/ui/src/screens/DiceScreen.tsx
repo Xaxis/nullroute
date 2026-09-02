@@ -1,6 +1,7 @@
 import { type ReactElement, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
+import { Info } from '../components/Info.js'
 
 /**
  * Dice entropy collection.
@@ -239,9 +240,10 @@ export function DiceScreen(props: DiceScreenProps): ReactElement {
             <div className="nr-rolls" data-testid="dice-rolls">
               {rolls.length === 0 ? 'Nothing yet.' : rolls}
             </div>
-            <p className="nr-hint">
-              Check these against what you rolled. You will hash this exact string later.
-            </p>
+            <Info testId="dice-info">
+              Check these against what you rolled. This exact string, with no trailing newline, is
+              what gets hashed: you can repeat the arithmetic later on any machine with sha256sum.
+            </Info>
           </div>
           {onRollForMe !== undefined && (
             <div className="nr-card nr-card--tight" data-testid="dice-device">

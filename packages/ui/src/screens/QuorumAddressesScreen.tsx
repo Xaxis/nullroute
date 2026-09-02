@@ -1,6 +1,7 @@
 import { type ReactElement, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
+import { Info } from '../components/Info.js'
 
 /**
  * Addresses for a registered quorum.
@@ -179,13 +180,13 @@ export function QuorumAddressesScreen(props: QuorumAddressesScreenProps): ReactE
         </div>
 
         {/* The whole point, said where it is read rather than in a document. */}
-        <p className="nr-note" data-testid="quorum-compare">
+        <Info label="How to compare" testId="quorum-compare">
           Read one of these aloud against the same index on another device in this quorum. They are
           derived from every cosigner&apos;s key at once, so two devices agreeing here is the proof
           that every one of them registered the same descriptor. If they differ, do not send
           anything: one of the devices has a descriptor that is off by a character, and coins sent
           to the wrong address are spendable only by whoever holds that other quorum.
-        </p>
+        </Info>
       </div>
     </Screen>
   )

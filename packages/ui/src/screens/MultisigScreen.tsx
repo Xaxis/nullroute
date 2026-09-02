@@ -3,6 +3,7 @@ import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { Hash } from '../components/Hash.js'
 import { QrDisplay } from '../components/QrDisplay.js'
+import { Info } from '../components/Info.js'
 
 /**
  * Registering a quorum.
@@ -231,11 +232,11 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
           </div>
         </details>
 
-        <p className="nr-note" data-testid="multisig-bundle-note">
+        <Info label="What has to match" testId="multisig-bundle-note">
           Every cosigner has to register the same descriptor, character for character, and the
           coordinator has to import it too. A quorum that every device agreed to is still invisible
           to the software that builds the transactions until this reaches it.
-        </p>
+        </Info>
       </Screen>
     )
   }

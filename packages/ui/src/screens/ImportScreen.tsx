@@ -3,6 +3,7 @@ import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { WordKeyboard } from '../components/WordKeyboard.js'
 import { TextKeyboard } from '../components/TextKeyboard.js'
+import { Info } from '../components/Info.js'
 
 /**
  * Import an existing mnemonic.
@@ -105,12 +106,12 @@ export function ImportScreen(props: ImportScreenProps): ReactElement {
       {!showPassphrase && (
         <>
           <WordKeyboard words={words} onChange={setWords} target={target} testId="import-words" />
-          <p className="nr-hint">
+          <Info label="Typing the words" testId="import-info">
             Only letters that can still reach a word are active, and a word is entered when it is
             the only one left or when you tap it. The checksum is validated on import: a single
             mistyped word usually fails there, but one that still checksums produces a completely
             different wallet, so check the fingerprint afterwards.
-          </p>
+          </Info>
 
           <details className="nr-details">
             <summary className="nr-details__summary" data-testid="import-typed-toggle">

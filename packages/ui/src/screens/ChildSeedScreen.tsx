@@ -1,6 +1,7 @@
 import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
+import { Info } from '../components/Info.js'
 
 /**
  * BIP-85: deriving a child seed from this wallet's.
@@ -269,11 +270,11 @@ export function ChildSeedScreen(props: ChildSeedScreenProps): ReactElement {
         </p>
       </div>
 
-      <p className="nr-note" data-testid="child-warning">
+      <Info label="How a child seed is recovered" testId="child-warning">
         Every child derived here is recoverable from this wallet&apos;s mnemonic and from nothing
         else. That is the feature: one set of words backs up all of them. It is also the limit,
         because a child given to somebody else is still controlled by the seed that made it.
-      </p>
+      </Info>
 
       {error !== null && (
         <div className="nr-banner nr-banner--danger" data-testid="child-error">

@@ -1,6 +1,7 @@
 import { type ReactElement, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
+import { Info } from '../components/Info.js'
 
 /**
  * Letting the device choose the seed, and being honest about what that costs.
@@ -214,12 +215,12 @@ export function MachineEntropyScreen(props: MachineEntropyScreenProps): ReactEle
           {/* The limit of what those rows mean, next to the rows. Three green
               ticks otherwise read as "the device checked its randomness", which
               is not what happened. */}
-          <p className="nr-note" data-testid="machine-health-limit">
+          <Info label="What these checks do not prove" testId="machine-health-limit">
             Those checks catch a stuck generator, an unseeded kernel pool, and a device making a
             seed in its first minute of boot. They say nothing about the quality of the numbers. A
             generator producing well-formed but predictable output passes all of them, and that is
             precisely the attack rolling dice makes impossible.
-          </p>
+          </Info>
         </>
       )}
 

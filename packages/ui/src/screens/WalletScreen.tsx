@@ -311,6 +311,15 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
         </>
       }
     >
+      {/* NO INFO BOX HERE, DELIBERATELY.
+
+          One was written and measured: two lines plus a gap, which took the
+          address list from three rows back to one on the screen whose whole job
+          is showing addresses. The tabs say Addresses, Export and Verify an
+          address, which is the same information in the controls themselves, and
+          the qualifier that actually matters is in the table heading beside the
+          derivation path. A pattern applied where it costs more than it says is
+          not consistency. */}
       <div className="nr-tabs">
         {TABS.map((t) => (
           <button

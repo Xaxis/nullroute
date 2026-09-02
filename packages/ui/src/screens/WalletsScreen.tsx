@@ -2,6 +2,7 @@ import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { TextKeyboard } from '../components/TextKeyboard.js'
+import { Info } from '../components/Info.js'
 
 /**
  * Choosing which wallet to open.
@@ -319,9 +320,9 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
           dismissible one does, so length here costs the warning its own
           audience. What survives is the part that is load-bearing: the list is
           not authenticated, and the device tells you when it opens. */}
-      <p className="nr-note nr-note--pinned" data-testid="wallets-unverified">
+      <Info testId="wallets-unverified">
         Read from disk, not confirmed until a wallet opens. The device says so if a name differs.
-      </p>
+      </Info>
 
       {failure !== undefined && (
         <div className="nr-banner nr-banner--danger" data-testid="wallets-failure">
@@ -387,11 +388,11 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
           in a list of tap targets that open one, on a touchscreen, is the
           mis-tap this whole stylesheet keeps 44px and 6px of air for. */}
       {wallets.some((wallet) => !wallet.destroyed) && (
-        <p className="nr-hint" data-testid="wallets-where-erase">
+        <Info testId="wallets-where-erase">
           To erase a wallet, open it and use Erase or rename this wallet under More. A wallet can
           only be erased from inside itself, so this device cannot lose one without being asked for
           its passphrase and its name.
-        </p>
+        </Info>
       )}
 
       {/* In the body rather than the action bar, which already holds three
