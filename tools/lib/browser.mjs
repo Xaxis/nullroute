@@ -1,5 +1,8 @@
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 /**
- * Kill the subprocesses a check spawned, and mean it.
+ * Running a browser from a check, without it becoming the flaky part.
  *
  * WHY THIS IS A MODULE AND NOT FIVE COPIES OF TWO LINES.
  *
@@ -27,6 +30,24 @@
  * Every call is wrapped, because the common case for a throw here is that the
  * process is already gone, which is the outcome being asked for.
  */
+/**
+ * A Chrome profile directory nothing else is using.
+ *
+ * Six of the seven browser checks shared Chrome's default profile, and `make
+ * check` runs them one after another. A previous Chrome still letting go of the
+ * profile lock stops the next one starting, which surfaces as "Chrome did not
+ * expose a debugging endpoint" partway through an otherwise green run: a
+ * failure with nothing to do with the thing being checked.
+ *
+ * check-journeys already did this, and is the one that never had the problem.
+ *
+ * The directory goes under the system temp dir with the check's name in it, so
+ * a leftover is obvious. Chrome creates it; nothing here has to.
+ */
+export function chromeProfile(name) {
+  return `--user-data-dir=${join(tmpdir(), `nullroute-${name}-${String(process.pid)}`)}`
+}
+
 export function reap(...children) {
   for (const signal of ['SIGTERM', 'SIGKILL']) {
     for (const child of children) {

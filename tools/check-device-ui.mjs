@@ -29,7 +29,7 @@ import { createServer } from 'node:http'
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { finish, reap } from './lib/reap.mjs'
+import { chromeProfile, finish, reap } from './lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const DIST = join(ROOT, 'packages/ui/dist-app')
@@ -113,6 +113,7 @@ async function main() {
       // and looked at. See the assertion on #root below.
       '--window-size=1280,860',
       '--remote-debugging-port=9328',
+      chromeProfile('check-device-ui'),
       'about:blank',
     ],
     { stdio: 'ignore' }

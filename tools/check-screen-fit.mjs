@@ -41,7 +41,7 @@ import { createServer } from 'node:http'
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { finish, reap } from './lib/reap.mjs'
+import { chromeProfile, finish, reap } from './lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const DIST = join(ROOT, 'tools/screens/dist')
@@ -725,6 +725,7 @@ async function main() {
       '--no-sandbox',
       '--disable-dev-shm-usage',
       `--remote-debugging-port=${String(DEBUG_PORT)}`,
+      chromeProfile('check-screen-fit'),
       'about:blank',
     ],
     { stdio: 'ignore' }
@@ -772,6 +773,30 @@ async function main() {
   const screens = JSON.parse(listed.result.value)
   if (screens.length === 0) {
     throw new Error('the gallery listed no screens, so this check is blind')
+  }
+
+  /**
+   * Wait for a selector to be in the document, up to a bound.
+   *
+   * Returns either way: the caller's own assertion is what decides, and a
+   * timeout here should read as whatever that assertion says rather than as a
+   * separate kind of failure.
+   */
+  const settled = async (selector) => {
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      const there = await cdp(
+        page,
+        'Runtime.evaluate',
+        { expression: `document.querySelector(${JSON.stringify(selector)}) !== null`, returnByValue: true },
+        state
+      )
+      if (there.result.value === true) {
+        // One more frame, so a just-mounted subtree has been laid out.
+        await sleep(120)
+        return
+      }
+      await sleep(60)
+    }
   }
 
   let failed = 0
@@ -832,13 +857,21 @@ async function main() {
       { url: `http://127.0.0.1:${String(PORT)}/?screen=${name}` },
       state
     )
-    await sleep(700)
+    /* WAIT FOR THE SCREEN, do not guess at 700ms.
+       Under load this harness measured states that had not rendered: one
+       reported "no action bar at all" and another that a tab it was told to tap
+       was missing, on two consecutive runs, in different places. That is a
+       timing bug wearing the costume of a layout failure, and a check that
+       fails at random is one people learn to re-run rather than read. */
+    await settled('.nr-screen__actions, .nr-screen__body')
 
     // Tapped in order, and a testid that no longer exists fails rather than
     // being skipped: a reach list that quietly stopped reaching anywhere would
     // report every state as fitting while measuring only the first.
     let unreachable = null
     for (const testId of reach) {
+      // Same reason: a control one render behind is not a missing control.
+      await settled(`[data-testid="${testId}"]`)
       const clicked = await cdp(
         page,
         'Runtime.evaluate',

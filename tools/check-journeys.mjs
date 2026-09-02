@@ -47,7 +47,7 @@ import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import * as btc from '@scure/btc-signer'
 import { base64, hex } from '@scure/base'
-import { finish, reap } from './lib/reap.mjs'
+import { finish, reap } from './lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const DIST = join(ROOT, 'packages/ui/dist-app')
@@ -422,7 +422,36 @@ async function main() {
       (await cdp(page, 'Runtime.evaluate', { expression, returnByValue: true }, state)).result.value
 
     /** A real tap. See the header: el.click() fires no pointerdown. */
+    /**
+     * Tap a control, waiting for it to be there and to be live.
+     *
+     * IT USED TO LOOK ONCE. Every step slept 800ms and then asked, so a screen
+     * that took longer than that to render, or a submit button enabled a frame
+     * after its last keystroke landed, failed the run. Two consecutive runs on
+     * a loaded machine failed in two different places, which is the signature of
+     * a timing bug rather than a defect: "psbt-sign was missing" once and "the
+     * answer for below could not be submitted (disabled)" the next.
+     *
+     * A check that fails at random gets ignored, and then switched off, which is
+     * the same argument the browser checks make about hanging.
+     *
+     * Waiting weakens nothing. A control that never appears still fails, after a
+     * bounded wait, and the reported reason is the last state actually seen
+     * rather than a generic timeout. A person in front of the panel waits for
+     * the screen too.
+     */
     const tap = async (testId) => {
+      let last = 'missing'
+      for (let attempt = 0; attempt < 60; attempt += 1) {
+        const state = await tapOnce(testId)
+        if (state === 'ok') return 'ok'
+        last = state
+        await sleep(70)
+      }
+      return last
+    }
+
+    const tapOnce = async (testId) => {
       const box = await evaluate(`(() => {
         const el = document.querySelector('[data-testid=' + ${JSON.stringify(JSON.stringify(testId))} + ']')
         if (el === null) return 'missing'
@@ -445,6 +474,7 @@ async function main() {
       }
       return 'ok'
     }
+
 
     const screenOf = async () =>
       evaluate(`(() => {

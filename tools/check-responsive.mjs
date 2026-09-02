@@ -23,7 +23,7 @@ import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
-import { finish, reap } from './lib/reap.mjs'
+import { chromeProfile, finish, reap } from './lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const OUT = join(ROOT, 'apps/web/out')
@@ -183,6 +183,7 @@ async function main() {
       // partway through rendering rather than failing cleanly.
       '--disable-dev-shm-usage',
       '--remote-debugging-port=9223',
+      chromeProfile('check-responsive'),
       'about:blank',
     ],
     { stdio: 'ignore' }

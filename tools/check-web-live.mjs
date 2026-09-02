@@ -26,7 +26,7 @@ import { spawn } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
-import { finish, reap } from './lib/reap.mjs'
+import { chromeProfile, finish, reap } from './lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const ORIGIN = process.argv[2] ?? process.env['NULLROUTE_SITE'] ?? 'https://nullroute.diy'
@@ -101,6 +101,7 @@ async function main() {
       '--no-sandbox',
       '--disable-dev-shm-usage',
       `--remote-debugging-port=${PORT}`,
+      chromeProfile('check-web-live'),
       'about:blank',
     ],
     { stdio: 'ignore' }

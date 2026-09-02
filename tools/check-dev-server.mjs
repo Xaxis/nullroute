@@ -30,7 +30,7 @@
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { finish, reap } from './lib/reap.mjs'
+import { chromeProfile, finish, reap } from './lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 
@@ -140,6 +140,7 @@ async function main() {
       '--no-sandbox',
       '--disable-dev-shm-usage',
       `--remote-debugging-port=${String(DEBUG_PORT)}`,
+      chromeProfile('check-dev-server'),
       'about:blank',
     ],
     { stdio: 'ignore', detached: true }
