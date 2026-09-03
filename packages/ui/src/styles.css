@@ -50,12 +50,18 @@
      any device not on mainnet, so the interface spent every screen teaching
      somebody that this red means nothing, and then delivered a refusal in it.
 
-     Yellow rather than the accent's orange (#e8833a), which is close enough to
-     amber to be read as the brand rather than as a warning. */
-  --color-caution-700: #5c4914;
-  --color-caution-600: #8f7220;
-  --color-caution-500: #cfa63a;
-  --color-caution-300: #e8c766;
+     Yellow rather than amber, and the difference is measured. The accent is
+     orange at 27 degrees of hue; an amber caution landed at 45, which is 18
+     degrees from the brand colour on a 7 inch panel in whatever light the room
+     has. This sits at 53, which is 26 from the accent and 51 from danger, in a
+     gap that runs all the way to the verify green at 159.
+
+     check-contrast asserts that separation, so this is a measurement rather
+     than a preference. */
+  --color-caution-700: #564c13;
+  --color-caution-600: #85761f;
+  --color-caution-500: #c4b23c;
+  --color-caution-300: #ddd06a;
 
   --color-verify-600: #3d8a71;
   --color-verify-500: #4fa88a;
@@ -180,10 +186,10 @@
      to be legible as a state without competing with a primary button. */
   --color-accent-soft: #3b2413;
 
-  --color-caution-text: #e8c766;
-  --color-caution-line: #cfa63a;
-  --color-caution-fill: #8f7220;
-  --color-caution-deep: #5c4914;
+  --color-caution-text: #ddd06a;
+  --color-caution-line: #c4b23c;
+  --color-caution-fill: #85761f;
+  --color-caution-deep: #564c13;
 
   --color-danger-text: #f0918e;
   --color-danger-line: #d9534f;
@@ -256,10 +262,10 @@
   --color-accent-text: #8a4409;
   --color-accent-soft: #f7e3d1;
 
-  --color-caution-text: #6b5309;
-  --color-caution-line: #a8871f;
-  --color-caution-fill: #d9b23c;
-  --color-caution-deep: #f5ead0;
+  --color-caution-text: #635a08;
+  --color-caution-line: #9c8f1e;
+  --color-caution-fill: #cfc03c;
+  --color-caution-deep: #f2eecb;
 
   --color-danger-text: #8c2420;
   --color-danger-line: #b83c37;

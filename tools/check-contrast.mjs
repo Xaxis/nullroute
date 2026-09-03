@@ -171,18 +171,43 @@ async function main() {
    * Checked as resolved values rather than by reading the file, so an alias
    * pointing one set at the other still fails.
    */
+  const FAMILIES = ['accent', 'caution', 'danger', 'verify']
+
+  /* 20 degrees. A floor on telling two of these apart, not a design target:
+     the four sit at 2, 27, 53 and 159, so the tightest real pair has 26. */
+  const MIN_HUE_GAP = 20
+
   const SEVERITY = `(() => {
     const style = getComputedStyle(document.documentElement)
-    const read = (name) => style.getPropertyValue(name).trim()
-    const roles = ['text', 'line', 'fill', 'deep']
-    const same = roles.filter((role) =>
-      read('--color-caution-' + role) !== '' &&
-      read('--color-caution-' + role) === read('--color-danger-' + role))
-    return JSON.stringify({
-      same: same,
-      caution: roles.map((r) => read('--color-caution-' + r)),
-      danger: roles.map((r) => read('--color-danger-' + r)),
-    })
+    const probe = document.createElement('div')
+    document.body.appendChild(probe)
+    // Resolved through the browser, so an alias or a color-mix() still answers
+    // in numbers rather than in whatever was typed.
+    const rgb = (name) => {
+      probe.style.color = ''
+      probe.style.color = style.getPropertyValue(name).trim()
+      const n = getComputedStyle(probe).color.match(/[0-9.]+/g)
+      return n === null ? null : { r: +n[0], g: +n[1], b: +n[2] }
+    }
+    const hue = (c) => {
+      const max = Math.max(c.r, c.g, c.b)
+      const min = Math.min(c.r, c.g, c.b)
+      if (max === min) return null
+      const d = max - min
+      const h = max === c.r
+        ? ((c.g - c.b) / d) % 6
+        : max === c.g
+          ? (c.b - c.r) / d + 2
+          : (c.r - c.g) / d + 4
+      return ((h * 60) % 360 + 360) % 360
+    }
+    const out = {}
+    for (const family of ${JSON.stringify(FAMILIES)}) {
+      const c = rgb('--color-' + family + '-text')
+      out[family] = c === null ? null : { hue: hue(c), rgb: c }
+    }
+    probe.remove()
+    return JSON.stringify(out)
   })()`
 
   /* Worst case per (theme, class), because one class failing on nine screens is
@@ -215,7 +240,20 @@ async function main() {
           (await cdp(page, 'Runtime.evaluate', { expression: SEVERITY, returnByValue: true }, st))
             .result.value
         )
-        if (sev.same.length > 0) collapsed.push({ theme, ...sev })
+        for (let i = 0; i < FAMILIES.length; i += 1) {
+          for (let j = i + 1; j < FAMILIES.length; j += 1) {
+            const a = sev[FAMILIES[i]]
+            const b = sev[FAMILIES[j]]
+            if (a === null || b === null || a.hue === null || b.hue === null) {
+              collapsed.push({ theme, a: FAMILIES[i], b: FAMILIES[j], gap: null, sev })
+              continue
+            }
+            const raw = Math.abs(a.hue - b.hue)
+            const gap = Math.min(raw, 360 - raw)
+            if (gap >= MIN_HUE_GAP) continue
+            collapsed.push({ theme, a: FAMILIES[i], b: FAMILIES[j], gap, sev })
+          }
+        }
       }
       runs += rows.length
       for (const r of rows) {
@@ -231,18 +269,27 @@ async function main() {
   server.close()
 
   if (collapsed.length > 0) {
-    console.error(`\ncheck-contrast: caution and danger are the same colour:\n`)
+    console.error(`\ncheck-contrast: two meanings are drawn in the same colour:\n`)
     for (const c of collapsed) {
-      console.error(`    ${c.theme.padEnd(5)} identical at: ${c.same.join(', ')}`)
-      console.error(`          caution ${c.caution.join(' ')}`)
-      console.error(`          danger  ${c.danger.join(' ')}`)
+      const gap = c.gap === null ? 'one of them is grey' : `${c.gap.toFixed(1)} degrees apart`
+      console.error(
+        `    ${c.theme.padEnd(5)} ${c.a} and ${c.b}: ${gap}, and ${String(MIN_HUE_GAP)} is the floor`
+      )
+      for (const family of FAMILIES) {
+        const v = c.sev[family]
+        console.error(
+          `          ${family.padEnd(8)} ${v === null || v.hue === null ? 'no hue' : `${v.hue.toFixed(1)}deg`}` +
+            `  rgb(${v === null ? '?' : `${String(v.rgb.r)} ${String(v.rgb.g)} ${String(v.rgb.b)}`})`
+        )
+      }
     }
     console.error(
-      `\n  This device draws three severities and has to draw them differently: a\n` +
-        `  permanent strip saying the coins are worthless, an advisory it will sign\n` +
-        `  despite, and a refusal. The strip is on every screen of a device that is not\n` +
-        `  on mainnet, so sharing its colour with a refusal is not a missing distinction,\n` +
-        `  it is training somebody to ignore the one that matters.\n`
+      `\n  These four mean four different things and somebody has to tell them apart on\n` +
+        `  a 7 inch panel in whatever light the room has. --color-caution-* once held\n` +
+        `  exactly the values of --color-danger-*, so a device that would not sign and a\n` +
+        `  permanent strip saying the coins are worth nothing were the same colour: not a\n` +
+        `  missing distinction so much as training somebody to ignore the one that\n` +
+        `  matters. Nothing else here can see it, because both are perfectly legible.\n`
     )
     finish(1)
   }
