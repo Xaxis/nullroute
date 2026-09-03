@@ -131,7 +131,7 @@ export function FleetScreen(props: FleetScreenProps): ReactElement {
         {/* What it costs, which is not what people assume. A registration is
             not a key, so nothing here loses money. What it loses is the
             device's ability to tell this quorum's change from a stranger. */}
-        <div className="nr-banner nr-banner--testnet" data-testid="fleet-forget-cost">
+        <div className="nr-banner nr-banner--caution" data-testid="fleet-forget-cost">
           <strong>This does not lose any money</strong>
           <span>
             A registration is not a key. What you lose is this device recognising that
@@ -281,7 +281,7 @@ export function FleetScreen(props: FleetScreenProps): ReactElement {
       {/* Last, and not a status. Everything above is something this device
           knows; everything here is about other machines it cannot see. */}
       {quorums.length > 0 && (
-        <div className="nr-banner nr-banner--testnet" data-testid="fleet-cannot-know">
+        <div className="nr-banner nr-banner--caution" data-testid="fleet-cannot-know">
           <strong>What this device cannot tell you</strong>
           <span>
             Whether the other cosigners registered the same descriptor, and whether your

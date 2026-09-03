@@ -381,7 +381,7 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
                   </p>
                 </div>
               ) : (
-                <div className="nr-banner nr-banner--testnet" data-testid="psbt-incomplete">
+                <div className="nr-banner nr-banner--caution" data-testid="psbt-incomplete">
                   <strong>Not finished</strong>
                   {/* Three lines became two. The left column here is half the
                       panel, the right half is a QR, and under this sits the
@@ -552,8 +552,15 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
           It was never rendered here at all until the gallery got a state whose
           handlers reject. Nineteen screens have one of these and jsdom cannot
           see any of them. */}
+      {/* "Signing failed", not "Not signed", which is the pattern every other
+          refusal on this device follows. This one renders directly above the
+          review's own "Will not sign" now, and two red banners reading "Not
+          signed" and "Will not sign" are not two sentences somebody separates
+          while deciding what to do about them. They are different things: one is
+          the device declining before it tried, the other is the attempt coming
+          back with an error. */}
       {error !== null && (
-        <Refusal title="Not signed" testId="psbt-error">
+        <Refusal title="Signing failed" testId="psbt-error">
           {error}
         </Refusal>
       )}
@@ -642,7 +649,7 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
           {advisory.length > 0 && (
             <div data-must-see data-testid="psbt-warnings">
               {advisory.map((w) => (
-                <div key={w.kind + w.message} className="nr-banner nr-banner--testnet">
+                <div key={w.kind + w.message} className="nr-banner nr-banner--caution">
                   <strong>Check this</strong>
                   <span>{w.message}</span>
                 </div>

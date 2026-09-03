@@ -177,7 +177,7 @@ export function MachineEntropyScreen(props: MachineEntropyScreenProps): ReactEle
               scrolled to. Whether the device is going to do the thing cannot. */}
 
           {health.unknown && (
-            <div data-must-see className="nr-banner nr-banner--testnet" data-testid="machine-unknown">
+            <div data-must-see className="nr-banner nr-banner--caution" data-testid="machine-unknown">
               <strong>Some sources could not be checked here</strong>
               <span>
                 The rows marked unknown were not observed, which is not the same as being fine.

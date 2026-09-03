@@ -227,7 +227,7 @@ export function LabelsScreen(props: LabelsScreenProps): ReactElement {
               file is slightly malformed or whether something tried to make a
               label render as text it does not contain. */}
           {imported.skipped.length > 0 && (
-            <div className="nr-banner nr-banner--testnet" data-testid="labels-skipped">
+            <div className="nr-banner nr-banner--caution" data-testid="labels-skipped">
               <strong>These lines were not read</strong>
               <span>
                 {imported.skipped.map((s) => `line ${String(s.line)}: ${s.reason}`).join('; ')}

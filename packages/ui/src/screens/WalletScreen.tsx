@@ -658,7 +658,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
           )}
 
           {verdict !== null && !verdict.found && (
-            <div className="nr-banner nr-banner--testnet" data-testid="verify-not-found">
+            <div className="nr-banner nr-banner--caution" data-testid="verify-not-found">
               <strong>Not yours</strong>
               <span>
                 This address did not derive from your seed in the first {verdict.searchedTo ?? 0}{' '}

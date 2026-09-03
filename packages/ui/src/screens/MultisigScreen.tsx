@@ -281,7 +281,7 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
         )}
 
         {imported.unverifiedClaims.length > 0 && (
-          <div className="nr-banner nr-banner--testnet" data-testid="multisig-imported-claims">
+          <div className="nr-banner nr-banner--caution" data-testid="multisig-imported-claims">
             <strong>The file also says this, and the device does not check it</strong>
             <span>
               {imported.unverifiedClaims.join('. ')}. Only the descriptor decides an address. If one
@@ -641,7 +641,7 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
           </div>
 
           {review.warnings.map((warning) => (
-            <div key={warning.kind + warning.message} className="nr-banner nr-banner--testnet">
+            <div key={warning.kind + warning.message} className="nr-banner nr-banner--caution">
               <strong>Check this</strong>
               <span>{warning.message}</span>
             </div>

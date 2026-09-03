@@ -197,7 +197,7 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
             This backup carried a seed, so this device can sign again.
           </p>
         ) : (
-          <div className="nr-banner nr-banner--testnet" data-testid="backup-restored-watching">
+          <div className="nr-banner nr-banner--caution" data-testid="backup-restored-watching">
             <strong>Watch-only</strong>
             <span>
               This backup carried no seed. The device can derive addresses, recognise its own change

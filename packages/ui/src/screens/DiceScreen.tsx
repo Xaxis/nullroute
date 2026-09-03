@@ -274,7 +274,7 @@ export function DiceScreen(props: DiceScreenProps): ReactElement {
           )}
 
           {fromDevice > 0 && (
-            <div className="nr-banner nr-banner--testnet" data-testid="dice-device-warning">
+            <div className="nr-banner nr-banner--caution" data-testid="dice-device-warning">
               <strong>
                 {fromDevice} of {rolls.length} rolls came from the device
               </strong>
@@ -290,7 +290,7 @@ export function DiceScreen(props: DiceScreenProps): ReactElement {
       </div>
 
       {warnings.map((warning) => (
-        <div key={warning.kind} className="nr-banner nr-banner--warn" data-testid="dice-warning">
+        <div key={warning.kind} className="nr-banner nr-banner--caution" data-testid="dice-warning">
           <strong>Check</strong>
           <span>
             {warning.message} {warning.detail} This is a warning, not a rejection: the device does

@@ -931,7 +931,7 @@ export function App() {
   if (stage.at === 'unreachable') {
     return (
       <Screen title="nullroute" subtitle="No daemon" testId="unreachable">
-        <div className="nr-banner nr-banner--testnet">
+        <div className="nr-banner nr-banner--caution">
           <strong>Not running</strong>
           <span>
             The signing daemon is not reachable, so there is no attestation to show and no wallet to
@@ -1274,7 +1274,7 @@ export function App() {
           }
         />
         {error !== null && (
-          <div className="nr-banner nr-banner--testnet">
+          <div className="nr-banner nr-banner--caution">
             <strong>Error</strong>
             <span>{error}</span>
             <Button

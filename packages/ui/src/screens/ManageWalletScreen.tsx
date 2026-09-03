@@ -192,7 +192,7 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
             passphrase that derives their keys. They are not, that one cannot
             be changed, and somebody who thought otherwise would conclude their
             money had moved. */}
-        <div className="nr-banner nr-banner--testnet" data-testid="manage-passphrase-scope">
+        <div className="nr-banner nr-banner--caution" data-testid="manage-passphrase-scope">
           <strong>This does not change your addresses</strong>
           <span>
             It changes what unlocks the file on this card. The seed inside is untouched, so every

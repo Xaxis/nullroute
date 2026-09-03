@@ -908,16 +908,17 @@ body {
   min-width: 0;
 }
 
-.nr-banner--testnet {
+/* Four banner variants for four meanings, and the names say which.
+   This was `--testnet`, which is where it started and not what it does: it is
+   the caution banner, worn by the network strip, by "do not photograph this",
+   by an unreadable QR code and by eight other things that have nothing to do
+   with a test network. Beside it sat `--warn`, a second caution banner painted
+   in the brand accent, which is how two classes came to mean the same thing in
+   two different colours. */
+.nr-banner--caution {
   background-color: color-mix(in srgb, var(--color-caution-fill) 20%, transparent);
   border: 1px solid color-mix(in srgb, var(--color-caution-line) 42%, transparent);
   color: var(--color-caution-text);
-}
-
-.nr-banner--warn {
-  background-color: color-mix(in srgb, var(--color-accent-strong) 16%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-accent) 38%, transparent);
-  color: var(--color-accent-text);
 }
 
 .nr-banner--info {
@@ -1236,9 +1237,16 @@ body {
   color: var(--color-text-dim);
 }
 
+/* Caution, not the brand.
+
+   The same argument as .nr-tag--note above, one family over. This wore the
+   accent, so "shows key material", "cannot be verified" and "not hand-checkable"
+   were painted in the colour of the wordmark, the step counter and the primary
+   button. A warning in the brand colour teaches that the brand colour is a
+   warning, and after that the warning is not one. */
 .nr-tag--warn {
-  background-color: color-mix(in srgb, var(--color-accent-strong) 26%, transparent);
-  color: var(--color-accent-text);
+  background-color: color-mix(in srgb, var(--color-caution-fill) 30%, transparent);
+  color: var(--color-caution-text);
 }
 
 /* ==========================================================================

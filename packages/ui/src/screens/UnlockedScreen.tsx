@@ -103,7 +103,7 @@ export function UnlockedScreen(props: UnlockedScreenProps): ReactElement {
       </Info>
 
       {usedPassphrase && (
-        <div data-must-see className="nr-banner nr-banner--testnet" data-testid="unlocked-passphrase-warning">
+        <div data-must-see className="nr-banner nr-banner--caution" data-testid="unlocked-passphrase-warning">
           <strong>This wallet uses a passphrase</strong>
           <span>
             A wrong passphrase does not produce an error. It opens a different, valid, empty wallet,
@@ -115,7 +115,7 @@ export function UnlockedScreen(props: UnlockedScreenProps): ReactElement {
       )}
 
       {!labelVerified && (
-        <div className="nr-banner nr-banner--testnet" data-testid="unlocked-unverified-name">
+        <div className="nr-banner nr-banner--caution" data-testid="unlocked-unverified-name">
           <strong>This wallet has no confirmed name</strong>
           <span>
             It was made before this device could name wallets, so the only name it has is one stored
@@ -126,7 +126,7 @@ export function UnlockedScreen(props: UnlockedScreenProps): ReactElement {
       )}
 
       {hintCorrected && (
-        <div className="nr-banner nr-banner--testnet" data-testid="unlocked-hint-corrected">
+        <div className="nr-banner nr-banner--caution" data-testid="unlocked-hint-corrected">
           <strong>The picker was showing something else</strong>
           <span>
             The name or network on the list did not match what this wallet actually contains. The

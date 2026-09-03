@@ -140,3 +140,89 @@ if (dynamic.size > 0) {
 if (unused.length > 0) {
   console.log(`  ${String(unused.length)} defined but unused: ${unused.join(', ')}`)
 }
+
+/**
+ * A class that names a meaning draws that meaning's colour.
+ *
+ * WHAT THIS IS FOR. This device has four colour families and each one means
+ * something: the accent is the brand and navigation, caution is "look at this",
+ * danger is "the device refuses", verify is "this was checked and passed". The
+ * whole interface rests on a person reading those at a glance, on a 7 inch
+ * panel, in whatever light the room has.
+ *
+ * Three separate times a class named for one meaning was painted in another
+ * family's colour, and every one of them was found by a person looking at a
+ * screenshot:
+ *
+ *   - .nr-tag--note wore the verify green, so the colour of the lock screen
+ *     saying every check passed was also the colour of "opens a wallet first".
+ *     Fixed by hand; the comment explaining it is still in the sheet.
+ *   - --color-caution-* held the danger values exactly, so a refusal and the
+ *     permanent testnet strip were the same red.
+ *   - .nr-tag--warn wore the brand accent, so "shows key material", "cannot be
+ *     verified" and "not hand-checkable" were drawn in the colour of the
+ *     wordmark and the primary button.
+ *
+ * None of it is visible to a contrast check, because every one of those colours
+ * is perfectly legible. It is legible and it is the wrong colour.
+ *
+ * A neutral rule is fine and common: .nr-tag--note is deliberately grey now.
+ * What fails is borrowing a DIFFERENT family's tokens, which is the specific
+ * mistake all three were.
+ */
+const FAMILY_OF = {
+  warn: 'caution',
+  caution: 'caution',
+  testnet: 'caution',
+  test: 'caution',
+  danger: 'danger',
+  fail: 'danger',
+  failed: 'danger',
+  ok: 'verify',
+  verified: 'verify',
+}
+const FAMILIES = ['accent', 'caution', 'danger', 'verify']
+
+const wrongFamily = []
+/* Comments stripped first. Without this the text before a rule is part of what
+   the selector pattern matches, and .nr-idlechip was reported as naming caution
+   because the comment above it says "Danger colours rather than caution". The
+   comment was explaining the exact decision the check exists to enforce. */
+const rules = css.replace(/\/\*[\s\S]*?\*\//g, ' ')
+// One rule at a time: a selector list, then the declarations it applies.
+for (const rule of rules.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+  const selector = rule[1].trim()
+  const body = rule[2]
+  // The meaning has to be a whole name segment, so `.nr-kb__key` is not "ok"
+  // and `.nr-banner__dismiss` is not "miss".
+  const named = new Set()
+  for (const part of selector.matchAll(/[.#]?[\w-]+/g)) {
+    for (const segment of part[0].split(/--|__|[.#]/)) {
+      const family = FAMILY_OF[segment]
+      if (family !== undefined) named.add(family)
+    }
+  }
+  if (named.size !== 1) continue
+  const want = [...named][0]
+  const borrowed = FAMILIES.filter(
+    (family) => family !== want && body.includes(`--color-${family}-`)
+  )
+  if (borrowed.length === 0) continue
+  wrongFamily.push({ selector, want, borrowed })
+}
+
+if (wrongFamily.length > 0) {
+  console.error('\ncheck-ui-classes: a class names one meaning and is painted in another\n')
+  for (const { selector, want, borrowed } of wrongFamily) {
+    console.error(`  ${selector}`)
+    console.error(`      names ${want}, draws from ${borrowed.join(' and ')}`)
+  }
+  console.error(
+    '\n  Each family means something and somebody has to read them apart at a\n' +
+      '  glance. Borrowing another one spends its meaning: a warning in the brand\n' +
+      '  colour teaches that the brand colour is a warning, and then the warning is\n' +
+      '  not one. Use the matching --color-<family>-* tokens, or a neutral surface\n' +
+      '  if the row is genuinely neither, as .nr-tag--note does.\n'
+  )
+  process.exit(1)
+}

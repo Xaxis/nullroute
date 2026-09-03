@@ -363,7 +363,7 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
                   the banner above, which is about the choice just made and is
                   therefore the one being read. */}
               {!(source === null && quorums.length > 0) && (
-              <div data-must-see className="nr-banner nr-banner--testnet" data-testid="receive-warning">
+              <div data-must-see className="nr-banner nr-banner--caution" data-testid="receive-warning">
                 <strong>Read it from this screen, not from the one you paste it into</strong>
                 {/* TWO LINES, NOT FOUR, AND NONE WHEN SOMETHING BEATS IT.
 

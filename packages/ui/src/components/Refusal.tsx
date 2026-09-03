@@ -63,7 +63,7 @@ export function Refusal(props: RefusalProps): ReactElement {
     <div
       ref={ref}
       data-must-see
-      className={`nr-banner nr-banner--${tone === 'danger' ? 'danger' : 'testnet'}`}
+      className={`nr-banner nr-banner--${tone === 'danger' ? 'danger' : 'caution'}`}
       data-testid={testId}
     >
       <strong>{title}</strong>

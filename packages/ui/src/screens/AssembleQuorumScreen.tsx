@@ -187,7 +187,7 @@ export function AssembleQuorumScreen(props: AssembleQuorumScreenProps): ReactEle
           </div>
         </details>
 
-        <div className="nr-banner nr-banner--testnet" data-testid="assemble-not-registered">
+        <div className="nr-banner nr-banner--caution" data-testid="assemble-not-registered">
           <strong>Nothing is registered yet</strong>
           <span>
             This built a descriptor. Checking it is what verifies this device holds a key in it,

@@ -76,7 +76,7 @@ export function FinishScreen(props: FinishScreenProps): ReactElement {
         <>
           {/* A banner rather than a note. The whole point is that somebody is
               about to walk away believing this is finished. */}
-          <div className="nr-banner nr-banner--testnet" data-testid="finish-outstanding">
+          <div className="nr-banner nr-banner--caution" data-testid="finish-outstanding">
             <strong>Still to do</strong>
             <span>
               {outstanding.length === 1

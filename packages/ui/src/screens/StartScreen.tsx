@@ -123,7 +123,7 @@ export function StartScreen(props: StartScreenProps): ReactElement {
             is the first mention of "this is not finished yet" has already let
             somebody believe it was. */}
         {chosen.thenWhat.length > 0 && (
-          <div className="nr-banner nr-banner--testnet" data-testid="start-then">
+          <div className="nr-banner nr-banner--caution" data-testid="start-then">
             <strong>What this does not finish</strong>
             <span>{chosen.thenWhat.join(' ')}</span>
           </div>

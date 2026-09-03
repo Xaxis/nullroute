@@ -276,7 +276,7 @@ export function SeedScreen(props: SeedScreenProps): ReactElement {
             read was "do not photograph this screen and do not type the". A
             warning that does not fit is a warning that gets truncated at
             whatever word the panel ends on. data-must-see is what measures it. */}
-        <div className="nr-banner nr-banner--testnet" data-must-see data-testid="seed-paper-only">
+        <div className="nr-banner nr-banner--caution" data-must-see data-testid="seed-paper-only">
           <strong>Paper only</strong>
           <span>
             Do not photograph these words or type them anywhere. Anyone holding them has your

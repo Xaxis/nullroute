@@ -301,7 +301,7 @@ export function ScanScreen(props: ScanScreenProps): ReactElement {
       )}
 
       {status === 'failed' && (
-        <div className="nr-banner nr-banner--testnet" data-testid="scan-failed">
+        <div className="nr-banner nr-banner--caution" data-testid="scan-failed">
           <strong>No camera</strong>
           <span>{error ?? 'The camera could not be opened.'}</span>
         </div>
