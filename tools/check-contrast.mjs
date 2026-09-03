@@ -150,9 +150,46 @@ async function main() {
   )
   if (screens.length === 0) throw new Error('the gallery listed no screens, so this check is blind')
 
+  /*
+   * Severity is a colour, and two severities may not be the same colour.
+   *
+   * WHAT WENT WRONG. --color-caution-* held exactly the values of
+   * --color-danger-*, in both themes, down to the hex. So a device that would
+   * not sign and a device saying "this is signet, the coins are worth nothing"
+   * were drawn identically: same border, same text, near-identical fill. The
+   * stylesheet distinguishes them in a comment ("Blocking. The device will not
+   * sign, as opposed to merely disliking it") and the panel did not.
+   *
+   * It is not a missing distinction so much as an inverted one. The testnet
+   * strip is PERMANENT on any device not on mainnet, so every screen spent its
+   * time teaching somebody that this particular red means nothing, and then a
+   * refusal arrived wearing it.
+   *
+   * Nothing else here could see it. Every contrast run passed, because both
+   * colours are perfectly legible; they are legible and they are the same.
+   *
+   * Checked as resolved values rather than by reading the file, so an alias
+   * pointing one set at the other still fails.
+   */
+  const SEVERITY = `(() => {
+    const style = getComputedStyle(document.documentElement)
+    const read = (name) => style.getPropertyValue(name).trim()
+    const roles = ['text', 'line', 'fill', 'deep']
+    const same = roles.filter((role) =>
+      read('--color-caution-' + role) !== '' &&
+      read('--color-caution-' + role) === read('--color-danger-' + role))
+    return JSON.stringify({
+      same: same,
+      caution: roles.map((r) => read('--color-caution-' + r)),
+      danger: roles.map((r) => read('--color-danger-' + r)),
+    })
+  })()`
+
   /* Worst case per (theme, class), because one class failing on nine screens is
      one thing to fix and nine lines of output is a wall. */
   const worst = new Map()
+  /** Themes whose caution and danger palettes are the same colour. */
+  const collapsed = []
   let runs = 0
   for (const theme of ['dark', 'light']) {
     for (const { name, reach } of screens) {
@@ -173,6 +210,13 @@ async function main() {
         await sleep(260)
       }
       const rows = JSON.parse((await cdp(page, 'Runtime.evaluate', { expression: PROBE, returnByValue: true }, st)).result.value)
+      if (!collapsed.some((c) => c.theme === theme)) {
+        const sev = JSON.parse(
+          (await cdp(page, 'Runtime.evaluate', { expression: SEVERITY, returnByValue: true }, st))
+            .result.value
+        )
+        if (sev.same.length > 0) collapsed.push({ theme, ...sev })
+      }
       runs += rows.length
       for (const r of rows) {
         const need = r.large ? AA_LARGE : AA_NORMAL
@@ -185,6 +229,23 @@ async function main() {
 
   reap(chrome)
   server.close()
+
+  if (collapsed.length > 0) {
+    console.error(`\ncheck-contrast: caution and danger are the same colour:\n`)
+    for (const c of collapsed) {
+      console.error(`    ${c.theme.padEnd(5)} identical at: ${c.same.join(', ')}`)
+      console.error(`          caution ${c.caution.join(' ')}`)
+      console.error(`          danger  ${c.danger.join(' ')}`)
+    }
+    console.error(
+      `\n  This device draws three severities and has to draw them differently: a\n` +
+        `  permanent strip saying the coins are worthless, an advisory it will sign\n` +
+        `  despite, and a refusal. The strip is on every screen of a device that is not\n` +
+        `  on mainnet, so sharing its colour with a refusal is not a missing distinction,\n` +
+        `  it is training somebody to ignore the one that matters.\n`
+    )
+    finish(1)
+  }
 
   const failing = [...worst.values()].sort((a, b) => a.ratio - b.ratio)
   if (failing.length > 0) {

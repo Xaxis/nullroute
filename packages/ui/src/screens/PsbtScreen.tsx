@@ -223,6 +223,11 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
   const [error, setError] = useState<string | null>(null)
 
   const blocking = review?.warnings.filter((w) => w.blocking) ?? []
+  /* Split, because the two go in different places now. A blocking warning is
+     this device refusing and belongs above the evidence; an advisory one is
+     something to look at while reading it, and belongs beside what it is
+     about. */
+  const advisory = review?.warnings.filter((w) => !w.blocking) ?? []
 
   /**
    * Whether signing is allowed, decided here rather than taken on trust.
@@ -584,6 +589,89 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
 
       {review !== null && (
         <>
+          {/* THE VERDICT ABOVE THE EVIDENCE.
+
+              This device says "Will not sign" here, and it said it last: under
+              the quorum card, the outputs table, the fee breakdown and the
+              inputs card, 819px past the fold on a 480px panel. The Sign button
+              in the bar was greyed out and the sentence explaining why was two
+              and a half screens down, along with the tick that ungates it. So
+              the screen a person actually saw refused and gave no reason.
+
+              MachineEntropyScreen already carries this exact argument, in the
+              same words, about 223px. This is the same shape on the screen that
+              authorises spending money, and moving one did not move the other.
+
+              The evidence still matters and is still here: it is what somebody
+              judges the verdict against, and it can be scrolled to. Whether
+              this device is going to sign cannot. */}
+          {review.ownedInputs === 0 && (
+            <div
+              data-must-see
+              className="nr-banner nr-banner--danger"
+              data-testid="psbt-nothing-to-sign"
+            >
+              <strong>Nothing to sign</strong>
+              <span>
+                None of these inputs belong to this wallet. Either this transaction is for a
+                different device, or the coordinator built it against the wrong descriptor.
+              </span>
+            </div>
+          )}
+
+          {blocking.length > 0 && (
+            <div data-must-see data-testid="psbt-blocking">
+              {blocking.map((w) => (
+                <div key={w.kind + w.message} className="nr-banner nr-banner--danger">
+                  <strong>Will not sign</strong>
+                  <span>{w.message}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ADVISORY WARNINGS ABOVE THE EVIDENCE TOO, and marked.
+
+              These are the ones the device will sign despite, which makes their
+              placement worse rather than better: a blocking warning at least
+              greys the button out. This fixture's reads "Output 2 has no
+              address this device can render, and nothing here can tell you
+              where that money goes", and it sat 900px below the outputs table
+              it is about. A caveat nobody reads on a transaction the device
+              will sign is the combination that costs money. */}
+          {advisory.length > 0 && (
+            <div data-must-see data-testid="psbt-warnings">
+              {advisory.map((w) => (
+                <div key={w.kind + w.message} className="nr-banner nr-banner--testnet">
+                  <strong>Check this</strong>
+                  <span>{w.message}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* The tick beside the reason for it, which is the same rule the seed
+              and machine screens follow: a gate that is 800px from the sentence
+              it overrides is a gate somebody ticks without having read it. */}
+          {blocking.length > 0 && review.ownedInputs > 0 && (
+            <div className="nr-card nr-card--tight">
+              <label className="nr-check">
+                <input
+                  type="checkbox"
+                  checked={override}
+                  onChange={(e) => {
+                    setOverride(e.target.checked)
+                  }}
+                  data-testid="psbt-override"
+                />
+                <span className="nr-hint">
+                  Sign anyway, this once. Applies to this signature only and is not remembered. Do
+                  not tick this because a coordinator told you to.
+                </span>
+              </label>
+            </div>
+          )}
+
           {/* Where this device sits in the quorum, BEFORE the amounts. Signing a
               2-of-3 as the first cosigner and as the last are different acts:
               one produces something that has to travel, the other produces
@@ -711,48 +799,6 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
             </div>
           </div>
 
-          {review.warnings.length > 0 && (
-            <div data-testid="psbt-warnings">
-              {review.warnings.map((w) => (
-                <div
-                  key={w.kind + w.message}
-                  className={`nr-banner ${w.blocking ? 'nr-banner--danger' : 'nr-banner--testnet'}`}
-                >
-                  <strong>{w.blocking ? 'Will not sign' : 'Check this'}</strong>
-                  <span>{w.message}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {review.ownedInputs === 0 && (
-            <div className="nr-banner nr-banner--danger">
-              <strong>Nothing to sign</strong>
-              <span>
-                None of these inputs belong to this wallet. Either this transaction is for a
-                different device, or the coordinator built it against the wrong descriptor.
-              </span>
-            </div>
-          )}
-
-          {blocking.length > 0 && review.ownedInputs > 0 && (
-            <div className="nr-card nr-card--tight">
-              <label className="nr-check">
-                <input
-                  type="checkbox"
-                  checked={override}
-                  onChange={(e) => {
-                    setOverride(e.target.checked)
-                  }}
-                  data-testid="psbt-override"
-                />
-                <span className="nr-hint">
-                  Sign anyway, this once. Applies to this signature only and is not remembered. Do
-                  not tick this because a coordinator told you to.
-                </span>
-              </label>
-            </div>
-          )}
         </>
       )}
     </Screen>

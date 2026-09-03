@@ -696,6 +696,30 @@ const SCREENS: Record<string, () => React.ReactElement> = {
    * An empty MediaStream, because the harness has no camera and the screen only
    * needs something to hand to the video element.
    */
+  /*
+   * A transaction built against somebody else's descriptor.
+   *
+   * The coordinator's usual mistake, and the one that looks most like working:
+   * a well-formed PSBT arrives, the review renders in full, and not one input
+   * belongs to this wallet. The screen has to say so before the amounts, since
+   * a person reading a plausible outputs table has no way to tell.
+   *
+   * No blocking warning here on purpose, so this measures the refusal on its
+   * own rather than underneath another one.
+   */
+  'psbt-not-ours': () => (
+    <PsbtScreen
+      identity={DEVICE}
+      nav={MENU}
+      initialPsbt="cHNidP8BAHUCAAAAAQ=="
+      onScan={noop}
+      onReview={async () =>
+        Promise.resolve({ ...REVIEW, signable: true, ownedInputs: 0, warnings: [] })
+      }
+      onSign={never}
+      onBack={noop}
+    />
+  ),
   'scan-failed': () => (
     <ScanScreen
       identity={DEVICE}
@@ -1314,6 +1338,7 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   // banner the screen draws on a failed call is on screen and measurable.
   'psbt-failed': [['psbt-review']],
   'multisig-failed': [['multisig-review']],
+  'psbt-not-ours': [['psbt-review']],
   'assemble-failed': [['assemble-build']],
   // Nothing to tap. The camera opens, plays, and pulls its first frame through
   // the decoder on a 200ms timer, so this state arrives about two seconds after

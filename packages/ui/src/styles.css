@@ -38,10 +38,24 @@
   --color-signal-400: #f39c5c;
   --color-signal-300: #f7b884;
 
-  --color-caution-700: #8e2f2c;
-  --color-caution-600: #b23c38;
-  --color-caution-500: #d9534f;
-  --color-caution-300: #f0918e;
+  /* Yellow, and NOT the red below it.
+     These four held exactly the values of the danger ramp, so a device that
+     would not sign and a device saying "this is signet, the coins are worth
+     nothing" were drawn in the same colour, with the same border and the same
+     text. The stylesheet's own comment distinguishes them ("Blocking. The
+     device will not sign, as opposed to merely disliking it") and the screen
+     did not.
+
+     That is worse than a missing distinction. The testnet strip is PERMANENT on
+     any device not on mainnet, so the interface spent every screen teaching
+     somebody that this red means nothing, and then delivered a refusal in it.
+
+     Yellow rather than the accent's orange (#e8833a), which is close enough to
+     amber to be read as the brand rather than as a warning. */
+  --color-caution-700: #5c4914;
+  --color-caution-600: #8f7220;
+  --color-caution-500: #cfa63a;
+  --color-caution-300: #e8c766;
 
   --color-verify-600: #3d8a71;
   --color-verify-500: #4fa88a;
@@ -166,13 +180,14 @@
      to be legible as a state without competing with a primary button. */
   --color-accent-soft: #3b2413;
 
-  --color-caution-text: #f0918e;
-  --color-caution-line: #d9534f;
-  --color-caution-fill: #b23c38;
-  --color-caution-deep: #8e2f2c;
+  --color-caution-text: #e8c766;
+  --color-caution-line: #cfa63a;
+  --color-caution-fill: #8f7220;
+  --color-caution-deep: #5c4914;
 
   --color-danger-text: #f0918e;
   --color-danger-line: #d9534f;
+  --color-danger-fill: #b23c38;
   --color-danger-deep: #8e2f2c;
 
   --color-verify-text: #86c9b2;
@@ -241,13 +256,14 @@
   --color-accent-text: #8a4409;
   --color-accent-soft: #f7e3d1;
 
-  --color-caution-text: #8c2420;
-  --color-caution-line: #b83c37;
-  --color-caution-fill: #d9534f;
-  --color-caution-deep: #f3d5d3;
+  --color-caution-text: #6b5309;
+  --color-caution-line: #a8871f;
+  --color-caution-fill: #d9b23c;
+  --color-caution-deep: #f5ead0;
 
   --color-danger-text: #8c2420;
   --color-danger-line: #b83c37;
+  --color-danger-fill: #d9534f;
   --color-danger-deep: #f3d5d3;
 
   --color-verify-text: #1d5a46;
@@ -649,11 +665,11 @@ body {
 /* Irreversible. Never the default focus, and visually distinct from primary. */
 .nr-button--danger {
   background-color: transparent;
-  border-color: var(--color-caution-fill);
-  color: var(--color-caution-text);
+  border-color: var(--color-danger-fill);
+  color: var(--color-danger-text);
 }
 .nr-button--danger:hover:not(:disabled) {
-  background-color: color-mix(in srgb, var(--color-caution-fill) 20%, transparent);
+  background-color: color-mix(in srgb, var(--color-danger-fill) 20%, transparent);
 }
 
 .nr-button:disabled {
@@ -851,7 +867,7 @@ body {
   color: var(--color-verify-text);
 }
 .nr-status--fail {
-  color: var(--color-caution-text);
+  color: var(--color-danger-text);
   font-weight: 600;
 }
 
@@ -1292,9 +1308,9 @@ body {
 
 /* Blocking. The device will not sign, as opposed to merely disliking it. */
 .nr-banner--danger {
-  background-color: color-mix(in srgb, var(--color-caution-deep) 26%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-caution-line) 55%, transparent);
-  color: var(--color-caution-text);
+  background-color: color-mix(in srgb, var(--color-danger-deep) 26%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-danger-line) 55%, transparent);
+  color: var(--color-danger-text);
 }
 
 /* Re-derived from the seed and confirmed. Never applied to a claim. */
