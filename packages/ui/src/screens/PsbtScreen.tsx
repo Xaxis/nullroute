@@ -206,6 +206,22 @@ export interface PsbtScreenProps {
   readonly steps?: ReactElement | null
   /** Who this device is and which wallet it has open. See `Identity`. */
   readonly identity?: ReactNode
+  /**
+   * The header identity WITHOUT the wallet switcher, for the signed screen.
+   *
+   * NavMenu's own rule says it will not offer an exit where leaving destroys
+   * something that cannot be made again, names "a signed transaction, which
+   * exists only on the screen that made it", and says those screens pass no
+   * menu and no switchable wallet name because that is the same exit in
+   * different clothes. The seed screen honours it. This one did not: it was
+   * handed the menu and the switchable chip unconditionally and forwarded both
+   * into the signed view, so two taps threw away a signature that only exists
+   * here.
+   *
+   * Falls back to `identity` when absent, so a caller that has not thought
+   * about it gets the old behaviour rather than a header with nothing in it.
+   */
+  readonly identityFixed?: ReactNode
   readonly banner?: ReactElement | null
   /**
    * The navigation rail.
@@ -219,7 +235,18 @@ export interface PsbtScreenProps {
 }
 
 export function PsbtScreen(props: PsbtScreenProps): ReactElement {
-  const { initialPsbt, onScan, onReview, onSign, onBack, identity, steps, banner, nav } = props
+  const {
+    initialPsbt,
+    onScan,
+    onReview,
+    onSign,
+    onBack,
+    identity,
+    identityFixed,
+    steps,
+    banner,
+    nav,
+  } = props
 
   const [psbt, setPsbt] = useState(initialPsbt ?? '')
   const [review, setReview] = useState<PsbtReviewView | null>(null)
@@ -308,8 +335,14 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
             : 'Carry this back to the machine that built it.'
         }
         banner={banner}
-        nav={nav}
-        identity={identity}
+        /* NO MENU AND NO SWITCHABLE NAME, which is NavMenu's own rule for a
+           screen holding something that cannot be made again. This forwarded
+           both, so Menu > Wallet, or a tap on the wallet name two inches away,
+           discarded a signature that exists nowhere else. The seed screen has
+           always done this; this screen is named in the same sentence of the
+           same comment and did not. */
+        nav={null}
+        identity={identityFixed ?? identity}
         steps={steps}
         testId="psbt-signed"
         actions={

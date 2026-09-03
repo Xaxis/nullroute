@@ -52,7 +52,23 @@ export interface AssembleQuorumScreenProps {
   readonly onAssemble: (threshold: number, keys: readonly string[]) => Promise<AssembledView>
   /** Hands the finished descriptor to the review path. */
   readonly onReview: (descriptor: string) => void
-  readonly onScan?: (() => void) | undefined
+  /**
+   * Leaves for the camera, handing back what has been collected so far.
+   *
+   * The argument is not decoration. This screen used to call a bare `onScan`,
+   * and the app answered by replacing the whole screen with the scanner, so
+   * every key already gathered went with it: the list is local state and the
+   * remount reset it to two empty slots. A quorum assembled entirely by camera
+   * was therefore impossible, on the screen whose whole purpose is three
+   * devices in a room agreeing on a wallet without a coordinator. The caller
+   * puts these back through `initialKeys` and `initialThreshold`.
+   */
+  readonly onScan?:
+    ((collected: { keys: readonly string[]; threshold: number }) => void) | undefined
+  /** Keys gathered before a trip to the camera, so the trip does not lose them. */
+  readonly initialKeys?: readonly string[] | undefined
+  /** The threshold chosen before that same trip. */
+  readonly initialThreshold?: number | undefined
   /** Text the camera already read, dropped into the next empty slot. */
   readonly scanned?: string | undefined
   readonly onBack: () => void
@@ -71,12 +87,26 @@ export interface AssembleQuorumScreenProps {
 const MAX_COSIGNERS = 20
 
 export function AssembleQuorumScreen(props: AssembleQuorumScreenProps): ReactElement {
-  const { onOurKey, onAssemble, onReview, onScan, scanned, onBack, identity, banner, nav } = props
+  const {
+    onOurKey,
+    onAssemble,
+    onReview,
+    onScan,
+    scanned,
+    initialKeys,
+    initialThreshold,
+    onBack,
+    identity,
+    banner,
+    nav,
+  } = props
 
   /** Slot zero is this device. The rest are the other cosigners. */
-  const [keys, setKeys] = useState<string[]>(['', ''])
+  const [keys, setKeys] = useState<string[]>(
+    initialKeys === undefined ? ['', ''] : [...initialKeys]
+  )
   const [ours, setOurs] = useState<string | null>(null)
-  const [threshold, setThreshold] = useState(2)
+  const [threshold, setThreshold] = useState(initialThreshold ?? 2)
   const [built, setBuilt] = useState<AssembledView | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -314,7 +344,12 @@ export function AssembleQuorumScreen(props: AssembleQuorumScreenProps): ReactEle
 
       <div className="nr-row">
         {onScan !== undefined && (
-          <Button onClick={onScan} testId="assemble-scan">
+          <Button
+            onClick={() => {
+              onScan({ keys, threshold })
+            }}
+            testId="assemble-scan"
+          >
             Scan a key
           </Button>
         )}

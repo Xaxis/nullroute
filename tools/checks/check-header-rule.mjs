@@ -15,7 +15,7 @@
  * tapped. This is a text check on App.tsx rather than a type, because both
  * props are ReactNode and a type cannot tell one node from another.
  */
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -77,6 +77,36 @@ if (checked === 0) {
   process.exit(1)
 }
 
+/*
+ * The same rule for a screen that withholds the menu in ONE OF ITS STATES.
+ *
+ * Everything above reads App.tsx, where a screen either gets a nav or does
+ * not. That misses the harder case: PsbtScreen takes a menu because reviewing
+ * a transaction is a screen you may leave, and withholds it after signing,
+ * because the signature exists nowhere else. The withholding is a `nav={null}`
+ * inside the screen, which App.tsx cannot show and this check could not see.
+ *
+ * So a screen containing `nav={null}` has to be handed an identityFixed too,
+ * or it refuses the menu while offering the wallet picker two inches away,
+ * which is the whole hole this file exists to close.
+ */
+const SCREENS = join(ROOT, 'packages/ui/src/screens')
+let internal = 0
+for (const file of readdirSync(SCREENS)) {
+  if (!file.endsWith('.tsx')) continue
+  const body = readFileSync(join(SCREENS, file), 'utf8')
+  if (!/\bnav=\{null\}/.test(body)) continue
+  internal += 1
+  const name = file.replace(/\.tsx$/, '')
+  const passed = elements(source).find((el) => el.name === name)
+  if (passed === undefined) continue
+  if (/\bidentityFixed=/.test(passed.body)) continue
+  problems.push(
+    `${name} withholds the menu in one of its own states (nav={null}) and App.tsx ` +
+      `passes it no identityFixed, so that state offers the wallet picker instead.`
+  )
+}
+
 if (problems.length > 0) {
   console.error('check-header-rule: a screen refuses an exit and offers the same exit beside it.\n')
   for (const p of problems) console.error(`  ${p}`)
@@ -90,6 +120,6 @@ if (problems.length > 0) {
 }
 
 console.log(
-  `check-header-rule: ${String(checked)} screens, ${String(gates)} without a menu, ` +
-    'none of them switchable'
+  `check-header-rule: ${String(checked)} screens, ${String(gates)} without a menu and ` +
+    `${String(internal)} withholding it in one of their own states, none of them switchable`
 )

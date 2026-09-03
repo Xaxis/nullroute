@@ -156,6 +156,15 @@ type Stage =
   | {
       readonly at: 'scan'
       readonly forStage: 'psbt' | 'multisig' | 'backup' | 'labels' | 'assemble' | 'verify-message'
+      /**
+       * Work the screen being replaced was holding, handed back on the way out.
+       *
+       * Only the quorum assembler needs it so far, because it is the only
+       * screen where a scan is one step of several rather than the whole
+       * input. Cancelling has to return it too: backing out of the camera is
+       * not a reason to lose four cosigners.
+       */
+      readonly collected?: { readonly keys: readonly string[]; readonly threshold: number }
     }
   /** A wallet exists on disk and the passphrase has not been given yet. */
   | { readonly at: 'unlock' }
@@ -163,7 +172,22 @@ type Stage =
   | { readonly at: 'protect' }
   | { readonly at: 'multisig'; readonly prefill?: string }
   /** Building a quorum on the device, with no coordinator. */
-  | { readonly at: 'assemble'; readonly prefill?: string }
+  /*
+   * Assembling a quorum, INCLUDING what has been collected so far.
+   *
+   * The keys and threshold live here rather than only in the screen because
+   * the trip to the camera unmounts the screen. Without them, every scan
+   * emptied the list and a quorum could never hold more than this device plus
+   * one scanned key, which made building a 2-of-3 by camera impossible: the
+   * exact flow the screen exists for. {at:'quorum'} already carries its
+   * QuorumView across the same boundary for the same reason.
+   */
+  | {
+      readonly at: 'assemble'
+      readonly prefill?: string
+      readonly keys?: readonly string[]
+      readonly threshold?: number
+    }
   /** Proving control of an address by signing a message with it. */
   | { readonly at: 'message' }
   | { readonly at: 'more' }
@@ -1381,8 +1405,14 @@ export function App() {
         identity={identity}
         onOurKey={ourMultisigKey}
         scanned={stage.prefill ?? undefined}
-        onScan={() => {
-          setStage({ at: 'scan', forStage: 'assemble' })
+        initialKeys={stage.keys ?? undefined}
+        initialThreshold={stage.threshold ?? undefined}
+        onScan={(collected) => {
+          setStage({
+            at: 'scan',
+            forStage: 'assemble',
+            collected: { keys: collected.keys, threshold: collected.threshold },
+          })
         }}
         onAssemble={async (threshold: number, keys: readonly string[]) =>
           call<AssembledView>(transport, 'multisig.assemble', { threshold, keys })
@@ -1510,6 +1540,9 @@ export function App() {
         nav={menu('sign')}
         banner={banner}
         identity={identity}
+        // Withheld in the signed view, where leaving destroys the signature.
+        // See PsbtScreen's identityFixed and NavMenu's rule.
+        identityFixed={identityFixed}
         steps={stepsFor('psbt')}
         initialPsbt={stage.prefill ?? ''}
         onScan={() => {
@@ -1927,7 +1960,17 @@ export function App() {
         title={SCANNING[stage.forStage].title}
         hint={SCANNING[stage.forStage].hint}
         onCancel={() => {
-          setStage({ at: stage.forStage })
+          // Carrying the work back. Cancelling the camera is a decision about
+          // the camera, not about the four cosigners already collected.
+          setStage(
+            stage.collected === undefined
+              ? { at: stage.forStage }
+              : {
+                  at: stage.forStage,
+                  keys: stage.collected.keys,
+                  threshold: stage.collected.threshold,
+                }
+          )
         }}
         onResult={(result: ScanResult) => {
           // Raw bytes come out of a BBQr sequence, text out of a single code.
@@ -1943,7 +1986,16 @@ export function App() {
               : stage.forStage === 'psbt'
                 ? toBase64(result.data)
                 : new TextDecoder().decode(result.data).trim()
-          setStage({ at: stage.forStage, prefill: text })
+          setStage(
+            stage.collected === undefined
+              ? { at: stage.forStage, prefill: text }
+              : {
+                  at: stage.forStage,
+                  prefill: text,
+                  keys: stage.collected.keys,
+                  threshold: stage.collected.threshold,
+                }
+          )
         }}
       />
     )

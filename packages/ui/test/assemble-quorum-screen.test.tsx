@@ -157,6 +157,62 @@ describe('AssembleQuorumScreen', () => {
     })
   })
 
+  /*
+   * TWO scans, which is what building a 2-of-3 by camera actually is.
+   *
+   * The test above passes `scanned` at mount and then TYPES the third key, so
+   * it never exercised a second trip to the camera. That trip unmounts this
+   * screen, and the keys were local state, so every scan emptied the list: a
+   * quorum could never hold more than this device plus one scanned key, and
+   * the flow the screen exists for was impossible.
+   *
+   * The screen hands what it has to onScan, and takes it back through
+   * initialKeys and initialThreshold. Here that round trip is performed by
+   * hand, the way App does it.
+   */
+  it('keeps-the-keys-it-has-collected-across-a-scan', async () => {
+    const onScan = vi.fn()
+    setup({ scanned: THEIRS, onScan })
+    await waitFor(() => {
+      expect(screen.getByTestId<HTMLTextAreaElement>('assemble-key-1').value).toBe(THEIRS)
+    })
+
+    // Room for a third, then off to the camera for it.
+    fireEvent.click(screen.getByTestId('assemble-add-slot'))
+    fireEvent.click(screen.getByTestId('assemble-scan'))
+
+    // What it handed over is what it was holding, not an empty list. The
+    // threshold is still 2: raising it is correctly refused while the third
+    // slot is empty, which is the constraint being carried across as well.
+    expect(onScan).toHaveBeenCalledTimes(1)
+    const collected = onScan.mock.calls[0]?.[0] as { keys: string[]; threshold: number }
+    expect(collected.keys[1]).toBe(THEIRS)
+    expect(collected.keys).toHaveLength(3)
+    expect(collected.threshold).toBe(2)
+
+    // Coming back from the camera with a third key, the way App remounts it.
+    cleanup()
+    const third = '[11223344/48h/0h/0h/2h]xpub6DrJ8dVwHt9DDdyKKmSXwiRj/<0;1>/*'
+    const { onAssemble } = setup({
+      scanned: third,
+      initialKeys: collected.keys,
+      initialThreshold: collected.threshold,
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId<HTMLTextAreaElement>('assemble-key-2').value).toBe(third)
+    })
+    // Cosigner two survived, which is the whole point.
+    expect(screen.getByTestId<HTMLTextAreaElement>('assemble-key-1').value).toBe(THEIRS)
+
+    // Now that all three are filled, the threshold can reach three.
+    fireEvent.click(screen.getByTestId('assemble-threshold-up'))
+    fireEvent.click(screen.getByTestId('assemble-build'))
+    await waitFor(() => {
+      expect(onAssemble).toHaveBeenCalledWith(3, [OURS, THEIRS, third])
+    })
+  })
+
   it('reports-a-refused-assembly', async () => {
     const onAssemble = vi
       .fn()
