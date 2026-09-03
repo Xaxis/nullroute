@@ -159,8 +159,8 @@ export function QuorumAddressesScreen(props: QuorumAddressesScreenProps): ReactE
 
           The table scrolls inside itself rather than taking the instruction
           and the branch picker with it. */}
-      <div className="nr-split nr-split--note nr-fill" data-testid="quorum-split">
-        <div className="nr-split__col nr-fill">
+      <div className="nr-split nr-split--note nr-fill nr-scrolls" data-testid="quorum-split">
+        <div className="nr-split__col nr-fill nr-scrolls">
           <table className="nr-table nr-table--dense" data-testid="quorum-rows">
             <thead className="nr-table__stick">
               <tr>

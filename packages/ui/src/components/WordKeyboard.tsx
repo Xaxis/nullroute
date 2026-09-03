@@ -99,7 +99,7 @@ export function WordKeyboard(props: WordKeyboardProps): ReactElement {
 
   return (
     <div className="nr-kb" data-testid={testId}>
-      <div className="nr-kb__entered" data-testid="kb-words">
+      <div className="nr-kb__entered nr-scrolls" data-testid="kb-words">
         {words.map((word, index) => (
           // Position is the identity here: the same word can legitimately
           // appear several times in a mnemonic.

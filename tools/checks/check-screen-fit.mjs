@@ -97,6 +97,42 @@ const SCRIM = `(() => {
    design target. */
 const MIN_SCRIM_DELTA = 12
 
+/**
+ * Scrollers whose affordance the background trick cannot paint, and why.
+ *
+ * `.nr-scrolls` draws the shadow as the scroller's own background, which is
+ * what makes it self-hiding: the `local` layers cover it when the content
+ * reaches an edge, with no scroll listener anywhere. The cost is that an
+ * OPAQUE CHILD over the bottom edge hides it completely, and on this device
+ * most content sits on a card.
+ *
+ * Four scrollers are in that position, measured rather than guessed: the
+ * wallet list's rows, the entered-words box, and two reference regions whose
+ * content is a card. Between them they hide 48, 67, 399 and 491 pixels with
+ * nothing on screen saying so, and the 491 is a descriptor with no cut element
+ * to hint at it, which is the worst of the four.
+ *
+ * TWO THINGS THAT DO NOT WORK, so the next person does not spend the time
+ * again. Applying the class was measured and changed nothing visible. A sticky
+ * `::after` with `animation-timeline: scroll(self block)`, which would paint
+ * over the content and self-hide because a scroll timeline is inactive without
+ * overflow, computes to `opacity: 0` in this Chrome and painted nothing; it
+ * also needed `flex: none` to stop the flex column shrinking it to zero
+ * height, which is worth knowing on its own.
+ *
+ * What is left is a small component that measures its own overflow and renders
+ * a fade, which is a layout change across four screens and is not being made
+ * blind at the end of a long session.
+ *
+ * Listed rather than skipped, so a FIFTH scroller in this position fails.
+ */
+const NO_AFFORDANCE_YET = new Map([
+  ['nr-kb__entered nr-scrolls', 'the entered words sit on their own surface'],
+  ['nr-wlist nr-wlist--scroll nr-scrolls', 'wallet rows are opaque and flush to the clip'],
+  ['nr-fill nr-scrolls', 'the export tab descriptor sits on a card'],
+  ['nr-split nr-split--note nr-fill nr-scrolls', 'the quorum addresses sit on a card'],
+])
+
 const DIM = '\u001b[2m'
 const OFF = '\u001b[0m'
 
@@ -709,6 +745,64 @@ const MUST_SEE = `(() => {
   return JSON.stringify({ problems: problems, drawn: drawn })
 })()`
 
+/**
+ * Anything that scrolls inside the body says so.
+ *
+ * The panel has no mouse, no scrollbar and no hover. `.nr-screen__body` has a
+ * scroll shadow for exactly that reason, and its comment says "a user sees text
+ * that appears to end at the bottom edge and has no reason to swipe". The same
+ * argument applies to every scroller nested inside it, and none of them had
+ * one: the wallet list on a device with three wallets is an 89px box holding
+ * 156px of rows, cut through the middle of the second, with nothing saying a
+ * third exists.
+ *
+ * Reports what actually overflows at 800x480, rather than what the stylesheet
+ * says might, so a container that is only theoretically scrollable is not a
+ * finding.
+ */
+const INNER_SCROLLERS = `(() => {
+  const body = document.querySelector('.nr-screen__body')
+  if (body === null) return JSON.stringify([])
+  const found = []
+  for (const el of body.querySelectorAll('*')) {
+    const style = getComputedStyle(el)
+    if (!/auto|scroll/.test(style.overflowY)) continue
+    if (el.scrollHeight <= el.clientHeight + 1) continue
+    /* Form controls are excluded. A textarea somebody is typing into is a
+       standard control with its own scrolling conventions and a native
+       scrollbar during the gesture, and painting a gradient over one would read
+       as a rendering fault rather than as an affordance. The rule is about
+       regions of the page that look like they end where they are cut. */
+    if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') continue
+    /*
+     * Whether the affordance can actually be SEEN, not whether a class is on
+     * the element.
+     *
+     * The shadow is painted as the scroller's own background, so an opaque
+     * child sitting over the bottom edge hides it completely. That is exactly
+     * what the wallet list does: full-width rows on surface-2, flush to the
+     * clip, so adding the class changed nothing visible. A check that asked
+     * only for the class would have passed on an invisible affordance, which
+     * is the failure this file keeps finding elsewhere.
+     *
+     * Sampled at the bottom edge, where the shadow is: if the top element
+     * there is the scroller itself, its background shows through.
+     */
+    const box = el.getBoundingClientRect()
+    const x = Math.round(box.left + box.width / 2)
+    const y = Math.round(box.bottom - 3)
+    const top = document.elementFromPoint(x, y)
+    const exposed = top === el
+    found.push({
+      cls: el.className,
+      hidden: el.scrollHeight - el.clientHeight,
+      marked: el.classList.contains('nr-scrolls') && exposed,
+      why: el.classList.contains('nr-scrolls') && !exposed ? 'covered' : 'unmarked',
+    })
+  }
+  return JSON.stringify(found)
+})()`
+
 const KEYBOARD = `(() => {
   const bar = document.querySelector('.nr-screen__actions')
   const limit = bar === null ? document.documentElement.clientHeight : bar.getBoundingClientRect().top
@@ -900,6 +994,8 @@ async function main() {
   const below = []
   /** Marked statements this run actually drew, and the state that drew each. */
   const drawn = new Map()
+  /** Inner scrollers with no affordance, by class, with where they were seen. */
+  const unmarkedScrollers = new Map()
 
   /*
    * The affordance those scrolling states depend on, checked once per theme.
@@ -1058,6 +1154,24 @@ async function main() {
       state
     )
     const measured = JSON.parse(result.value)
+    for (const inner of JSON.parse(
+      (
+        await cdp(
+          page,
+          'Runtime.evaluate',
+          { expression: INNER_SCROLLERS, returnByValue: true },
+          state
+        )
+      ).result.value
+    )) {
+      if (inner.marked === true) continue
+      const key = `${String(inner.cls)}`
+      if (NO_AFFORDANCE_YET.has(key)) continue
+      if (!unmarkedScrollers.has(key)) {
+        unmarkedScrollers.set(key, { label, hidden: inner.hidden, why: inner.why })
+      }
+    }
+
     const mustSee = JSON.parse(seen.result.value)
     for (const id of mustSee.drawn) {
       if (!drawn.has(id)) drawn.set(id, label)
@@ -1094,6 +1208,36 @@ async function main() {
    *
    * The fix is a gallery state, not a removed marker.
    */
+  /* Named in the output rather than silent, so the exemption is something a
+     reader trips over rather than something they have to go looking for. */
+  if (unmarkedScrollers.size === 0 && NO_AFFORDANCE_YET.size > 0) {
+    console.log(
+      `${DIM}    ${String(NO_AFFORDANCE_YET.size)} scroller(s) still have no visible ` +
+        `affordance, listed in check-screen-fit.mjs${OFF}`
+    )
+  }
+
+  if (unmarkedScrollers.size > 0) {
+    console.error(
+      `\ncheck-screen-fit: ${String(unmarkedScrollers.size)} scroller(s) with no affordance:\n`
+    )
+    for (const [cls, where] of unmarkedScrollers) {
+      const note = where.why === 'covered' ? ' (marked, but a child paints over it)' : ''
+      console.error(
+        `    ${cls || '(no class)'}  hides ${String(where.hidden)}px${note}  in ${where.label}`
+      )
+    }
+    console.error(
+      `\n  This panel has no mouse, no scrollbar and no hover. .nr-screen__body carries\n` +
+        `  a scroll shadow because, in its own words, "a user sees text that appears to\n` +
+        `  end at the bottom edge and has no reason to swipe". A scroller nested inside\n` +
+        `  it needs the same: the wallet list on a device with three wallets was an 89px\n` +
+        `  box holding 156px of rows, cut through the middle of the second. Add the\n` +
+        `  nr-scrolls class, and set --scroll-ground to whatever it sits on.\n`
+    )
+    failed += 1
+  }
+
   const marked = markedInSource()
   const uncovered = [...marked.keys()].filter((id) => !drawn.has(id)).sort()
   if (uncovered.length > 0) {

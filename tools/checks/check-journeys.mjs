@@ -606,15 +606,32 @@ async function main() {
             break
           }
           const want = words[Number(which[1]) - 1]
+
+          /**
+           * What the word keyboard is showing right now.
+           *
+           * `committed` means the word is in the entered list, which this
+           * keyboard does BY ITSELF as soon as one word is the only match:
+           * "ente" is already "enter", so the fifth keystroke would start a
+           * new word rather than finish this one.
+           */
+          const state = async () =>
+            String(
+              await evaluate(`(() => {
+                const w = document.querySelector('[data-testid="kb-words"]')
+                if (w !== null && (w.textContent || '').includes(${JSON.stringify(want)})) return 'committed'
+                if (document.querySelector('[data-testid="kb-suggest-' + ${JSON.stringify(want)} + '"]') !== null) {
+                  return 'suggested'
+                }
+                const p = document.querySelector('[data-testid="kb-prefix"]')
+                return 'typing:' + (p === null ? '' : (p.textContent || '').trim())
+              })()`)
+            )
+
           for (const letter of want) {
-            const status = await evaluate(`(() => {
-              const w = document.querySelector('[data-testid="kb-words"]')
-              if (w !== null && (w.textContent || '').includes(${JSON.stringify(want)})) return 'committed'
-              return document.querySelector('[data-testid="kb-suggest-' + ${JSON.stringify(want)} + '"]') === null
-                ? 'typing' : 'suggested'
-            })()`)
-            if (status === 'committed') break
-            if (status === 'suggested') {
+            const before = await state()
+            if (before === 'committed') break
+            if (before === 'suggested') {
               await tap(`kb-suggest-${want}`)
               break
             }
@@ -623,16 +640,49 @@ async function main() {
               broke = `word: the key "${letter}" of "${want}" was ${typed}`
               break
             }
-            await sleep(50)
+            /*
+             * WAITED FOR, not slept through. This was a flat 50ms, and under
+             * the load of a full `make check` the render after a keystroke
+             * lands later than that: the next pass read a stale prefix, typed
+             * one letter too many, and the auto-committed word was left with a
+             * dangling prefix behind it, which disables the submit. The
+             * failure read "the answer for enter could not be submitted
+             * (disabled)" and passed on every rerun, which is the shape of a
+             * timing bug rather than a defect in the device.
+             */
+            for (let wait = 0; wait < 60; wait += 1) {
+              if ((await state()) !== before) break
+              await sleep(50)
+            }
           }
           if (broke !== null) break
-          await sleep(250)
+          // Same again for the button: enabled when the answer is complete,
+          // rather than after a delay somebody guessed at.
+          for (let wait = 0; wait < 60; wait += 1) {
+            const ready = await evaluate(`(() => {
+              const b = document.querySelector('[data-testid="seed-check-submit"]')
+              return b !== null && b.disabled !== true
+            })()`)
+            if (ready === true) break
+            await sleep(50)
+          }
           const sent = await tap('seed-check-submit')
           if (sent !== 'ok') {
             broke = `word: the answer for "${want}" could not be submitted (${sent})`
             break
           }
-          await sleep(800)
+          /* Wait for the screen to move on rather than for 800ms. The next
+             step reads the title to learn which word is being asked for, so
+             arriving while the previous one is still on show asks about the
+             wrong word, and that is the same fixed-delay bug one line up. */
+          for (let wait = 0; wait < 60; wait += 1) {
+            const moved = await evaluate(`(() => {
+              const t = document.querySelector('.nr-screen__title')
+              return t === null ? '' : t.textContent
+            })()`)
+            if (String(moved) !== title) break
+            await sleep(50)
+          }
           continue
         }
 

@@ -605,6 +605,9 @@ body {
   background-color: var(--color-surface-1);
 }
 
+/* Reference regions that are meant to be scrolled: the export tab's descriptor,
+   the attestation table, a quorum's addresses. See .nr-scrolls for why the
+   affordance is not optional on a panel with no scrollbar. */
 .nr-fill {
   flex: 1 1 auto;
   min-height: 0;
@@ -1461,15 +1464,32 @@ body {
    `scroll` layers stay put. The result is a shadow that appears only when there
    is genuinely more to see in that direction, with no scroll listener.
    ========================================================================== */
-.nr-screen__body {
+.nr-screen__body,
+.nr-scrolls {
   background:
-    linear-gradient(var(--color-bg) 30%, transparent) top / 100% 1.5rem no-repeat local,
-    linear-gradient(transparent, var(--color-bg) 70%) bottom / 100% 1.5rem no-repeat local,
+    linear-gradient(var(--scroll-ground, var(--color-bg)) 30%, transparent) top / 100% 1.5rem
+      no-repeat local,
+    linear-gradient(transparent, var(--scroll-ground, var(--color-bg)) 70%) bottom / 100% 1.5rem
+      no-repeat local,
     radial-gradient(farthest-side at 50% 0, var(--color-scroll-scrim), transparent) top / 100%
       0.75rem no-repeat scroll,
     radial-gradient(farthest-side at 50% 100%, var(--color-scroll-scrim), transparent) bottom / 100%
       0.75rem no-repeat scroll;
 }
+
+/* WHY THIS IS A CLASS NOW AND NOT ONE SELECTOR.
+
+   The argument above is about the body and applies unchanged to every scroller
+   nested inside it, and none of them had one. Measured at 800x480: the export
+   tab hid 491px of descriptor, the attestation table 361px, the quorum split
+   129px, and the wallet list on a device with three wallets was an 89px box
+   holding 156px of rows, cut through the middle of the second, with nothing at
+   all saying a third existed.
+
+   `--scroll-ground` is what the scroller sits on, because the two `local`
+   layers work by painting the container's own background over the shadow when
+   the content reaches an edge. Wrong colour, visible seam. The body's ground is
+   the panel; a list inside a card is not. */
 
 /* The persistent network indicator. One line, always visible, never scrolls
    away, because signet, testnet3 and testnet4 are indistinguishable by address
@@ -2093,6 +2113,9 @@ body {
   padding-bottom: 0.5rem;
 }
 
+/* The wallet list, which on a device with three wallets is an 89px box holding
+   156px of rows: cut through the middle of the second, with nothing saying a
+   third exists. It sits directly on the panel, so the default ground is right. */
 .nr-wlist--scroll {
   overflow-y: auto;
   min-height: 0;

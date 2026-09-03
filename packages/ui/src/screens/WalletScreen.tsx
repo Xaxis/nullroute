@@ -413,7 +413,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
           looking at. Measured then: ten rows laid out in a 333px window with
           none of them fully on screen, on the screen named Addresses. */}
       {tab === 'addresses' && (
-        <div className="nr-card nr-card--tight nr-fill">
+        <div className="nr-card nr-card--tight nr-fill nr-scrolls">
           <table className="nr-table nr-table--dense">
             {/* Sticky, so the headings survive the scroll they now sit above. */}
             <thead className="nr-table__stick">
@@ -514,7 +514,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
       )}
 
       {tab === 'export' && descriptor !== null && (
-        <div className="nr-fill">
+        <div className="nr-fill nr-scrolls">
           {/* THE CODE BESIDE THE LINE IT ENCODES, the same way the signed
               transaction and the receive address do it. Everything this device
               hands out is a block of characters and a square, and they belong

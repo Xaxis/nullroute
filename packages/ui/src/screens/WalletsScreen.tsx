@@ -330,7 +330,7 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
         </div>
       )}
 
-      <div className="nr-wlist nr-wlist--scroll" data-testid="wallet-rows">
+      <div className="nr-wlist nr-wlist--scroll nr-scrolls" data-testid="wallet-rows">
         {wallets.map((wallet) => (
           <button
             key={wallet.id}

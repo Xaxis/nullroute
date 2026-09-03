@@ -275,7 +275,7 @@ export function VerifyMessageScreen(props: VerifyMessageScreenProps): ReactEleme
           instead of the message. Now it shows the three values, and a tab
           takes them back to editing whichever one is wrong. */}
       {result !== null ? (
-        <div className="nr-card nr-card--tight nr-fill" data-testid="verify-checked">
+        <div className="nr-card nr-card--tight nr-fill nr-scrolls" data-testid="verify-checked">
           {FIELDS.map((field) => (
             <div className="nr-field" key={field.id}>
               <span className="nr-field__label">{field.label}</span>
