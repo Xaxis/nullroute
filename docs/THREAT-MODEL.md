@@ -386,7 +386,7 @@ does not keep.
 | INV-NET-1 | The daemon binds only to a Unix domain socket or `127.0.0.1`. No listener exists on any external interface. |
 | INV-NET-2 | No source file imports `http`, `https`, `net`, `dgram`, `dns`, or `fetch` outside an allowlisted loopback IPC layer. Enforced by lint. |
 | INV-NET-3 | The frontend CSP is `default-src 'none'` with everything else `'self'`. No CDN, no remote fonts, no telemetry. |
-| INV-KEY-1 | Private key material and seed bytes never leave the daemon process. |
+| INV-KEY-1 | Private key material and seed bytes never leave the daemon process, with three named exceptions: `seed.reveal`, which shows a mnemonic only between generation and confirmation and never for a seed loaded from storage; `bip85.derive`, which returns a hardened child mnemonic because writing it down is the point of BIP-85, capped per unlock; and `backup.create` with `includeSeed`, which seals the seed under a caller-chosen passphrase and says so in its response. |
 | INV-KEY-2 | All buffers holding secrets are zeroized after use, through a typed `Secret` wrapper with explicit `dispose()`. |
 | INV-SIG-1 | Every ECDSA signature uses RFC 6979 deterministic nonces. Every Schnorr signature uses BIP-340 with `aux_rand` set to 32 zero bytes. |
 | INV-SIG-2 | The same seed and the same PSBT produce byte-identical output, confirmed against an independent implementation. |

@@ -98,6 +98,32 @@ async function reachReview(): Promise<void> {
 describe('ui.screens.psbt', () => {
   // INV-UI-11: reviewing and signing are separate acts. Looking at a
   // transaction must never be the thing that signs it.
+  /*
+   * A review the daemon could only partly build.
+   *
+   * The daemon used to drop a registration it could not read and say nothing,
+   * so this screen described a wallet smaller than the user's and called their
+   * own change a payment to a stranger. The count is on the review now, and
+   * this is where it has to become a sentence.
+   */
+  it('says-when-a-quorum-could-not-be-read', async () => {
+    setup({ unreadableRegistrations: 2 })
+    await reachReview()
+
+    const said = screen.getByTestId('psbt-unreadable-registrations').textContent
+    expect(said).toContain('2 registered')
+    // The consequence, not just the count. A number with no sentence beside it
+    // is a fault code.
+    expect(said).toContain('stranger')
+  })
+
+  // Silent when there is nothing to say, which is almost every transaction.
+  it('says-nothing-when-every-quorum-was-read', async () => {
+    setup({ unreadableRegistrations: 0 })
+    await reachReview()
+    expect(screen.queryByTestId('psbt-unreadable-registrations')).toBeNull()
+  })
+
   it('does-not-sign-when-reviewing', async () => {
     const { onSign } = setup()
     await reachReview()

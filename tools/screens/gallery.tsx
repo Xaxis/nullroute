@@ -707,6 +707,27 @@ const SCREENS: Record<string, () => React.ReactElement> = {
    * No blocking warning here on purpose, so this measures the refusal on its
    * own rather than underneath another one.
    */
+  /*
+   * A review built while a registered quorum could not be read.
+   *
+   * The interesting half is what is NOT on the screen: none of that quorum's
+   * addresses are in the owned index, so its change is in the outputs table
+   * below as a payment to a stranger. The banner is the only thing that says
+   * the table is describing a smaller wallet than the user has.
+   */
+  'psbt-unreadable-quorum': () => (
+    <PsbtScreen
+      identity={DEVICE}
+      nav={MENU}
+      initialPsbt="cHNidP8BAHUCAAAAAQ=="
+      onScan={noop}
+      onReview={async () =>
+        Promise.resolve({ ...REVIEW, signable: true, warnings: [], unreadableRegistrations: 1 })
+      }
+      onSign={never}
+      onBack={noop}
+    />
+  ),
   'psbt-not-ours': () => (
     <PsbtScreen
       identity={DEVICE}
@@ -1339,6 +1360,7 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   'psbt-failed': [['psbt-review']],
   'multisig-failed': [['multisig-review']],
   'psbt-not-ours': [['psbt-review']],
+  'psbt-unreadable-quorum': [['psbt-review']],
   'assemble-failed': [['assemble-build']],
   // Nothing to tap. The camera opens, plays, and pulls its first frame through
   // the decoder on a 200ms timer, so this state arrives about two seconds after

@@ -3,25 +3,44 @@
  *
  * Spec: daemon.session
  *
- * INV-KEY-1 says key material never leaves this process. There is exactly one
- * exception, and it is unavoidable: during wallet creation the user has to
- * write the mnemonic down, which means seeing it. A device that never displayed
- * a seed would be a device from which no backup could be made.
+ * INV-KEY-1 says key material never leaves this process. THREE methods return
+ * some, and this used to say one. Each is deliberate, each is a different
+ * thing, and the count being wrong is what let the second and third go
+ * unexamined for as long as they did.
  *
- * So the exception is made narrow, explicit, and stateful rather than being a
- * flag someone can pass:
+ * 1. `seed.reveal`, the unavoidable one. During wallet creation the user has
+ *    to write the mnemonic down, which means seeing it: a device that never
+ *    displayed a seed is a device from which no backup can be made. Narrow,
+ *    explicit and stateful rather than a flag someone can pass:
  *
- *   - A mnemonic is revealable ONLY between generation and confirmation.
- *   - `seed.reveal` is refused once the user has confirmed they wrote it down.
- *   - It is refused outright for a seed that was loaded from storage rather
- *     than generated in this session. Once a wallet exists, its seed is never
- *     displayed again, and recovering it is a matter of the backup rather than
- *     of asking the device.
+ *      - Revealable ONLY between generation and confirmation.
+ *      - Refused once the user has confirmed they wrote it down.
+ *      - Refused outright for a seed loaded from storage rather than generated
+ *        in this session. Once a wallet exists its seed is never shown again,
+ *        and recovering it is a matter of the backup.
+ *
+ *    `seed.checkWord` belongs to this one: it returns a boolean rather than a
+ *    word, but a boolean asked 2048 times is the word, so it carries the same
+ *    gates plus a budget. See peekWordsForVerification.
+ *
+ * 2. `bip85.derive`, which returns a CHILD mnemonic. Writing it down is the
+ *    entire point of BIP-85, so refusing to show it would remove the feature
+ *    rather than protect anything. Two things bound it: the derivation is
+ *    hardened, so the master seed cannot be recovered from a child, and a
+ *    caller reaching this already holds an unlocked wallet and could simply
+ *    sign with it. What it must not be is a harvester, so the number of
+ *    distinct children a session will derive is capped. See
+ *    `takeChildDerivation`.
+ *
+ * 3. `backup.create` with `includeSeed`, which seals the seed under a
+ *    passphrase the caller chooses. Explicit, flagged in the response, and
+ *    guarded by `assertPersistable`. It is the one the user is warned about
+ *    on screen, in the words "a second copy of your money".
  *
  * Everything else on the IPC surface returns public material only. The test in
- * packages/daemon/test/ipc.test.ts asserts that by searching responses, and it
- * is written so this exception has to be deliberately granted before the seed
- * appears anywhere.
+ * packages/daemon/test/ipc.test.ts asserts that by searching the responses of
+ * every method, and it is written so each of these has to be deliberately
+ * granted before key material appears anywhere.
  */
 
 import { type Network, type Secret, MAINNET, masterFingerprint } from '@nullroute/core'
@@ -87,6 +106,13 @@ export interface WalletSession {
    * positions and a person mistypes a word or two.
    */
   wordChecksLeft: number
+  /**
+   * BIP-85 children this session will still derive.
+   *
+   * See takeChildDerivation. A person derives one or two and writes them down;
+   * a harvester walks the index space.
+   */
+  childDerivationsLeft: number
   /** Absent until this wallet is saved to, or loaded from, the store. */
   active: ActiveWallet | undefined
 }
@@ -100,6 +126,23 @@ export interface WalletSession {
  * recovered rather than merely making the attack slower.
  */
 const WRONG_WORDS_ALLOWED = 15
+
+/**
+ * BIP-85 children one session will derive, before it stops.
+ *
+ * bip85.derive returns a complete child mnemonic, which is spendable key
+ * material for a real wallet. Showing it is the point of the feature: a child
+ * seed you cannot write down is a child seed you cannot use. What it must not
+ * be is unlimited, because that turns one compromised moment on the frontend
+ * into every child this seed will ever have, including indexes the user has
+ * not funded yet and will fund later.
+ *
+ * Eight, because a person deriving children does so deliberately, one screen at
+ * a time, and writes each one down. Nobody writes down eight in a sitting. The
+ * ceiling is per session, so locking and opening the wallet again lifts it,
+ * which is the right cost: it takes the passphrase.
+ */
+const CHILD_DERIVATIONS_ALLOWED = 8
 
 export class SessionError extends Error {
   constructor(message: string) {
@@ -194,6 +237,7 @@ export class Session {
       // definition, already exists on paper somewhere.
       confirmedBackup: provenance !== 'generated',
       wordChecksLeft: WRONG_WORDS_ALLOWED,
+      childDerivationsLeft: CHILD_DERIVATIONS_ALLOWED,
       // Not yet saved anywhere, so it belongs to no stored wallet. Set by
       // `attachTo` once it has been sealed.
       active: undefined,
@@ -230,6 +274,7 @@ export class Session {
       // not this session's business to assert either way.
       confirmedBackup: true,
       wordChecksLeft: WRONG_WORDS_ALLOWED,
+      childDerivationsLeft: CHILD_DERIVATIONS_ALLOWED,
       active,
     }
     this.#unlocked = true
@@ -500,6 +545,25 @@ export class Session {
     const wallet = this.#wallet
     if (wallet === undefined) return
     wallet.wordChecksLeft -= 1
+  }
+
+  /**
+   * Spend one of the session's BIP-85 budget, or refuse.
+   *
+   * Called before deriving rather than after, so a caller that has run out
+   * gets a refusal instead of a child it then has to be trusted to forget.
+   */
+  takeChildDerivation(): void {
+    const wallet = this.#wallet
+    if (wallet === undefined) throw new SessionError('No wallet is loaded.')
+    if (wallet.childDerivationsLeft <= 0) {
+      throw new SessionError(
+        'This session has derived as many child seeds as it will. Lock the wallet and open it ' +
+          'again to derive more. A child seed is a wallet of its own: write down the ones you ' +
+          'have before making more.'
+      )
+    }
+    wallet.childDerivationsLeft -= 1
   }
 
   /** Record that the user has written the mnemonic down. Irreversible. */

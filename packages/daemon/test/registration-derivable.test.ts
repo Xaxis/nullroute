@@ -105,7 +105,11 @@ function assertContributesToOwnedIndex(text: string): void {
 
   const withQuorum = buildOwnedIndex(seed, NETWORK, { gapLimit: 5, registrations: [text] })
   const without = buildOwnedIndex(seed, NETWORK, { gapLimit: 5, registrations: [] })
-  expect(withQuorum.size).toBeGreaterThan(without.size)
+  expect(withQuorum.index.size).toBeGreaterThan(without.index.size)
+  // And it was read, rather than counted as one this device could not parse.
+  // A registration that silently failed would also add no addresses, so the
+  // size comparison alone cannot tell the two apart.
+  expect(withQuorum.unreadable).toBe(0)
 }
 
 /** Accepted, and then showable AND confirmable through the IPC surface. */

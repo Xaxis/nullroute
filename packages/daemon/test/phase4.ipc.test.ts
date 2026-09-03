@@ -675,6 +675,66 @@ async function generateSeed(): Promise<void> {
  * imported seed is marked confirmedBackup at load, so the reveal refused from
  * the first instant while this answered.
  */
+/*
+ * bip85.derive is the second of INV-KEY-1's three exceptions, and bounded.
+ *
+ * It returns a complete child mnemonic, which is spendable key material for a
+ * real wallet, gated on nothing but an unlocked session. Showing it is the
+ * point of BIP-85 and refusing would remove the feature, so what is bounded is
+ * the count: unlimited derivation turns one compromised moment on the frontend
+ * into every child this seed will ever have, including indexes nobody has
+ * funded yet.
+ */
+describe('bip85.derive is not a harvester', () => {
+  it('derives-the-children-a-person-would-and-then-stops', async () => {
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+
+    for (let index = 0; index < 8; index += 1) {
+      const child = (await call('bip85.derive', {
+        application: 'mnemonic',
+        index,
+        wordCount: 12,
+      })) as { words: string }
+      expect(child.words.split(' ')).toHaveLength(12)
+    }
+
+    await expect(
+      call('bip85.derive', { application: 'mnemonic', index: 8, wordCount: 12 })
+    ).rejects.toThrow(/as many child seeds as it will/)
+  })
+
+  // The budget is per unlock, and locking costs the passphrase, which is the
+  // right price for lifting it.
+  it('lifts-the-cap-when-the-wallet-is-opened-again', async () => {
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+    for (let index = 0; index < 8; index += 1) {
+      await call('bip85.derive', { application: 'mnemonic', index, wordCount: 12 })
+    }
+    await expect(call('bip85.derive', { application: 'mnemonic', index: 8 })).rejects.toThrow()
+
+    session.lock()
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+    const child = (await call('bip85.derive', {
+      application: 'mnemonic',
+      index: 8,
+      wordCount: 12,
+    })) as { words: string }
+    expect(child.words.split(' ')).toHaveLength(12)
+  })
+
+  // Every application spends from the same budget: hex and password are the
+  // same material in a different encoding.
+  it('counts-hex-and-password-against-the-same-budget', async () => {
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+    for (let index = 0; index < 8; index += 1) {
+      await call('bip85.derive', { application: 'hex', index, bytes: 32 })
+    }
+    await expect(call('bip85.derive', { application: 'password', index: 0 })).rejects.toThrow(
+      /as many child seeds as it will/
+    )
+  })
+})
+
 describe('seed.checkWord is not an oracle', () => {
   it('refuses-word-checks-for-a-seed-this-device-did-not-generate', async () => {
     await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })

@@ -59,9 +59,9 @@ describe('BackupScreen', () => {
 
     // Straight to the restore branch: arriving with a file in hand means the
     // choice has already been made.
-    const field = screen.getByTestId('backup-input')
+    const field = screen.getByTestId<HTMLTextAreaElement>('backup-input')
     expect(field.value).toBe(blob)
-    expect(screen.getByTestId('backup-describe').disabled).toBe(false)
+    expect(screen.getByTestId<HTMLButtonElement>('backup-describe').disabled).toBe(false)
 
     expect(screen.queryByTestId('backup-restore')).not.toBeNull()
   })
@@ -80,7 +80,7 @@ describe('BackupScreen', () => {
     fireEvent.click(screen.getByTestId('backup-restore-back'))
     fireEvent.click(screen.getByTestId('backup-choose-create'))
 
-    expect(screen.getByTestId('backup-create-submit').disabled).toBe(true)
+    expect(screen.getByTestId<HTMLButtonElement>('backup-create-submit').disabled).toBe(true)
     expect(screen.getByTestId('pk-length').textContent).toContain('0')
   })
 

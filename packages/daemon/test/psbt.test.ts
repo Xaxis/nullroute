@@ -75,11 +75,24 @@ function scriptFor(address: string): Uint8Array {
   )
 }
 
+/**
+ * The index alone, which is all these tests are about.
+ *
+ * buildOwnedIndex returns the count of registrations it could not read as
+ * well, so the review screen can say so instead of labelling their change as
+ * a stranger's. Tests that predate that keep asking for the map.
+ */
+function ownedIndex(
+  ...args: Parameters<typeof buildOwnedIndex>
+): ReturnType<typeof buildOwnedIndex>['index'] {
+  return buildOwnedIndex(...args).index
+}
+
 describe('daemon.psbt', () => {
   // INV-PSBT-12
   it('labels-change-only-from-re-derivation', () => {
     using seed = mnemonicToSeed(MNEMONIC, '')
-    const index = buildOwnedIndex(seed, MAINNET, { gapLimit: 20 })
+    const index = ownedIndex(seed, MAINNET, { gapLimit: 20 })
     const isChange = changeLookup(index)
 
     const change = ourAddress(true, 0)
@@ -99,7 +112,7 @@ describe('daemon.psbt', () => {
    */
   it('ignores-a-derivation-hint-in-the-psbt', () => {
     using seed = mnemonicToSeed(MNEMONIC, '')
-    const index = buildOwnedIndex(seed, MAINNET, { gapLimit: 20 })
+    const index = ownedIndex(seed, MAINNET, { gapLimit: 20 })
     const isChange = changeLookup(index)
 
     // Whatever the transaction asserts, the index is built from the seed and
@@ -118,7 +131,7 @@ describe('daemon.psbt', () => {
   // it change would hide it inside the "returned to you" total.
   it('does-not-call-a-self-send-change', () => {
     using seed = mnemonicToSeed(MNEMONIC, '')
-    const index = buildOwnedIndex(seed, MAINNET, { gapLimit: 20 })
+    const index = ownedIndex(seed, MAINNET, { gapLimit: 20 })
     const isChange = changeLookup(index)
 
     const receive = ourAddress(false, 0)
@@ -132,7 +145,7 @@ describe('daemon.psbt', () => {
   // INV-PSBT-14
   it('finds-the-path-that-owns-an-input', () => {
     using seed = mnemonicToSeed(MNEMONIC, '')
-    const index = buildOwnedIndex(seed, MAINNET, { gapLimit: 20 })
+    const index = ownedIndex(seed, MAINNET, { gapLimit: 20 })
     const ours = ourAddress(false, 3)
 
     const paths = signingPathsFor([scriptFor(ours.address)], index, MAINNET)
@@ -141,7 +154,7 @@ describe('daemon.psbt', () => {
 
   it('finds-nothing-for-a-foreign-input', () => {
     using seed = mnemonicToSeed(MNEMONIC, '')
-    const index = buildOwnedIndex(seed, MAINNET, { gapLimit: 20 })
+    const index = ownedIndex(seed, MAINNET, { gapLimit: 20 })
 
     expect(signingPathsFor([scriptFor(STRANGER)], index, MAINNET)).toEqual([])
     // An input whose script the PSBT did not carry cannot be attributed either.
@@ -152,7 +165,7 @@ describe('daemon.psbt', () => {
 
   it('deduplicates-paths-across-inputs', () => {
     using seed = mnemonicToSeed(MNEMONIC, '')
-    const index = buildOwnedIndex(seed, MAINNET, { gapLimit: 20 })
+    const index = ownedIndex(seed, MAINNET, { gapLimit: 20 })
     const ours = ourAddress(false, 0)
     const script = scriptFor(ours.address)
 
@@ -165,8 +178,8 @@ describe('daemon.psbt', () => {
   // a cross-network match would mean signing against the wrong chain.
   it('is-scoped-to-one-network', () => {
     using seed = mnemonicToSeed(MNEMONIC, '')
-    const mainnetIndex = buildOwnedIndex(seed, MAINNET, { gapLimit: 10 })
-    const signetIndex = buildOwnedIndex(seed, SIGNET, { gapLimit: 10 })
+    const mainnetIndex = ownedIndex(seed, MAINNET, { gapLimit: 10 })
+    const signetIndex = ownedIndex(seed, SIGNET, { gapLimit: 10 })
 
     const mainnetAddress = [...mainnetIndex.keys()][0]
     if (mainnetAddress === undefined) throw new Error('empty index')
@@ -185,7 +198,7 @@ describe('daemon.psbt', () => {
   it('covers-every-script-type-and-both-branches', () => {
     using seed = mnemonicToSeed(MNEMONIC, '')
     const gapLimit = 5
-    const index = buildOwnedIndex(seed, MAINNET, { gapLimit })
+    const index = ownedIndex(seed, MAINNET, { gapLimit })
 
     // Four script types, two branches.
     expect(index.size).toBe(4 * 2 * gapLimit)
@@ -198,7 +211,7 @@ describe('daemon.psbt', () => {
   // an unrecognised change address is a payment, never a verified change label.
   it('treats-change-beyond-the-gap-limit-as-a-payment', () => {
     using seed = mnemonicToSeed(MNEMONIC, '')
-    const index = buildOwnedIndex(seed, MAINNET, { gapLimit: 5 })
+    const index = ownedIndex(seed, MAINNET, { gapLimit: 5 })
     const isChange = changeLookup(index)
 
     const near = ourAddress(true, 2)
@@ -233,7 +246,7 @@ describe('daemon.psbt', () => {
    */
   it('uses-a-stranger-address-that-is-genuinely-not-ours', () => {
     using seed = mnemonicToSeed(MNEMONIC, '')
-    const wide = buildOwnedIndex(seed, MAINNET, { gapLimit: 500 })
+    const wide = ownedIndex(seed, MAINNET, { gapLimit: 500 })
     expect(wide.has(STRANGER)).toBe(false)
     expect(changeLookup(wide)(STRANGER)).toBeUndefined()
     expect(signingPathsFor([scriptFor(STRANGER)], wide, MAINNET)).toEqual([])
@@ -270,8 +283,8 @@ describe('daemon.psbt', () => {
     using seed = mnemonicToSeed(MNEMONIC, '')
     const descriptor = quorum()
 
-    const without = buildOwnedIndex(seed, MAINNET, { gapLimit: 5 })
-    const with_ = buildOwnedIndex(seed, MAINNET, { gapLimit: 5, registrations: [descriptor] })
+    const without = ownedIndex(seed, MAINNET, { gapLimit: 5 })
+    const with_ = ownedIndex(seed, MAINNET, { gapLimit: 5, registrations: [descriptor] })
 
     const parsed = parseDescriptor(descriptor)
     const change = deriveMultisigAddresses(parsed, {
@@ -294,7 +307,7 @@ describe('daemon.psbt', () => {
   it('signs-a-multisig-input-with-our-own-derivation', () => {
     using seed = mnemonicToSeed(MNEMONIC, '')
     const descriptor = quorum()
-    const index = buildOwnedIndex(seed, MAINNET, { gapLimit: 5, registrations: [descriptor] })
+    const index = ownedIndex(seed, MAINNET, { gapLimit: 5, registrations: [descriptor] })
 
     const receive = deriveMultisigAddresses(parseDescriptor(descriptor), {
       network: MAINNET,
@@ -313,7 +326,7 @@ describe('daemon.psbt', () => {
   it('does-not-call-a-multisig-receive-address-change', () => {
     using seed = mnemonicToSeed(MNEMONIC, '')
     const descriptor = quorum()
-    const index = buildOwnedIndex(seed, MAINNET, { gapLimit: 5, registrations: [descriptor] })
+    const index = ownedIndex(seed, MAINNET, { gapLimit: 5, registrations: [descriptor] })
 
     const receive = deriveMultisigAddresses(parseDescriptor(descriptor), {
       network: MAINNET,
@@ -341,8 +354,8 @@ describe('daemon.psbt', () => {
       `wsh(sortedmulti(2,${strangers.map((k) => `${k}/<0;1>/*`).join(',')}))`
     )
 
-    const base = buildOwnedIndex(seed, MAINNET, { gapLimit: 5 })
-    const withForeign = buildOwnedIndex(seed, MAINNET, {
+    const base = ownedIndex(seed, MAINNET, { gapLimit: 5 })
+    const withForeign = ownedIndex(seed, MAINNET, {
       gapLimit: 5,
       registrations: [foreign],
     })
@@ -353,8 +366,8 @@ describe('daemon.psbt', () => {
   // transaction at all. Refusing everything would be a worse failure.
   it('skips-an-unreadable-registration-rather-than-throwing', () => {
     using seed = mnemonicToSeed(MNEMONIC, '')
-    const base = buildOwnedIndex(seed, MAINNET, { gapLimit: 5 })
-    const withJunk = buildOwnedIndex(seed, MAINNET, {
+    const base = ownedIndex(seed, MAINNET, { gapLimit: 5 })
+    const withJunk = ownedIndex(seed, MAINNET, {
       gapLimit: 5,
       registrations: ['not a descriptor at all', 'wsh(sortedmulti(2,#bad'],
     })

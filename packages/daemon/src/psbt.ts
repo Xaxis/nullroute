@@ -73,7 +73,7 @@ export function buildOwnedIndex(
      */
     readonly registrations?: readonly string[]
   } = {}
-): Map<string, OwnedAddress> {
+): { index: Map<string, OwnedAddress>; unreadable: number } {
   const gapLimit = Math.min(options.gapLimit ?? 100, 1000)
   const account = options.account ?? 0
   const index = new Map<string, OwnedAddress>()
@@ -106,11 +106,31 @@ export function buildOwnedIndex(
     root.wipePrivateData()
   }
 
+  /*
+   * A registration that cannot be read is COUNTED, not just skipped.
+   *
+   * Five paths in addRegistration used to `return` into silence, so a quorum
+   * that stopped parsing, or whose key could no longer be located, simply
+   * vanished from this index and every address it owns became a stranger's.
+   * On the review screen that renders as "money leaving the wallet" against
+   * the user's own change: the safe direction for the label, and the worst
+   * direction for behaviour, because it teaches somebody that the warning on
+   * this screen is noise.
+   *
+   * multisig.registrations has always reported the same failure honestly, as
+   * `unreadable`. The screen a person reads before authorising a spend did not.
+   *
+   * Not-ours is not counted. A device registered in one quorum and holding a
+   * descriptor for another legitimately has no key in the second.
+   */
+  let unreadable = 0
   for (const body of options.registrations ?? []) {
-    addRegistration(index, body, seed, network, gapLimit, account)
+    if (addRegistration(index, body, seed, network, gapLimit, account) === 'unreadable') {
+      unreadable += 1
+    }
   }
 
-  return index
+  return { index, unreadable }
 }
 
 /**
@@ -126,6 +146,16 @@ export function buildOwnedIndex(
  * to review any transaction at all would be a worse failure than reviewing this
  * one with a quorum's outputs shown as payments.
  */
+/**
+ * What became of one registered quorum.
+ *
+ * `not-ours` is not a failure: a device registered in two quorums holds a key
+ * in each, and a descriptor it has kept for reference holds none. Only
+ * `unreadable` is worth telling the user about, which is why these are three
+ * outcomes rather than a boolean.
+ */
+type RegistrationOutcome = 'added' | 'not-ours' | 'unreadable'
+
 function addRegistration(
   index: Map<string, OwnedAddress>,
   body: string,
@@ -133,22 +163,22 @@ function addRegistration(
   network: Network,
   gapLimit: number,
   account: number
-): void {
+): RegistrationOutcome {
   let descriptor
   try {
     descriptor = parseDescriptor(body)
   } catch {
-    return
+    return 'unreadable'
   }
 
   let ourPosition: number
   try {
     const ours = deriveAccountXpub(seed, network, multisigAccountPath(network, account))
     const found = findOwnKey(descriptor, ours.xpub)
-    if (found === undefined) return
+    if (found === undefined) return 'not-ours'
     ourPosition = found.position
   } catch {
-    return
+    return 'unreadable'
   }
 
   // Taproot quorums live in a script tree rather than in a wsh, so the key list
@@ -158,17 +188,17 @@ function addRegistration(
   try {
     if (taproot) {
       const quorum = taprootQuorum(descriptor)
-      if (quorum === undefined) return
+      if (quorum === undefined) return 'unreadable'
       keys = quorum.keys
     } else {
       keys = multisigShape(descriptor).keys
     }
   } catch {
-    return
+    return 'unreadable'
   }
 
   const ourKey = keys[ourPosition]
-  if (ourKey?.kind !== 'extended') return
+  if (ourKey?.kind !== 'extended') return 'unreadable'
 
   const base = normalizePath(multisigAccountPath(network, account))
 
@@ -183,7 +213,7 @@ function addRegistration(
     try {
       derived = deriveQuorumAddresses(descriptor, { network, change, start: 0, count: gapLimit })
     } catch {
-      return
+      return 'unreadable'
     }
 
     for (const entry of derived) {
@@ -201,6 +231,7 @@ function addRegistration(
       })
     }
   }
+  return 'added'
 }
 
 /** The branch index this key expression uses for the receive or change side. */

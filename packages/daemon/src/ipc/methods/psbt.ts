@@ -41,10 +41,11 @@ export function psbtMethods(ctx: HandlerContext): MethodTable {
      */
     'psbt.review': (request) => {
       const tx = parsePsbt(requireString(request, 'psbt'))
-      const index = buildOwnedIndex(session.requireSeed(), session.network, {
+      const owned = buildOwnedIndex(session.requireSeed(), session.network, {
         gapLimit: requireNumber(request, 'gapLimit', 100),
         registrations: session.registrations,
       })
+      const index = owned.index
       const review = reviewTransaction(tx, {
         network: session.network,
         isChange: changeLookup(index),
@@ -54,6 +55,18 @@ export function psbtMethods(ctx: HandlerContext): MethodTable {
         signable: review.signable,
         replaceable: review.replaceable,
         locktime: review.locktime,
+        /*
+         * Registered quorums this device could not read, so the screen can say
+         * so rather than quietly labelling their change as a stranger's.
+         *
+         * Zero on almost every transaction. When it is not, every address
+         * belonging to those quorums is missing from the owned index, and the
+         * outputs below are describing a wallet smaller than the one the user
+         * has. That is the difference between "this is going to a stranger"
+         * and "this device cannot tell", and a review screen must not render
+         * the second as the first.
+         */
+        unreadableRegistrations: owned.unreadable,
         // Before signing, not after. A user on the second device of a 2-of-3
         // needs to know they are the last signature, or that they are not,
         // while deciding whether to sign at all.
@@ -130,10 +143,11 @@ export function psbtMethods(ctx: HandlerContext): MethodTable {
     'psbt.sign': (request) => {
       const tx = parsePsbt(requireString(request, 'psbt'))
       const seed = session.requireSeed()
-      const index = buildOwnedIndex(seed, session.network, {
+      const owned = buildOwnedIndex(seed, session.network, {
         gapLimit: requireNumber(request, 'gapLimit', 100),
         registrations: session.registrations,
       })
+      const index = owned.index
       const review = reviewTransaction(tx, {
         network: session.network,
         isChange: changeLookup(index),

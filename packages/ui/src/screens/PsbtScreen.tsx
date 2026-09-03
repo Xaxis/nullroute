@@ -166,6 +166,17 @@ export interface SignatureProgressView {
 
 export interface PsbtReviewView {
   readonly signable: boolean
+  /**
+   * Registered quorums this device could not read while building the review.
+   *
+   * Absent or zero on almost every transaction. When it is not, every address
+   * belonging to those quorums is missing from the owned index, so change
+   * returning from one of them is described below as money going to a
+   * stranger. The daemon used to drop them in silence, which is the safe
+   * direction for the label and the worst one for behaviour: it teaches
+   * somebody that the warning on this screen is noise.
+   */
+  readonly unreadableRegistrations?: number
   readonly signatures?: SignatureProgressView
   readonly replaceable: boolean
   readonly locktime: number
@@ -622,6 +633,32 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
               <span>
                 None of these inputs belong to this wallet. Either this transaction is for a
                 different device, or the coordinator built it against the wrong descriptor.
+              </span>
+            </div>
+          )}
+
+          {/* WHAT THIS REVIEW COULD NOT SEE, above the amounts it is describing.
+
+              A registered quorum that no longer parses contributes none of its
+              addresses to the owned index, so its change is rendered as a
+              payment out. The user cannot tell that from a real payment out,
+              and the difference is the whole question they are being asked.
+              First in the body, with the refusals, because it qualifies
+              everything below it rather than being one more row. */}
+          {(review.unreadableRegistrations ?? 0) > 0 && (
+            <div
+              data-must-see
+              className="nr-banner nr-banner--caution"
+              data-testid="psbt-unreadable-registrations"
+            >
+              <strong>Read this review with care</strong>
+              <span>
+                {review.unreadableRegistrations} registered{' '}
+                {review.unreadableRegistrations === 1 ? 'quorum' : 'quorums'} could not be read on
+                this device, so none of {review.unreadableRegistrations === 1 ? 'its' : 'their'}{' '}
+                addresses were recognised. Change coming back from{' '}
+                {review.unreadableRegistrations === 1 ? 'it' : 'them'} is shown below as money going
+                to a stranger. Check the quorum list before deciding what this transaction does.
               </span>
             </div>
           )}
