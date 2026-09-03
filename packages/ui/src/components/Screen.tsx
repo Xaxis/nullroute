@@ -1,4 +1,4 @@
-import { type ReactElement, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, type ReactElement, type ReactNode } from 'react'
 
 /**
  * The screen scaffold: fixed header, scrolling body, fixed action bar.
@@ -74,10 +74,58 @@ export interface ScreenProps {
   readonly children: ReactNode
   readonly actions?: ReactNode
   readonly testId?: string
+  /**
+   * Called with whether the body has been scrolled to its end.
+   *
+   * For the one screen that has to know. PsbtScreen's subtitle says "Nothing
+   * is signed until you have read it", and Sign lives in the fixed action bar,
+   * so a transaction could be signed while its amounts had never been on the
+   * panel: the review runs 800px past the fold and the button does not care.
+   * Asserting a thing on a subtitle and letting the interface contradict it is
+   * the shape of defect this project treats as a bug rather than a nicety.
+   *
+   * Reported rather than enforced here, because what to do about it belongs to
+   * the screen. Called once on mount too, so a body short enough not to scroll
+   * counts as read.
+   */
+  readonly onScrolledToEnd?: ((atEnd: boolean) => void) | undefined
 }
 
 export function Screen(props: ScreenProps): ReactElement {
-  const { title, steps, subtitle, identity, banner, nav, children, actions, testId } = props
+  const {
+    title,
+    steps,
+    subtitle,
+    identity,
+    banner,
+    nav,
+    children,
+    actions,
+    testId,
+    onScrolledToEnd,
+  } = props
+
+  const body = useRef<HTMLDivElement | null>(null)
+
+  /**
+   * Whether the body is at its end, with a pixel of slack.
+   *
+   * Fractional scroll heights are normal at browser zoom and on a
+   * high-density panel, so an exact comparison never becomes true and the
+   * screen asking the question would wait forever for a scroll that finished.
+   */
+  const report = useCallback(() => {
+    if (onScrolledToEnd === undefined) return
+    const el = body.current
+    if (el === null) return
+    onScrolledToEnd(el.scrollTop + el.clientHeight >= el.scrollHeight - 1)
+  }, [onScrolledToEnd])
+
+  // Once on mount, so a body short enough not to scroll counts as read rather
+  // than leaving the caller waiting for an event that cannot arrive.
+  useEffect(() => {
+    report()
+  }, [report, children])
 
   return (
     <section className="nr-screen" data-testid={testId}>
@@ -111,7 +159,19 @@ export function Screen(props: ScreenProps): ReactElement {
         </div>
       )}
 
-      <div className="nr-screen__body">{children}</div>
+      <div
+        className="nr-screen__body"
+        ref={body}
+        onScroll={
+          onScrolledToEnd === undefined
+            ? undefined
+            : () => {
+                report()
+              }
+        }
+      >
+        {children}
+      </div>
       {actions !== undefined && <footer className="nr-screen__actions">{actions}</footer>}
     </section>
   )

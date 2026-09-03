@@ -106,6 +106,53 @@ describe('ui.screens.psbt', () => {
    * own change a payment to a stranger. The count is on the review now, and
    * this is where it has to become a sentence.
    */
+  /*
+   * Sign is refused until the review has been read to its end.
+   *
+   * The subtitle says "Nothing is signed until you have read it" and Sign sits
+   * in the fixed action bar, so a transaction could be signed with its
+   * amounts, fee and inputs never on the panel at all: the review runs about
+   * 800px past a 480px screen.
+   *
+   * The geometry is stubbed because jsdom has none. Every element reports
+   * clientHeight and scrollHeight of zero, which reads as "already at the end",
+   * so this gate is invisible to every test in this file unless the numbers are
+   * supplied. That is the same blindness that let nineteen error banners ship
+   * below the fold, and it is worth stating rather than working around
+   * silently: the browser harness measures the real thing, and this asserts
+   * the logic.
+   */
+  it('refuses-to-sign-until-the-review-has-been-read', async () => {
+    const body = { scrollTop: 0, clientHeight: 300, scrollHeight: 1300 }
+    const spies = (['scrollTop', 'clientHeight', 'scrollHeight'] as const).map((name) =>
+      vi.spyOn(HTMLElement.prototype, name, 'get').mockImplementation(function (this: HTMLElement) {
+        return this.className === 'nr-screen__body' ? body[name] : 0
+      })
+    )
+    try {
+      setup({ warnings: [], signable: true })
+      await reachReview()
+
+      const sign = () => screen.getByTestId<HTMLButtonElement>('psbt-sign')
+      expect(sign().disabled).toBe(true)
+      // And says which, because a dead button with no reason beside it is the
+      // defect the refusal line in the bar exists to prevent.
+      expect(screen.getByTestId('psbt-refusal').textContent).toContain('Scroll to the end')
+
+      // Read it.
+      body.scrollTop = 1000
+      const scroller = screen.getByTestId('psbt-screen').querySelector('.nr-screen__body')
+      expect(scroller, 'the screen body, which the scroll listener is on').not.toBeNull()
+      if (scroller !== null) fireEvent.scroll(scroller)
+      await waitFor(() => {
+        expect(sign().disabled).toBe(false)
+      })
+      expect(screen.queryByTestId('psbt-refusal')).toBeNull()
+    } finally {
+      for (const spy of spies) spy.mockRestore()
+    }
+  })
+
   it('says-when-a-quorum-could-not-be-read', async () => {
     setup({ unreadableRegistrations: 2 })
     await reachReview()

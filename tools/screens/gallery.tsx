@@ -1351,8 +1351,16 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   // Sign is correctly disabled on the review fixture, which carries a blocking
   // warning: reaching the signed screen means ticking the override, which is
   // what a person does.
-  'psbt-review': [['psbt-review'], ['psbt-review', 'psbt-override', 'psbt-sign']],
-  'psbt-signed-partial': [['psbt-review'], ['psbt-review', 'psbt-sign']],
+  /* Scrolled before signing, because that is now the requirement rather than
+     good manners: the review is 800px past the fold and Sign is refused until
+     the body reaches its end. A list that taps Sign without it describes
+     something a person cannot do, and the harness says so. */
+  'psbt-review': [
+    ['psbt-review'],
+    ['psbt-review', 'scroll'],
+    ['psbt-review', 'psbt-override', 'scroll', 'psbt-sign'],
+  ],
+  'psbt-signed-partial': [['psbt-review'], ['psbt-review', 'scroll', 'psbt-sign']],
   // Into the review, which is where the header has the least room to spare.
   'psbt-idle': [['psbt-review']],
   // The failure paths. Each taps the control whose handler rejects, so the

@@ -197,7 +197,7 @@ const JOURNEYS = [
     goal: 'start-goal-sign',
     // `paste` puts a transaction built for the open wallet into the field, the
     // way a camera or an SD card would. See buildPsbt.
-    steps: ['start-begin', 'paste', 'psbt-review', 'psbt-sign'],
+    steps: ['start-begin', 'paste', 'psbt-review', 'scroll', 'psbt-sign'],
     ends: 'psbt-signed',
     needsWallet: true,
   },
@@ -550,6 +550,29 @@ async function main() {
 
       let broke = null
       for (const step of [journey.goal, ...journey.steps]) {
+        /*
+         * Reading the screen to the end, which the review now requires.
+         *
+         * PsbtScreen's subtitle says "Nothing is signed until you have read
+         * it" and Sign sits in the fixed bar, so a transaction could be signed
+         * with its amounts, fee and inputs never on the panel. Sign is refused
+         * until the body reaches its end, which means a journey that presses
+         * it has to do what a person does first. Without this the step reports
+         * `disabled`, correctly.
+         */
+        if (step === 'scroll') {
+          await evaluate(`(() => {
+            for (let pass = 0; pass < 2; pass += 1) {
+              for (const el of document.querySelectorAll('*')) {
+                if (el.scrollHeight > el.clientHeight) el.scrollTop = el.scrollHeight
+              }
+            }
+            return 'scrolled'
+          })()`)
+          await sleep(120)
+          continue
+        }
+
         if (step === 'remember') {
           words = JSON.parse(
             String(

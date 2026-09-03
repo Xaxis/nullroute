@@ -2,6 +2,7 @@ import { type ReactElement, type ReactNode, useState } from 'react'
 import { type ReviewWarning } from '@nullroute/core'
 import { Screen } from '../components/Screen.js'
 import { Refusal } from '../components/Refusal.js'
+import { Info } from '../components/Info.js'
 import { Button } from '../components/Button.js'
 import { QrDisplay } from '../components/QrDisplay.js'
 
@@ -249,6 +250,20 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
   } = props
 
   const [psbt, setPsbt] = useState(initialPsbt ?? '')
+  /**
+   * Whether the review has been read to the end.
+   *
+   * WHY THE SUBTITLE NEEDED HELP. This screen says "Nothing is signed until
+   * you have read it", and Sign sits in the fixed action bar. The review runs
+   * about 800px past the fold on a 480px panel, so a transaction could be
+   * signed while its amounts, its fee and its inputs had never been on the
+   * screen at all: tick the override, press Sign, done. The claim was on the
+   * subtitle and the interface contradicted it.
+   *
+   * Reset whenever a new review arrives, because reading one transaction is
+   * not having read the next.
+   */
+  const [read, setRead] = useState(false)
   const [review, setReview] = useState<PsbtReviewView | null>(null)
   const [signed, setSigned] = useState<string | null>(null)
   const [signedWith, setSignedWith] = useState<readonly string[]>([])
@@ -283,13 +298,14 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
    * the user's decision and is the only thing that gets past either.
    */
   const refused = review !== null && (review.signable !== true || blocking.length > 0)
-  const maySign = review !== null && review.ownedInputs > 0 && (!refused || override)
+  const maySign = review !== null && review.ownedInputs > 0 && (!refused || override) && read
 
   const doReview = async (): Promise<void> => {
     setBusy(true)
     setError(null)
     setSigned(null)
     try {
+      setRead(false)
       setReview(await onReview(psbt))
     } catch (err) {
       // Shown, never swallowed. A transaction that failed to load must not
@@ -530,6 +546,7 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
       identity={identity}
       steps={steps}
       testId="psbt-screen"
+      onScrolledToEnd={setRead}
       actions={
         <>
           <Button variant="ghost" onClick={onBack} testId="psbt-cancel">
@@ -560,16 +577,50 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
                   with its reason scrolled two screens away is a control that
                   reads as broken software rather than as a refusal, and this
                   one refuses for reasons somebody needs to act on. */}
-              {(refused || review.ownedInputs === 0) && (
+              {(refused || review.ownedInputs === 0 || !read) && (
                 <span className="nr-status nr-status--fail" data-testid="psbt-refusal">
                   {review.ownedInputs === 0
                     ? 'No input here is yours'
-                    : override
-                      ? `Overriding ${String(blocking.length)}`
-                      : blocking.length === 1 && blocking[0] !== undefined
-                        ? `Will not sign: ${WARNING_LABELS[blocking[0].kind]}`
-                        : `Will not sign: ${String(blocking.length)} blocking warnings`}
+                    : refused && override
+                      ? read
+                        ? `Overriding ${String(blocking.length)}`
+                        : 'Scroll to the end first'
+                      : refused
+                        ? blocking.length === 1 && blocking[0] !== undefined
+                          ? `Will not sign: ${WARNING_LABELS[blocking[0].kind]}`
+                          : `Will not sign: ${String(blocking.length)} blocking warnings`
+                        : /* Not refused, merely unread. Says which, because a
+                             disabled Sign with no reason beside it is the
+                             defect this line exists to prevent. */
+                          'Scroll to the end first'}
                 </span>
+              )}
+              {/* THE GATE BESIDE THE THING IT GATES.
+
+                  MachineEntropyScreen already carries this argument in these
+                  words: a tick that ungates a greyed-out button, placed in the
+                  body, is a control somebody has to go looking for while the
+                  button and its refusal sit in the bar. Here it was worse than
+                  awkward. Moving the verdict to the top of the body brought
+                  73px of override hint with it, and that pushed the outputs
+                  table off the panel: the screen that authorises a payment
+                  opened with three boxes of commentary and no amounts.
+
+                  Short label here, full sentence in the body next to the
+                  warning it overrides. The bar has room for a phrase and this
+                  is a 7 inch panel. */}
+              {blocking.length > 0 && review.ownedInputs > 0 && (
+                <label className="nr-check">
+                  <input
+                    type="checkbox"
+                    checked={override}
+                    onChange={(e) => {
+                      setOverride(e.target.checked)
+                    }}
+                    data-testid="psbt-override"
+                  />
+                  <span className="nr-hint">Sign anyway, this once</span>
+                </label>
               )}
               <Button
                 variant="danger"
@@ -727,26 +778,17 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
             </div>
           )}
 
-          {/* The tick beside the reason for it, which is the same rule the seed
-              and machine screens follow: a gate that is 800px from the sentence
-              it overrides is a gate somebody ticks without having read it. */}
+          {/* What overriding means, beside the refusal it would override, with
+              the control itself in the action bar next to Sign. Splitting them
+              is deliberate: the reasoning belongs with the reason, and the tick
+              belongs with the button, and putting both here cost the outputs
+              table its place on the panel. */}
           {blocking.length > 0 && review.ownedInputs > 0 && (
-            <div className="nr-card nr-card--tight">
-              <label className="nr-check">
-                <input
-                  type="checkbox"
-                  checked={override}
-                  onChange={(e) => {
-                    setOverride(e.target.checked)
-                  }}
-                  data-testid="psbt-override"
-                />
-                <span className="nr-hint">
-                  Sign anyway, this once. Applies to this signature only and is not remembered. Do
-                  not tick this because a coordinator told you to.
-                </span>
-              </label>
-            </div>
+            <Info label="What signing anyway means" testId="psbt-override-note">
+              The tick is in the bar below, beside the button it releases. It applies to this
+              signature only and is not remembered, so the next transaction refuses again for the
+              same reason. Do not tick it because a coordinator told you to.
+            </Info>
           )}
 
           {/* Where this device sits in the quorum, BEFORE the amounts. Signing a

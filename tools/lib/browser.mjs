@@ -120,6 +120,28 @@ export function reachStep(step) {
   if (step.startsWith('wait:')) {
     return `(document.querySelector('[data-testid="' + ${JSON.stringify(step.slice('wait:'.length))} + '"]') === null ? 'missing' : 'clicked')`
   }
+  /*
+   * `scroll` reads the screen to the end, which on this device is an act.
+   *
+   * The transaction review says "Nothing is signed until you have read it" and
+   * runs about 800px past a 480px panel, so Sign is refused until the body has
+   * reached its end. A reach list that taps Sign without scrolling is a list
+   * that describes something a person cannot do, and the harness correctly
+   * reports it as disabled.
+   *
+   * Every scrollable container, twice, which is what SCROLL_TO_END does at the
+   * end of a measurement. Here it happens mid-journey instead.
+   */
+  if (step === 'scroll') {
+    return `(() => {
+      for (let pass = 0; pass < 2; pass += 1) {
+        for (const el of document.querySelectorAll('*')) {
+          if (el.scrollHeight > el.clientHeight) el.scrollTop = el.scrollHeight
+        }
+      }
+      return 'clicked'
+    })()`
+  }
   if (step.startsWith('type:')) {
     const cut = step.indexOf(':', 'type:'.length)
     const testId = step.slice('type:'.length, cut)
@@ -159,6 +181,9 @@ export function reachStep(step) {
 
 /** The element a reach step acts on, for waiting on before acting. */
 export function reachTarget(step) {
+  // Nothing to wait for: the body is already there or the screen has not
+  // rendered, which the caller's own settle handles.
+  if (step === 'scroll') return '.nr-screen__body'
   if (step.startsWith('wait:')) return `[data-testid="${step.slice('wait:'.length)}"]`
   if (!step.startsWith('type:')) return `[data-testid="${step}"]`
   const cut = step.indexOf(':', 'type:'.length)

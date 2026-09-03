@@ -998,10 +998,21 @@ async function main() {
       { expression: KEYBOARD, returnByValue: true },
       state
     )
-    /* BEFORE the keystroke below, deliberately. This asks what is on the panel
-       when the screen arrives, and the retry's keystroke is not part of that:
-       it dismisses the very refusal being recorded. Ordering these the other
-       way round emptied five screens out of the coverage ledger. */
+    /*
+     * BEFORE the keystroke below, deliberately. This asks what is on the panel
+     * when the screen arrives, and the retry's keystroke is not part of that:
+     * it dismisses the very refusal being recorded. Ordering these the other
+     * way round emptied five screens out of the coverage ledger.
+     *
+     * For a state reached by a deliberate `scroll`, the PROBLEMS are discarded
+     * and the coverage record is kept. Those are two different claims and I
+     * conflated them on the first attempt: "fully on the panel when the screen
+     * arrives" says nothing about the view after somebody has scrolled past it,
+     * while "this banner has been drawn at 800x480 at all" is true either way.
+     * Dropping both took psbt-unattributed out of the ledger, because the only
+     * state that draws it is reached by scrolling.
+     */
+    const scrolled = reach.includes('scroll')
     const seen = await cdp(
       page,
       'Runtime.evaluate',
@@ -1053,7 +1064,7 @@ async function main() {
     }
     const problems = [
       ...JSON.parse(keys.result.value).problems,
-      ...mustSee.problems,
+      ...(scrolled ? [] : mustSee.problems),
       ...measured.problems,
     ]
     if (measured.overflow > 0) below.push({ label, px: measured.overflow })
