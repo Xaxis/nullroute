@@ -36,6 +36,16 @@ algorithm: >
   "h" form that BIP-380 descriptors and Bitcoin Core emit, and normalise to the
   apostrophe form before reaching the library, which rejects the other.
 
+differential:
+  oracle: bitcoinjs-lib
+  min_cases: 144
+  notes: >
+    Extended keys and public keys at 144 derivation paths, compared against
+    bip32 from bitcoinjs-lib. An independent implementation written by
+    different people from the same specification: agreement is evidence, and
+    disagreement means one of the two is wrong and we do not get to guess
+    which. A development dependency that never ships.
+
 invariants:
   - id: INV-BIP32-1
     statement: >

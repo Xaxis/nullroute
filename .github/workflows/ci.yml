@@ -4,6 +4,13 @@ name: ci
 # specs, and tests all agree. That is only true if CI actually checks it. Every
 # job here is also a `make` target, so what CI runs and what a contributor runs
 # locally cannot diverge.
+#
+# That was half true for the life of the project. This direction held; the other
+# one did not, and nothing checked either, so the two comments read as though
+# they covered each other. Eighteen targets in `make check` were absent here,
+# among them the threat-model honesty gate, the frontend CSP that is INV-NET-3,
+# and every visual guarantee about the 800x480 panel. `make ci-parity` asserts
+# it now, and it runs in this file.
 
 on:
   push:
@@ -54,11 +61,45 @@ jobs:
       - name: Lint, including the no-network rule
         run: make lint
 
+      # Formatting is a check rather than a suggestion here: .prettierrc had
+      # been in the repository from the start and nothing ran it, so 142 files
+      # disagreed with the configuration the project declares.
+      - name: Formatting
+        run: make format-check
+
+      # This file and `make check` ask for the same things. Its first finding
+      # was itself, which is the right first finding for a parity check.
+      - name: CI runs what make check runs
+        run: make ci-parity
+
       - name: Build
         run: make build
 
       - name: Unit and property tests
         run: make test
+
+      # The static checks on the interface and the documents. None of these
+      # needs a browser, and every one of them was in `make check` and absent
+      # from this file: an nr- class with no rule, a screen that traps the
+      # user, a header offering an exit it says it withholds, a document
+      # nobody can reach, an invariant claimed in the threat model with
+      # nothing behind it, a Makefile naming a script that is gone, an IPC
+      # method no screen calls, a frontend CSP that is not default-src 'none',
+      # a QR payload with no stated failure mode, and a manifest recipe whose
+      # transcript no longer matches what the commands print.
+      - name: Interface and document checks
+        run: |
+          make ui-classes
+          make ui-constants
+          make no-dead-ends
+          make header-rule
+          make docs-reachable
+          make invariant-claims
+          make make-targets
+          make ipc-reachable
+          make device-csp
+          make qr-readback
+          make manifest-recipe
 
       # The specification system: coverage, invariant binding, vectors,
       # differential, integrity, report. See docs/VERIFICATION.md section 3.
@@ -72,6 +113,60 @@ jobs:
           name: verification-report
           path: verification-report.json
           if-no-files-found: warn
+
+  # ---------------------------------------------------------------------------
+  # The panel itself. These drive a real browser at 800x480 and were the
+  # largest gap between `make check` and this file: every visual guarantee this
+  # project makes was enforced on a workstation and nowhere else.
+  # ---------------------------------------------------------------------------
+  interface:
+    name: every screen fits the panel it ships on
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+
+      - uses: browser-actions/setup-chrome@v1
+        id: chrome
+
+      # Each of these builds what it measures, declared in the Makefile rather
+      # than assumed from an earlier step: check-journeys once drove a stale
+      # dist-app for exactly that reason.
+      - name: Screens fit 800x480, and every marked statement is drawn
+        run: make screen-fit
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+
+      - name: Text meets WCAG AA in both themes
+        run: make contrast
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+
+      - name: Guidance is an Info everywhere
+        run: make ui-roles
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+
+      # Against a real daemon. This is the check that would have caught the
+      # device shipping unable to create a wallet.
+      - name: Guided journeys complete
+        run: make journeys
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+
+      - name: The frontend mounts under its own CSP
+        run: make device-ui
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+
+      - name: The dev server serves a styled application
+        run: make dev-check
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
 
   # ---------------------------------------------------------------------------
   # Correctness against the outside world, rather than against ourselves.

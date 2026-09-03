@@ -35,6 +35,20 @@ algorithm: >
   fixed to 32 zero bytes. Nothing else in the path consumes randomness, so the
   output is a pure function of the key and the transaction.
 
+differential:
+  oracle: bitcoinjs-lib
+  min_cases: 120
+  notes: >
+    120 p2wpkh signatures compared byte for byte, including the DER encoding
+    and the trailing sighash flag, against bitcoinjs-lib signing the same
+    inputs. Varied on everything the signature commits to: the key, the input
+    amount, the fee and the sequence.
+
+    It was ONE case for as long as this spec existed, which catches a signer
+    that is wrong in general and is blind to one wrong for a particular key or
+    amount. That is the shape a nonce bug takes, on the module whose output
+    moves money.
+
 invariants:
   - id: INV-SIG-1
     statement: >
@@ -43,7 +57,7 @@ invariants:
       randomness enters the signature.
     tests:
       - packages/core/test/psbt.sign.test.ts::uses-zero-aux-rand
-      - packages/core/test/differential.test.ts::agrees-byte-for-byte-on-a-p2wpkh-signature
+      - packages/core/test/differential.test.ts::agrees-byte-for-byte-on-every-p2wpkh-signature
 
   - id: INV-SIG-2
     statement: >
@@ -51,7 +65,7 @@ invariants:
       hundred signings, and those bytes match an independent implementation.
     tests:
       - packages/core/test/psbt.sign.test.ts::produces-byte-identical-signatures
-      - packages/core/test/differential.test.ts::agrees-byte-for-byte-on-a-p2wpkh-signature
+      - packages/core/test/differential.test.ts::agrees-byte-for-byte-on-every-p2wpkh-signature
 
   - id: INV-SIG-3
     statement: >

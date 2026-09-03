@@ -197,19 +197,57 @@ describe('differential: nullroute against bitcoinjs-lib', () => {
  * exactly the property that leaves no room to hide a key in.
  */
 describe('core.psbt.sign differential', () => {
-  const SIGNING_PATH = "m/84'/0'/0'/0/0"
   const RECIPIENT = 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4'
-  // Palindromic under byte reversal, so the two libraries' differing txid
-  // conventions cannot silently make this a comparison of two different
-  // transactions.
-  const TXID = 'a'.repeat(64)
-  const SEQUENCE = 0xfffffffd
-  const IN_SATS = 100_000n
-  const OUT_SATS = 90_000n
 
-  it('agrees-byte-for-byte-on-a-p2wpkh-signature', () => {
+  /**
+   * The cases this comparison actually runs.
+   *
+   * It was one: a single p2wpkh signature at m/84'/0'/0'/0/0 for 100,000
+   * satoshis. One case is enough to catch a signer that is wrong in general
+   * and blind to one that is wrong for particular key or amount, which is the
+   * shape a nonce bug takes. The spec system asks a critical-tier module for a
+   * hundred, and this module produces the bytes that move money.
+   *
+   * Varied on everything the signature commits to and nothing it does not: the
+   * key, the input amount, the fee, and the sequence. The txid stays a repeated
+   * byte, which keeps the property the constant below was chosen for.
+   */
+  const CASES = Array.from({ length: 120 }, (_, i) => ({
+    path: `m/84'/0'/0'/${String(i % 2)}/${String(i)}`,
+    // A repeated byte is its own reverse, so the two libraries' differing txid
+    // conventions still cannot make this a comparison of two transactions.
+    txid: (i % 256).toString(16).padStart(2, '0').repeat(32),
+    inSats: 100_000n + BigInt(i) * 137n,
+    outSats: 100_000n + BigInt(i) * 137n - (1_000n + BigInt(i % 7) * 250n),
+    sequence: i % 3 === 0 ? 0xfffffffd : i % 3 === 1 ? 0xfffffffe : 0xffffffff,
+  }))
+
+  it('agrees-byte-for-byte-on-every-p2wpkh-signature', () => {
     using seed = mnemonicToSeed(MNEMONIC, '')
     const seedBytes = Uint8Array.from(seed.bytes)
+    let compared = 0
+
+    for (const kase of CASES) {
+      compareOneSignature(seed, seedBytes, kase)
+      compared += 1
+    }
+    // Asserted, so a refactor cannot quietly shrink the set the way the single
+    // case quietly stood in for a hundred.
+    expect(compared).toBe(120)
+  })
+
+  function compareOneSignature(
+    seed: ReturnType<typeof mnemonicToSeed>,
+    seedBytes: Uint8Array,
+    kase: (typeof CASES)[number]
+  ): void {
+    const {
+      path: SIGNING_PATH,
+      txid: TXID,
+      inSats: IN_SATS,
+      outSats: OUT_SATS,
+      sequence: SEQUENCE,
+    } = kase
 
     // Our side.
     const root = rootFromSeed(seed, MAINNET)
@@ -259,8 +297,8 @@ describe('core.psbt.sign differential', () => {
 
     // The signature itself. Every byte, including the DER encoding and the
     // trailing sighash flag.
-    expect(bytesToHex(Uint8Array.from(ours?.[0]?.[1] ?? []))).toBe(
+    expect(bytesToHex(Uint8Array.from(ours?.[0]?.[1] ?? [])), `signature for ${SIGNING_PATH}`).toBe(
       bytesToHex(Uint8Array.from(theirs?.[0]?.signature ?? []))
     )
-  })
+  }
 })

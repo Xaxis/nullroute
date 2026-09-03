@@ -1,8 +1,9 @@
 # nullroute: one entry point for everything.
 #
 # Every target here is also run by CI, so what a contributor runs locally and
-# what the build runs cannot drift apart. If you add a check, add it to `check`
-# and to .github/workflows/ci.yml in the same commit.
+# what the build runs cannot drift apart. That is asserted by `make ci-parity`
+# rather than remembered: this comment was here from the start and was not
+# true, and eighteen checks ran on workstations and nowhere else.
 #
 #   make          list targets
 #   make check    everything CI runs
@@ -202,6 +203,14 @@ lint: ## ESLint, including the no-network rule that enforces INV-NET-2
 format: ## Apply .prettierrc to everything .prettierignore does not exclude
 	@npx prettier --write . --log-level warn
 	@echo 'format: applied'
+
+ci-parity: ## Every target `make check` runs is also run by .github/workflows/ci.yml
+	# The header of this file has always claimed this and it was not true: CI
+	# ran a hand-curated list and eighteen targets were absent from it,
+	# including the threat-model honesty gate, the device CSP, and every
+	# visual guarantee about the panel. Both comments read as though they
+	# covered each other, and only one direction was ever true.
+	@node tools/checks/check-ci-parity.mjs
 
 format-check: ## The same, asserted rather than applied
 	# WHY THIS IS IN `check` AT ALL. .prettierrc and .prettierignore have been
@@ -608,6 +617,6 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 
 # --- aggregates --------------------------------------------------------------
 
-check-fast: lint format-check ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims make-targets ipc-reachable device-csp qr-readback test manifest-check manifest-recipe ## Everything except the slow suites
+check-fast: lint format-check ci-parity ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims make-targets ipc-reachable device-csp qr-readback test manifest-check manifest-recipe ## Everything except the slow suites
 
 check: check-fast build verify test-vectors test-differential repro-check sbom device-ui screen-fit contrast ui-roles journeys dev-check web-check ## Everything CI runs
