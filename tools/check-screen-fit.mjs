@@ -38,10 +38,10 @@
 
 import { spawn } from 'node:child_process'
 import { createServer } from 'node:http'
-import { existsSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { chromeProfile, finish, reap } from './lib/browser.mjs'
+import { chromeProfile, finish, reachStep, reachTarget, reap } from './lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const DIST = join(ROOT, 'tools/screens/dist')
@@ -149,6 +149,75 @@ const MAX_HEADER = 78
  * from the rest of the screen.
  */
 const MIN_GAP = 6
+
+/**
+ * Every statement in the product that is marked as one somebody has to see.
+ *
+ * Read from the source rather than from what the gallery happens to render,
+ * because the question this answers is the one the gallery cannot: which of
+ * these has NEVER been drawn at 800x480.
+ *
+ * The distinction matters more than it sounds. data-must-see is measured only
+ * on states that exist, so marking thirty seven banners and building three
+ * states produces a green line that means "the three fit" while reading as
+ * "the rule holds". Nineteen error banners were asserted by unit tests and
+ * rendered by nothing, and two of them turned out to be off the bottom of the
+ * panel the first time anything drew them. jsdom computes no box, so a banner
+ * nobody can see passes every assertion written against it.
+ *
+ * Only the ones carrying a testid, which is the identifier a gallery state and
+ * a unit test can both name. One card on the seed screen is marked without one
+ * and is on that screen unconditionally.
+ */
+function markedInSource() {
+  const found = new Map()
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        walk(path)
+        continue
+      }
+      if (!entry.name.endsWith('.tsx')) continue
+      const source = readFileSync(path, 'utf8')
+      // One JSX opening tag at a time, so an attribute pair is only counted
+      // when both attributes are on the same element. Split on '<' and require
+      // the fragment to close before the next tag opens.
+      for (const fragment of source.split('<')) {
+        const end = fragment.indexOf('>')
+        if (end === -1) continue
+        const tag = fragment.slice(0, end)
+        // Either written out, or a Refusal, which renders the marker itself.
+        // WITHOUT THE SECOND HALF THIS LEDGER SILENTLY EMPTIES. Twenty four of
+        // these banners were hand-written markup and became <Refusal>, and the
+        // count went from thirty one to ten on a green run: the marker was
+        // still on every one of them, one level down, and the scrape could no
+        // longer see it. A coverage check that stops asking is worse than none,
+        // because the number it prints still looks like an answer.
+        const isRefusal = /^Refusal[\s/>]/.test(tag)
+        if (!tag.includes('data-must-see') && !isRefusal) continue
+        const id = (isRefusal ? /testId="([^"]+)"/ : /data-testid="([^"]+)"/).exec(tag)
+        if (id === null) continue
+        const where = found.get(id[1]) ?? new Set()
+        where.add(path.slice(path.indexOf('packages/')))
+        found.set(id[1], where)
+      }
+    }
+  }
+  walk(join(ROOT, 'packages/ui/src'))
+
+  /* The assumption the Refusal half rests on, stated where it is relied upon.
+     If that component stops marking itself, every screen using it drops out of
+     this ledger at once and nothing else would say so. */
+  const refusal = readFileSync(join(ROOT, 'packages/ui/src/components/Refusal.tsx'), 'utf8')
+  if (!refusal.includes('data-must-see')) {
+    throw new Error(
+      'Refusal no longer renders data-must-see, so every refusal on the device has ' +
+        'silently left this ledger. Put the marker back or stop counting Refusal here.'
+    )
+  }
+  return found
+}
 
 const CHROME_CANDIDATES = [
   process.env['CHROME_PATH'],
@@ -630,7 +699,14 @@ const MUST_SEE = `(() => {
         ' when the screen arrives: "' + text + '"',
     })
   }
-  return JSON.stringify({ problems: problems })
+  // Which of them this state actually drew, for the coverage ledger below.
+  // Height, not presence: a banner React did not render has no box, and one
+  // rendered into a collapsed container is not on the panel either.
+  const drawn = []
+  for (const el of document.querySelectorAll('[data-must-see][data-testid]')) {
+    if (el.getBoundingClientRect().height > 0) drawn.push(el.getAttribute('data-testid'))
+  }
+  return JSON.stringify({ problems: problems, drawn: drawn })
 })()`
 
 const KEYBOARD = `(() => {
@@ -639,14 +715,31 @@ const KEYBOARD = `(() => {
   const problems = []
 
   const kb = document.querySelector('.nr-kb__keys')
+  /*
+   * A refusal on screen changes which state this rule is about.
+   *
+   * The rule is that somebody TYPING can see the keys. A refusal is about the
+   * attempt before this one, costs about 50px at the top of the body, and on
+   * six screens that was enough to push the bottom row under the action bar.
+   * Those screens clear the refusal on the next keystroke, so the state a
+   * person types in has no banner in it and the keys are all there.
+   *
+   * That claim is checked rather than believed: the caller taps a key and asks
+   * again. A screen that keeps its refusal while somebody retypes still fails,
+   * and now fails saying so.
+   */
+  const refusal = document.querySelector('.nr-screen__body [data-must-see].nr-banner')
   if (kb !== null) {
     const r = kb.getBoundingClientRect()
     if (r.bottom > limit + 1) {
       problems.push({
         kind: 'keyboard-below-the-fold',
+        clearedByTyping: refusal !== null,
         detail: 'the keys span ' + Math.round(r.top) + '..' + Math.round(r.bottom) +
           ' and the action bar starts at ' + Math.round(limit) +
-          ', so ' + Math.round(r.bottom - limit) + 'px of keyboard needs scrolling to',
+          ', so ' + Math.round(r.bottom - limit) + 'px of keyboard needs scrolling to' +
+          (refusal === null ? '' : ', with a refusal above them taking ' +
+            Math.round(refusal.getBoundingClientRect().height) + 'px'),
       })
     }
   }
@@ -802,6 +895,8 @@ async function main() {
   let failed = 0
   /** States whose body scrolls, with how far. Reported, never failed. */
   const below = []
+  /** Marked statements this run actually drew, and the state that drew each. */
+  const drawn = new Map()
 
   /*
    * The affordance those scrolling states depend on, checked once per theme.
@@ -869,32 +964,17 @@ async function main() {
     // being skipped: a reach list that quietly stopped reaching anywhere would
     // report every state as fitting while measuring only the first.
     let unreachable = null
-    for (const testId of reach) {
+    for (const step of reach) {
       // Same reason: a control one render behind is not a missing control.
-      await settled(`[data-testid="${testId}"]`)
-      const clicked = await cdp(
+      await settled(reachTarget(step))
+      const acted = await cdp(
         page,
         'Runtime.evaluate',
-        {
-          expression: `(() => {
-            const el = document.querySelector('[data-testid="${testId}"]')
-            if (el === null) return 'missing'
-            // A disabled control accepts .click() and does nothing, so the
-            // harness would go on to measure the screen it was already on and
-            // report the unreached state as fitting. That happened: a reach
-            // list pointed at a submit button that needed a filled field.
-            if (el.disabled === true || el.getAttribute('aria-disabled') === 'true') {
-              return 'disabled'
-            }
-            el.click()
-            return 'clicked'
-          })()`,
-          returnByValue: true,
-        },
+        { expression: reachStep(step), returnByValue: true },
         state
       )
-      if (clicked.result.value !== 'clicked') {
-        unreachable = `${testId} (${String(clicked.result.value)})`
+      if (acted.result.value !== 'clicked') {
+        unreachable = `${step} (${String(acted.result.value)})`
         break
       }
       await sleep(250)
@@ -909,18 +989,51 @@ async function main() {
 
     // BEFORE the scroll, deliberately. Everything else here asks what the user
     // can reach; this one asks what they can see while typing.
-    const keys = await cdp(
+    let keys = await cdp(
       page,
       'Runtime.evaluate',
       { expression: KEYBOARD, returnByValue: true },
       state
     )
+    /* BEFORE the keystroke below, deliberately. This asks what is on the panel
+       when the screen arrives, and the retry's keystroke is not part of that:
+       it dismisses the very refusal being recorded. Ordering these the other
+       way round emptied five screens out of the coverage ledger. */
     const seen = await cdp(
       page,
       'Runtime.evaluate',
       { expression: MUST_SEE, returnByValue: true },
       state
     )
+
+    /*
+     * A keyboard displaced by a refusal gets asked again after one keystroke.
+     *
+     * The screens that do this promise the banner goes when typing starts, and
+     * this is where that promise is tested rather than trusted. One key: enough
+     * to change the value, and the smallest thing a person could do next.
+     */
+    if (JSON.parse(keys.result.value).problems.some((p) => p.clearedByTyping === true)) {
+      await cdp(
+        page,
+        'Runtime.evaluate',
+        {
+          expression: `(() => {
+            const key = document.querySelector('.nr-kb__keys button:not([disabled])')
+            if (key !== null) key.click()
+          })()`,
+        },
+        state
+      )
+      await sleep(220)
+      keys = await cdp(
+        page,
+        'Runtime.evaluate',
+        { expression: KEYBOARD, returnByValue: true },
+        state
+      )
+    }
+
 
     await cdp(page, 'Runtime.evaluate', { expression: SCROLL_TO_END }, state)
     await sleep(150)
@@ -932,9 +1045,13 @@ async function main() {
       state
     )
     const measured = JSON.parse(result.value)
+    const mustSee = JSON.parse(seen.result.value)
+    for (const id of mustSee.drawn) {
+      if (!drawn.has(id)) drawn.set(id, label)
+    }
     const problems = [
       ...JSON.parse(keys.result.value).problems,
-      ...JSON.parse(seen.result.value).problems,
+      ...mustSee.problems,
       ...measured.problems,
     ]
     if (measured.overflow > 0) below.push({ label, px: measured.overflow })
@@ -952,6 +1069,37 @@ async function main() {
   browser.close()
   reap(chrome)
   server.close()
+
+  /*
+   * The coverage ledger: which marked statements no state ever drew.
+   *
+   * Failing rather than reporting, because a marker on a banner nothing
+   * renders is worse than no marker. It reads, in the source and in every
+   * review, as "this is checked", and the check it names never ran. That is
+   * the shape of the bug this whole harness exists for: an assertion that
+   * passes because it was never asked.
+   *
+   * The fix is a gallery state, not a removed marker.
+   */
+  const marked = markedInSource()
+  const uncovered = [...marked.keys()].filter((id) => !drawn.has(id)).sort()
+  if (uncovered.length > 0) {
+    failed += 1
+    console.error(
+      `\ncheck-screen-fit: ${String(uncovered.length)} of ${String(marked.size)} marked ` +
+        `statements were never drawn:\n`
+    )
+    for (const id of uncovered) {
+      console.error(`    ${id}${DIM}  ${[...marked.get(id)].join(', ')}${OFF}`)
+    }
+    console.error(
+      `\n  Each of these is marked data-must-see, which claims it is fully on the\n` +
+        `  panel when its screen arrives. No state in tools/screens/gallery.tsx\n` +
+        `  renders it, so nothing has ever measured that claim, and a unit test\n` +
+        `  cannot: jsdom computes no box model. Add a gallery state that produces\n` +
+        `  it, with a reach list if it takes a tap. Do not remove the marker.\n`
+    )
+  }
 
   if (failed > 0) {
     console.error(
@@ -983,7 +1131,8 @@ async function main() {
       `${String(WIDTH)}x${String(HEIGHT)}` +
       (below.length === 0
         ? ''
-        : `, ${String(below.length)} with content below the fold`)
+        : `, ${String(below.length)} with content below the fold`) +
+      `, ${String(marked.size)} marked statements all drawn`
   )
 
   /*

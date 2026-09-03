@@ -33,7 +33,7 @@
 import { createServer } from 'node:http'
 import { spawn } from 'node:child_process'
 import { readFileSync, existsSync, statSync } from 'node:fs'
-import { chromeProfile, finish, reap } from './lib/browser.mjs'
+import { chromeProfile, finish, reachStep, reap } from './lib/browser.mjs'
 import { join, extname, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -160,8 +160,16 @@ async function main() {
       await sleep(420)
       await cdp(page, 'Runtime.evaluate', { expression: `document.documentElement.setAttribute('data-theme', '${theme}')` }, st)
       await sleep(200)
-      for (const t of reach) {
-        await cdp(page, 'Runtime.evaluate', { expression: `(() => { const e = document.querySelector('[data-testid="${t}"]'); if (e) e.click() })()` }, st)
+      for (const step of reach) {
+        // Retried, because some of these states arrive on their own clock: the
+        // scan screen's refusal is two seconds of camera and decoder after the
+        // screen itself. Walking past a step that found nothing measures the
+        // screen before it and calls it the screen after.
+        for (let attempt = 0; attempt < 40; attempt += 1) {
+          const acted = await cdp(page, 'Runtime.evaluate', { expression: reachStep(step), returnByValue: true }, st)
+          if (acted.result.value === 'clicked') break
+          await sleep(80)
+        }
         await sleep(260)
       }
       const rows = JSON.parse((await cdp(page, 'Runtime.evaluate', { expression: PROBE, returnByValue: true }, st)).result.value)

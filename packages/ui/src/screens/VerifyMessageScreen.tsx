@@ -1,5 +1,6 @@
 import { type ReactElement, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { Screen } from '../components/Screen.js'
+import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
 import { TextKeyboard } from '../components/TextKeyboard.js'
 import { Info } from '../components/Info.js'
@@ -181,6 +182,17 @@ export function VerifyMessageScreen(props: VerifyMessageScreenProps): ReactEleme
         </>
       }
     >
+      {/* FIRST IN THE BODY, because a refusal nobody sees is a refusal that
+          did not happen. This sat last, under everything the screen holds, on
+          a 480px panel: tapping the button and being refused changed nothing
+          the user could see. Measured rather than asserted, because jsdom
+          computes no box and every test on it passed throughout. */}
+      {error !== null && (
+        <Refusal title="Could not check it" testId="verify-error">
+          {error}
+        </Refusal>
+      )}
+
       {result !== null && (
         <div
           className={`nr-banner ${passed ? 'nr-banner--ok' : 'nr-banner--danger'}`}
@@ -286,19 +298,15 @@ export function VerifyMessageScreen(props: VerifyMessageScreenProps): ReactEleme
             onChange={(next) => {
               setters[active.id](next)
               // Cleared, because a result sitting under a changed field is a result
-              // about something that is no longer on the screen.
+              // about something that is no longer on the screen. The refusal goes
+              // with it: it is about the last attempt, and it is 50px at the top of
+              // a body that has a keyboard in it.
               setResult(null)
+              setError(null)
             }}
             testId="verify-keyboard"
           />
         </>
-      )}
-
-      {error !== null && (
-        <div data-must-see className="nr-banner nr-banner--danger" data-testid="verify-error">
-          <strong>Could not check it</strong>
-          <span>{error}</span>
-        </div>
       )}
 
       <Info label="What this checks" testId="verify-no-key">

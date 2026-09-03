@@ -1,5 +1,6 @@
 import { type ReactElement, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { Screen } from '../components/Screen.js'
+import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
 import { Hash } from '../components/Hash.js'
 import { Info } from '../components/Info.js'
@@ -239,6 +240,17 @@ export function AssembleQuorumScreen(props: AssembleQuorumScreenProps): ReactEle
         </>
       }
     >
+      {/* FIRST IN THE BODY, because a refusal nobody sees is a refusal that
+          did not happen. This sat last, under everything the screen holds, on
+          a 480px panel: tapping the button and being refused changed nothing
+          the user could see. Measured rather than asserted, because jsdom
+          computes no box and every test on it passed throughout. */}
+      {error !== null && (
+        <Refusal title="Not built" testId="assemble-error">
+          {error}
+        </Refusal>
+      )}
+
       <div className="nr-card nr-card--tight">
         <span className="nr-card__label">How many signatures spend it</span>
         <div className="nr-row">
@@ -330,13 +342,6 @@ export function AssembleQuorumScreen(props: AssembleQuorumScreenProps): ReactEle
         public key: it derives addresses and cannot spend anything, so carrying it between devices
         risks nothing.
       </Info>
-
-      {error !== null && (
-        <div data-must-see className="nr-banner nr-banner--danger" data-testid="assemble-error">
-          <strong>Not built</strong>
-          <span>{error}</span>
-        </div>
-      )}
     </Screen>
   )
 }

@@ -81,7 +81,29 @@ manifest-recipe: ## The commands docs/VERIFICATION.md tells you to run print wha
 	# runs every transcript in that section.
 	@node tools/check-manifest-recipe.mjs
 
-manifest-check: ## Every tracked source still matches MANIFEST.lock
+manifest-check: ## Every source under the manifest roots is tracked, and matches MANIFEST.lock
+	# BOTH HALVES, because the second one is where the hole was.
+	#
+	# `shasum -c` answers "does every file the manifest lists still hash to what
+	# it says". It cannot answer "does the manifest list every file", and the
+	# manifest is built from `git ls-files`, so a source file that has never been
+	# staged is outside it and every check in this repository passes. That is not
+	# hypothetical: packages/ui/src/components/Refusal.tsx sat untracked through a
+	# full green run, imported by nineteen screens, contributing nothing to the
+	# root hash a user compares before entering their PIN.
+	#
+	# An omission is worse than a mismatch. A mismatch is loud; an omission looks
+	# exactly like a file that is fine.
+	@untracked=$$(git ls-files --others --exclude-standard -- $(MANIFEST_ROOTS)); \
+	  if [ -n "$$untracked" ]; then \
+	    echo 'UNTRACKED SOURCES UNDER THE MANIFEST ROOTS'; \
+	    echo "$$untracked" | sed 's/^/  /'; \
+	    echo; \
+	    echo '  MANIFEST.lock is built from `git ls-files`, so these are outside the'; \
+	    echo '  root hash while being part of the build. Stage them and rerun'; \
+	    echo '  `make manifest`, or add them to .gitignore if they are not sources.'; \
+	    exit 1; \
+	  fi
 	@shasum -a 256 -c MANIFEST.lock --status \
 	  && printf 'manifest OK, root hash: ' \
 	  && shasum -a 256 MANIFEST.lock | cut -d' ' -f1 \

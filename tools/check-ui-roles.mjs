@@ -29,7 +29,7 @@ import { createServer } from 'node:http'
 import { spawn } from 'node:child_process'
 import { readFileSync, existsSync, statSync } from 'node:fs'
 import { join, extname, normalize } from 'node:path'
-import { chromeProfile, finish, reap } from './lib/browser.mjs'
+import { chromeProfile, finish, reachStep, reap } from './lib/browser.mjs'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
@@ -77,7 +77,16 @@ async function main(){
  const seen=new Map()
  for(const {name,reach} of screens){
   await cdp(page,'Page.navigate',{url:`http://127.0.0.1:${PORT}/?screen=${name}`},st); await sleep(500)
-  for(const t of reach){ await cdp(page,'Runtime.evaluate',{expression:`(()=>{const e=document.querySelector('[data-testid="${t}"]');if(e)e.click()})()`},st); await sleep(300) }
+  // Retried for the same reason check-contrast retries: a step that found
+  // nothing yet is not a step to walk past.
+  for(const step of reach){
+   for(let a=0;a<40;a+=1){
+    const r=await cdp(page,'Runtime.evaluate',{expression:reachStep(step),returnByValue:true},st)
+    if(r.result.value==='clicked') break
+    await sleep(80)
+   }
+   await sleep(300)
+  }
   for(const r of JSON.parse((await cdp(page,'Runtime.evaluate',{expression:PROBE,returnByValue:true},st)).result.value)){
    const k=name+'|'+r.text; if(!seen.has(k)) seen.set(k,{name,...r})
   }

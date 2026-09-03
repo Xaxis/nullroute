@@ -1,5 +1,6 @@
 import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
+import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
 import { WordKeyboard } from '../components/WordKeyboard.js'
 import { TextKeyboard } from '../components/TextKeyboard.js'
@@ -103,9 +104,29 @@ export function ImportScreen(props: ImportScreenProps): ReactElement {
         </>
       }
     >
+      {/* FIRST IN THE BODY, because a refusal nobody sees is a refusal that
+          did not happen. This sat last, under everything the screen holds, on
+          a 480px panel: tapping the button and being refused changed nothing
+          the user could see. Measured rather than asserted, because jsdom
+          computes no box and every test on it passed throughout. */}
+      {error !== null && (
+        <Refusal title="Refused" testId="import-error" tone="warn">
+          {error}
+        </Refusal>
+      )}
+
       {!showPassphrase && (
         <>
-          <WordKeyboard words={words} onChange={setWords} target={target} testId="import-words" />
+          <WordKeyboard
+            words={words}
+            onChange={setWords}
+            // Every keystroke, not every finished word. See onTyping.
+            onTyping={() => {
+              setError(null)
+            }}
+            target={target}
+            testId="import-words"
+          />
           <Info label="Typing the words" testId="import-info">
             Only letters that can still reach a word are active, and a word is entered when it is
             the only one left or when you tap it. The checksum is validated on import: a single
@@ -142,13 +163,6 @@ export function ImportScreen(props: ImportScreenProps): ReactElement {
             it.
           </p>
         </>
-      )}
-
-      {error !== null && (
-        <div data-must-see className="nr-banner nr-banner--testnet" data-testid="import-error">
-          <strong>Refused</strong>
-          <span>{error}</span>
-        </div>
       )}
     </Screen>
   )

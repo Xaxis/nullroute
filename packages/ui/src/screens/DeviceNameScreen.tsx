@@ -1,5 +1,6 @@
 import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
+import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
 import { WALLET_COLOUR_NAMES } from './ManageWalletScreen.js'
 import { Info } from '../components/Info.js'
@@ -95,6 +96,17 @@ export function DeviceNameScreen(props: DeviceNameScreenProps): ReactElement {
         </>
       }
     >
+      {/* FIRST IN THE BODY, because a refusal nobody sees is a refusal that
+          did not happen. This sat last, under everything the screen holds, on
+          a 480px panel: tapping the button and being refused changed nothing
+          the user could see. Measured rather than asserted, because jsdom
+          computes no box and every test on it passed throughout. */}
+      {error !== null && (
+        <Refusal title="Not saved" testId="device-name-error">
+          {error}
+        </Refusal>
+      )}
+
       <div className="nr-field">
         <span className="nr-field__label">What to call it</span>
         <input
@@ -144,13 +156,6 @@ export function DeviceNameScreen(props: DeviceNameScreenProps): ReactElement {
         all show the same wallet name and the same colour: this is the only thing that tells the
         objects apart before one is unlocked.
       </Info>
-
-      {error !== null && (
-        <div data-must-see className="nr-banner nr-banner--danger" data-testid="device-name-error">
-          <strong>Not saved</strong>
-          <span>{error}</span>
-        </div>
-      )}
     </Screen>
   )
 }

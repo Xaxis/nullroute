@@ -1128,6 +1128,16 @@ body {
   gap: 0.75rem;
 }
 
+/* The row is the same height with the readout in it as without.
+   The readout appears on the first keystroke and is 13px against the label's
+   12px, so the row grew by 2px the moment somebody typed: two pixels taken off
+   the bottom of a keyboard that had none to give, on the screen that gates
+   every wallet on the device. Nothing above a keyboard changes size while
+   somebody is typing on it. */
+.nr-field__labelrow > * {
+  line-height: 1.125rem;
+}
+
 /* ==========================================================================
    Choice list, for mode and script type selection
    ========================================================================== */
@@ -1778,7 +1788,14 @@ body {
   border: 1px solid var(--color-line);
   border-radius: 0.5rem;
   background-color: var(--color-surface-2);
-  max-height: 7rem;
+  /* 6rem, and the number is a residue rather than a preference.
+     This box is the only thing on the screen that grows, and everything under
+     it is fixed: 44px of suggestions, 94px of keys, and an action bar that does
+     not move. At 7rem, a full 24 words pushed the bottom row of keys 6px under
+     that bar, which is the state somebody is in when they have typed
+     twenty three words and mistyped one. It scrolls either way; what changes is
+     whether the keys are still there while it does. */
+  max-height: 6rem;
   overflow-y: auto;
 }
 

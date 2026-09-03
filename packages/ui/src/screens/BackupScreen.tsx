@@ -1,5 +1,6 @@
 import { type ReactElement, type ReactNode, useCallback, useState } from 'react'
 import { Screen } from '../components/Screen.js'
+import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
 import { Choice } from '../components/Choice.js'
 import { TextKeyboard } from '../components/TextKeyboard.js'
@@ -299,6 +300,17 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
           </>
         }
       >
+        {/* FIRST IN THE BODY, because a refusal nobody sees is a refusal that
+          did not happen. This sat last, under everything the screen holds, on
+          a 480px panel: tapping the button and being refused changed nothing
+          the user could see. Measured rather than asserted, because jsdom
+          computes no box and every test on it passed throughout. */}
+        {error !== null && (
+          <Refusal title="Not written" testId="backup-error">
+            {error}
+          </Refusal>
+        )}
+
         {/* THE CHOICE ABOVE THE KEYBOARD, NOT UNDER IT.
 
             Whether this file carries the seed is the only consequential
@@ -325,7 +337,14 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
             {includeSeed ? 'Including the seed' : 'Not including the seed'}
           </button>
         </div>
-        <TextKeyboard value={passphrase} onChange={setPassphrase} testId="backup-passphrase" />
+        <TextKeyboard
+          value={passphrase}
+          onChange={(next) => {
+            setError(null)
+            setPassphrase(next)
+          }}
+          testId="backup-passphrase"
+        />
 
         {includeSeed ? (
           <div className="nr-banner nr-banner--danger" data-testid="backup-seed-warning">
@@ -342,13 +361,6 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
             it gives a device that can check what is yours and cannot spend. Your mnemonic is what
             restores the ability to sign.
           </Info>
-        )}
-
-        {error !== null && (
-          <div data-must-see className="nr-banner nr-banner--danger" data-testid="backup-error">
-            <strong>Not written</strong>
-            <span>{error}</span>
-          </div>
         )}
       </Screen>
     )
@@ -405,6 +417,17 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
         </>
       }
     >
+      {/* FIRST IN THE BODY, because a refusal nobody sees is a refusal that
+          did not happen. This sat last, under everything the screen holds, on
+          a 480px panel: tapping the button and being refused changed nothing
+          the user could see. Measured rather than asserted, because jsdom
+          computes no box and every test on it passed throughout. */}
+      {error !== null && (
+        <Refusal title="Not restored" testId="backup-error">
+          {error}
+        </Refusal>
+      )}
+
       {described === null ? (
         <div className="nr-field">
           <span className="nr-field__label">The backup file</span>
@@ -452,17 +475,13 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
           <span className="nr-field__label">Passphrase for this file</span>
           <TextKeyboard
             value={passphrase}
-            onChange={setPassphrase}
+            onChange={(next) => {
+              setError(null)
+              setPassphrase(next)
+            }}
             testId="backup-restore-passphrase"
           />
         </>
-      )}
-
-      {error !== null && (
-        <div data-must-see className="nr-banner nr-banner--danger" data-testid="backup-error">
-          <strong>Not restored</strong>
-          <span>{error}</span>
-        </div>
       )}
     </Screen>
   )

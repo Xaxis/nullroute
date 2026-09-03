@@ -1,5 +1,6 @@
 import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
+import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
 import { Choice } from '../components/Choice.js'
 import { TextKeyboard } from '../components/TextKeyboard.js'
@@ -175,6 +176,17 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
           </>
         }
       >
+        {/* FIRST IN THE BODY, because a refusal nobody sees is a refusal that
+          did not happen. This sat last, under everything the screen holds, on
+          a 480px panel: tapping the button and being refused changed nothing
+          the user could see. Measured rather than asserted, because jsdom
+          computes no box and every test on it passed throughout. */}
+        {error !== null && (
+          <Refusal title="Not changed" testId="manage-passphrase-error">
+            {error}
+          </Refusal>
+        )}
+
         {/* FIRST, above the fields, because the single most dangerous thing a
             user can believe on this screen is that they are changing the
             passphrase that derives their keys. They are not, that one cannot
@@ -250,13 +262,6 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
           Your mnemonic still restores the seed, and it does not restore the quorums registered here
           or the names you gave the other cosigners.
         </Info>
-
-        {error !== null && (
-          <div data-must-see className="nr-banner nr-banner--danger" data-testid="manage-passphrase-error">
-            <strong>Not changed</strong>
-            <span>{error}</span>
-          </div>
-        )}
       </Screen>
     )
   }
@@ -300,6 +305,17 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
           </>
         }
       >
+        {/* FIRST IN THE BODY, because a refusal nobody sees is a refusal that
+          did not happen. This sat last, under everything the screen holds, on
+          a 480px panel: tapping the button and being refused changed nothing
+          the user could see. Measured rather than asserted, because jsdom
+          computes no box and every test on it passed throughout. */}
+        {error !== null && (
+          <Refusal title="Not saved" testId="manage-error">
+            {error}
+          </Refusal>
+        )}
+
         {/* The name and the colour on one row. They are the two halves of one
             answer to one question, and stacked they cost 60px above a keyboard
             that had nowhere left to go: the bottom four of its five rows were
@@ -347,7 +363,10 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
             typed, so it says which field this is. */}
         <TextKeyboard
           value={passphrase}
-          onChange={setPassphrase}
+          onChange={(next) => {
+            setError(null)
+            setPassphrase(next)
+          }}
           placeholder="Passphrase for this wallet"
           testId="manage-passphrase"
         />
@@ -361,13 +380,6 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
           against the attempts that erase this wallet, because changing a colour must never be a way
           to lose one.
         </Info>
-
-        {error !== null && (
-          <div data-must-see className="nr-banner nr-banner--danger" data-testid="manage-error">
-            <strong>Not saved</strong>
-            <span>{error}</span>
-          </div>
-        )}
       </Screen>
     )
   }
@@ -415,6 +427,17 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
           </>
         }
       >
+        {/* FIRST IN THE BODY, because a refusal nobody sees is a refusal that
+          did not happen. This sat last, under everything the screen holds, on
+          a 480px panel: tapping the button and being refused changed nothing
+          the user could see. Measured rather than asserted, because jsdom
+          computes no box and every test on it passed throughout. */}
+        {error !== null && (
+          <Refusal title="Not erased" testId="manage-error">
+            {error}
+          </Refusal>
+        )}
+
         <div className="nr-banner nr-banner--danger" data-testid="manage-destroy-warning">
           <strong>This removes the seed from this device</strong>
           <span>
@@ -437,13 +460,6 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
             data-testid="manage-destroy-confirm"
           />
         </div>
-
-        {error !== null && (
-          <div data-must-see className="nr-banner nr-banner--danger" data-testid="manage-error">
-            <strong>Not erased</strong>
-            <span>{error}</span>
-          </div>
-        )}
       </Screen>
     )
   }

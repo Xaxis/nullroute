@@ -1,5 +1,6 @@
 import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
+import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
 import { TextKeyboard } from '../components/TextKeyboard.js'
 import { Info } from '../components/Info.js'
@@ -198,18 +199,17 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
           </>
         }
       >
-        <p className="nr-note" data-testid="wallets-forget-note">
+        {error !== null && (
+          <Refusal title="Not cleared" testId="wallets-forget-error">
+            {error}
+          </Refusal>
+        )}
+
+        <Info label="What clearing this row does" testId="wallets-forget-note">
           This wallet was erased when its attempt counter ran out. Its seed is already gone and
           clearing the row does not remove anything else. Your mnemonic still recovers it. If you do
           not have one, this row is not what is standing between you and the money.
-        </p>
-
-        {error !== null && (
-          <div data-must-see className="nr-banner nr-banner--danger" data-testid="wallets-forget-error">
-            <strong>Not cleared</strong>
-            <span>{error}</span>
-          </div>
-        )}
+        </Info>
       </Screen>
     )
   }
@@ -264,17 +264,16 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
         />
 
         {error !== null && (
-          <div data-must-see className="nr-banner nr-banner--danger" data-testid="wallet-unlock-error">
-            <strong>Not opened</strong>
-            <span>{error}</span>
-          </div>
+          <Refusal title="Not opened" testId="wallet-unlock-error">
+            {error}
+          </Refusal>
         )}
 
-        <p className="nr-note">
+        <Info label="What the attempt counter is for">
           Ten wrong attempts in a row erase this wallet from the device. That counter stops somebody
           guessing at a device they picked up. It does not stop anyone who copied the card first, so
           the passphrase is what is really protecting this.
-        </p>
+        </Info>
       </Screen>
     )
   }

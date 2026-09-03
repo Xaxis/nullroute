@@ -1,5 +1,6 @@
 import { type ReactElement, type ReactNode, useCallback, useState } from 'react'
 import { Screen } from '../components/Screen.js'
+import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
 import { TextKeyboard } from '../components/TextKeyboard.js'
 import { QrDisplay } from '../components/QrDisplay.js'
@@ -259,6 +260,17 @@ export function MessageScreen(props: MessageScreenProps): ReactElement {
         </>
       }
     >
+      {/* FIRST IN THE BODY, because a refusal nobody sees is a refusal that
+          did not happen. This sat last, under everything the screen holds, on
+          a 480px panel: tapping the button and being refused changed nothing
+          the user could see. Measured rather than asserted, because jsdom
+          computes no box and every test on it passed throughout. */}
+      {error !== null && (
+        <Refusal title="Not signed" testId="message-error">
+          {error}
+        </Refusal>
+      )}
+
       {review === null && (
         <>
           <span className="nr-field__label">The message</span>
@@ -268,7 +280,10 @@ export function MessageScreen(props: MessageScreenProps): ReactElement {
           <TextKeyboard
             secret={false}
             value={message}
-            onChange={setMessage}
+            onChange={(next) => {
+              setError(null)
+              setMessage(next)
+            }}
             testId="message-keyboard"
           />
           <Info label="What you are signing">
@@ -370,13 +385,6 @@ export function MessageScreen(props: MessageScreenProps): ReactElement {
             )}
           </div>
         </>
-      )}
-
-      {error !== null && (
-        <div data-must-see className="nr-banner nr-banner--danger" data-testid="message-error">
-          <strong>Not signed</strong>
-          <span>{error}</span>
-        </div>
       )}
     </Screen>
   )

@@ -1,5 +1,6 @@
 import { type ReactElement, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { Screen } from '../components/Screen.js'
+import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
 import { QrDisplay } from '../components/QrDisplay.js'
 
@@ -243,10 +244,9 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
       }
     >
       {error !== null && (
-        <div data-must-see className="nr-banner nr-banner--danger" data-testid="receive-error">
-          <strong>Not derived</strong>
-          <span>{error}</span>
-        </div>
+        <Refusal title="Not derived" testId="receive-error">
+          {error}
+        </Refusal>
       )}
 
       {/* WHICH WALLET THIS ADDRESS IS FOR, first and always, on a device that

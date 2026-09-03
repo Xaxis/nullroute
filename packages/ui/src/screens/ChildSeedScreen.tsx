@@ -1,5 +1,6 @@
 import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
+import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
 import { Info } from '../components/Info.js'
 
@@ -196,6 +197,17 @@ export function ChildSeedScreen(props: ChildSeedScreenProps): ReactElement {
         </>
       }
     >
+      {/* FIRST IN THE BODY, because a refusal nobody sees is a refusal that
+          did not happen. This sat last, under everything the screen holds, on
+          a 480px panel: tapping the button and being refused changed nothing
+          the user could see. Measured rather than asserted, because jsdom
+          computes no box and every test on it passed throughout. */}
+      {error !== null && (
+        <Refusal title="Not derived" testId="child-error">
+          {error}
+        </Refusal>
+      )}
+
       {/* Both pickers on one row. They ask what kind of child to derive and how
           long it should be, which is one question in two parts, and stacked
           they put the index and the paragraph explaining it past the bottom of
@@ -275,13 +287,6 @@ export function ChildSeedScreen(props: ChildSeedScreenProps): ReactElement {
         else. That is the feature: one set of words backs up all of them. It is also the limit,
         because a child given to somebody else is still controlled by the seed that made it.
       </Info>
-
-      {error !== null && (
-        <div data-must-see className="nr-banner nr-banner--danger" data-testid="child-error">
-          <strong>Not derived</strong>
-          <span>{error}</span>
-        </div>
-      )}
     </Screen>
   )
 }

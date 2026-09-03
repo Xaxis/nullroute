@@ -1,5 +1,6 @@
 import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
+import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
 import { QrDisplay } from '../components/QrDisplay.js'
 import { Info } from '../components/Info.js'
@@ -176,6 +177,17 @@ export function LabelsScreen(props: LabelsScreenProps): ReactElement {
         </>
       }
     >
+      {/* FIRST IN THE BODY, because a refusal nobody sees is a refusal that
+          did not happen. This sat last, under everything the screen holds, on
+          a 480px panel: tapping the button and being refused changed nothing
+          the user could see. Measured rather than asserted, because jsdom
+          computes no box and every test on it passed throughout. */}
+      {error !== null && (
+        <Refusal title="Not read" testId="labels-error">
+          {error}
+        </Refusal>
+      )}
+
       {imported === null ? (
         <div className="nr-field">
           <span className="nr-field__label">A BIP-329 label file</span>
@@ -265,13 +277,6 @@ export function LabelsScreen(props: LabelsScreenProps): ReactElement {
             again after a reboot.
           </Info>
         </>
-      )}
-
-      {error !== null && (
-        <div data-must-see className="nr-banner nr-banner--danger" data-testid="labels-error">
-          <strong>Not read</strong>
-          <span>{error}</span>
-        </div>
       )}
     </Screen>
   )

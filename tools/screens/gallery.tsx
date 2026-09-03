@@ -53,6 +53,7 @@ import {
   PassphraseScreen,
   PsbtScreen,
   QuorumAddressesScreen,
+  ScanScreen,
   SeedScreen,
   SetupScreen,
   UnlockedScreen,
@@ -633,6 +634,152 @@ const SCREENS: Record<string, () => React.ReactElement> = {
   'receive-failed': () => (
     <ReceiveScreen identity={DEVICE} nav={MENU} onAddress={never} onVerify={never} onBack={noop} />
   ),
+  'assemble-failed': () => (
+    <AssembleQuorumScreen
+      identity={DEVICE}
+      nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
+      onOurKey={async () =>
+        Promise.resolve({
+          keyExpression: `[73c5da0a/48'/0'/0'/2']${XPUB}`,
+          masterFingerprint: '73c5da0a',
+        })
+      }
+      onAssemble={never}
+      onReview={noop}
+      onScan={noop}
+      scanned={`[aabbccdd/48'/0'/0'/2']${XPUB}`}
+      onBack={noop}
+    />
+  ),
+  'labels-failed': () => (
+    <LabelsScreen
+      identity={DEVICE}
+      onScan={noop}
+      nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
+      initialText={
+        '{"type":"addr","ref":"bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu","label":"Rent, March"}'
+      }
+      onImport={never}
+      onExport={never}
+      onBack={noop}
+    />
+  ),
+  'quorum-failed': () => (
+    <QuorumAddressesScreen
+      identity={DEVICE}
+      nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
+      descriptor={DESCRIPTOR}
+      position={{ ours: 2, of: 3 }}
+      onAddresses={never}
+      onBack={noop}
+    />
+  ),
+  'verify-message-error': () => (
+    <VerifyMessageScreen
+      identity={DEVICE}
+      nav={MENU}
+      onScan={noop}
+      scannedProof={SCANNED_PROOF}
+      onVerify={never}
+      onBack={noop}
+    />
+  ),
+  /*
+   * A camera that opens and then reads two frames from different transfers.
+   *
+   * The refusal this draws is the interesting one on this screen. A camera that
+   * will not open is a dead end with a Cancel button; a camera reading half of
+   * one sequence and half of another assembles a payload out of two documents
+   * unless something stops it, and what stops it is a banner over a live
+   * viewfinder that the user has to read while pointing the device at a screen.
+   *
+   * An empty MediaStream, because the harness has no camera and the screen only
+   * needs something to hand to the video element.
+   */
+  'scan-failed': () => (
+    <ScanScreen
+      identity={DEVICE}
+      nav={MENU}
+      onResult={noop}
+      onCancel={noop}
+      openCamera={async () => Promise.resolve(new MediaStream())}
+      readFrame={async () => Promise.resolve(['B$2P0200MFRGGZDF', 'B$2P0300MFRGGZDF'])}
+    />
+  ),
+  /*
+   * Sources this device could observe and did not like, which is different from
+   * sources it could not observe at all.
+   *
+   * The `machine` state above is the second: every row unknown, which is what
+   * happens off a Pi. That hides the banner that says the device will not do the
+   * thing, because the unknown banner takes its place. Nothing had ever drawn
+   * the refusal itself.
+   */
+  'machine-unhealthy': () => (
+    <MachineEntropyScreen
+      identity={DEVICE}
+      nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
+      onHealth={async () =>
+        Promise.resolve({
+          healthy: false,
+          unknown: false,
+          checks: [
+            { name: 'kernel-pool', verdict: 'ok' as const, detail: 'seeded, 256 bits' },
+            {
+              name: 'hardware-rng',
+              verdict: 'failed' as const,
+              detail: 'returned the same block twice',
+            },
+            { name: 'boot-age', verdict: 'ok' as const, detail: 'up 41 minutes' },
+          ],
+        })
+      }
+      onGenerate={never}
+      onBack={noop}
+    />
+  ),
+  // Healthy sources and a generator that refuses anyway, which is the only way
+  // to reach the last banner on this screen.
+  'machine-failed': () => (
+    <MachineEntropyScreen
+      identity={DEVICE}
+      nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
+      onHealth={async () =>
+        Promise.resolve({
+          healthy: true,
+          unknown: false,
+          checks: [
+            { name: 'kernel-pool', verdict: 'ok' as const, detail: 'seeded, 256 bits' },
+            { name: 'hardware-rng', verdict: 'ok' as const, detail: 'present and distinct' },
+            { name: 'boot-age', verdict: 'ok' as const, detail: 'up 41 minutes' },
+          ],
+        })
+      }
+      onGenerate={never}
+      onBack={noop}
+    />
+  ),
+  // The export tab with the xpub disclosure open and the derivation refused.
+  'wallet-xpub-failed': () => (
+    <WalletScreen
+      identity={DEVICE}
+      nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
+      fingerprint="73c5da0a"
+      onAddresses={async () =>
+        Promise.resolve({
+          addresses: Array.from({ length: 10 }, (_, i) => ({
+            address: ADDRESS,
+            path: `m/84'/0'/0'/0/${String(i)}`,
+            index: i,
+            label: null,
+          })),
+        })
+      }
+      onDescriptor={async () => Promise.resolve({ descriptor: DESCRIPTOR, checksum: '8rf6pq2t' })}
+      onXpub={never}
+      onVerifyAddress={never}
+    />
+  ),
 
   'psbt-idle': () => (
     <PsbtScreen
@@ -1116,19 +1263,14 @@ const SCREENS: Record<string, () => React.ReactElement> = {
  */
 const REACH: Record<string, readonly (readonly string[])[]> = {
   wallet: [['tab-export'], ['tab-verify']],
-  backup: [['backup-choose-create'], ['backup-choose-restore']],
-  manage: [
-    ['manage-choose-rename'],
-    ['manage-choose-destroy'],
-    // The tallest state on this screen: a banner about what it does not
-    // change, three password fields, and a paragraph about what cannot be
-    // recovered.
-    ['manage-choose-passphrase'],
+  backup: [
+    ['backup-choose-create'],
+    ['backup-choose-restore'],
+    // Writing a backup that fails. One key is enough: the button is gated on
+    // the passphrase being non-empty, not on it being any good.
+    ['backup-choose-create', 'pk-key-a', 'backup-create-submit'],
   ],
   quorum: [['quorum-branch-change']],
-  // The disclosure adds a textarea to a screen already holding a full
-  // keyboard, which is the tallest this screen ever gets.
-  import: [['import-typed-toggle']],
   // The word check, which puts a full word keyboard on the screen that decides
   // whether a backup is real.
   seed: [['seed-ack', 'seed-confirm']],
@@ -1139,8 +1281,6 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   start: [['start-goal-multisig'], ['start-goal-sign']],
   // Built, which is where the checksum every device compares is shown.
   assemble: [['assemble-build']],
-  // The confirmation, which carries the sentence about what forgetting costs.
-  fleet: [['fleet-forget-start']],
   // Imported, which is where the rows, the dropped-line banner and the caveat
   // about labels going at the next lock all appear at once.
   labels: [['labels-import']],
@@ -1174,6 +1314,67 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   // banner the screen draws on a failed call is on screen and measurable.
   'psbt-failed': [['psbt-review']],
   'multisig-failed': [['multisig-review']],
+  'assemble-failed': [['assemble-build']],
+  // Nothing to tap. The camera opens, plays, and pulls its first frame through
+  // the decoder on a 200ms timer, so this state arrives about two seconds after
+  // the screen does and the harness has to wait for it rather than measure at
+  // 120ms and conclude it was never drawn.
+  'scan-failed': [['wait:scan-error']],
+  'labels-failed': [['labels-import']],
+  'verify-message-error': [['verify-run']],
+  child: [['child-derive']],
+  'device-name': [['device-name-save']],
+  message: [['pk-key-a', 'message-review']],
+  passphrase: [['pk-key-a', 'passphrase-submit']],
+  // Acknowledged and generated, which is the only route to this screen's last
+  // banner: the button is gated on both the tick and a healthy report.
+  'machine-failed': [['machine-acknowledge', 'machine-generate']],
+  // Open the disclosure, then ask for the xpub. The banner renders inside the
+  // disclosure, which is the part worth measuring: a refusal nested two levels
+  // down on the tab that already holds a QR code and a 200 character descriptor.
+  'wallet-xpub-failed': [['tab-export', 'xpub-disclosure', 'xpub-show']],
+  // Unlocking a wallet that refuses, and clearing a row whose wallet is
+  // already gone. Two different screens inside the one fixture, and the second
+  // is reached through a row that is disabled unless the wallet is a tombstone.
+  wallets: [
+    ['wallet-row-aaaaaaaaaaaaaaaa', 'pk-key-a', 'wallet-unlock-submit'],
+    ['wallet-row-cccccccccccccccc', 'wallets-forget-submit'],
+  ],
+  // Every state this screen has, and then the three refusals. Every handler on
+  // the manage fixture already rejects and nothing had ever tapped them.
+  manage: [
+    ['manage-choose-rename'],
+    ['manage-choose-destroy'],
+    // The tallest state on this screen: a banner about what it does not
+    // change, three password fields, and a paragraph about what cannot be
+    // recovered.
+    ['manage-choose-passphrase'],
+    // The name field starts empty when the label is unverified, which is what
+    // this fixture is, so it is typed rather than assumed.
+    [
+      'manage-choose-rename',
+      'type:manage-label:Cold storage, three of five',
+      'pk-key-a',
+      'manage-rename-submit',
+    ],
+    ['manage-choose-destroy', 'type:manage-destroy-confirm:Cold storage, three of five',
+      'manage-destroy-submit'],
+    ['manage-choose-passphrase', 'type:manage-passphrase-old:old one',
+      'type:manage-passphrase-new:new one', 'type:manage-passphrase-confirm:new one',
+      'manage-passphrase-submit'],
+  ],
+  // Typed rather than tapped out on the word keyboard. Twelve words is forty
+  // eight taps of harness standing in for one paste, and the screen offers this
+  // route precisely because somebody restoring has the words in front of them.
+  import: [
+    ['import-typed-toggle'],
+    ['import-typed-toggle', `type:import-mnemonic:${MNEMONIC}`, 'import-submit'],
+  ],
+  // Forgetting a quorum, confirmed by typing its checksum back.
+  fleet: [
+    ['fleet-forget-start'],
+    ['fleet-forget-start', 'type:fleet-forget-confirm:8rf6pq2t', 'fleet-forget-submit'],
+  ],
   // Typed, reviewed, and then signed. The signed state is the one that matters:
   // it holds the QR carrying the address, the message and the signature, and
   // nothing had ever measured it.

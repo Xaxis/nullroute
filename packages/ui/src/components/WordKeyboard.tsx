@@ -34,13 +34,23 @@ export interface WordKeyboardProps {
   readonly onChange: (words: readonly string[]) => void
   /** How many words the user is aiming for, for the counter. */
   readonly target?: number
+  /**
+   * Somebody is working on this again, whether or not a word has been finished.
+   *
+   * `onChange` fires when the word LIST changes, which is once every four or
+   * five keystrokes. A screen that wants to know a person has started typing
+   * cannot use it: the import screen clears its refusal on input, and with only
+   * onChange to go on the banner stayed up through most of a word, displacing
+   * the keys somebody was in the middle of tapping.
+   */
+  readonly onTyping?: (() => void) | undefined
   readonly testId?: string
 }
 
 const ALPHABET = 'abcdefghijklmnopqrstuvwxyz'.split('')
 
 export function WordKeyboard(props: WordKeyboardProps): ReactElement {
-  const { words, onChange, target, testId } = props
+  const { words, onChange, target, onTyping, testId } = props
   const [prefix, setPrefix] = useState('')
 
   const live = useMemo(() => new Set(nextLetters(prefix)), [prefix])
@@ -62,6 +72,7 @@ export function WordKeyboard(props: WordKeyboardProps): ReactElement {
 
   const type = useCallback(
     (letter: string) => {
+      onTyping?.()
       const next = prefix + letter
       const matches = wordsWithPrefix(next, 2)
       // Exactly one word left and no longer word extends it: there is nothing
@@ -73,17 +84,18 @@ export function WordKeyboard(props: WordKeyboardProps): ReactElement {
       }
       setPrefix(next)
     },
-    [prefix, commit]
+    [prefix, commit, onTyping]
   )
 
   /** Backspace: into the prefix if there is one, otherwise the last word. */
   const back = useCallback(() => {
+    onTyping?.()
     if (prefix.length > 0) {
       setPrefix(prefix.slice(0, -1))
       return
     }
     onChange(words.slice(0, -1))
-  }, [prefix, words, onChange])
+  }, [prefix, words, onChange, onTyping])
 
   return (
     <div className="nr-kb" data-testid={testId}>

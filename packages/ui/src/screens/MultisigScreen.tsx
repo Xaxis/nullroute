@@ -1,5 +1,6 @@
 import { type ReactElement, type ReactNode, useEffect, useState } from 'react'
 import { Screen } from '../components/Screen.js'
+import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
 import { Hash } from '../components/Hash.js'
 import { QrDisplay } from '../components/QrDisplay.js'
@@ -323,10 +324,9 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
         </p>
 
         {error !== null && (
-          <div data-must-see className="nr-banner nr-banner--danger" data-testid="multisig-error">
-            <strong>Not registered</strong>
-            <span>{error}</span>
-          </div>
+          <Refusal title="Not registered" testId="multisig-error">
+            {error}
+          </Refusal>
         )}
       </Screen>
     )
@@ -437,10 +437,9 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
           data-must-see is what noticed, once the gallery had a state whose
           handlers reject. */}
       {error !== null && (
-        <div data-must-see className="nr-banner nr-banner--danger" data-testid="multisig-error">
-          <strong>Not registered</strong>
-          <span>{error}</span>
-        </div>
+        <Refusal title="Not registered" testId="multisig-error">
+          {error}
+        </Refusal>
       )}
 
       {/* THE KEY YOU HAND OVER AND THE ONE THAT COMES BACK, SIDE BY SIDE.

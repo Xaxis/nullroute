@@ -1,5 +1,6 @@
 import { type ReactElement, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { Screen } from '../components/Screen.js'
+import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
 import { Info } from '../components/Info.js'
 
@@ -143,10 +144,9 @@ export function QuorumAddressesScreen(props: QuorumAddressesScreenProps): ReactE
       </div>
 
       {error !== null && (
-        <div data-must-see className="nr-banner nr-banner--danger" data-testid="quorum-error">
-          <strong>Not derived</strong>
-          <span>{error}</span>
-        </div>
+        <Refusal title="Not derived" testId="quorum-error">
+          {error}
+        </Refusal>
       )}
 
       {/* THE LIST AND THE REASON FOR IT, SIDE BY SIDE.

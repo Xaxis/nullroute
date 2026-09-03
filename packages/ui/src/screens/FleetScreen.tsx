@@ -1,5 +1,6 @@
 import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
+import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
 import { Info } from '../components/Info.js'
 
@@ -155,10 +156,9 @@ export function FleetScreen(props: FleetScreenProps): ReactElement {
         </div>
 
         {error !== null && (
-          <div data-must-see className="nr-banner nr-banner--danger" data-testid="fleet-forget-error">
-            <strong>Not forgotten</strong>
-            <span>{error}</span>
-          </div>
+          <Refusal title="Not forgotten" testId="fleet-forget-error">
+            {error}
+          </Refusal>
         )}
       </Screen>
     )

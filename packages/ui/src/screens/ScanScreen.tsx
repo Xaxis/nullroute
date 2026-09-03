@@ -1,6 +1,7 @@
 import { type ReactElement, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { BbqrCollector, parseBbqrPart } from '@nullroute/core'
 import { Screen } from '../components/Screen.js'
+import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
 import { decodeFrame } from '../lib/scanner.js'
 
@@ -332,10 +333,9 @@ export function ScanScreen(props: ScanScreenProps): ReactElement {
       )}
 
       {error !== null && status === 'scanning' && (
-        <div data-must-see className="nr-banner nr-banner--testnet" data-testid="scan-error">
-          <strong>Frames did not match</strong>
-          <span>{error}</span>
-        </div>
+        <Refusal title="Frames did not match" testId="scan-error" tone="warn">
+          {error}
+        </Refusal>
       )}
     </Screen>
   )

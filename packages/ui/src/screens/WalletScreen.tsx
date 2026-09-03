@@ -1,5 +1,6 @@
 import { type ReactElement, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { Screen } from '../components/Screen.js'
+import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
 import { QrDisplay } from '../components/QrDisplay.js'
 
@@ -547,7 +548,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
               equivalent. */}
           {onXpub !== undefined && (
             <details className="nr-details">
-              <summary className="nr-details__summary">
+              <summary className="nr-details__summary" data-testid="xpub-disclosure">
                 Some software asks for an xpub instead
               </summary>
               {xpub === null ? (
@@ -568,10 +569,9 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
                     Show the account xpub
                   </Button>
                   {xpubError !== null && (
-                    <div data-must-see className="nr-banner nr-banner--danger" data-testid="xpub-error">
-                      <strong>Not derived</strong>
-                      <span>{xpubError}</span>
-                    </div>
+                    <Refusal title="Not derived" testId="xpub-error">
+                      {xpubError}
+                    </Refusal>
                   )}
                 </>
               ) : (

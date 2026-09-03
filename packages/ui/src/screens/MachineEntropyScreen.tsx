@@ -1,5 +1,6 @@
 import { type ReactElement, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { Screen } from '../components/Screen.js'
+import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
 import { Info } from '../components/Info.js'
 
@@ -142,6 +143,17 @@ export function MachineEntropyScreen(props: MachineEntropyScreenProps): ReactEle
         </>
       }
     >
+      {/* FIRST IN THE BODY, because a refusal nobody sees is a refusal that
+          did not happen. This sat last, under everything the screen holds, on
+          a 480px panel: tapping the button and being refused changed nothing
+          the user could see. Measured rather than asserted, because jsdom
+          computes no box and every test on it passed throughout. */}
+      {error !== null && (
+        <Refusal title="Not generated" testId="machine-error">
+          {error}
+        </Refusal>
+      )}
+
       {/* First, and not behind a disclosure. Somebody arrives here having tapped
           past one warning already, and this is the last screen before a seed
           exists that nobody can audit. */}
@@ -222,13 +234,6 @@ export function MachineEntropyScreen(props: MachineEntropyScreenProps): ReactEle
             precisely the attack rolling dice makes impossible.
           </Info>
         </>
-      )}
-
-      {error !== null && (
-        <div data-must-see className="nr-banner nr-banner--danger" data-testid="machine-error">
-          <strong>Not generated</strong>
-          <span>{error}</span>
-        </div>
       )}
     </Screen>
   )

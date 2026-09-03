@@ -1,6 +1,7 @@
 import { type ReactElement, type ReactNode, useState } from 'react'
 import { type ReviewWarning } from '@nullroute/core'
 import { Screen } from '../components/Screen.js'
+import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
 import { QrDisplay } from '../components/QrDisplay.js'
 
@@ -547,10 +548,9 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
           handlers reject. Nineteen screens have one of these and jsdom cannot
           see any of them. */}
       {error !== null && (
-        <div data-must-see className="nr-banner nr-banner--danger" data-testid="psbt-error">
-          <strong>Not signed</strong>
-          <span>{error}</span>
-        </div>
+        <Refusal title="Not signed" testId="psbt-error">
+          {error}
+        </Refusal>
       )}
 
       {review === null && (
