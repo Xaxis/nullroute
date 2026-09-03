@@ -107,7 +107,26 @@ export function describeSighash(type: number | undefined): SighashVerdict {
   }
 
   const parts: string[] = []
-  if (base === SIGHASH_NONE) {
+  /*
+   * SIGHASH_ALL with ANYONECANPAY set, which is 0x81 and by far the commonest
+   * ANYONECANPAY there is.
+   *
+   * The two exits above match on the WHOLE byte, so they only catch a bare
+   * 0x01. With the high bit set the value is 0x81, it fell past both, and the
+   * chain below had no branch for base 0x01: the device told the user "this
+   * signature uses a sighash flag nullroute does not recognise" and named it
+   * "0x81 | ANYONECANPAY". It recognises it perfectly well, and this is the
+   * transaction review screen, which is the one thing on the device a user is
+   * asked to read before authorising a spend. A hex fault code there reads as
+   * a malfunction rather than as a property of the transaction.
+   *
+   * "Every output" rather than "every input and every output", because that is
+   * what ANYONECANPAY changes: this signature covers all the outputs and only
+   * its own input, which is why the clause below is true and worth saying.
+   */
+  if (base === SIGHASH_ALL) {
+    parts.push('This signature commits to every output')
+  } else if (base === SIGHASH_NONE) {
     parts.push(
       'This signature does NOT commit to the outputs, so where the money goes can be changed after you sign'
     )
@@ -123,7 +142,8 @@ export function describeSighash(type: number | undefined): SighashVerdict {
   }
 
   const names: string[] = []
-  if (base === SIGHASH_NONE) names.push('SIGHASH_NONE')
+  if (base === SIGHASH_ALL) names.push('SIGHASH_ALL')
+  else if (base === SIGHASH_NONE) names.push('SIGHASH_NONE')
   else if (base === SIGHASH_SINGLE) names.push('SIGHASH_SINGLE')
   else names.push(`0x${value.toString(16)}`)
   if (anyoneCanPay) names.push('ANYONECANPAY')

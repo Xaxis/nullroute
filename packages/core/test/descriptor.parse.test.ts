@@ -8,7 +8,12 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { parseDescriptor, parseKeyExpression, descriptorKeys } from '../src/descriptor/parse.js'
+import {
+  canonicalKeyExpression,
+  parseDescriptor,
+  parseKeyExpression,
+  descriptorKeys,
+} from '../src/descriptor/parse.js'
 import { withChecksum } from '../src/descriptor/checksum.js'
 
 const XPUB =
@@ -180,5 +185,63 @@ describe('core.descriptor.parse script expressions', () => {
     const d = parseDescriptor(withChecksum(`sh(wsh(multi(2,${PUBKEY},${PUBKEY})))`))
     expect(d.script.kind).toBe('sh')
     expect(descriptorKeys(d.script)).toHaveLength(2)
+  })
+
+  /*
+   * INV-DPARSE-8. One key expression, one spelling.
+   *
+   * BIP-380 allows ' and h and H for a hardened step, and a fingerprint is hex
+   * and therefore case-insensitive. This parser has always normalised all of
+   * them; what was missing was a way to WRITE the normal form back out, so
+   * assembleQuorum emitted keys as the user typed them and the same quorum got
+   * a different checksum on each co-signer's device.
+   */
+  it('writes-one-spelling-for-every-legal-form-of-the-same-key', () => {
+    const xpub =
+      'xpub6BosfCnifzxcFwrSzQiqu2DBVTshkCXacvNsWGYJVVhhawA7d4R5WSWGFNbi8Aw6ZRc1brxMyWMzG3DSSSSoekkudhUd9yLb6qx39T9nMdj'
+    const canonical = `[73c5da0a/48'/0'/0'/2']${xpub}/<0;1>/*`
+
+    for (const written of [
+      canonical,
+      `[73C5DA0A/48h/0h/0h/2h]${xpub}/<0;1>/*`,
+      `[73c5da0A/48H/0'/0h/2']${xpub}/<0;1>/*`,
+      `  ${canonical}  `,
+    ]) {
+      expect(canonicalKeyExpression(written)).toBe(canonical)
+    }
+  })
+
+  // The suffix is taken from the text rather than rebuilt, so the shapes that
+  // are not a plain multipath have to survive it unchanged.
+  it('leaves-a-key-it-cannot-improve-exactly-as-it-was', () => {
+    const xpub =
+      'xpub6BosfCnifzxcFwrSzQiqu2DBVTshkCXacvNsWGYJVVhhawA7d4R5WSWGFNbi8Aw6ZRc1brxMyWMzG3DSSSSoekkudhUd9yLb6qx39T9nMdj'
+    for (const written of [
+      xpub,
+      `[73c5da0a]${xpub}`,
+      `${xpub}/0/*`,
+      `[73c5da0a/48'/0'/0'/2']${xpub}`,
+    ]) {
+      expect(canonicalKeyExpression(written)).toBe(written)
+    }
+  })
+
+  /*
+   * The round trip is the safety property, not a detail.
+   *
+   * Rewriting a descriptor is the one place where a normalisation that changed
+   * the meaning would be worst: the device would register a quorum deriving
+   * different addresses and report a matching checksum for it. So the canonical
+   * text is re-parsed and compared, and anything that does not survive throws.
+   */
+  it('canonicalises-only-what-parses-back-to-the-same-key', () => {
+    const xpub =
+      'xpub6BosfCnifzxcFwrSzQiqu2DBVTshkCXacvNsWGYJVVhhawA7d4R5WSWGFNbi8Aw6ZRc1brxMyWMzG3DSSSSoekkudhUd9yLb6qx39T9nMdj'
+    const before = parseKeyExpression(`[73C5DA0A/48h/0h/0h/2h]${xpub}/<0;1>/*`)
+    const after = parseKeyExpression(
+      canonicalKeyExpression(`[73C5DA0A/48h/0h/0h/2h]${xpub}/<0;1>/*`)
+    )
+    expect(after).toStrictEqual(before)
+    expect(() => canonicalKeyExpression('not-a-key')).toThrow()
   })
 })

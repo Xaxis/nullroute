@@ -43,6 +43,55 @@ function setup(overrides: Partial<React.ComponentProps<typeof BackupScreen>> = {
 }
 
 describe('BackupScreen', () => {
+  /*
+   * A scanned backup is a backup, not a passphrase.
+   *
+   * `initialText` seeded the passphrase and left the backup field empty, so
+   * scanning a file dropped the user back on the two-choice screen with the
+   * whole encrypted blob in the passphrase readout. Restore then showed an
+   * empty textarea and a disabled button with no way forward, and the other
+   * branch would have written a real backup under a passphrase nobody chose
+   * and nobody could retype.
+   */
+  it('puts-a-scanned-backup-in-the-backup-field', () => {
+    const blob = '{"v":1,"kdf":"argon2id","ct":"deadbeef"}'
+    setup({ initialText: blob })
+
+    // Straight to the restore branch: arriving with a file in hand means the
+    // choice has already been made.
+    const field = screen.getByTestId('backup-input')
+    expect(field.value).toBe(blob)
+    expect(screen.getByTestId('backup-describe').disabled).toBe(false)
+
+    expect(screen.queryByTestId('backup-restore')).not.toBeNull()
+  })
+
+  /*
+   * The half that could have cost something.
+   *
+   * With the blob seeding the passphrase, the write branch was enabled the
+   * moment a file was scanned, and tapping it wrote a real backup encrypted
+   * under a passphrase the user never chose and could not retype. Reached the
+   * way a user would: back out of the restore branch and take the other one.
+   */
+  it('does-not-arm-the-write-branch-with-a-scanned-file', () => {
+    setup({ initialText: '{"v":1,"kdf":"argon2id","ct":"deadbeef"}' })
+
+    fireEvent.click(screen.getByTestId('backup-restore-back'))
+    fireEvent.click(screen.getByTestId('backup-choose-create'))
+
+    expect(screen.getByTestId('backup-create-submit').disabled).toBe(true)
+    expect(screen.getByTestId('pk-length').textContent).toContain('0')
+  })
+
+  // Without one, nothing has been chosen yet and the screen still asks.
+  it('still-asks-which-way-when-nothing-was-scanned', () => {
+    setup()
+    expect(screen.queryByTestId('backup-choose-create')).not.toBeNull()
+    expect(screen.queryByTestId('backup-choose-restore')).not.toBeNull()
+    expect(screen.queryByTestId('backup-input')).toBeNull()
+  })
+
   /**
    * INV-UI-40. Seedless is the default and the difference is stated in the
    * words that matter, not in a toggle label alone.

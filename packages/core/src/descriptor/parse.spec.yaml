@@ -15,6 +15,7 @@ covers:
   - packages/core/src/descriptor/parse.ts::parseDescriptor
   - packages/core/src/descriptor/parse.ts::parseKeyExpression
   - packages/core/src/descriptor/parse.ts::descriptorKeys
+  - packages/core/src/descriptor/parse.ts::canonicalKeyExpression
   - packages/core/src/descriptor/parse.ts::DescriptorParseError
 
 algorithm: >
@@ -75,14 +76,33 @@ invariants:
       - packages/core/test/descriptor.parse.test.ts::splits-arguments-at-the-top-level-only
       - packages/core/test/descriptor.parse.test.ts::parses-nested-scripts
 
+  # The statement here read "not evaluable until phase 3", which stopped being
+  # true when the evaluators were written. wsh(sortedmulti(...)) derives
+  # addresses today (deriveMultisigAddresses) and so does tr() with a script
+  # tree (deriveTaprootAddresses, which builds the tree and preserves its
+  # shape). A spec describing the code as less capable than it is drifts the
+  # same way as one describing it as more capable: both mean a reader cannot
+  # use it to decide anything.
   - id: INV-DPARSE-7
     statement: >
-      Multisig forms parse into the tree even though they are not evaluable
-      until phase 3, so that phase extends the evaluator rather than reshaping
-      the parse.
+      Multisig and taproot forms parse into the same tree as the single
+      signature ones, so an evaluator consumes one shape rather than each form
+      reshaping the parse.
     tests:
       - packages/core/test/descriptor.parse.test.ts::parses-multisig-into-the-tree
       - packages/core/test/descriptor.parse.test.ts::parses-the-single-sig-forms
+
+  - id: INV-DPARSE-8
+    statement: >
+      A key expression has one written form. The spellings BIP-380 treats as
+      equal (a hardened step as ' or h or H, and a fingerprint in any case) are
+      written back out identically, and a rewrite that would change what the
+      key means throws rather than being emitted.
+    tests:
+      - packages/core/test/descriptor.parse.test.ts::writes-one-spelling-for-every-legal-form-of-the-same-key
+      - packages/core/test/descriptor.parse.test.ts::leaves-a-key-it-cannot-improve-exactly-as-it-was
+      - packages/core/test/descriptor.parse.test.ts::canonicalises-only-what-parses-back-to-the-same-key
+      - packages/core/test/descriptor.assemble.test.ts::writes-one-checksum-however-the-keys-were-spelled
 
 threats:
   - INV-PSBT-1
@@ -90,11 +110,16 @@ threats:
   - INV-INTEROP-1
 
 security_notes: >
-  Parsing is not evaluation. This module produces a structure; it does not yet
-  derive scripts for multisig or taproot script paths, and those forms are
-  refused at evaluation rather than silently treated as something simpler. A
-  tr() with a script tree is refused outright, because deriving its key-path
-  address would present an address whose funds may only be spendable by script.
+  Parsing is not evaluation. This module produces a structure and derives
+  nothing; what a form means is decided by the evaluator that consumes it,
+  which refuses a shape it does not handle rather than treating it as something
+  simpler. This paragraph used to say multisig and taproot script paths were
+  not derived and that a tr() with a script tree was refused outright. Both
+  stopped being true when multisig.ts and taproot.ts were written, and taproot
+  in particular now builds the tree and preserves its shape precisely because
+  the merkle root tweaks the output key: deriving the key-path address while
+  ignoring the tree is the failure that paragraph was warning about, and it is
+  the one the evaluator exists to prevent.
 
   A valid parse says nothing about provenance. Anyone can write a well-formed
   descriptor, including one describing someone else's keys. Establishing that a

@@ -609,3 +609,60 @@ export function descriptorKeys(node: ScriptNode): KeyExpression[] {
       return []
   }
 }
+
+/**
+ * One key expression, written the way every device would write it.
+ *
+ * WHY THIS EXISTS. BIP-380 says a hardened step may be spelled `'`, `h` or `H`,
+ * and BIP-32 fingerprints are hex, which is case-insensitive. The parser
+ * already knows this: `[73C5DA0A/48h/0h/0h/2h]xpub…` and
+ * `[73c5da0a/48'/0'/0'/2']xpub…` parse to byte-identical objects, which is
+ * INV-DPARSE-2.
+ *
+ * assembleQuorum did not use it. It sorted the keys canonically and then wrote
+ * each one out as the user had TYPED it, so the same 2-of-3 assembled on three
+ * devices produced three descriptors and three checksums: jjr083g6, ywnhl0n9
+ * and 9dpw2jny, measured. docs/FLEET.md tells people a checksum difference
+ * means a different wallet, so two co-signers who spell their paths differently
+ * are told to stop, and they are looking at the same wallet.
+ *
+ * ROUND TRIPPED RATHER THAN TRUSTED. The canonical text is re-parsed and
+ * compared to what the original parsed to, and a mismatch throws. Rewriting a
+ * descriptor is exactly the operation where a clever normalisation that changes
+ * the meaning would be worst: this device would register a quorum that derives
+ * different addresses and report a matching checksum for it. Emitting nothing
+ * is safe, emitting something subtly different is not.
+ */
+export function canonicalKeyExpression(text: string): string {
+  const trimmed = text.trim()
+  const key = parseKeyExpression(trimmed)
+
+  // The origin comes from the parse, which lowercased the fingerprint and
+  // canonicalised the path. `path` is "m/48'/0'/0'/2'", and the bracket form
+  // omits the leading m.
+  const origin =
+    key.origin === undefined ? '' : `[${key.origin.fingerprint}${key.origin.path.slice(1)}]`
+
+  const material = key.kind === 'extended' ? key.xpub : key.hex
+  const afterOrigin = trimmed.startsWith('[') ? trimmed.slice(trimmed.indexOf(']') + 1) : trimmed
+
+  /*
+   * The suffix is taken from the text rather than rebuilt from the parse,
+   * because the parse does not keep enough to rebuild it: a multipath element
+   * is replaced by a literal `0` at its position in `path`, and nothing records
+   * which `0` it was. Only the hardened marker is rewritten, which is the one
+   * thing in a suffix that has three spellings. The round trip below is what
+   * makes taking it from the text safe.
+   */
+  const suffix = afterOrigin.slice(material.length).replace(/(\d)[hH](?=$|[/>;])/g, "$1'")
+
+  const canonical = `${origin}${material}${suffix}`
+  if (JSON.stringify(parseKeyExpression(canonical)) !== JSON.stringify(key)) {
+    throw new DescriptorParseError(
+      `Rewriting ${JSON.stringify(trimmed.slice(0, 32))} into canonical form changed what it ` +
+        `means. Refusing to use it: a descriptor that derives different addresses under a ` +
+        `matching checksum is worse than one this device will not assemble.`
+    )
+  }
+  return canonical
+}

@@ -11,6 +11,7 @@ export {
   DescriptorParseError,
   parseDescriptor,
   parseKeyExpression,
+  canonicalKeyExpression,
   descriptorKeys,
 } from './parse.js'
 export type {

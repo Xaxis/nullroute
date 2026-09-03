@@ -194,9 +194,34 @@ describe('core.psbt.review', () => {
     expect(describeSighash(SIGHASH_ALL).meaning).toContain('every input and every output')
     expect(describeSighash(SIGHASH_NONE).meaning).toContain('does NOT commit to the outputs')
     expect(describeSighash(SIGHASH_SINGLE).meaning).toContain('only ONE output')
-    expect(describeSighash(SIGHASH_ALL | SIGHASH_ANYONECANPAY).meaning).toContain(
-      'other inputs can be added'
+    /*
+     * 0x81, asserted on BOTH halves of the sentence.
+     *
+     * This line used to check only the appended clause, so it passed while the
+     * first half read "This signature uses a sighash flag nullroute does not
+     * recognise" and the name came back as the hex "0x81 | ANYONECANPAY". The
+     * two exits for SIGHASH_ALL match the whole byte and 0x81 is not it, and
+     * nothing downstream had a branch for the base. A test that reads one
+     * clause of a two-clause sentence is a test that passes on the broken one.
+     */
+    const anyone = describeSighash(SIGHASH_ALL | SIGHASH_ANYONECANPAY)
+    expect(anyone.name).toBe('SIGHASH_ALL | ANYONECANPAY')
+    expect(anyone.meaning).toContain('commits to every output')
+    expect(anyone.meaning).toContain('other inputs can be added')
+    expect(anyone.meaning).not.toContain('does not recognise')
+    // Still refused, which is INV-PSBT-3. Naming it correctly is not accepting it.
+    expect(anyone.acceptable).toBe(false)
+    // The two that were already right, so a regression on either is visible here.
+    expect(describeSighash(SIGHASH_NONE | SIGHASH_ANYONECANPAY).name).toBe(
+      'SIGHASH_NONE | ANYONECANPAY'
     )
+    expect(describeSighash(SIGHASH_SINGLE | SIGHASH_ANYONECANPAY).name).toBe(
+      'SIGHASH_SINGLE | ANYONECANPAY'
+    )
+    // A byte this device genuinely does not know still says so rather than
+    // being given a name it does not have.
+    expect(describeSighash(0x40).name).toBe('0x40')
+    expect(describeSighash(0x40).meaning).toContain('does not recognise')
     // Taproot's default is encoded as absent and commits to everything.
     expect(describeSighash(undefined).acceptable).toBe(true)
   })

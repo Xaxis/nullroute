@@ -93,11 +93,29 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
     nav,
   } = props
 
-  const [mode, setMode] = useState<Mode>('choose')
-  const [passphrase, setPassphrase] = useState(initialText ?? '')
+  /*
+   * A scanned backup goes into the BACKUP field, and opens the restore branch.
+   *
+   * `initialText` is what the camera read, which on this screen is an encrypted
+   * backup file. It was seeding the PASSPHRASE, and `text` (the field that
+   * holds the file) started empty. So scanning a backup landed the user back on
+   * the two-choice screen with the whole blob sitting in the passphrase
+   * readout: tapping "Restore" showed an empty textarea and a disabled button,
+   * with no way forward but to scan again and repeat it, and tapping "Write a
+   * backup" instead wrote a real backup under a passphrase nobody chose and
+   * nobody could retype.
+   *
+   * Every other screen taking a prefill routes it to its content field
+   * (MultisigScreen's descriptor, LabelsScreen's text, PsbtScreen's psbt). This
+   * one was out of step.
+   */
+  const [mode, setMode] = useState<Mode>(
+    initialText === undefined || initialText === '' ? 'choose' : 'restore'
+  )
+  const [passphrase, setPassphrase] = useState('')
   const [includeSeed, setIncludeSeed] = useState(false)
   const [written, setWritten] = useState<{ backup: string; includesSeed: boolean } | null>(null)
-  const [text, setText] = useState('')
+  const [text, setText] = useState(initialText ?? '')
   const [described, setDescribed] = useState<BackupDescription | null>(null)
   const [restored, setRestored] = useState<RestoredView | null>(null)
   const [busy, setBusy] = useState(false)

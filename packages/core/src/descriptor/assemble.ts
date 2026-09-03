@@ -54,7 +54,12 @@
  * device given the same set in any order produces byte-identical output.
  */
 
-import { parseKeyExpression, type ExtendedKey, type KeyExpression } from './parse.js'
+import {
+  canonicalKeyExpression,
+  parseKeyExpression,
+  type ExtendedKey,
+  type KeyExpression,
+} from './parse.js'
 import { withChecksum } from './checksum.js'
 
 export class AssembleError extends Error {
@@ -188,10 +193,25 @@ export function assembleQuorum(options: AssembleOptions): AssembledQuorum {
     )
   }
 
-  // Sorted by extended key, so the same set of keys in any order produces the
-  // same string and therefore the same checksum on every device. See above.
+  /*
+   * Sorted by extended key, so the same set of keys in any order produces the
+   * same string and therefore the same checksum on every device. See above.
+   *
+   * And WRITTEN CANONICALLY rather than as typed, which is the other half of
+   * the same promise and was missing. This sorted the keys and then emitted
+   * each one exactly as the user had entered it, so a co-signer who writes
+   * `48h` and one who writes `48'` assembled the same 2-of-3 into two
+   * descriptors with two checksums. Measured: jjr083g6 against ywnhl0n9, and
+   * 9dpw2jny again for an uppercase fingerprint. All three derive the same
+   * addresses, and docs/FLEET.md tells the user a checksum difference means a
+   * different wallet, so the device was manufacturing exactly the false alarm
+   * the header above says this design removes.
+   */
   const written = parsed
-    .map((key, index) => ({ xpub: key.xpub, text: keys[index]?.trim() ?? '' }))
+    .map((key, index) => ({
+      xpub: key.xpub,
+      text: canonicalKeyExpression(keys[index]?.trim() ?? ''),
+    }))
     .sort((left, right) => (left.xpub < right.xpub ? -1 : left.xpub > right.xpub ? 1 : 0))
     .map((entry) => entry.text)
 

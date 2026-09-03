@@ -187,4 +187,49 @@ describe('core.descriptor.assemble', () => {
     expect(assembleQuorum({ threshold: 1, keys: [A, B] }).threshold).toBe(1)
     expect(assembleQuorum({ threshold: 2, keys: [A, B] }).threshold).toBe(2)
   })
+
+  /*
+   * The same quorum, spelled three legal ways, is one checksum.
+   *
+   * BIP-380 lets a hardened step be written ' or h or H, and a fingerprint is
+   * hex, so it is case-insensitive. The parser has always known that and
+   * normalises all of them to the same object. The assembler did not use it:
+   * it sorted the keys canonically and then wrote each one out as the user had
+   * typed it, so three co-signers who spell their paths differently got
+   * jjr083g6, ywnhl0n9 and 9dpw2jny for one wallet.
+   *
+   * That is not a cosmetic difference. docs/FLEET.md tells the user to treat a
+   * checksum difference as proof of a different wallet and to stop, which is
+   * the right instruction and the reason this had to be wrong in the direction
+   * of a false alarm rather than a false match.
+   */
+  it('writes-one-checksum-however-the-keys-were-spelled', () => {
+    const apostrophes = [A, B, C].map((k) => k.replaceAll('h/', "'/").replace('h]', "']"))
+    const shouted = [A, B, C].map((k) =>
+      k.replace(/^\[([0-9a-f]{8})/, (_m, f: string) => `[${f.toUpperCase()}`)
+    )
+
+    const one = assembleQuorum({ threshold: 2, keys: [A, B, C] })
+    const two = assembleQuorum({ threshold: 2, keys: apostrophes })
+    const three = assembleQuorum({ threshold: 2, keys: shouted })
+
+    expect(two.checksum).toBe(one.checksum)
+    expect(three.checksum).toBe(one.checksum)
+    expect(two.descriptor).toBe(one.descriptor)
+    expect(three.descriptor).toBe(one.descriptor)
+
+    // And the one spelling it settles on is the one BIP-380 examples use, so
+    // what this device shows matches what a coordinator shows.
+    expect(one.descriptor).toContain("/48'/0'/0'/2'")
+    expect(one.descriptor).not.toContain('48h')
+    expect(verifyChecksum(one.descriptor).valid).toBe(true)
+  })
+
+  // Reordering already produced one descriptor. Kept beside the spelling case
+  // so the two halves of the same promise fail separately.
+  it('writes-one-checksum-however-the-keys-were-ordered', () => {
+    const forward = assembleQuorum({ threshold: 2, keys: [A, B, C] })
+    const backward = assembleQuorum({ threshold: 2, keys: [C, B, A] })
+    expect(backward.descriptor).toBe(forward.descriptor)
+  })
 })
