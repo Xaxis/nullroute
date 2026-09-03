@@ -79,9 +79,27 @@ export interface WalletSession {
   readonly fingerprint: string
   /** True until the user confirms they have written the mnemonic down. */
   confirmedBackup: boolean
+  /**
+   * Wrong answers left before word checking closes for this session.
+   *
+   * See peekWordsForVerification. A budget rather than a rate limit, because
+   * there is no legitimate use that needs many: the screen asks for three
+   * positions and a person mistypes a word or two.
+   */
+  wordChecksLeft: number
   /** Absent until this wallet is saved to, or loaded from, the store. */
   active: ActiveWallet | undefined
 }
+
+/**
+ * Wrong words allowed before checking closes, per session.
+ *
+ * The screen asks for three positions. A person mistypes; nobody mistypes
+ * fifteen times. An enumeration of the 2048-word list needs about 1024 wrong
+ * answers for its FIRST position, so this closes long before the first word is
+ * recovered rather than merely making the attack slower.
+ */
+const WRONG_WORDS_ALLOWED = 15
 
 export class SessionError extends Error {
   constructor(message: string) {
@@ -175,6 +193,7 @@ export class Session {
       // A generated seed has not been written down yet. An imported one, by
       // definition, already exists on paper somewhere.
       confirmedBackup: provenance !== 'generated',
+      wordChecksLeft: WRONG_WORDS_ALLOWED,
       // Not yet saved anywhere, so it belongs to no stored wallet. Set by
       // `attachTo` once it has been sealed.
       active: undefined,
@@ -210,6 +229,7 @@ export class Session {
       // It came off disk, so it existed before this session and its backup is
       // not this session's business to assert either way.
       confirmedBackup: true,
+      wordChecksLeft: WRONG_WORDS_ALLOWED,
       active,
     }
     this.#unlocked = true
@@ -416,21 +436,70 @@ export class Session {
   /**
    * The words, for checking one the user types back.
    *
-   * Distinct from revealMnemonic on purpose: this is used AFTER backup is
-   * confirmed, by seed.checkWord, which returns only a boolean. The words never
-   * cross the IPC boundary through this path, and the caller cannot enumerate
-   * them by guessing, because guessing a word IS the verification.
+   * WHAT THIS USED TO BE, AND WHY IT WAS AN ORACLE. This gated on nothing but
+   * the mnemonic being present, and its comment argued "the caller cannot
+   * enumerate them by guessing, because guessing a word IS the verification".
+   * That is true of a person at a screen and false of the untrusted process
+   * INV-KEY-1 is written against. The BIP-39 wordlist is 2048 public entries,
+   * seed.checkWord returns a boolean with no key derivation behind it, and 24
+   * positions at about 1024 tries each is roughly 25,000 calls: the whole
+   * mnemonic, over the socket, in seconds.
+   *
+   * It was reachable in exactly the window seed.reveal is closed in. An
+   * imported seed is marked confirmedBackup at load, so revealMnemonic refuses
+   * it from the first instant while this answered; a generated one kept
+   * answering after the user confirmed the backup and the reveal shut.
+   *
+   * THREE GATES NOW, and each closes a different half of that:
+   *
+   *   1. Generated seeds only. An imported mnemonic is one the user typed in,
+   *      so there is nothing to verify and no reason to answer at all.
+   *   2. Not after the backup is confirmed. Checking is part of confirming;
+   *      once that is done this has no legitimate caller, and the reveal is
+   *      already shut.
+   *   3. A budget of wrong answers, spent on the way in rather than on the way
+   *      out, so a caller that is enumerating runs out during the first
+   *      position rather than after the last.
+   *
+   * The words still never cross the boundary through this path. The point is
+   * that a boolean repeated enough times is the same information.
    */
   peekWordsForVerification(): readonly string[] {
     const wallet = this.#wallet
     if (wallet === undefined) throw new SessionError('No wallet is loaded.')
-    if (wallet.mnemonic === undefined) {
+    if (wallet.provenance !== 'generated' || wallet.mnemonic === undefined) {
       throw new SessionError(
-        'This seed was loaded from storage, so there are no words held in this session to ' +
-          'check against. Word checking is part of creating a wallet.'
+        'There are no words held in this session to check against. Word checking is part of ' +
+          'creating a wallet, and a seed that was imported or opened from storage was never ' +
+          'shown by this device in the first place.'
+      )
+    }
+    if (wallet.confirmedBackup) {
+      throw new SessionError(
+        'You have already confirmed this seed was written down, so it will not be checked ' +
+          'again. Restore from your written words if you need to know they are right.'
+      )
+    }
+    if (wallet.wordChecksLeft <= 0) {
+      throw new SessionError(
+        'Too many words did not match, so checking is closed for this session. Lock and open ' +
+          'the wallet again, or start over from your written words.'
       )
     }
     return wallet.mnemonic.split(' ')
+  }
+
+  /**
+   * Spend one of the budget, on a word that did not match.
+   *
+   * Only the wrong ones, so somebody checking the three positions they were
+   * asked for never touches this and somebody enumerating the wordlist spends
+   * it 2047 times out of 2048.
+   */
+  recordWrongWord(): void {
+    const wallet = this.#wallet
+    if (wallet === undefined) return
+    wallet.wordChecksLeft -= 1
   }
 
   /** Record that the user has written the mnemonic down. Irreversible. */

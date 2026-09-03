@@ -89,7 +89,13 @@ export function seedMethods(ctx: HandlerContext): MethodTable {
       const words = session.peekWordsForVerification()
       const expected = words[index]
       if (expected === undefined) throw new Error(`Word index ${String(index)} is out of range.`)
-      return { correct: expected === word }
+      const correct = expected === word
+      // A wrong answer costs one of the session's budget. See
+      // Session.peekWordsForVerification: this returns a boolean with no key
+      // derivation behind it, over a 2048 word public list, so without a
+      // budget the method is the mnemonic itself in about 25,000 calls.
+      if (!correct) session.recordWrongWord()
+      return { correct }
     },
   }
 }

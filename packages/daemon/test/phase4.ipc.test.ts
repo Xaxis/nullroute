@@ -528,6 +528,52 @@ describe('multisig.verifyAddress', () => {
  * alone because the other keys and the threshold live only in the descriptor.
  */
 describe('backup.restore and the quorum descriptors', () => {
+  /*
+   * INV-KEY-2 on the throwing path, which is the one it is about.
+   *
+   * restoreBackup returns a live Secret, and the next line was an
+   * unconditional session.setNetwork that throws whenever a wallet is already
+   * loaded. So restoring a seeded backup with a wallet open decrypted the seed
+   * and then abandoned it, repeatably, one per call, while the caller saw a
+   * message about the network being fixed.
+   *
+   * Every other test in this file locks first, which is exactly why nothing
+   * caught it. This one deliberately does not.
+   */
+  it('restores-a-seeded-backup-over-an-open-wallet-without-orphaning-the-seed', async () => {
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+    const made = (await call('backup.create', {
+      passphrase: 'a backup passphrase',
+      includeSeed: true,
+    })) as { backup: string }
+
+    // Still open. The wallet from the import is loaded, and the restore has to
+    // deal with that rather than throwing past a decrypted seed.
+    expect(session.hasWallet).toBe(true)
+
+    const restored = (await call('backup.restore', {
+      backup: made.backup,
+      passphrase: 'a backup passphrase',
+    })) as { hasSeed: boolean; loaded: boolean }
+
+    expect(restored.hasSeed).toBe(true)
+    expect(restored.loaded).toBe(true)
+    expect(session.hasWallet).toBe(true)
+  })
+
+  // A wrong passphrase never gets as far as a Secret, and still refuses.
+  it('refuses-a-wrong-passphrase-with-a-wallet-open', async () => {
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+    const made = (await call('backup.create', {
+      passphrase: 'a backup passphrase',
+      includeSeed: true,
+    })) as { backup: string }
+
+    await expect(
+      call('backup.restore', { backup: made.backup, passphrase: 'wrong' })
+    ).rejects.toThrow()
+  })
+
   const DESCRIPTOR =
     'wsh(sortedmulti(2,[73c5da0a/48h/0h/0h/2h]xpub6E64WfdQwBGz85XhbZryr9gUGUPBgoSu5WV6tJWpzAvgAmpVpdPHkT3XYm9R5J6MeWzvLQoz4q845taC9Q28XutbptxAmg7q8QPkjvTL4oi/<0;1>/*,[aabbccdd/48h/0h/0h/2h]xpub6DiYrfRwNnjeX4vHsWMajJVFKrbEEnu8gAW9vDuQzgTWEsEHE16sGWeXXUV1LBWQE1yCTmeprSNcqZ3W74hqVdgDbtYHUv3eM4W2TEUhpan/<0;1>/*))#a7ec6klf'
 
@@ -604,10 +650,91 @@ describe('backup.restore and the quorum descriptors', () => {
  * because Math.random is banned on this device and the frontend has no other
  * source, which is the rule working rather than getting in the way.
  */
+/**
+ * A seed this device generated, which is the only kind word checking applies to.
+ *
+ * These tests used to import a mnemonic and then ask the daemon to check words
+ * from it. That is the shape the session now refuses: an imported seed is one
+ * the user typed in, so there is nothing to verify, and answering was the
+ * oracle that made seed.checkWord equivalent to seed.reveal in about 25,000
+ * calls. Dice give a wallet with provenance 'generated' and confirmedBackup
+ * false, which is the state the verification step exists for.
+ */
+async function generateSeed(): Promise<void> {
+  await call('entropy.fromDice', { rolls: '142536'.repeat(17) })
+}
+
+/*
+ * INV-KEY-1 against seed.checkWord, which was an enumeration oracle.
+ *
+ * The method returns a boolean saying whether a word matches, with no key
+ * derivation behind it, against a public 2048-word list. It gated on nothing
+ * but the mnemonic being held, so a caller could walk the wordlist at each of
+ * 24 positions, about 25,000 calls, and recover the seed phrase over the
+ * socket. It was open in exactly the window seed.reveal is shut in: an
+ * imported seed is marked confirmedBackup at load, so the reveal refused from
+ * the first instant while this answered.
+ */
+describe('seed.checkWord is not an oracle', () => {
+  it('refuses-word-checks-for-a-seed-this-device-did-not-generate', async () => {
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+
+    // The reveal is already shut for an import, and this has to be too.
+    await expect(call('seed.reveal')).rejects.toThrow()
+    await expect(call('seed.checkWord', { index: 0, word: 'legal' })).rejects.toThrow(
+      /part of creating a wallet/
+    )
+    await expect(call('seed.checkPositions', { count: 3 })).rejects.toThrow()
+  })
+
+  it('refuses-word-checks-once-the-backup-is-confirmed', async () => {
+    await generateSeed()
+    // Open before, which is the legitimate use.
+    expect(await call('seed.checkWord', { index: 0, word: 'nope' })).toEqual({ correct: false })
+
+    await call('seed.confirmBackup')
+
+    await expect(call('seed.reveal')).rejects.toThrow()
+    await expect(call('seed.checkWord', { index: 0, word: 'nope' })).rejects.toThrow(
+      /already confirmed/
+    )
+  })
+
+  /*
+   * The budget, which is what closes the window that legitimately exists.
+   * Spent only on wrong answers, so somebody checking the three positions they
+   * were asked for never touches it, and somebody walking the wordlist runs
+   * out during the first position rather than after the last.
+   */
+  it('closes-word-checking-after-too-many-wrong-answers', async () => {
+    await generateSeed()
+
+    for (let attempt = 0; attempt < 15; attempt += 1) {
+      expect(await call('seed.checkWord', { index: 0, word: `wrong${String(attempt)}` })).toEqual({
+        correct: false,
+      })
+    }
+    await expect(call('seed.checkWord', { index: 0, word: 'wrong' })).rejects.toThrow(
+      /closed for this session/
+    )
+
+    /*
+     * Closed for a RIGHT answer too, which is the half that matters: a caller
+     * that has been walking the wordlist does not get to finish by arriving at
+     * the correct word on the next call. Read from seed.reveal, which is still
+     * open here because the backup has not been confirmed.
+     */
+    const revealed = (await call('seed.reveal')) as { words: string[] }
+    const first = revealed.words[0] ?? 'abandon'
+    await expect(call('seed.checkWord', { index: 0, word: first })).rejects.toThrow(
+      /closed for this session/
+    )
+  })
+})
+
 describe('seed.checkPositions', () => {
   it('returns-positions-and-never-words', async () => {
-    await call('seed.generate', { entropy: 'a'.repeat(64) }).catch(() => undefined)
-    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+    await generateSeed()
 
     const chosen = (await call('seed.checkPositions', { count: 3 })) as {
       positions: number[]
@@ -615,7 +742,7 @@ describe('seed.checkPositions', () => {
     }
 
     expect(chosen.positions).toHaveLength(3)
-    expect(chosen.total).toBe(12)
+    expect(chosen.total).toBe(24)
     // Every position is in range, and nothing in the response is a word.
     for (const position of chosen.positions) {
       expect(position).toBeGreaterThanOrEqual(0)
@@ -626,7 +753,7 @@ describe('seed.checkPositions', () => {
 
   /** Distinct, so a three word check is not the same word three times. */
   it('never-asks-for-the-same-position-twice', async () => {
-    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+    await generateSeed()
 
     for (let attempt = 0; attempt < 20; attempt += 1) {
       const chosen = (await call('seed.checkPositions', { count: 3 })) as { positions: number[] }
@@ -640,20 +767,20 @@ describe('seed.checkPositions', () => {
    * of quiet gap this check exists to close.
    */
   it('can-ask-about-any-position-including-the-last', async () => {
-    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+    await generateSeed()
 
     const seen = new Set<number>()
-    for (let attempt = 0; attempt < 200 && seen.size < 12; attempt += 1) {
+    for (let attempt = 0; attempt < 200 && seen.size < 24; attempt += 1) {
       const chosen = (await call('seed.checkPositions', { count: 3 })) as { positions: number[] }
       for (const position of chosen.positions) seen.add(position)
     }
-    expect(seen.size).toBe(12)
+    expect(seen.size).toBe(24)
   })
 
   /** Asking for more words than exist returns every position, not an error. */
   it('caps-at-the-number-of-words-there-are', async () => {
-    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+    await generateSeed()
     const chosen = (await call('seed.checkPositions', { count: 50 })) as { positions: number[] }
-    expect(chosen.positions).toHaveLength(12)
+    expect(chosen.positions).toHaveLength(24)
   })
 })
