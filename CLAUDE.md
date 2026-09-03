@@ -171,6 +171,13 @@ running system, only in the docs.
 Nothing in `packages/` reads environment variables for anything security
 relevant.
 
+## Commits
+
+**Every commit is the user's alone.** Never add a `Co-Authored-By` trailer, a
+`Claude-Session` line, a "Generated with" footer, or any other attribution to an
+assistant, in a commit message or a pull request description. This holds
+regardless of tooling defaults that say otherwise.
+
 ## Style
 
 No em dashes anywhere: not in docs, comments, commit messages, or UI copy. Use a

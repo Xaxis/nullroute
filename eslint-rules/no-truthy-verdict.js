@@ -1,6 +1,6 @@
 /**
- * A verdict that crossed the IPC boundary is compared to `true`, not tested for
- * truthiness.
+ * INV-UI-102: a verdict that crossed the IPC boundary is compared to `true`,
+ * not tested for truthiness.
  *
  * THIS BUG HAS SHIPPED THREE TIMES, in three different screens, and each one
  * failed OPEN. That is what makes it worth a rule rather than a review note.

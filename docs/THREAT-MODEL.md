@@ -394,6 +394,8 @@ does not keep.
 | INV-PSBT-2 | Any output not provably derivable from a registered descriptor at a known change path is displayed as an external payment. |
 | INV-PSBT-3 | Sighash types other than `SIGHASH_ALL` / `SIGHASH_DEFAULT` are refused unless advanced mode is explicitly enabled, per operation, never persisted. |
 | INV-BUILD-1 | `npm run verify` must pass before the app starts. On failure the UI shows the error and refuses to load the wallet. |
+| INV-ENT-7 | No file in `packages/core` or `packages/daemon` calls `Math.random()`, and the frontend calls neither it nor `crypto.getRandomValues()`. Entropy is collected in the daemon or it is not collected. Enforced by lint. |
+| INV-UI-102 | A verdict field that crossed the IPC boundary is compared to `true` rather than read for truthiness, so a value that is not a boolean reads as no. Enforced by lint on the frontend, where responses are cast to an interface without being checked. |
 | INV-WALLET-1 | `packages/wallet` may import `packages/core`, never the reverse. Removing it leaves a functional signer. |
 | INV-WALLET-2 | *Planned, phase 5, not enforced today.* The wallet layer proposes but never signs. `packages/wallet` does not exist yet, so there is nothing to constrain. |
 | INV-INTEROP-1 | Every wallet is fully recoverable from the BIP-39 mnemonic plus a standard descriptor, with third-party software and no nullroute code. Drilled in CI against a real Bitcoin Core on regtest for p2wpkh, sh(wpkh), p2pkh and p2tr, and for a 2-of-3 quorum, both `wsh(sortedmulti)` and taproot `tr(NUMS, sortedmulti_a)`, with three distinct seeds where two separate devices sign in sequence. |

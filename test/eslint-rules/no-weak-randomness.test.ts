@@ -1,5 +1,5 @@
 /**
- * Regression suite for the weak-randomness ban.
+ * INV-ENT-7 regression suite: the weak-randomness ban.
  *
  * Math.random() fails silently: code using it produces plausible output forever
  * and the weakness surfaces only when someone else notices the pattern.
@@ -16,7 +16,7 @@ const ruleTester = new RuleTester({
   languageOptions: { ecmaVersion: 2023, sourceType: 'module' },
 })
 
-ruleTester.run('nullroute/no-weak-randomness', noWeakRandomness, {
+ruleTester.run('nullroute/no-weak-randomness (INV-ENT-7)', noWeakRandomness, {
   valid: [
     { code: `import { randomBytes } from "node:crypto"; randomBytes(32);` },
     { code: `Math.floor(x); Math.log2(6); Math.ceil(y);` },

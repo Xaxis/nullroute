@@ -1,5 +1,5 @@
 /**
- * `Math.random()` is banned in packages/core and packages/daemon.
+ * INV-ENT-7: `Math.random()` is banned in packages/core and packages/daemon.
  *
  * It is not a CSPRNG, it never was, and the failure mode is silent: code that
  * uses it produces plausible-looking output forever and the weakness only
