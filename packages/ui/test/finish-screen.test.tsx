@@ -61,7 +61,10 @@ describe('FinishScreen', () => {
   })
 
   it('counts-one-leftover-in-the-singular', () => {
-    const one: Journey = { ...journeyOr('receive'), thenWhat: ['Read the address off this screen.'] }
+    const one: Journey = {
+      ...journeyOr('receive'),
+      thenWhat: ['Read the address off this screen.'],
+    }
     render(<FinishScreen journey={one} onDone={vi.fn()} />)
     expect(screen.getByTestId('finish-outstanding').textContent).toContain('One thing is not')
   })

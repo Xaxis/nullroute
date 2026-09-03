@@ -217,11 +217,7 @@ function paymentFor(pubkey: Uint8Array, scriptType: ScriptType, network: Network
  * exactly one right answer and emitting it consistently is worth more than
  * matching whatever another wallet happened to do.
  */
-function signTaproot(
-  privateKey: Uint8Array,
-  network: Network,
-  message: string
-): MessageSignature {
+function signTaproot(privateKey: Uint8Array, network: Network, message: string): MessageSignature {
   const xonly = schnorr.getPublicKey(privateKey)
   const payment = paymentFor(xonly, 'p2tr', network)
 

@@ -24,7 +24,8 @@ import { checkBindings, loadReport } from './tests.js'
 import { checkIntegrity } from './manifest.js'
 import { checkVectors, checkDifferential } from './vectors.js'
 
-const REPO_ROOT = process.env['NULLROUTE_ROOT'] ?? fileURLToPath(new URL('../../..', import.meta.url))
+const REPO_ROOT =
+  process.env['NULLROUTE_ROOT'] ?? fileURLToPath(new URL('../../..', import.meta.url))
 
 const SPEC_DIRS = ['packages']
 const SCHEMA = join(REPO_ROOT, 'spec', 'schema.json')
@@ -149,8 +150,7 @@ function main(): number {
   const differential = checkDifferential(specs)
   outcomes.push({
     name: 'differential',
-    status:
-      differential.declared === 0 ? 'not-applicable' : differential.ok ? 'passed' : 'failed',
+    status: differential.declared === 0 ? 'not-applicable' : differential.ok ? 'passed' : 'failed',
     detail:
       differential.declared === 0
         ? 'no differential oracle declared yet (cross-check against bitcoinjs-lib lands with phase 2)'
@@ -170,7 +170,8 @@ function main(): number {
       failures: [
         ...integrity.missing.map((p) => `file in manifest is missing: ${p}`),
         ...integrity.mismatched.map(
-          (m) => `hash mismatch: ${m.path}\n      expected ${m.expected}\n      actual   ${m.actual}`
+          (m) =>
+            `hash mismatch: ${m.path}\n      expected ${m.expected}\n      actual   ${m.actual}`
         ),
       ],
     })

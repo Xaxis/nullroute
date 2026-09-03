@@ -50,13 +50,11 @@ export const noCrossTierImport = {
   meta: {
     type: 'problem',
     docs: {
-      description:
-        'INV-WALLET-1: enforce the direction of dependencies between assurance tiers.',
+      description: 'INV-WALLET-1: enforce the direction of dependencies between assurance tiers.',
     },
     schema: [],
     messages: {
-      wrongDirection:
-        "INV-WALLET-1: '{{from}}' must not import '{{target}}'. {{why}}",
+      wrongDirection: "INV-WALLET-1: '{{from}}' must not import '{{target}}'. {{why}}",
     },
   },
 

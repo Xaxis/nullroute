@@ -27,8 +27,7 @@ const FAST = { m: 8192, t: 1, p: 1 } as const
 
 const MNEMONIC_A =
   'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
-const MNEMONIC_B =
-  'legal winner thank year wave sausage worth useful legal winner thank yellow'
+const MNEMONIC_B = 'legal winner thank year wave sausage worth useful legal winner thank yellow'
 
 const attestation = {
   passed: true,
@@ -303,9 +302,7 @@ describe('daemon wallets IPC', () => {
     const { deriveAccountXpub, withChecksum } = await import('@nullroute/core')
     const { multisigAccountPath } = await import('../src/multisig.js')
     const other = deriveAccountXpub(cosigner, MAINNET, multisigAccountPath(MAINNET)).xpub
-    const descriptor = withChecksum(
-      `wsh(sortedmulti(2,${ourKey.xpub}/<0;1>/*,${other}/<0;1>/*))`
-    )
+    const descriptor = withChecksum(`wsh(sortedmulti(2,${ourKey.xpub}/<0;1>/*,${other}/<0;1>/*))`)
 
     const registered = (await call('multisig.register', {
       descriptor,
@@ -339,9 +336,7 @@ describe('daemon wallets IPC', () => {
     const { deriveAccountXpub, withChecksum } = await import('@nullroute/core')
     const { multisigAccountPath } = await import('../src/multisig.js')
     const other = deriveAccountXpub(cosigner, MAINNET, multisigAccountPath(MAINNET)).xpub
-    const descriptor = withChecksum(
-      `wsh(sortedmulti(2,${ourKey.xpub}/<0;1>/*,${other}/<0;1>/*))`
-    )
+    const descriptor = withChecksum(`wsh(sortedmulti(2,${ourKey.xpub}/<0;1>/*,${other}/<0;1>/*))`)
 
     await expect(
       call('multisig.register', { descriptor, passphrase: 'the wrong passphrase' })

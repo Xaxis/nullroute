@@ -805,7 +805,6 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
               </span>
             </div>
           </div>
-
         </>
       )}
     </Screen>

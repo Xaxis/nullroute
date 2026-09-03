@@ -33,7 +33,11 @@ const MNEMONIC =
 const FAKE_TXID = 'a'.repeat(64)
 
 /** Our own addresses, derived the same way the device would. */
-function ourAddresses(): { receive: string[]; change: string[]; changePathOf: (a: string) => string | undefined } {
+function ourAddresses(): {
+  receive: string[]
+  change: string[]
+  changePathOf: (a: string) => string | undefined
+} {
   using seed = mnemonicToSeed(MNEMONIC, '')
   const root = rootFromSeed(seed, MAINNET)
   const account = root.derive("m/84'/0'/0'")
@@ -70,15 +74,20 @@ interface BuildOptions {
 }
 
 function build(options: BuildOptions): btc.Transaction {
-  const tx = new btc.Transaction({ allowUnknownOutputs: true, ...(options.locktime === undefined ? {} : { lockTime: options.locktime }) })
+  const tx = new btc.Transaction({
+    allowUnknownOutputs: true,
+    ...(options.locktime === undefined ? {} : { lockTime: options.locktime }),
+  })
   const { receive } = ourAddresses()
   const fundingScript = btc.OutScript.encode(
-    btc.Address({
-      bech32: MAINNET.bech32,
-      pubKeyHash: MAINNET.pubKeyHash,
-      scriptHash: MAINNET.scriptHash,
-      wif: MAINNET.wif,
-    }).decode(receive[0] ?? '')
+    btc
+      .Address({
+        bech32: MAINNET.bech32,
+        pubKeyHash: MAINNET.pubKeyHash,
+        scriptHash: MAINNET.scriptHash,
+        wif: MAINNET.wif,
+      })
+      .decode(receive[0] ?? '')
   )
 
   tx.addInput({
@@ -341,9 +350,7 @@ describe('core.psbt.review', () => {
    */
   it('reports-fields-it-does-not-understand', () => {
     const { changePathOf } = ourAddresses()
-    const tx = withUnknownInputField(
-      build({ outputs: [{ address: STRANGER, amount: 90_000n }] })
-    )
+    const tx = withUnknownInputField(build({ outputs: [{ address: STRANGER, amount: 90_000n }] }))
 
     const review = reviewTransaction(tx, { network: MAINNET, isChange: changePathOf })
     const warning = review.warnings.find((w) => w.kind === 'unknown-fields')

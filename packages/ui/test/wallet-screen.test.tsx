@@ -40,7 +40,15 @@ describe('WalletScreen quorum position', () => {
    * every visit to a screen about something else.
    */
   it('says-which-cosigner-of-how-many-this-device-is', () => {
-    withQuorums([{ descriptor: 'wsh(sortedmulti(2,...))#aaaaaaaa', threshold: 2, total: 3, ourPosition: 2, unreadable: null }])
+    withQuorums([
+      {
+        descriptor: 'wsh(sortedmulti(2,...))#aaaaaaaa',
+        threshold: 2,
+        total: 3,
+        ourPosition: 2,
+        unreadable: null,
+      },
+    ])
 
     const shown = document.querySelector('.nr-screen__subtitle')?.textContent
     expect(shown).toContain('2 of 3')
@@ -53,7 +61,15 @@ describe('WalletScreen quorum position', () => {
    * the number is that it is derived from the keys.
    */
   it('says-when-it-cannot-place-itself-rather-than-showing-a-number', () => {
-    withQuorums([{ descriptor: 'wsh(unreadable)#bbbbbbbb', threshold: null, total: null, ourPosition: null, unreadable: 'no key of ours' }])
+    withQuorums([
+      {
+        descriptor: 'wsh(unreadable)#bbbbbbbb',
+        threshold: null,
+        total: null,
+        ourPosition: null,
+        unreadable: 'no key of ours',
+      },
+    ])
 
     const shown = document.querySelector('.nr-screen__subtitle')?.textContent
     expect(shown).toContain('cannot read')
@@ -78,8 +94,20 @@ describe('WalletScreen quorum position', () => {
    */
   it('counts-them-when-a-device-is-in-more-than-one', () => {
     withQuorums([
-      { descriptor: 'wsh(sortedmulti(2,...))#aaaaaaaa', threshold: 2, total: 3, ourPosition: 1, unreadable: null },
-      { descriptor: 'wsh(sortedmulti(3,...))#aaaaaaaa', threshold: 3, total: 5, ourPosition: 4, unreadable: null },
+      {
+        descriptor: 'wsh(sortedmulti(2,...))#aaaaaaaa',
+        threshold: 2,
+        total: 3,
+        ourPosition: 1,
+        unreadable: null,
+      },
+      {
+        descriptor: 'wsh(sortedmulti(3,...))#aaaaaaaa',
+        threshold: 3,
+        total: 5,
+        ourPosition: 4,
+        unreadable: null,
+      },
     ])
     expect(document.querySelector('.nr-screen__subtitle')?.textContent).toContain('in 2 quorums')
   })
@@ -87,8 +115,20 @@ describe('WalletScreen quorum position', () => {
   /** And an unreadable one among them is counted separately rather than hidden. */
   it('says-how-many-of-several-quorums-it-cannot-read', () => {
     withQuorums([
-      { descriptor: 'wsh(sortedmulti(2,...))#aaaaaaaa', threshold: 2, total: 3, ourPosition: 1, unreadable: null },
-      { descriptor: 'wsh(unreadable)#bbbbbbbb', threshold: null, total: null, ourPosition: null, unreadable: 'no key of ours' },
+      {
+        descriptor: 'wsh(sortedmulti(2,...))#aaaaaaaa',
+        threshold: 2,
+        total: 3,
+        ourPosition: 1,
+        unreadable: null,
+      },
+      {
+        descriptor: 'wsh(unreadable)#bbbbbbbb',
+        threshold: null,
+        total: null,
+        ourPosition: null,
+        unreadable: 'no key of ours',
+      },
     ])
     const shown = document.querySelector('.nr-screen__subtitle')?.textContent
     expect(shown).toContain('in 2 quorums')
@@ -118,7 +158,10 @@ describe('ui.screens.wallet xpub', () => {
         fingerprint="73c5da0a"
         onAddresses={vi.fn(async () => Promise.resolve({ addresses: [] }))}
         onDescriptor={vi.fn(async () =>
-          Promise.resolve({ descriptor: "wpkh([73c5da0a/84'/0'/0']xpub.../0/*)#abcdefgh", checksum: 'abcdefgh' })
+          Promise.resolve({
+            descriptor: "wpkh([73c5da0a/84'/0'/0']xpub.../0/*)#abcdefgh",
+            checksum: 'abcdefgh',
+          })
         )}
         onXpub={onXpub}
         onVerifyAddress={vi.fn()}

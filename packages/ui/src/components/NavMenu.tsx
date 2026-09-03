@@ -28,14 +28,7 @@ import { type ReactElement, useEffect, useRef } from 'react'
  * name either, because that is the same exit in different clothes.
  */
 
-export type NavDestination =
-  | 'guide'
-  | 'wallet'
-  | 'sign'
-  | 'receive'
-  | 'quorums'
-  | 'more'
-  | 'lock'
+export type NavDestination = 'guide' | 'wallet' | 'sign' | 'receive' | 'quorums' | 'more' | 'lock'
 
 export interface NavMenuProps {
   /** Which destination the screen behind this menu belongs to, if any. */
@@ -73,12 +66,37 @@ interface Entry {
  * the session next to looking at an address.
  */
 const ENTRIES: readonly Entry[] = [
-  { id: 'guide', label: 'Guide me', hint: 'Pick a goal and the device puts the steps in order', needsWallet: false },
-  { id: 'wallet', label: 'Wallet', hint: 'Addresses, export, and checking an address', needsWallet: true },
-  { id: 'sign', label: 'Sign a transaction', hint: 'Read what it does, then authorise it', needsWallet: true },
-  { id: 'receive', label: 'Receive', hint: 'An address, one at a time, large enough to read', needsWallet: true },
+  {
+    id: 'guide',
+    label: 'Guide me',
+    hint: 'Pick a goal and the device puts the steps in order',
+    needsWallet: false,
+  },
+  {
+    id: 'wallet',
+    label: 'Wallet',
+    hint: 'Addresses, export, and checking an address',
+    needsWallet: true,
+  },
+  {
+    id: 'sign',
+    label: 'Sign a transaction',
+    hint: 'Read what it does, then authorise it',
+    needsWallet: true,
+  },
+  {
+    id: 'receive',
+    label: 'Receive',
+    hint: 'An address, one at a time, large enough to read',
+    needsWallet: true,
+  },
   { id: 'quorums', label: 'Quorums', hint: 'Everything this device cosigns', needsWallet: true },
-  { id: 'more', label: 'More', hint: 'Backup, labels, proofs, and this device', needsWallet: false },
+  {
+    id: 'more',
+    label: 'More',
+    hint: 'Backup, labels, proofs, and this device',
+    needsWallet: false,
+  },
 ]
 
 export function NavMenu(props: NavMenuProps): ReactElement {

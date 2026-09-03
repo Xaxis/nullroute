@@ -46,7 +46,9 @@ function docPages() {
   const source = readFileSync(join(ROOT, 'apps/web/lib/docs.ts'), 'utf8')
   const found = [...source.matchAll(/slug:\s*'([a-z0-9-]+)'[\s\S]{0,400}?title:\s*'([^']+)'/g)]
   if (found.length === 0) {
-    console.error('check-web-live: no documents parsed from apps/web/lib/docs.ts, so this is blind.')
+    console.error(
+      'check-web-live: no documents parsed from apps/web/lib/docs.ts, so this is blind.'
+    )
     process.exit(1)
   }
   return found.map((m) => ({ path: `/docs/${m[1]}`, expect: m[2] }))
@@ -140,7 +142,9 @@ async function main() {
       const d = msg.params.exceptionDetails
       problems.push(`[exception] ${d.exception?.description ?? d.text}`)
     } else if (msg.method === 'Runtime.consoleAPICalled' && msg.params.type === 'error') {
-      problems.push(`[console] ${msg.params.args.map((a) => a.value ?? a.description ?? '').join(' ')}`)
+      problems.push(
+        `[console] ${msg.params.args.map((a) => a.value ?? a.description ?? '').join(' ')}`
+      )
     }
   })
 

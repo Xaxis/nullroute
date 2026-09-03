@@ -201,7 +201,9 @@ export function absentPackages(root, params) {
   }
 
   const present = packages.filter((name) => installed.has(name))
-  const limits = ['Reads the package database, so functionality linked into another binary is invisible to it.']
+  const limits = [
+    'Reads the package database, so functionality linked into another binary is invisible to it.',
+  ]
 
   return present.length === 0
     ? verdict(
@@ -427,7 +429,10 @@ function defaultRun(root, unit) {
     }
   }
   if (result.status !== 0) {
-    return { ok: false, detail: `systemd-analyze exited ${String(result.status)}: ${(result.stderr ?? '').trim().slice(0, 200)}` }
+    return {
+      ok: false,
+      detail: `systemd-analyze exited ${String(result.status)}: ${(result.stderr ?? '').trim().slice(0, 200)}`,
+    }
   }
   return { ok: true, stdout: result.stdout }
 }

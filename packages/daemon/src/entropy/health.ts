@@ -97,7 +97,11 @@ function poolInitialised(sources: HealthSources): HealthCheck {
     return { name: 'kernel-pool', verdict: 'unknown', detail: (err as Error).message }
   }
   if (!Number.isFinite(available)) {
-    return { name: 'kernel-pool', verdict: 'unknown', detail: 'entropy_avail did not read as a number' }
+    return {
+      name: 'kernel-pool',
+      verdict: 'unknown',
+      detail: 'entropy_avail did not read as a number',
+    }
   }
   return available >= MIN_ENTROPY_AVAIL
     ? { name: 'kernel-pool', verdict: 'ok', detail: `entropy_avail is ${String(available)}` }
@@ -174,7 +178,11 @@ function hardwareRng(sources: HealthSources): HealthCheck {
  */
 function notTooEarly(sources: HealthSources, hwrngOk: boolean): HealthCheck {
   if (hwrngOk) {
-    return { name: 'boot-age', verdict: 'ok', detail: 'a hardware RNG is present, so boot age does not matter' }
+    return {
+      name: 'boot-age',
+      verdict: 'ok',
+      detail: 'a hardware RNG is present, so boot age does not matter',
+    }
   }
   const uptime = sources.uptimeSeconds()
   if (uptime === null) {

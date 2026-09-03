@@ -33,7 +33,10 @@ function psbtNaming(pairs: readonly { key: Uint8Array; fingerprint: number }[]):
     witnessUtxo: { script: btc.p2wpkh(pairs[0]?.key ?? key(0)).script, amount: 5000n },
     bip32Derivation: pairs.map((pair) => [
       pair.key,
-      { fingerprint: pair.fingerprint, path: [2147483696, 2147483648, 2147483648, 2147483650, 0, 0] },
+      {
+        fingerprint: pair.fingerprint,
+        path: [2147483696, 2147483648, 2147483648, 2147483650, 0, 0],
+      },
     ]),
   })
   tx.addOutput({ script: Uint8Array.from([0x6a]), amount: 0n })

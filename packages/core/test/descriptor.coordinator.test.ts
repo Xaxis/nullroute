@@ -63,7 +63,9 @@ describe('core.descriptor.coordinator', () => {
 
   it('reads-json-from-sparrow-or-specter', () => {
     const body = `wsh(sortedmulti(2,[4369050f/48h/0h/0h/2h]${X1}/0/*,[5c9e228d/48h/0h/0h/2h]${X2}/0/*))`
-    const result = importCoordinatorFile(JSON.stringify({ label: 'Cold Storage', descriptor: body }))
+    const result = importCoordinatorFile(
+      JSON.stringify({ label: 'Cold Storage', descriptor: body })
+    )
     expect(result.format).toBe('json')
     expect(result.name).toBe('Cold Storage')
     expect(result.descriptors).toHaveLength(1)
@@ -105,9 +107,9 @@ describe('core.descriptor.coordinator', () => {
    */
   it('refuses-a-coldcard-file-missing-any-header-it-builds-from', () => {
     for (const missing of ['Policy', 'Derivation', 'Format']) {
-      expect(() =>
-        importCoordinatorFile(coldcard({ [missing]: undefined })), missing
-      ).toThrow(new RegExp(missing))
+      expect(() => importCoordinatorFile(coldcard({ [missing]: undefined })), missing).toThrow(
+        new RegExp(missing)
+      )
     }
   })
 
@@ -117,16 +119,16 @@ describe('core.descriptor.coordinator', () => {
     expect(() => importCoordinatorFile(coldcard({ Policy: '2 of 3' }, [X1, X2]))).toThrow(
       /Refusing to guess/
     )
-    expect(() => importCoordinatorFile(coldcard({ Policy: '4 of 3' }))).toThrow(
-      /not satisfiable/
-    )
+    expect(() => importCoordinatorFile(coldcard({ Policy: '4 of 3' }))).toThrow(/not satisfiable/)
     expect(() => importCoordinatorFile(coldcard({ Policy: 'two of three' }))).toThrow(
       /Cannot read the policy/
     )
   })
 
   it('refuses-a-script-format-it-does-not-know', () => {
-    expect(() => importCoordinatorFile(coldcard({ Format: 'P2TR' }))).toThrow(/Unknown script format/)
+    expect(() => importCoordinatorFile(coldcard({ Format: 'P2TR' }))).toThrow(
+      /Unknown script format/
+    )
     expect(() => importCoordinatorFile(coldcard({ Format: 'nonsense' }))).toThrow(
       /Unknown script format/
     )

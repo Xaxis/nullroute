@@ -81,7 +81,10 @@ describe('scanner configuration', () => {
    */
   it('refuses-a-decoder-location-that-is-not-on-this-origin', () => {
     expect(() => {
-      assertSameOrigin('https://fastly.jsdelivr.net/npm/zxing-wasm@3.1.3/dist/reader/x.wasm', ORIGIN)
+      assertSameOrigin(
+        'https://fastly.jsdelivr.net/npm/zxing-wasm@3.1.3/dist/reader/x.wasm',
+        ORIGIN
+      )
     }).toThrow(ScannerError)
     expect(() => {
       assertSameOrigin('https://example.com/x.wasm', ORIGIN)

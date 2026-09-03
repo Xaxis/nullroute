@@ -108,9 +108,13 @@ export function describeSighash(type: number | undefined): SighashVerdict {
 
   const parts: string[] = []
   if (base === SIGHASH_NONE) {
-    parts.push('This signature does NOT commit to the outputs, so where the money goes can be changed after you sign')
+    parts.push(
+      'This signature does NOT commit to the outputs, so where the money goes can be changed after you sign'
+    )
   } else if (base === SIGHASH_SINGLE) {
-    parts.push('This signature commits to only ONE output, so the others can be changed after you sign')
+    parts.push(
+      'This signature commits to only ONE output, so the others can be changed after you sign'
+    )
   } else {
     parts.push('This signature uses a sighash flag nullroute does not recognise')
   }
@@ -269,12 +273,14 @@ export function reviewTransaction(tx: btc.Transaction, options: ReviewOptions): 
       address =
         output.script === undefined
           ? undefined
-          : btc.Address({
-              bech32: network.bech32,
-              pubKeyHash: network.pubKeyHash,
-              scriptHash: network.scriptHash,
-              wif: network.wif,
-            }).encode(btc.OutScript.decode(output.script))
+          : btc
+              .Address({
+                bech32: network.bech32,
+                pubKeyHash: network.pubKeyHash,
+                scriptHash: network.scriptHash,
+                wif: network.wif,
+              })
+              .encode(btc.OutScript.decode(output.script))
     } catch {
       // A script with no standard address form. Shown as a payment with no
       // address rather than hidden, because an unrenderable output is exactly
@@ -441,18 +447,18 @@ export function reviewTransaction(tx: btc.Transaction, options: ReviewOptions): 
 function inputAmount(input: ReturnType<btc.Transaction['getInput']>): bigint | undefined {
   const witness: unknown = input.witnessUtxo
   if (witness !== null && typeof witness === 'object' && 'amount' in witness) {
-    const amount: unknown = (witness).amount
+    const amount: unknown = witness.amount
     if (typeof amount === 'bigint') return amount
   }
 
   const previous: unknown = input.nonWitnessUtxo
   const index = typeof input.index === 'number' ? input.index : 0
   if (previous !== null && typeof previous === 'object' && 'outputs' in previous) {
-    const outputs: unknown = (previous).outputs
+    const outputs: unknown = previous.outputs
     if (Array.isArray(outputs)) {
       const output: unknown = outputs[index]
       if (output !== null && typeof output === 'object' && 'amount' in output) {
-        const amount: unknown = (output).amount
+        const amount: unknown = output.amount
         if (typeof amount === 'bigint') return amount
       }
     }

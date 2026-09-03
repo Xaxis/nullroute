@@ -142,9 +142,7 @@ function customProperties(css) {
     process.exit(1)
   }
 
-  const handled = new Set(
-    [...app.matchAll(/stage\.at === '([a-z-]+)'/g)].map((match) => match[1])
-  )
+  const handled = new Set([...app.matchAll(/stage\.at === '([a-z-]+)'/g)].map((match) => match[1]))
   if (handled.size === 0) {
     console.error('check-ui-constants: no stages parsed from App.tsx, so this check is blind.')
     process.exit(1)
@@ -159,9 +157,11 @@ function customProperties(css) {
   // A stage declared in the JourneyStage union and never used is not an error,
   // but one that names a stage nothing handles is a trap for the next author.
   const declared = new Set(
-    [...(/export type JourneyStage =([\s\S]*?)\n\n/.exec(journeys)?.[1] ?? '').matchAll(
-      /'([a-z-]+)'/g
-    )].map((match) => match[1])
+    [
+      ...(/export type JourneyStage =([\s\S]*?)\n\n/.exec(journeys)?.[1] ?? '').matchAll(
+        /'([a-z-]+)'/g
+      ),
+    ].map((match) => match[1])
   )
   for (const stage of [...declared].sort()) {
     if (!handled.has(stage)) {

@@ -79,7 +79,6 @@ export default tseslint.config(
         },
       ],
 
-
       // INV-WALLET-1: dependency direction between assurance tiers.
       'nullroute/no-cross-tier-import': 'error',
 

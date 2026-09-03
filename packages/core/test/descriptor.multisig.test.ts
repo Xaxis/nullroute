@@ -17,11 +17,7 @@ import * as ecc from 'tiny-secp256k1'
 import { createBase58check } from '@scure/base'
 import { sha256 } from '@noble/hashes/sha2.js'
 import { parseDescriptor, DescriptorParseError } from '../src/descriptor/parse.js'
-import {
-  deriveMultisigAddresses,
-  findOwnKey,
-  multisigShape,
-} from '../src/descriptor/multisig.js'
+import { deriveMultisigAddresses, findOwnKey, multisigShape } from '../src/descriptor/multisig.js'
 import { MAINNET, TESTNET3 } from '../src/network/networks.js'
 
 const bip32 = BIP32Factory(ecc)
@@ -229,9 +225,7 @@ describe('core.descriptor.multisig', () => {
     // comparison would get wrong.
     const base58c = createBase58check(sha256)
     const decoded = base58c.decode(XPUBS[0] ?? '')
-    const asZpub = base58c.encode(
-      Uint8Array.from([0x02, 0xaa, 0x7e, 0xd3, ...decoded.slice(4)])
-    )
+    const asZpub = base58c.encode(Uint8Array.from([0x02, 0xaa, 0x7e, 0xd3, ...decoded.slice(4)]))
 
     expect(asZpub).not.toBe(XPUBS[0])
     expect(asZpub.startsWith('Zpub')).toBe(true)
@@ -240,9 +234,7 @@ describe('core.descriptor.multisig', () => {
 
   // Shapes this device will not derive are refused, rather than approximated.
   it('refuses-shapes-it-does-not-understand', () => {
-    expect(() => multisigShape(parse(`wpkh(${XPUBS[0] ?? ''}/0/*)`))).toThrow(
-      /not a multisig one/
-    )
+    expect(() => multisigShape(parse(`wpkh(${XPUBS[0] ?? ''}/0/*)`))).toThrow(/not a multisig one/)
     expect(() => multisigShape(parse(`wsh(pk(${XPUBS[0] ?? ''}/0/*))`))).toThrow(
       /Expected multi\(\) or sortedmulti\(\)/
     )
@@ -250,16 +242,16 @@ describe('core.descriptor.multisig', () => {
     // this module. Asserted here so that the layer responsible is recorded:
     // multisigShape keeps its own threshold check because it takes a public
     // Descriptor a caller could build without parsing text.
-    expect(() =>
-      parse(`wsh(sortedmulti(4,${XPUBS.map((x) => `${x}/0/*`).join(',')}))`)
-    ).toThrow(/threshold 4 is out of range/)
+    expect(() => parse(`wsh(sortedmulti(4,${XPUBS.map((x) => `${x}/0/*`).join(',')}))`)).toThrow(
+      /threshold 4 is out of range/
+    )
   })
 
   it('refuses-an-absurd-derivation-count', () => {
     const body = `wsh(sortedmulti(2,${XPUBS.map((x) => `${x}/0/*`).join(',')}))`
-    expect(() =>
-      deriveMultisigAddresses(parse(body), { network: MAINNET, count: 5000 })
-    ).toThrow(DescriptorParseError)
+    expect(() => deriveMultisigAddresses(parse(body), { network: MAINNET, count: 5000 })).toThrow(
+      DescriptorParseError
+    )
   })
 
   it('reports-the-quorum-it-parsed', () => {

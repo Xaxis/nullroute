@@ -21,8 +21,7 @@ import { buildToSpend, signMessage, signMessageWithKey } from '../src/message/si
 
 /** The address and to_spend txid BIP-322 publishes, verbatim. */
 const VECTOR_ADDRESS = 'bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l'
-const VECTOR_TO_SPEND_TXID =
-  'c5680aa69bb8d860bf82d4e9cd3504b55dde018de765a91bb566283c545a99a7'
+const VECTOR_TO_SPEND_TXID = 'c5680aa69bb8d860bf82d4e9cd3504b55dde018de765a91bb566283c545a99a7'
 
 function scriptFor(address: string): Uint8Array {
   return btc.OutScript.encode(btc.Address(btc.NETWORK).decode(address))
@@ -49,9 +48,7 @@ describe('core.message.bip322 to_spend', () => {
     // Version 0, one input, the outpoint no transaction can have.
     expect(hex.startsWith(`0000000001${'00'.repeat(32)}ffffffff`)).toBe(true)
     // OP_0 PUSH32 then the tagged hash of the empty message.
-    expect(hex).toContain(
-      '220020c90c269c4f8fcbe6880f72a721ddfbf1914268a794cbb21cfafee13770ae19f1'
-    )
+    expect(hex).toContain('220020c90c269c4f8fcbe6880f72a721ddfbf1914268a794cbb21cfafee13770ae19f1')
     // One output of zero satoshis, and locktime 0.
     expect(hex).toContain(`01${'00'.repeat(8)}`)
     expect(hex.endsWith('00000000')).toBe(true)
@@ -194,9 +191,9 @@ describe('core.message.bip322 signing', () => {
     using seed = mnemonicToSeed(MNEMONIC, '')
     // Legacy only. It is not unimplemented, it is a DIFFERENT construction
     // committing to different bytes, and signLegacyMessage is where it lives.
-    expect(() =>
-      signMessage(seed, MAINNET, 'p2pkh', "m/44'/0'/0'/0/0", 'Hello World')
-    ).toThrow(/not one of them/)
+    expect(() => signMessage(seed, MAINNET, 'p2pkh', "m/44'/0'/0'/0/0", 'Hello World')).toThrow(
+      /not one of them/
+    )
   })
 
   /**
@@ -207,9 +204,7 @@ describe('core.message.bip322 signing', () => {
   it('produces-the-published-taproot-address-for-the-vector-key', () => {
     const key = btc.WIF(btc.NETWORK).decode(VECTOR_WIF)
     const signed = signMessageWithKey(key, MAINNET, 'p2tr', 'Hello World')
-    expect(signed.address).toBe(
-      'bc1ppv609nr0vr25u07u95waq5lucwfm6tde4nydujnu8npg4q75mr5sxq8lt3'
-    )
+    expect(signed.address).toBe('bc1ppv609nr0vr25u07u95waq5lucwfm6tde4nydujnu8npg4q75mr5sxq8lt3')
   })
 
   /**

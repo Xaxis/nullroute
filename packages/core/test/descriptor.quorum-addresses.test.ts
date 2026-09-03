@@ -123,8 +123,8 @@ describe('core.descriptor.quorum-addresses', () => {
    */
   it('refuses-a-single-signature-descriptor-through-the-underlying-error', () => {
     const single = parseDescriptor(withChecksum(`wpkh(${keys()[0] ?? ''})`))
-    expect(() =>
-      deriveQuorumAddresses(single, { network: NETWORK, start: 0, count: 1 })
-    ).toThrow(/not a multisig one/)
+    expect(() => deriveQuorumAddresses(single, { network: NETWORK, start: 0, count: 1 })).toThrow(
+      /not a multisig one/
+    )
   })
 })

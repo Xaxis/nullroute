@@ -9,21 +9,13 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import {
-  MAINNET,
-  SIGNET,
-  deriveAccountXpub,
-  mnemonicToSeed,
-  withChecksum,
-} from '@nullroute/core'
+import { MAINNET, SIGNET, deriveAccountXpub, mnemonicToSeed, withChecksum } from '@nullroute/core'
 import { MultisigError, multisigAccountPath, reviewRegistration } from '../src/multisig.js'
 
 const OURS =
   'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
-const COSIGNER_B =
-  'legal winner thank year wave sausage worth useful legal winner thank yellow'
-const COSIGNER_C =
-  'letter advice cage absurd amount doctor acoustic avoid letter advice cage above'
+const COSIGNER_B = 'legal winner thank year wave sausage worth useful legal winner thank yellow'
+const COSIGNER_C = 'letter advice cage absurd amount doctor acoustic avoid letter advice cage above'
 
 /** The multisig account xpub for a given mnemonic on a given network. */
 function accountXpub(mnemonic: string, network = MAINNET): string {
@@ -139,9 +131,7 @@ describe('daemon.multisig', () => {
   it('warns-when-every-cosigner-is-required', () => {
     const xpubs = [accountXpub(OURS), accountXpub(COSIGNER_B), accountXpub(COSIGNER_C)]
     const registration = review(descriptor(xpubs, { threshold: 3 }))
-    expect(
-      registration.warnings.some((w) => w.message.includes('unspendable'))
-    ).toBe(true)
+    expect(registration.warnings.some((w) => w.message.includes('unspendable'))).toBe(true)
   })
 
   it('warns-when-key-order-is-significant', () => {

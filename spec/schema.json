@@ -113,12 +113,18 @@
   "allOf": [
     {
       "$comment": "The critical tier carries the real burden. A module that runs near key material must state its algorithm precisely enough to reimplement, must say what it does not defend against, and must cite what it follows.",
-      "if": { "properties": { "assurance_tier": { "const": "critical" } }, "required": ["assurance_tier"] },
+      "if": {
+        "properties": { "assurance_tier": { "const": "critical" } },
+        "required": ["assurance_tier"]
+      },
       "then": { "required": ["algorithm", "security_notes", "references"] }
     },
     {
       "$comment": "An experimental module may not claim to be verified. Otherwise `verified` would mean nothing.",
-      "if": { "properties": { "assurance_tier": { "const": "experimental" } }, "required": ["assurance_tier"] },
+      "if": {
+        "properties": { "assurance_tier": { "const": "experimental" } },
+        "required": ["assurance_tier"]
+      },
       "then": { "properties": { "status": { "enum": ["draft", "implemented"] } } }
     }
   ],

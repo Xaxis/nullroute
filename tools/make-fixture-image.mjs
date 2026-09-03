@@ -77,7 +77,12 @@ function guidBytes(text) {
 const LAYOUT = [
   { name: 'boot', filesystem: 'fat', firstLba: 2048, sectors: 1024 * 1024 },
   { name: 'system', filesystem: 'erofs', firstLba: 2048 + 1024 * 1024, sectors: 2048 },
-  { name: 'system-hash', filesystem: 'verity', firstLba: 2048 + 1024 * 1024 + 2048, sectors: 32768 },
+  {
+    name: 'system-hash',
+    filesystem: 'verity',
+    firstLba: 2048 + 1024 * 1024 + 2048,
+    sectors: 32768,
+  },
 ]
 
 const total = LAYOUT[LAYOUT.length - 1].firstLba + LAYOUT[LAYOUT.length - 1].sectors + 2048

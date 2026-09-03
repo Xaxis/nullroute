@@ -94,9 +94,7 @@ describe('core.descriptor.taproot', () => {
   // deriving anyway would produce a wallet whose addresses are wrong with
   // nothing on screen to reveal it.
   it('refuses-a-leaf-it-cannot-sign-for', () => {
-    expect(() => address(`tr(${INTERNAL},{pk(${A}),wpkh(${A})})`)).toThrow(
-      /not supported/
-    )
+    expect(() => address(`tr(${INTERNAL},{pk(${A}),wpkh(${A})})`)).toThrow(/not supported/)
     expect(() => address(`tr(${INTERNAL},{pk(${A}),wpkh(${A})})`)).toThrow(DescriptorParseError)
   })
 

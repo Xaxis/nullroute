@@ -152,7 +152,9 @@ export function assembleQuorum(options: AssembleOptions): AssembledQuorum {
     try {
       expression = parseKeyExpression(raw.trim())
     } catch (err) {
-      throw new AssembleError(`Key ${String(index + 1)} could not be read: ${(err as Error).message}`)
+      throw new AssembleError(
+        `Key ${String(index + 1)} could not be read: ${(err as Error).message}`
+      )
     }
     return assertExtendedWithOrigin(expression, raw)
   })

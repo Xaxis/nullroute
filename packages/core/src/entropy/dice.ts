@@ -49,11 +49,7 @@ export interface EntropyAccounting {
   readonly rollsRemaining: number
 }
 
-export type PatternWarningKind =
-  | 'uniform'
-  | 'short-cycle'
-  | 'monotonic-run'
-  | 'skewed-distribution'
+export type PatternWarningKind = 'uniform' | 'short-cycle' | 'monotonic-run' | 'skewed-distribution'
 
 export interface PatternWarning {
   readonly kind: PatternWarningKind
@@ -198,9 +194,7 @@ export function detectPatterns(rolls: string): PatternWarning[] {
     }
     const CRITICAL_999 = 20.515
     if (chiSquared > CRITICAL_999) {
-      const summary = FACE_LIST
-        .map((f) => `${f}:${String(counts.get(f) ?? 0)}`)
-        .join(' ')
+      const summary = FACE_LIST.map((f) => `${f}:${String(counts.get(f) ?? 0)}`).join(' ')
       warnings.push({
         kind: 'skewed-distribution',
         message: 'The distribution of faces is unusually uneven.',

@@ -47,12 +47,14 @@ function samplePsbt(): { base64: string; script: Uint8Array } {
   if (ours === undefined) throw new Error('no address')
 
   const script = btc.OutScript.encode(
-    btc.Address({
-      bech32: MAINNET.bech32,
-      pubKeyHash: MAINNET.pubKeyHash,
-      scriptHash: MAINNET.scriptHash,
-      wif: MAINNET.wif,
-    }).decode(ours.address)
+    btc
+      .Address({
+        bech32: MAINNET.bech32,
+        pubKeyHash: MAINNET.pubKeyHash,
+        scriptHash: MAINNET.scriptHash,
+        wif: MAINNET.wif,
+      })
+      .decode(ours.address)
   )
 
   const tx = new btc.Transaction()
@@ -129,12 +131,14 @@ describe('core.psbt.parse', () => {
       })
       if (addr === undefined) throw new Error('no address')
       const script = btc.OutScript.encode(
-        btc.Address({
-          bech32: MAINNET.bech32,
-          pubKeyHash: MAINNET.pubKeyHash,
-          scriptHash: MAINNET.scriptHash,
-          wif: MAINNET.wif,
-        }).decode(addr.address)
+        btc
+          .Address({
+            bech32: MAINNET.bech32,
+            pubKeyHash: MAINNET.pubKeyHash,
+            scriptHash: MAINNET.scriptHash,
+            wif: MAINNET.wif,
+          })
+          .decode(addr.address)
       )
       expect(addressFromScript(script, MAINNET), scriptType).toBe(addr.address)
     }

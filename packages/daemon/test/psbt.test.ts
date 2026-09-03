@@ -64,12 +64,14 @@ function ourAddress(change: boolean, index = 0): { address: string; path: string
 
 function scriptFor(address: string): Uint8Array {
   return btc.OutScript.encode(
-    btc.Address({
-      bech32: MAINNET.bech32,
-      pubKeyHash: MAINNET.pubKeyHash,
-      scriptHash: MAINNET.scriptHash,
-      wif: MAINNET.wif,
-    }).decode(address)
+    btc
+      .Address({
+        bech32: MAINNET.bech32,
+        pubKeyHash: MAINNET.pubKeyHash,
+        scriptHash: MAINNET.scriptHash,
+        wif: MAINNET.wif,
+      })
+      .decode(address)
   )
 }
 
@@ -82,7 +84,7 @@ describe('daemon.psbt', () => {
 
     const change = ourAddress(true, 0)
     expect(isChange(change.address)).toBe(change.path)
-    expect(isChange(change.address)).toContain("/1/0")
+    expect(isChange(change.address)).toContain('/1/0')
 
     // Not ours, so no path, whatever position it occupies.
     expect(isChange(STRANGER)).toBeUndefined()
@@ -249,8 +251,7 @@ describe('daemon.psbt', () => {
     return deriveAccountXpub(seed, MAINNET, multisigAccountPath(MAINNET)).xpub
   }
 
-  const COSIGNER_B =
-    'legal winner thank year wave sausage worth useful legal winner thank yellow'
+  const COSIGNER_B = 'legal winner thank year wave sausage worth useful legal winner thank yellow'
   const COSIGNER_C =
     'letter advice cage absurd amount doctor acoustic avoid letter advice cage above'
 

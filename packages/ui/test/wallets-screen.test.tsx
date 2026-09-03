@@ -41,13 +41,7 @@ function rows(): WalletRow[] {
 function mount(overrides: Partial<React.ComponentProps<typeof WalletsScreen>> = {}) {
   const onUnlock = vi.fn(async () => Promise.resolve())
   render(
-    <WalletsScreen
-      wallets={rows()}
-      max={8}
-      onUnlock={onUnlock}
-      onCreate={vi.fn()}
-      {...overrides}
-    />
+    <WalletsScreen wallets={rows()} max={8} onUnlock={onUnlock} onCreate={vi.fn()} {...overrides} />
   )
   return onUnlock
 }
@@ -111,9 +105,7 @@ describe('WalletsScreen', () => {
 
   it('clears-the-passphrase-after-a-failure', async () => {
     const onUnlock = vi.fn(async () => Promise.reject(new Error('Wrong passphrase.')))
-    render(
-      <WalletsScreen wallets={rows()} max={8} onUnlock={onUnlock} onCreate={vi.fn()} />
-    )
+    render(<WalletsScreen wallets={rows()} max={8} onUnlock={onUnlock} onCreate={vi.fn()} />)
     fireEvent.click(screen.getByTestId('wallet-row-aaaaaaaaaaaaaaaa'))
     fireEvent.click(screen.getByTestId('pk-key-a'))
     fireEvent.click(screen.getByTestId('wallet-unlock-submit'))
@@ -368,10 +360,7 @@ describe('Identity', () => {
    */
   it('names-the-device-and-the-wallet-together', () => {
     render(
-      <Identity
-        device="The one in the attic"
-        wallet={{ label: 'Cold storage', colour: 'teal' }}
-      />
+      <Identity device="The one in the attic" wallet={{ label: 'Cold storage', colour: 'teal' }} />
     )
     const chip = screen.getByTestId('identity').textContent
     expect(chip).toContain('The one in the attic')
@@ -393,7 +382,9 @@ describe('Identity', () => {
    */
   it('opens-the-picker-when-switching-is-allowed', () => {
     const onSwitch = vi.fn()
-    render(<Identity device="attic" wallet={{ label: 'Cold', colour: 'teal' }} onSwitch={onSwitch} />)
+    render(
+      <Identity device="attic" wallet={{ label: 'Cold', colour: 'teal' }} onSwitch={onSwitch} />
+    )
     fireEvent.click(screen.getByTestId('identity-switch'))
     expect(onSwitch).toHaveBeenCalledOnce()
   })

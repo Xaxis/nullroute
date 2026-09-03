@@ -86,9 +86,7 @@ function concat(parts: readonly Uint8Array[]): Uint8Array {
 export function legacyMessageHash(message: string): Uint8Array {
   const magic = utf8ToBytes(MAGIC)
   const body = utf8ToBytes(message)
-  return sha256(
-    sha256(concat([compactSize(magic.length), magic, compactSize(body.length), body]))
-  )
+  return sha256(sha256(concat([compactSize(magic.length), magic, compactSize(body.length), body])))
 }
 
 /**
@@ -130,10 +128,7 @@ export function signLegacyMessageWithKey(
   if (recoveryId === undefined || recoveryId > 3) {
     throw new MessageError('Signing produced no usable recovery id.')
   }
-  const signature = concat([
-    Uint8Array.from([COMPRESSED_BASE + recoveryId]),
-    recovered.subarray(1),
-  ])
+  const signature = concat([Uint8Array.from([COMPRESSED_BASE + recoveryId]), recovered.subarray(1)])
 
   const pubkey = secp256k1.getPublicKey(privateKey, true)
   const { address } = btc.p2pkh(pubkey, toBtcNetwork(network))

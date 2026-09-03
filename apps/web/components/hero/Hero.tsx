@@ -53,8 +53,8 @@ export function Hero({ facts }: { facts: Facts }) {
               A Raspberry Pi that turns dice into a seed and signs transactions with no network of
               any kind: not for updates, not for fee estimation, not for fonts. Signatures are
               deterministic, so there is nothing random inside one for a key to leak through. Every
-              module ships a machine-checkable specification, and the build fails when the code,
-              the specs and the tests stop agreeing.
+              module ships a machine-checkable specification, and the build fails when the code, the
+              specs and the tests stop agreeing.
             </p>
 
             <p className="mt-5 text-lg text-ink-400 leading-relaxed">

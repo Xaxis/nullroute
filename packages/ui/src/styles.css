@@ -112,7 +112,6 @@
   --color-danger-500: #d9534f;
   --color-danger-300: #f0918e;
 
-
   --font-mono:
     'JetBrains Mono', 'IBM Plex Mono', 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
   --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -1468,8 +1467,8 @@ body {
     linear-gradient(transparent, var(--color-bg) 70%) bottom / 100% 1.5rem no-repeat local,
     radial-gradient(farthest-side at 50% 0, var(--color-scroll-scrim), transparent) top / 100%
       0.75rem no-repeat scroll,
-    radial-gradient(farthest-side at 50% 100%, var(--color-scroll-scrim), transparent) bottom /
-      100% 0.75rem no-repeat scroll;
+    radial-gradient(farthest-side at 50% 100%, var(--color-scroll-scrim), transparent) bottom / 100%
+      0.75rem no-repeat scroll;
 }
 
 /* The persistent network indicator. One line, always visible, never scrolls
@@ -1980,7 +1979,6 @@ body {
    and not safety.
    --------------------------------------------------------------------------- */
 
-
 .nr-wlist {
   display: flex;
   flex-direction: column;
@@ -2144,7 +2142,9 @@ body {
 
 .nr-swatch[aria-pressed='true'] {
   border-color: var(--color-text);
-  box-shadow: 0 0 0 3px var(--color-bg), 0 0 0 5px var(--wallet-colour, transparent);
+  box-shadow:
+    0 0 0 3px var(--color-bg),
+    0 0 0 5px var(--wallet-colour, transparent);
 }
 
 .nr-danger-zone {
@@ -2537,14 +2537,30 @@ body {
   align-self: center;
 }
 
-[data-colour='slate'] { --wallet-colour: #94a3b8; }
-[data-colour='amber'] { --wallet-colour: #f59e0b; }
-[data-colour='teal'] { --wallet-colour: #14b8a6; }
-[data-colour='violet'] { --wallet-colour: #a78bfa; }
-[data-colour='rose'] { --wallet-colour: #fb7185; }
-[data-colour='lime'] { --wallet-colour: #a3e635; }
-[data-colour='cyan'] { --wallet-colour: #22d3ee; }
-[data-colour='orange'] { --wallet-colour: #fb923c; }
+[data-colour='slate'] {
+  --wallet-colour: #94a3b8;
+}
+[data-colour='amber'] {
+  --wallet-colour: #f59e0b;
+}
+[data-colour='teal'] {
+  --wallet-colour: #14b8a6;
+}
+[data-colour='violet'] {
+  --wallet-colour: #a78bfa;
+}
+[data-colour='rose'] {
+  --wallet-colour: #fb7185;
+}
+[data-colour='lime'] {
+  --wallet-colour: #a3e635;
+}
+[data-colour='cyan'] {
+  --wallet-colour: #22d3ee;
+}
+[data-colour='orange'] {
+  --wallet-colour: #fb923c;
+}
 
 .nr-identity__lines {
   display: flex;

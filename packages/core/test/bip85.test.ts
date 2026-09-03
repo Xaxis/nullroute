@@ -43,8 +43,7 @@ function vectorRoot(): HDKey {
  * than about the standard. The published vectors above use the document's own
  * master key; this one only has to be fixed.
  */
-const SEED_HEX =
-  'd13de7bd1e54422d1a3b3e699f5eee45f9b1c8b5f5b1b1b1e1a1a1a1a1a1a1a1'
+const SEED_HEX = 'd13de7bd1e54422d1a3b3e699f5eee45f9b1c8b5f5b1b1b1e1a1a1a1a1a1a1a1'
 
 const MASTER_MNEMONIC =
   'install scatter logic circle pencil average fall shoe quantum disease suspect usage'
@@ -165,9 +164,7 @@ describe('core.bip85', () => {
     expect(deriveBip85Hex(seed, 32, 0).hex).toBe(deriveBip85Hex(seed, 32, 0).hex)
 
     // Index changes the child.
-    expect(deriveBip85Mnemonic(seed, 12, 0).words).not.toBe(
-      deriveBip85Mnemonic(seed, 12, 1).words
-    )
+    expect(deriveBip85Mnemonic(seed, 12, 0).words).not.toBe(deriveBip85Mnemonic(seed, 12, 1).words)
     // So does word count, and this is the one that surprises people: asking for
     // 24 words at the same index is a different wallet, not a longer backup of
     // the same one.

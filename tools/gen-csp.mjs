@@ -126,7 +126,8 @@ const SECURITY_HEADERS = (csp) => [
   // future dependency cannot quietly start asking.
   {
     key: 'Permissions-Policy',
-    value: 'accelerometer=(), camera=(), geolocation=(), gyroscope=(), microphone=(), payment=(), usb=()',
+    value:
+      'accelerometer=(), camera=(), geolocation=(), gyroscope=(), microphone=(), payment=(), usb=()',
   },
   { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
   { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
@@ -166,7 +167,9 @@ if (check) {
   if (committed !== serialized) {
     console.error('gen-csp: vercel.json does not match the current build.\n')
     const committedCsp = /"Content-Security-Policy",\s*\n\s*"value": "([^"]*)"/.exec(committed)
-    console.error(`  committed script-src hashes: ${committedCsp ? (/script-src[^;]*/.exec(committedCsp[1]) ?? [''])[0] : '(unparsed)'}\n`)
+    console.error(
+      `  committed script-src hashes: ${committedCsp ? (/script-src[^;]*/.exec(committedCsp[1]) ?? [''])[0] : '(unparsed)'}\n`
+    )
     console.error(`  built script-src hashes:     script-src 'self' ${hashes.join(' ')}\n`)
     console.error('  Next inlines an RSC bootstrap into every page. If those blocks changed,')
     console.error('  the deployed policy would block them and the site would fail to hydrate.')

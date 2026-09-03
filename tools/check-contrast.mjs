@@ -45,12 +45,20 @@ const DEBUG = 9451
    less, which is what the `large` flag below decides. */
 const AA_NORMAL = 4.5
 const AA_LARGE = 3.0
-const TYPES={'.html':'text/html','.js':'text/javascript','.css':'text/css','.wasm':'application/wasm'}
-const server=createServer((rq,rs)=>{const u=new URL(rq.url??'/',`http://127.0.0.1:${PORT}`)
- let f=join(DIST,normalize(u.pathname).replace(/^(\.\.[/\\])+/,''))
- if(!f.startsWith(DIST))return void rs.writeHead(403).end()
- if(!existsSync(f)||statSync(f).isDirectory())f=join(DIST,'index.html')
- rs.writeHead(200,{'content-type':TYPES[extname(f)]??'application/octet-stream'});rs.end(readFileSync(f))})
+const TYPES = {
+  '.html': 'text/html',
+  '.js': 'text/javascript',
+  '.css': 'text/css',
+  '.wasm': 'application/wasm',
+}
+const server = createServer((rq, rs) => {
+  const u = new URL(rq.url ?? '/', `http://127.0.0.1:${PORT}`)
+  let f = join(DIST, normalize(u.pathname).replace(/^(\.\.[/\\])+/, ''))
+  if (!f.startsWith(DIST)) return void rs.writeHead(403).end()
+  if (!existsSync(f) || statSync(f).isDirectory()) f = join(DIST, 'index.html')
+  rs.writeHead(200, { 'content-type': TYPES[extname(f)] ?? 'application/octet-stream' })
+  rs.end(readFileSync(f))
+})
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 let chrome
 function cdp(ws, method, params, state) {
@@ -125,14 +133,27 @@ async function main() {
   await new Promise((r) => server.listen(PORT, r))
   chrome = spawn(
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    ['--headless=new','--disable-gpu','--no-sandbox','--hide-scrollbars',`--remote-debugging-port=${DEBUG}`,
-      chromeProfile('check-contrast'),'about:blank'],
+    [
+      '--headless=new',
+      '--disable-gpu',
+      '--no-sandbox',
+      '--hide-scrollbars',
+      `--remote-debugging-port=${DEBUG}`,
+      chromeProfile('check-contrast'),
+      'about:blank',
+    ],
     { stdio: 'ignore', detached: true }
   )
   let ws
   for (let i = 0; i < 100; i += 1) {
     await sleep(150)
-    try { ws = (await (await fetch(`http://127.0.0.1:${DEBUG}/json/version`)).json()).webSocketDebuggerUrl; break } catch { /* not up yet */ }
+    try {
+      ws = (await (await fetch(`http://127.0.0.1:${DEBUG}/json/version`)).json())
+        .webSocketDebuggerUrl
+      break
+    } catch {
+      /* not up yet */
+    }
   }
   const st = { seq: 0 }
   const b = new WebSocket(ws)
@@ -142,11 +163,23 @@ async function main() {
   const page = new WebSocket(list.find((t) => t.id === targetId).webSocketDebuggerUrl)
   await new Promise((r) => page.addEventListener('open', r, { once: true }))
   await cdp(page, 'Page.enable', {}, st)
-  await cdp(page, 'Emulation.setDeviceMetricsOverride', { width: 800, height: 480, deviceScaleFactor: 1, mobile: false }, st)
+  await cdp(
+    page,
+    'Emulation.setDeviceMetricsOverride',
+    { width: 800, height: 480, deviceScaleFactor: 1, mobile: false },
+    st
+  )
   await cdp(page, 'Page.navigate', { url: `http://127.0.0.1:${PORT}/` }, st)
   await sleep(1400)
   const screens = JSON.parse(
-    (await cdp(page, 'Runtime.evaluate', { expression: 'JSON.stringify(window.NULLROUTE_SCREENS ?? [])', returnByValue: true }, st)).result.value
+    (
+      await cdp(
+        page,
+        'Runtime.evaluate',
+        { expression: 'JSON.stringify(window.NULLROUTE_SCREENS ?? [])', returnByValue: true },
+        st
+      )
+    ).result.value
   )
   if (screens.length === 0) throw new Error('the gallery listed no screens, so this check is blind')
 
@@ -220,7 +253,12 @@ async function main() {
     for (const { name, reach } of screens) {
       await cdp(page, 'Page.navigate', { url: `http://127.0.0.1:${PORT}/?screen=${name}` }, st)
       await sleep(420)
-      await cdp(page, 'Runtime.evaluate', { expression: `document.documentElement.setAttribute('data-theme', '${theme}')` }, st)
+      await cdp(
+        page,
+        'Runtime.evaluate',
+        { expression: `document.documentElement.setAttribute('data-theme', '${theme}')` },
+        st
+      )
       await sleep(200)
       for (const step of reach) {
         // Retried, because some of these states arrive on their own clock: the
@@ -228,13 +266,21 @@ async function main() {
         // screen itself. Walking past a step that found nothing measures the
         // screen before it and calls it the screen after.
         for (let attempt = 0; attempt < 40; attempt += 1) {
-          const acted = await cdp(page, 'Runtime.evaluate', { expression: reachStep(step), returnByValue: true }, st)
+          const acted = await cdp(
+            page,
+            'Runtime.evaluate',
+            { expression: reachStep(step), returnByValue: true },
+            st
+          )
           if (acted.result.value === 'clicked') break
           await sleep(80)
         }
         await sleep(260)
       }
-      const rows = JSON.parse((await cdp(page, 'Runtime.evaluate', { expression: PROBE, returnByValue: true }, st)).result.value)
+      const rows = JSON.parse(
+        (await cdp(page, 'Runtime.evaluate', { expression: PROBE, returnByValue: true }, st)).result
+          .value
+      )
       if (!collapsed.some((c) => c.theme === theme)) {
         const sev = JSON.parse(
           (await cdp(page, 'Runtime.evaluate', { expression: SEVERITY, returnByValue: true }, st))
@@ -260,7 +306,8 @@ async function main() {
         const need = r.large ? AA_LARGE : AA_NORMAL
         if (r.ratio >= need) continue
         const key = `${theme}|${r.cls}`
-        if (!worst.has(key) || worst.get(key).ratio > r.ratio) worst.set(key, { ...r, theme, screen: name, need })
+        if (!worst.has(key) || worst.get(key).ratio > r.ratio)
+          worst.set(key, { ...r, theme, screen: name, need })
       }
     }
   }
@@ -322,7 +369,11 @@ async function main() {
 
 main().catch((err) => {
   reap(chrome)
-  try { server.close() } catch { /* already closed */ }
+  try {
+    server.close()
+  } catch {
+    /* already closed */
+  }
   console.error(`check-contrast: ${err.message}`)
   process.exit(1)
 })

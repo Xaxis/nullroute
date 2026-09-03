@@ -139,7 +139,11 @@ function deriveKey(passphrase: string, kdf: KdfParams): Secret {
  * The plaintext is borrowed, not consumed: the caller still owns it and is
  * responsible for disposing it.
  */
-export function seal(plaintext: Secret, passphrase: string, params: KdfCost = KDF_DEFAULTS): Envelope {
+export function seal(
+  plaintext: Secret,
+  passphrase: string,
+  params: KdfCost = KDF_DEFAULTS
+): Envelope {
   if (passphrase.length === 0) {
     throw new StoreError('Refusing to seal a store with an empty passphrase.')
   }

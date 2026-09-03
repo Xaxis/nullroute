@@ -15,8 +15,8 @@ export default function NotFound() {
         There is nothing at this address.
       </h1>
       <p className="mt-4 text-ink-400 max-w-lg leading-relaxed">
-        The page you asked for does not exist. If you followed a link from the documentation,
-        that is a broken cross-reference and worth reporting.
+        The page you asked for does not exist. If you followed a link from the documentation, that
+        is a broken cross-reference and worth reporting.
       </p>
       <div className="mt-8 flex flex-wrap gap-3">
         <Link

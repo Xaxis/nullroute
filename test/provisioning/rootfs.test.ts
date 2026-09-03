@@ -307,15 +307,11 @@ describe('provisioning.systemd-exposure', () => {
    * easiest one in this file to ship by accident.
    */
   it('fails-rather-than-passing-when-the-tool-is-not-there', () => {
-    const result = systemdExposure(
-      root,
-      { unit: 'nullrouted.service', max_exposure: 0.5 },
-      () => ({
-        ok: false,
-        unavailable: true,
-        detail: 'systemd-analyze is not on this machine, so this was NOT checked.',
-      })
-    )
+    const result = systemdExposure(root, { unit: 'nullrouted.service', max_exposure: 0.5 }, () => ({
+      ok: false,
+      unavailable: true,
+      detail: 'systemd-analyze is not on this machine, so this was NOT checked.',
+    }))
 
     expect(result.ok).toBe(false)
     expect(result.detail).toContain('NOT checked')

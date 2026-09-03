@@ -95,13 +95,7 @@ describe('core.labels', () => {
    * something it is not.
    */
   it('refuses-a-label-that-can-render-as-something-else', () => {
-    const forgeable = [
-      'Rent‮march',
-      'Cold​storage',
-      'Alice⁦⁩Bob',
-      'Tab	here',
-      'Bom﻿',
-    ]
+    const forgeable = ['Rent‮march', 'Cold​storage', 'Alice⁦⁩Bob', 'Tab	here', 'Bom﻿']
 
     for (const label of forgeable) {
       const read = importLabels(jsonl({ type: 'tx', ref: TXID, label }))

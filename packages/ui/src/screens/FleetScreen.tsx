@@ -185,8 +185,8 @@ export function FleetScreen(props: FleetScreenProps): ReactElement {
       {quorums.length === 0 && (
         <Info testId="fleet-empty">
           This device is not in any quorum yet. Registering one is what makes it recognise that
-          quorum&rsquo;s change as its own, and until then it can sign for a single-signature
-          wallet and nothing else.
+          quorum&rsquo;s change as its own, and until then it can sign for a single-signature wallet
+          and nothing else.
         </Info>
       )}
 
@@ -234,9 +234,7 @@ export function FleetScreen(props: FleetScreenProps): ReactElement {
                                 up four bytes chosen by whoever wrote the
                                 descriptor. */}
                             <div>
-                              {cosigner.name ?? (
-                                <span className="nr-hint">not named yet</span>
-                              )}
+                              {cosigner.name ?? <span className="nr-hint">not named yet</span>}
                             </div>
                             <div className="nr-hint nr-mono">
                               {cosigner.fingerprint ?? 'no fingerprint'}, unverified
@@ -284,11 +282,10 @@ export function FleetScreen(props: FleetScreenProps): ReactElement {
         <div className="nr-banner nr-banner--caution" data-testid="fleet-cannot-know">
           <strong>What this device cannot tell you</strong>
           <span>
-            Whether the other cosigners registered the same descriptor, and whether your
-            coordinator ever imported it. Both are facts about other machines, and this one has no
-            network. An unfinished quorum receives money exactly like a finished one, so confirm
-            those yourself: compare the checksum above on every device, and compare an address at
-            the same index.
+            Whether the other cosigners registered the same descriptor, and whether your coordinator
+            ever imported it. Both are facts about other machines, and this one has no network. An
+            unfinished quorum receives money exactly like a finished one, so confirm those yourself:
+            compare the checksum above on every device, and compare an address at the same index.
           </span>
         </div>
       )}

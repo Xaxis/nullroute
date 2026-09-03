@@ -17,7 +17,8 @@ function type(testId: string, value: string): void {
   fireEvent.change(screen.getByTestId(testId), { target: { value } })
 }
 
-const submitButton = (): HTMLButtonElement => screen.getByTestId<HTMLButtonElement>('passphrase-submit')
+const submitButton = (): HTMLButtonElement =>
+  screen.getByTestId<HTMLButtonElement>('passphrase-submit')
 
 describe('ui.screens.passphrase', () => {
   // INV-UI-15: setting a passphrase requires it twice and refuses a mismatch.

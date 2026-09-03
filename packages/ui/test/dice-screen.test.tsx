@@ -35,9 +35,7 @@ function mount(options: {
       warnings: options.warnings ?? [],
     })
   )
-  render(
-    <DiceScreen onAccount={onAccount} onComplete={onComplete} onCancel={vi.fn()} />
-  )
+  render(<DiceScreen onAccount={onAccount} onComplete={onComplete} onCancel={vi.fn()} />)
   return { onComplete, onAccount }
 }
 
@@ -77,7 +75,11 @@ describe('ui.screens.dice', () => {
     mount({
       sufficient: true,
       warnings: [
-        { kind: 'uniform', message: 'Every roll is the same value.', detail: 'All 100 rolls are 3.' },
+        {
+          kind: 'uniform',
+          message: 'Every roll is the same value.',
+          detail: 'All 100 rolls are 3.',
+        },
       ],
     })
     fireEvent.click(screen.getByTestId('die-3'))
@@ -235,7 +237,13 @@ describe('ui.screens.dice rolling for you', () => {
       <DiceScreen
         onAccount={vi.fn(async () =>
           Promise.resolve({
-            accounting: { rolls: 0, bits: 0, targetBits: 256, sufficient: false, rollsRemaining: 100 },
+            accounting: {
+              rolls: 0,
+              bits: 0,
+              targetBits: 256,
+              sufficient: false,
+              rollsRemaining: 100,
+            },
             warnings: [],
           })
         )}

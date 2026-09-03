@@ -67,8 +67,9 @@ describe('daemon.store.backup', () => {
 
   it('refuses-a-wrong-passphrase-and-an-empty-one', () => {
     expect(() => restoreBackup(write(true), 'wrong')).toThrow(BadPassphraseError)
-    expect(() => createBackup({ network: SIGNET, registrations: [], label: 'x' }, '', 'v', FAST))
-      .toThrow(/empty passphrase/)
+    expect(() =>
+      createBackup({ network: SIGNET, registrations: [], label: 'x' }, '', 'v', FAST)
+    ).toThrow(/empty passphrase/)
   })
 
   /**

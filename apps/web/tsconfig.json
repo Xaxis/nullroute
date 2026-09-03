@@ -2,11 +2,7 @@
   "//": "The website is not part of the device build graph and is deliberately not referenced from tsconfig.build.json. It is a networked Next.js app; folding it into the artifact whose hash users check before entering a PIN would be wrong.",
   "compilerOptions": {
     "target": "ES2022",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -30,9 +26,7 @@
       }
     ],
     "paths": {
-      "@/*": [
-        "./*"
-      ]
+      "@/*": ["./*"]
     }
   },
   "include": [
@@ -44,7 +38,5 @@
     ".next/dev/types/**/*.ts",
     ".next-dev/dev/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules"]
 }

@@ -40,7 +40,10 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse } from 'yaml'
-import { VERIFIERS, RUNTIME_ONLY, NEEDS_IMAGE,
+import {
+  VERIFIERS,
+  RUNTIME_ONLY,
+  NEEDS_IMAGE,
   NEEDS_NOTHING,
 } from '../provisioning/checks/registry.mjs'
 import { ROOTFS_VERIFIERS } from '../provisioning/checks/rootfs.mjs'
@@ -106,8 +109,7 @@ if (profiles.length === 0) {
  * checkout produces and passing it every time would be a flag people get wrong.
  */
 const release =
-  argument('release') ??
-  JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version
+  argument('release') ?? JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version
 
 /**
  * Fill in the values a profile deliberately does not write down.
@@ -180,7 +182,8 @@ function classify(verifiers) {
     if (declared?.status === 'needs-device' || RUNTIME_ONLY.has(entry.check)) {
       return 'needs a booted device'
     }
-    if (declared === undefined || declared.status !== 'implemented') return 'no verifier written yet'
+    if (declared === undefined || declared.status !== 'implemented')
+      return 'no verifier written yet'
     return NEEDS_IMAGE.has(entry.check) ? 'no image was given' : 'no root filesystem was given'
   })
   for (const rank of [
@@ -198,7 +201,8 @@ for (const { file, profile } of profiles) {
   if (rootfs !== undefined) console.log(`  root     ${rootfs}`)
   if (image !== undefined) console.log(`  image    ${image}`)
   if (compare !== undefined) console.log(`  compare  ${compare}`)
-  if (image !== undefined) console.log(`  release  ${release}  ${DIM}(pinned identifiers derive from this)${OFF}`)
+  if (image !== undefined)
+    console.log(`  release  ${release}  ${DIM}(pinned identifiers derive from this)${OFF}`)
   console.log('')
 
   for (const assertion of profile.assertions ?? []) {
@@ -255,7 +259,8 @@ for (const { file, profile } of profiles) {
     if (blind.length === results.length) {
       notChecked('a verifier could not run on this machine')
       console.log(`  ${DIM}--${OFF}  ${assertion.id}`)
-      for (const result of blind) console.log(`        ${DIM}${result.check}: ${result.detail}${OFF}`)
+      for (const result of blind)
+        console.log(`        ${DIM}${result.check}: ${result.detail}${OFF}`)
       continue
     }
 

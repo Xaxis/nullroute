@@ -28,7 +28,7 @@
  * Position in this string, not the character's code point, drives the checksum.
  */
 const INPUT_CHARSET =
-  '0123456789()[],\'/*abcdefgh@:$%{}' +
+  "0123456789()[],'/*abcdefgh@:$%{}" +
   'IJKLMNOPQRSTUVWXYZ&+-.;<=>?!^_|~' +
   'ijklmnopqrstuvwxyzABCDEFGH`#"\\ '
 
@@ -42,13 +42,7 @@ const CHECKSUM_CHARSET = 'qpzry9x8gf2tvdw0s3jn54khce6mua7l'
  * left by 5, which immediately exceeds what JavaScript's bitwise operators can
  * hold; they truncate to 32 bits and produce a wrong answer without any error.
  */
-const GENERATORS = [
-  0xf5dee51989n,
-  0xa9fdca3312n,
-  0x1bab10e32dn,
-  0x3706b1677an,
-  0x644d626ffdn,
-]
+const GENERATORS = [0xf5dee51989n, 0xa9fdca3312n, 0x1bab10e32dn, 0x3706b1677an, 0x644d626ffdn]
 
 export class DescriptorChecksumError extends Error {
   constructor(message: string) {

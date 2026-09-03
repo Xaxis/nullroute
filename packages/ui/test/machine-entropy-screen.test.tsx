@@ -14,10 +14,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import {
-  MachineEntropyScreen,
-  type HealthReportView,
-} from '../src/screens/MachineEntropyScreen.js'
+import { MachineEntropyScreen, type HealthReportView } from '../src/screens/MachineEntropyScreen.js'
 
 afterEach(cleanup)
 
@@ -119,7 +116,9 @@ describe('MachineEntropyScreen', () => {
 
     fireEvent.click(screen.getByTestId('machine-acknowledge'))
     expect(screen.getByTestId<HTMLButtonElement>('machine-generate').disabled).toBe(true)
-    expect(screen.getByTestId('machine-unknown').textContent).toContain('not the same as being fine')
+    expect(screen.getByTestId('machine-unknown').textContent).toContain(
+      'not the same as being fine'
+    )
   })
 
   it('refuses-and-points-at-dice-when-a-source-has-failed', async () => {

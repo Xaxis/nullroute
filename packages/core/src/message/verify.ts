@@ -289,7 +289,14 @@ function verifyWrapped(
     )
   }
 
-  return verifyKeyHash(stack, message, script, btc.p2wpkh(pubkey).script.slice(2), 'p2sh-p2wpkh', network)
+  return verifyKeyHash(
+    stack,
+    message,
+    script,
+    btc.p2wpkh(pubkey).script.slice(2),
+    'p2sh-p2wpkh',
+    network
+  )
 }
 
 /**
@@ -347,9 +354,10 @@ function verifyKeyHash(
 
   let compact: Uint8Array
   try {
-    compact = secp256k1.Signature.fromBytes(withFlag.subarray(0, withFlag.length - 1), 'der').toBytes(
-      'compact'
-    )
+    compact = secp256k1.Signature.fromBytes(
+      withFlag.subarray(0, withFlag.length - 1),
+      'der'
+    ).toBytes('compact')
   } catch {
     return fail(scriptType, 'That signature is not valid DER.')
   }

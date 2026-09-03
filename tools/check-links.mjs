@@ -50,14 +50,16 @@ function markdownFiles(dir, found = []) {
 
 /** GitHub's heading-to-anchor slug, which is what the site's rehype-slug matches. */
 function slug(text) {
-  return text
-    .trim()
-    .toLowerCase()
-    .replace(/[`*_~]/g, '')
-    // Strip a markdown link wrapper, keeping the visible text.
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
+  return (
+    text
+      .trim()
+      .toLowerCase()
+      .replace(/[`*_~]/g, '')
+      // Strip a markdown link wrapper, keeping the visible text.
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-')
+  )
 }
 
 function headingsOf(file) {
@@ -118,9 +120,7 @@ for (const file of files) {
       if (anchor !== undefined && resolved.endsWith('.md')) {
         if (!headings(resolved).has(anchor)) {
           problems += 1
-          console.error(
-            `${rel}:${i + 1}  ${pathPart} exists but has no heading "#${anchor}"`
-          )
+          console.error(`${rel}:${i + 1}  ${pathPart} exists but has no heading "#${anchor}"`)
         }
       }
     }

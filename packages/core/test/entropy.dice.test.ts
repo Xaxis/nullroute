@@ -52,12 +52,24 @@ describe('core.entropy.dice', () => {
 
   // INV-DICE-2: strict canonical input.
   it('rejects-non-canonical-input', () => {
-    expect(() => { validateRolls('') }).toThrow(DiceValidationError)
-    expect(() => { validateRolls('1234 5612') }).toThrow(/not a d6 face/)
-    expect(() => { validateRolls('123456\n') }).toThrow(/not a d6 face/)
-    expect(() => { validateRolls('1,2,3') }).toThrow(/not a d6 face/)
-    expect(() => { validateRolls('123407') }).toThrow(/not a d6 face/)
-    expect(() => { validateRolls('12340a') }).toThrow(/not a d6 face/)
+    expect(() => {
+      validateRolls('')
+    }).toThrow(DiceValidationError)
+    expect(() => {
+      validateRolls('1234 5612')
+    }).toThrow(/not a d6 face/)
+    expect(() => {
+      validateRolls('123456\n')
+    }).toThrow(/not a d6 face/)
+    expect(() => {
+      validateRolls('1,2,3')
+    }).toThrow(/not a d6 face/)
+    expect(() => {
+      validateRolls('123407')
+    }).toThrow(/not a d6 face/)
+    expect(() => {
+      validateRolls('12340a')
+    }).toThrow(/not a d6 face/)
     // Reports which roll was wrong, so the UI can point at it.
     try {
       validateRolls('1237')

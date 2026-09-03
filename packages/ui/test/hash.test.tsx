@@ -28,7 +28,6 @@ describe('abbreviate', () => {
   })
 })
 
-
 /**
  * Short values are not abbreviated, because abbreviating them is wrong.
  *

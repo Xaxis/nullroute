@@ -77,8 +77,15 @@ const MAX_REF_LENGTH = 200
  * signing screen, so a label that can be made to read differently from what it
  * contains is a label that can lie about what is being paid.
  */
-// eslint-disable-next-line no-control-regex -- matching them is the point
-const FORGEABLE = /[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u2028-\u2029\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/u
+/* eslint-disable no-control-regex -- matching them is the point.
+   A block rather than a -next-line directive, because the assignment below is
+   too long for one line and the formatter wraps it, which moves the regex off
+   the line the directive covers. That silently disarmed the rule, and the
+   rule is the one that stops a label or a message rendering differently from
+   what it contains. */
+const FORGEABLE =
+  /[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u2028-\u2029\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/u
+/* eslint-enable no-control-regex */
 
 export interface ImportResult {
   readonly labels: readonly Label[]

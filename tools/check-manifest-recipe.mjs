@@ -119,7 +119,14 @@ for (const test of cases) {
       maxBuffer: 32 * 1024 * 1024,
     })
   } catch (err) {
-    fail(where, `exited non-zero. A reader following this page runs this and it fails.\n    ${String(err.stderr ?? err.message).trim().split('\n')[0]}`)
+    fail(
+      where,
+      `exited non-zero. A reader following this page runs this and it fails.\n    ${
+        String(err.stderr ?? err.message)
+          .trim()
+          .split('\n')[0]
+      }`
+    )
     continue
   }
 

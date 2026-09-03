@@ -33,9 +33,7 @@ function setup(overrides: Partial<React.ComponentProps<typeof LabelsScreen>> = {
   })
   const onExport = vi.fn().mockResolvedValue({ text: '{"type":"tx"}\n' })
   const onBack = vi.fn()
-  render(
-    <LabelsScreen onImport={onImport} onExport={onExport} onBack={onBack} {...overrides} />
-  )
+  render(<LabelsScreen onImport={onImport} onExport={onExport} onBack={onBack} {...overrides} />)
   return { onImport, onExport, onBack }
 }
 
@@ -123,7 +121,9 @@ describe('LabelsScreen', () => {
   })
 
   it('reports-a-refused-file-rather-than-showing-an-empty-import', async () => {
-    const onImport = vi.fn().mockRejectedValue(new Error('That file is far larger than any wallet export.'))
+    const onImport = vi
+      .fn()
+      .mockRejectedValue(new Error('That file is far larger than any wallet export.'))
     setup({ onImport })
 
     fireEvent.change(screen.getByTestId('labels-input'), { target: { value: 'x' } })

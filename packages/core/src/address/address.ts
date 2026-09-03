@@ -155,10 +155,7 @@ export interface DeriveAddressesOptions {
  * Used by the address explorer and by change verification. The account key is
  * public, so this needs no seed and no private material.
  */
-export function deriveAddresses(
-  accountKey: HDKey,
-  options: DeriveAddressesOptions
-): AddressInfo[] {
+export function deriveAddresses(accountKey: HDKey, options: DeriveAddressesOptions): AddressInfo[] {
   const { scriptType, network, change, start, count } = options
   if (count < 0 || start < 0) {
     throw new DerivationError('Address range must be non-negative.')

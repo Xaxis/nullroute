@@ -41,7 +41,15 @@
 import { spawn } from 'node:child_process'
 import { createServer } from 'node:http'
 import { connect } from 'node:net'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -129,10 +137,21 @@ const JOURNEYS = [
     id: 'new-wallet',
     goal: 'start-goal-new-wallet',
     steps: [
-      'start-begin', 'network-signet', 'mode-dice', 'setup-start',
-      'dice-roll-rest', 'dice-continue', 'remember', 'seed-ack', 'seed-confirm',
-      'word', 'word', 'word',
-      'type:correcthorsebattery', 'passphrase-confirm', 'type:correcthorsebattery',
+      'start-begin',
+      'network-signet',
+      'mode-dice',
+      'setup-start',
+      'dice-roll-rest',
+      'dice-continue',
+      'remember',
+      'seed-ack',
+      'seed-confirm',
+      'word',
+      'word',
+      'word',
+      'type:correcthorsebattery',
+      'passphrase-confirm',
+      'type:correcthorsebattery',
       'passphrase-submit',
     ],
     ends: 'finish-screen',
@@ -146,11 +165,7 @@ const JOURNEYS = [
     // that used to dead-end: "art" is a prefix of "artefact", "artist" and
     // "artwork", so nothing commits on its own and the suggestion strip is the
     // only way forward.
-    steps: [
-      'start-begin',
-      `mnemonic:${'abandon '.repeat(23)}art`,
-      'import-submit',
-    ],
+    steps: ['start-begin', `mnemonic:${'abandon '.repeat(23)}art`, 'import-submit'],
     ends: 'passphrase-screen',
     heartbeatBefore: 'wallet.import',
   },
@@ -372,8 +387,12 @@ async function main() {
     const chrome = spawn(
       chromePath,
       [
-        '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
-        '--no-sandbox', '--disable-dev-shm-usage',
+        '--headless=new',
+        '--disable-gpu',
+        '--no-first-run',
+        '--no-default-browser-check',
+        '--no-sandbox',
+        '--disable-dev-shm-usage',
         `--remote-debugging-port=${String(DEBUG_PORT)}`,
         `--user-data-dir=${join(work, 'chrome')}`,
         `--window-size=${String(WIDTH)},${String(HEIGHT)}`,
@@ -386,7 +405,9 @@ async function main() {
     for (let attempt = 0; attempt < 80 && wsUrl === undefined; attempt += 1) {
       await sleep(150)
       try {
-        const listed = await (await fetch(`http://127.0.0.1:${String(DEBUG_PORT)}/json/list`)).json()
+        const listed = await (
+          await fetch(`http://127.0.0.1:${String(DEBUG_PORT)}/json/list`)
+        ).json()
         wsUrl = listed.find((target) => target.type === 'page')?.webSocketDebuggerUrl
       } catch {
         /* not up yet */
@@ -475,7 +496,6 @@ async function main() {
       return 'ok'
     }
 
-
     const screenOf = async () =>
       evaluate(`(() => {
         const s = document.querySelector('.nr-screen')
@@ -493,8 +513,10 @@ async function main() {
     const capture = async (label) => {
       if (SHOTS === null) return
       const on = String(await screenOf())
-      const name =
-        `${String(shotSeq).padStart(3, '0')}-${label}-${on}`.replace(/[^a-zA-Z0-9._-]/g, '_')
+      const name = `${String(shotSeq).padStart(3, '0')}-${label}-${on}`.replace(
+        /[^a-zA-Z0-9._-]/g,
+        '_'
+      )
       shotSeq += 1
       const shot = await cdp(page, 'Page.captureScreenshot', { format: 'png' }, state)
       writeFileSync(join(SHOTS, `${name}.png`), Buffer.from(shot.data, 'base64'))
@@ -625,7 +647,10 @@ async function main() {
                 return document.querySelector('[data-testid="kb-suggest-' + ${JSON.stringify(want)} + '"]') === null
                   ? 'typing' : 'suggested'
               })()`)
-              if (status === 'committed') { entered = true; break }
+              if (status === 'committed') {
+                entered = true
+                break
+              }
               if (status === 'suggested') {
                 await tap(`kb-suggest-${want}`)
                 entered = true
@@ -730,7 +755,10 @@ async function main() {
 
       await capture(`${journey.id}-ARRIVED`)
 
-      const note = journey.stopsShort === undefined ? '' : `  (stops at ${journey.ends}: ${journey.stopsShort})`
+      const note =
+        journey.stopsShort === undefined
+          ? ''
+          : `  (stops at ${journey.ends}: ${journey.stopsShort})`
       console.log(`  ok    ${journey.id}${note}`)
     }
 

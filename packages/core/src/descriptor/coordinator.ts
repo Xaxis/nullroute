@@ -35,11 +35,7 @@ export class CoordinatorFormatError extends Error {
 }
 
 export type CoordinatorFormat =
-  | 'descriptor'
-  | 'coldcard'
-  | 'bsms'
-  | 'json'
-  | 'core-importdescriptors'
+  'descriptor' | 'coldcard' | 'bsms' | 'json' | 'core-importdescriptors'
 
 export interface ImportedDescriptor {
   /** Canonical descriptor with a valid checksum, whatever arrived. */
@@ -204,7 +200,12 @@ function importColdcard(text: string): CoordinatorImport {
  * descriptor nobody else derives.
  */
 function wrapperFor(format: string): (inner: string) => string {
-  switch (format.trim().toUpperCase().replace(/[-_\s]/g, '')) {
+  switch (
+    format
+      .trim()
+      .toUpperCase()
+      .replace(/[-_\s]/g, '')
+  ) {
     case 'P2WSH':
       return (inner) => `wsh(${inner})`
     case 'P2SHP2WSH':

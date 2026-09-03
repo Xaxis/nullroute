@@ -28,7 +28,12 @@ import { base58 } from '@scure/base'
 import { type Network } from '../network/networks.js'
 import { derivePubkeyAt } from './derive-key.js'
 import { taprootQuorum } from './taproot.js'
-import { DescriptorParseError, type Descriptor, type KeyExpression, type ScriptNode } from './parse.js'
+import {
+  DescriptorParseError,
+  type Descriptor,
+  type KeyExpression,
+  type ScriptNode,
+} from './parse.js'
 
 /** The shapes this device will derive. Anything else is refused. */
 export type MultisigKind = 'wsh' | 'sh-wsh' | 'sh'
@@ -114,7 +119,13 @@ export function multisigShape(descriptor: Descriptor): MultisigShape {
     throw new DescriptorParseError(`${String(total)} keys exceeds the 20 key consensus limit.`)
   }
 
-  return { kind, threshold: body.threshold, total, sorted: body.kind === 'sortedmulti', keys: body.keys }
+  return {
+    kind,
+    threshold: body.threshold,
+    total,
+    sorted: body.kind === 'sortedmulti',
+    keys: body.keys,
+  }
 }
 
 /** Lexicographic order on the compressed encoding, per BIP-67. */

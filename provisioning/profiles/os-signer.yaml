@@ -231,7 +231,19 @@ assertions:
       - check: absent-packages
         params:
           packages:
-            [openssh-server, chrony, systemd-timesyncd, ntp, cron, at, auditd, ufw, nftables, dhcpcd-base, avahi-daemon]
+            [
+              openssh-server,
+              chrony,
+              systemd-timesyncd,
+              ntp,
+              cron,
+              at,
+              auditd,
+              ufw,
+              nftables,
+              dhcpcd-base,
+              avahi-daemon,
+            ]
     rationale: >
       Each of these is a service with a parser, a configuration file and a CVE
       history, present on this device for no reason. The time daemons are worse

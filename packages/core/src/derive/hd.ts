@@ -72,11 +72,7 @@ export function rootFromSeed(seed: Secret, network: Network): HDKey {
  * material by construction, which is a stronger guarantee than remembering not
  * to serialise it.
  */
-export function deriveAccountXpub(
-  seed: Secret,
-  network: Network,
-  path: string
-): AccountXpub {
+export function deriveAccountXpub(seed: Secret, network: Network, path: string): AccountXpub {
   const canonical = normalizePath(path)
   const root = rootFromSeed(seed, network)
   const masterFingerprint = fingerprintHex(root.fingerprint)

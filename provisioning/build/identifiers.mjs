@@ -24,7 +24,13 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { veritySalt, filesystemUuid, fatVolumeId, diskGuid, partitionGuid } from '../checks/identifiers.mjs'
+import {
+  veritySalt,
+  filesystemUuid,
+  fatVolumeId,
+  diskGuid,
+  partitionGuid,
+} from '../checks/identifiers.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 

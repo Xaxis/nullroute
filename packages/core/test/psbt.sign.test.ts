@@ -52,12 +52,14 @@ function fundedTransaction(sighashType?: number): btc.Transaction {
   if (ours === undefined) throw new Error('no address')
 
   const script = btc.OutScript.encode(
-    btc.Address({
-      bech32: MAINNET.bech32,
-      pubKeyHash: MAINNET.pubKeyHash,
-      scriptHash: MAINNET.scriptHash,
-      wif: MAINNET.wif,
-    }).decode(ours.address)
+    btc
+      .Address({
+        bech32: MAINNET.bech32,
+        pubKeyHash: MAINNET.pubKeyHash,
+        scriptHash: MAINNET.scriptHash,
+        wif: MAINNET.wif,
+      })
+      .decode(ours.address)
   )
 
   const tx = new btc.Transaction()

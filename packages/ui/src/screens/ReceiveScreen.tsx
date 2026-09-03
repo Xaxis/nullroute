@@ -332,7 +332,11 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
                   the two warnings on the screen, because it is about the
                   choice just made rather than about receiving in general. */}
               {source === null && quorums.length > 0 && (
-                <div data-must-see className="nr-banner nr-banner--danger" data-testid="receive-single-warning">
+                <div
+                  data-must-see
+                  className="nr-banner nr-banner--danger"
+                  data-testid="receive-single-warning"
+                >
                   <strong>This address is protected by this device alone</strong>
                   <span>
                     Whoever holds this one device can spend anything sent here, which is what the
@@ -363,9 +367,13 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
                   the banner above, which is about the choice just made and is
                   therefore the one being read. */}
               {!(source === null && quorums.length > 0) && (
-              <div data-must-see className="nr-banner nr-banner--caution" data-testid="receive-warning">
-                <strong>Read it from this screen, not from the one you paste it into</strong>
-                {/* TWO LINES, NOT FOUR, AND NONE WHEN SOMETHING BEATS IT.
+                <div
+                  data-must-see
+                  className="nr-banner nr-banner--caution"
+                  data-testid="receive-warning"
+                >
+                  <strong>Read it from this screen, not from the one you paste it into</strong>
+                  {/* TWO LINES, NOT FOUR, AND NONE WHEN SOMETHING BEATS IT.
 
                     This is the warning between somebody and the ordinary way
                     money is lost here, and it was running under the fold on four
@@ -381,12 +389,12 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
                     on that banner already calls it the more urgent of the two.
                     Two full banners plus an address and a QR do not fit in 270px,
                     and the heading above is the instruction: the body is why. */}
-                <span>
-                  Software that swaps a copied address is the ordinary way this money is lost, and
-                  every screen involved looks correct. Compare these characters against the
-                  payer&rsquo;s screen.
-                </span>
-              </div>
+                  <span>
+                    Software that swaps a copied address is the ordinary way this money is lost, and
+                    every screen involved looks correct. Compare these characters against the
+                    payer&rsquo;s screen.
+                  </span>
+                </div>
               )}
 
               {verified === true ? (

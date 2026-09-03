@@ -30,7 +30,10 @@ function psbtWith(records: readonly { key: Uint8Array; fingerprint: number }[]):
   tx.addInput({
     txid: new Uint8Array(32).fill(7),
     index: 0,
-    witnessUtxo: { script: btc.p2wpkh(records[0]?.key ?? new Uint8Array(33)).script, amount: 1000n },
+    witnessUtxo: {
+      script: btc.p2wpkh(records[0]?.key ?? new Uint8Array(33)).script,
+      amount: 1000n,
+    },
     bip32Derivation: records.map((record) => [
       record.key,
       { fingerprint: record.fingerprint, path: [2147483732, 2147483648, 2147483648, 0, 0] },

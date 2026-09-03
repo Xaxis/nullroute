@@ -84,9 +84,7 @@ for (const file of files) {
   }
 
   if (exits.length === 0) {
-    failures.push(
-      `  ${file} renders no way out. On this device that means a power cycle.`
-    )
+    failures.push(`  ${file} renders no way out. On this device that means a power cycle.`)
   }
 }
 

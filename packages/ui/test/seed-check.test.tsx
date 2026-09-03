@@ -22,8 +22,18 @@ afterEach(() => {
 })
 
 const WORDS = [
-  'abandon', 'ability', 'able', 'about', 'above', 'absent',
-  'absorb', 'abstract', 'absurd', 'abuse', 'access', 'accident',
+  'abandon',
+  'ability',
+  'able',
+  'about',
+  'above',
+  'absent',
+  'absorb',
+  'abstract',
+  'absurd',
+  'abuse',
+  'access',
+  'accident',
 ]
 
 function open(overrides: Record<string, unknown> = {}) {

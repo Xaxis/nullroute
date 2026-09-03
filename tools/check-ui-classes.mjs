@@ -114,9 +114,7 @@ if (missing.length > 0) {
 // The other direction is a warning, not a failure. A stylesheet may legitimately
 // carry a rule for something rendered by markdown or by a future screen, and
 // failing the build over dead CSS would be a worse trade than leaving it.
-const unused = [...defined]
-  .filter((cls) => cls.startsWith('nr-') && !used.has(cls))
-  .sort()
+const unused = [...defined].filter((cls) => cls.startsWith('nr-') && !used.has(cls)).sort()
 
 console.log(`check-ui-classes: ${String(used.size)} classes used, all defined`)
 

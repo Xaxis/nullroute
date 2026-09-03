@@ -18,13 +18,11 @@ import { AssembleQuorumScreen } from '../src/screens/AssembleQuorumScreen.js'
 
 afterEach(cleanup)
 
-const OURS = "[73c5da0a/48h/0h/0h/2h]xpub6E64WfdQwBGz85XhbZryr9gU/<0;1>/*"
-const THEIRS = "[aabbccdd/48h/0h/0h/2h]xpub6DwwuunwScQuscvvkT8Q2gRU/<0;1>/*"
+const OURS = '[73c5da0a/48h/0h/0h/2h]xpub6E64WfdQwBGz85XhbZryr9gU/<0;1>/*'
+const THEIRS = '[aabbccdd/48h/0h/0h/2h]xpub6DwwuunwScQuscvvkT8Q2gRU/<0;1>/*'
 
 function setup(overrides: Partial<React.ComponentProps<typeof AssembleQuorumScreen>> = {}) {
-  const onOurKey = vi
-    .fn()
-    .mockResolvedValue({ keyExpression: OURS, masterFingerprint: '73c5da0a' })
+  const onOurKey = vi.fn().mockResolvedValue({ keyExpression: OURS, masterFingerprint: '73c5da0a' })
   const onAssemble = vi.fn(async (threshold: number, keys: readonly string[]) =>
     Promise.resolve({
       descriptor: `wsh(sortedmulti(${String(threshold)},${keys.join(',')}))#q35wkfm7`,
@@ -149,7 +147,7 @@ describe('AssembleQuorumScreen', () => {
     })
 
     fireEvent.click(screen.getByTestId('assemble-add-slot'))
-    const third = "[11223344/48h/0h/0h/2h]xpub6DrJ8dVwHt9DDdyKKmSXwiRj/<0;1>/*"
+    const third = '[11223344/48h/0h/0h/2h]xpub6DrJ8dVwHt9DDdyKKmSXwiRj/<0;1>/*'
     fireEvent.change(screen.getByTestId('assemble-key-2'), { target: { value: third } })
 
     fireEvent.click(screen.getByTestId('assemble-threshold-up'))
@@ -160,7 +158,9 @@ describe('AssembleQuorumScreen', () => {
   })
 
   it('reports-a-refused-assembly', async () => {
-    const onAssemble = vi.fn().mockRejectedValue(new Error('Keys 1 and 2 are the same extended key.'))
+    const onAssemble = vi
+      .fn()
+      .mockRejectedValue(new Error('Keys 1 and 2 are the same extended key.'))
     setup({ onAssemble })
     await waitFor(() => {
       expect(screen.getByTestId('assemble-our-key')).toBeTruthy()

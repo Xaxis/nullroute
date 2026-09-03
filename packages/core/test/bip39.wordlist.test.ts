@@ -40,8 +40,16 @@ describe('core.bip39.wordlist', () => {
 
   it('finds-words-by-prefix-and-nothing-for-an-empty-one', () => {
     expect(wordsWithPrefix('aban')).toEqual(['abandon'])
-    expect(wordsWithPrefix('ab')).toEqual(['abandon', 'ability', 'able', 'about', 'above', 'absent',
-      'absorb', 'abstract'])
+    expect(wordsWithPrefix('ab')).toEqual([
+      'abandon',
+      'ability',
+      'able',
+      'about',
+      'above',
+      'absent',
+      'absorb',
+      'abstract',
+    ])
 
     // An empty prefix means nothing typed, which is an empty suggestion strip
     // rather than all 2048 words.

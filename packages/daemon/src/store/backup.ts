@@ -251,7 +251,6 @@ export function describeBackup(text: string): {
     label: typeof document['label'] === 'string' ? document['label'] : 'unnamed',
     network: typeof document['network'] === 'string' ? document['network'] : 'unknown',
     hasSeed: document['hasSeed'] === true,
-    createdWith:
-      typeof document['createdWith'] === 'string' ? document['createdWith'] : 'unknown',
+    createdWith: typeof document['createdWith'] === 'string' ? document['createdWith'] : 'unknown',
   }
 }

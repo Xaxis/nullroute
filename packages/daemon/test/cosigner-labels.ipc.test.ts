@@ -26,7 +26,8 @@ const MNEMONIC =
   'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
 const attestation = { passed: true } as unknown as BootAttestation
 
-const XPUB = 'xpub6DwwuunwScQuscvvkT8Q2gRUcvV8DXcnpXhcnVFP6EPq6MTfWSJ9zJdWi1S8mvNMjhGqrCu2gjmYYpAoUCbGZTMFpAKPBFSF4rV3H7Nrbnr'
+const XPUB =
+  'xpub6DwwuunwScQuscvvkT8Q2gRUcvV8DXcnpXhcnVFP6EPq6MTfWSJ9zJdWi1S8mvNMjhGqrCu2gjmYYpAoUCbGZTMFpAKPBFSF4rV3H7Nrbnr'
 
 let dir: string
 let session: Session

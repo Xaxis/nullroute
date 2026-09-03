@@ -52,8 +52,7 @@ function toImageData(code: QrCode, scale = 3, quiet = 4): ImageData {
       if (code.modules[y * code.size + x] !== true) continue
       for (let dy = 0; dy < scale; dy += 1) {
         for (let dx = 0; dx < scale; dx += 1) {
-          const pixel =
-            (((y + quiet) * scale + dy) * dimension + (x + quiet) * scale + dx) * 4
+          const pixel = (((y + quiet) * scale + dy) * dimension + (x + quiet) * scale + dx) * 4
           data[pixel] = 0
           data[pixel + 1] = 0
           data[pixel + 2] = 0
@@ -116,48 +115,44 @@ describe('core.qr.encode', () => {
    * the boundary where an off-by-one in the table shows up rather than at some
    * comfortable middle where a wrong row still happens to work.
    */
-  it(
-    'round-trips-every-version-and-level-through-an-independent-decoder',
-    async () => {
-      const failures: string[] = []
+  it('round-trips-every-version-and-level-through-an-independent-decoder', async () => {
+    const failures: string[] = []
 
-      for (let version = 1; version <= 40; version += 1) {
-        for (const level of LEVELS) {
-          const data = payload(maxBytes(version, level))
-          const code = encodeQr(data, { version, level })
+    for (let version = 1; version <= 40; version += 1) {
+      for (const level of LEVELS) {
+        const data = payload(maxBytes(version, level))
+        const code = encodeQr(data, { version, level })
 
-          expect(code.size, `version ${String(version)} size`).toBe(moduleCount(version))
+        expect(code.size, `version ${String(version)} size`).toBe(moduleCount(version))
 
-          try {
-            const decoded = await decode(code)
-            if (Buffer.compare(Buffer.from(decoded.bytes), Buffer.from(data)) !== 0) {
-              failures.push(
-                `v${String(version)}${level}: decoded ${String(decoded.bytes.length)} bytes, ` +
-                  `expected ${String(data.length)}`
-              )
-              continue
-            }
-            // zxing reads the version and level out of the code's own format and
-            // version blocks, so agreement means those were written correctly
-            // and not merely that the data survived.
-            if (decoded.version !== version) {
-              failures.push(
-                `v${String(version)}${level}: format block says version ${String(decoded.version)}`
-              )
-            }
-            if (decoded.ec !== level) {
-              failures.push(`v${String(version)}${level}: format block says level ${decoded.ec}`)
-            }
-          } catch (err) {
-            failures.push(`v${String(version)}${level}: ${(err as Error).message}`)
+        try {
+          const decoded = await decode(code)
+          if (Buffer.compare(Buffer.from(decoded.bytes), Buffer.from(data)) !== 0) {
+            failures.push(
+              `v${String(version)}${level}: decoded ${String(decoded.bytes.length)} bytes, ` +
+                `expected ${String(data.length)}`
+            )
+            continue
           }
+          // zxing reads the version and level out of the code's own format and
+          // version blocks, so agreement means those were written correctly
+          // and not merely that the data survived.
+          if (decoded.version !== version) {
+            failures.push(
+              `v${String(version)}${level}: format block says version ${String(decoded.version)}`
+            )
+          }
+          if (decoded.ec !== level) {
+            failures.push(`v${String(version)}${level}: format block says level ${decoded.ec}`)
+          }
+        } catch (err) {
+          failures.push(`v${String(version)}${level}: ${(err as Error).message}`)
         }
       }
+    }
 
-      expect(failures, `${String(failures.length)} of 160 combinations failed`).toEqual([])
-    },
-    300_000
-  )
+    expect(failures, `${String(failures.length)} of 160 combinations failed`).toEqual([])
+  }, 300_000)
 
   it('picks-the-smallest-version-that-fits', () => {
     expect(encodeQr(payload(10), { level: 'M' }).version).toBe(1)

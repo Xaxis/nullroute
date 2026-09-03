@@ -165,8 +165,7 @@ export function useIdleLock(options: UseIdleLockOptions): IdleState {
 
   return {
     remaining,
-    warning:
-      window_ !== null && remaining !== null && remaining > 0 && remaining <= window_.warnAt,
+    warning: window_ !== null && remaining !== null && remaining > 0 && remaining <= window_.warnAt,
     stayOpen: useCallback(() => {
       send(true)
     }, [send]),

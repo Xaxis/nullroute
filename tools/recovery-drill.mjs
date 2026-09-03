@@ -356,7 +356,15 @@ async function ensureWallet(name, options = {}) {
   const existing = await rpc('listwallets')
   if (existing.includes(name)) return
   try {
-    await rpc('createwallet', [name, options.disablePrivateKeys ?? false, options.blank ?? false, '', false, true, true])
+    await rpc('createwallet', [
+      name,
+      options.disablePrivateKeys ?? false,
+      options.blank ?? false,
+      '',
+      false,
+      true,
+      true,
+    ])
   } catch (err) {
     // Already on disk from a previous run.
     if (!/already exists|Database already/i.test(err.message)) throw err
@@ -440,7 +448,11 @@ async function drill(scriptType) {
   // --- Fund it -------------------------------------------------------------
   const target = wallet.addresses[0]
   await rpc('sendtoaddress', [target, 0.5], 'drill-funding')
-  await rpc('generatetoaddress', [6, await rpc('getnewaddress', [], 'drill-funding')], 'drill-funding')
+  await rpc(
+    'generatetoaddress',
+    [6, await rpc('getnewaddress', [], 'drill-funding')],
+    'drill-funding'
+  )
 
   // Core, not nullroute, decides what this wallet owns.
   let balance = 0
@@ -516,14 +528,20 @@ async function drill(scriptType) {
     )
   }
   const txid = await rpc('sendrawtransaction', [finalised.hex])
-  await rpc('generatetoaddress', [1, await rpc('getnewaddress', [], 'drill-funding')], 'drill-funding')
+  await rpc(
+    'generatetoaddress',
+    [1, await rpc('getnewaddress', [], 'drill-funding')],
+    'drill-funding'
+  )
 
   const confirmed = await rpc('gettransaction', [txid, true], watchName)
   if ((confirmed.confirmations ?? 0) < 1) {
     throw new Error(`${scriptType}: the spend did not confirm.`)
   }
 
-  console.log(`  ok      ${label} Core derived ${String(coreAddresses.length)} identical addresses, spent ${txid.slice(0, 16)}...`)
+  console.log(
+    `  ok      ${label} Core derived ${String(coreAddresses.length)} identical addresses, spent ${txid.slice(0, 16)}...`
+  )
   return { scriptType, txid, addresses: coreAddresses.length }
 }
 
@@ -575,8 +593,14 @@ async function drillQuorum(kind = 'wsh') {
   // and hands it to the device to register, derive and sign.
   const quorum =
     kind === 'tr'
-      ? nullrouteTaprootQuorum(keys.map((key) => key.keyExpression), 2)
-      : nullrouteAssemble(keys.map((key) => key.keyExpression), 2)
+      ? nullrouteTaprootQuorum(
+          keys.map((key) => key.keyExpression),
+          2
+        )
+      : nullrouteAssemble(
+          keys.map((key) => key.keyExpression),
+          2
+        )
 
   // --- Core derives the addresses, and they must be identical --------------
   //
@@ -613,7 +637,11 @@ async function drillQuorum(kind = 'wsh') {
 
   // --- Fund it -------------------------------------------------------------
   await rpc('sendtoaddress', [ours[0], 0.5], 'drill-funding')
-  await rpc('generatetoaddress', [6, await rpc('getnewaddress', [], 'drill-funding')], 'drill-funding')
+  await rpc(
+    'generatetoaddress',
+    [6, await rpc('getnewaddress', [], 'drill-funding')],
+    'drill-funding'
+  )
 
   let balance = 0
   for (let attempt = 0; attempt < 20 && balance === 0; attempt += 1) {
@@ -710,7 +738,11 @@ async function drillQuorum(kind = 'wsh') {
     )
   }
   const txid = await rpc('sendrawtransaction', [finalised.hex])
-  await rpc('generatetoaddress', [1, await rpc('getnewaddress', [], 'drill-funding')], 'drill-funding')
+  await rpc(
+    'generatetoaddress',
+    [1, await rpc('getnewaddress', [], 'drill-funding')],
+    'drill-funding'
+  )
 
   const confirmed = await rpc('gettransaction', [txid, true], watchName)
   if ((confirmed.confirmations ?? 0) < 1) {
@@ -743,7 +775,11 @@ async function main() {
   await ensureWallet('drill-funding')
   const height = (await rpc('getblockchaininfo')).blocks
   if (height < 101) {
-    await rpc('generatetoaddress', [101 - height + 1, await rpc('getnewaddress', [], 'drill-funding')], 'drill-funding')
+    await rpc(
+      'generatetoaddress',
+      [101 - height + 1, await rpc('getnewaddress', [], 'drill-funding')],
+      'drill-funding'
+    )
   }
 
   const results = []
@@ -756,7 +792,9 @@ async function main() {
   results.push(await drillQuorum('wsh'))
   results.push(await drillQuorum('tr'))
 
-  console.log(`\n  ${String(results.length)} of ${String(results.length)} wallet kinds recovered and spent with Core alone.`)
+  console.log(
+    `\n  ${String(results.length)} of ${String(results.length)} wallet kinds recovered and spent with Core alone.`
+  )
 
   console.log('recovery drill passed\n')
 }

@@ -63,12 +63,7 @@ export {
   normaliseLabel,
   UNCONFIRMED_LABEL,
 } from './store/registry.js'
-export type {
-  WalletEntry,
-  WalletHint,
-  WalletColour,
-  OpenedWallet,
-} from './store/registry.js'
+export type { WalletEntry, WalletHint, WalletColour, OpenedWallet } from './store/registry.js'
 
 export {
   checkEntropyHealth,

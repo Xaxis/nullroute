@@ -199,6 +199,26 @@ test-recovery-drill: build ## INV-INTEROP-1. Recover a wallet in Bitcoin Core al
 lint: ## ESLint, including the no-network rule that enforces INV-NET-2
 	@npx eslint .
 
+format: ## Apply .prettierrc to everything .prettierignore does not exclude
+	@npx prettier --write . --log-level warn
+	@echo 'format: applied'
+
+format-check: ## The same, asserted rather than applied
+	# WHY THIS IS IN `check` AT ALL. .prettierrc and .prettierignore have been
+	# in this repository since the beginning and nothing ever ran them: 142
+	# files disagreed with the configuration the project declares, which makes
+	# the configuration decoration. That is out of character here, where every
+	# other convention is machine-checked rather than remembered, and it is the
+	# same failure shape as a lint rule with no test.
+	#
+	# It also had a cost. ScanScreen's props destructuring had been left half
+	# on one line with a blank entry in the middle of it, which is what a
+	# botched edit looks like, and it survived because nothing was looking.
+	@npx prettier --check . --log-level warn \
+	  || { echo; echo '  Run `make format`. The configuration is .prettierrc, and it is'; \
+	       echo '  enforced rather than suggested: see the comment on this target.'; exit 1; }
+	@echo 'format-check: every file matches .prettierrc'
+
 ui-classes: ## Every nr- class the device UI uses has a rule in styles.css
 	# The lock screen once shipped entirely unstyled: it used an nr-lock__*
 	# naming scheme that was never written into the stylesheet. Types, lint and
@@ -588,6 +608,6 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 
 # --- aggregates --------------------------------------------------------------
 
-check-fast: lint ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims make-targets ipc-reachable device-csp qr-readback test manifest-check manifest-recipe ## Everything except the slow suites
+check-fast: lint format-check ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims make-targets ipc-reachable device-csp qr-readback test manifest-check manifest-recipe ## Everything except the slow suites
 
 check: check-fast build verify test-vectors test-differential repro-check sbom device-ui screen-fit contrast ui-roles journeys dev-check web-check ## Everything CI runs

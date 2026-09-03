@@ -213,7 +213,10 @@ function branchOf(
   // Single branch: it is written into the path, and the change flag does not
   // apply. Only the receive pass records anything.
   if (change) return undefined
-  const last = path.split('/').filter((p) => p.length > 0 && p !== 'm').pop()
+  const last = path
+    .split('/')
+    .filter((p) => p.length > 0 && p !== 'm')
+    .pop()
   if (last === undefined) return undefined
   const value = Number(last)
   return Number.isInteger(value) && value >= 0 ? value : undefined

@@ -26,10 +26,7 @@ export function Section({
         {/* Ornamental, and hidden from screen readers rather than left to be
             announced as a bare number ahead of the heading it decorates. It is
             also outside the h2, so it is not part of the accessible name. */}
-        <div
-          aria-hidden="true"
-          className="font-mono text-[0.7rem] text-signal-500 tabular-nums"
-        >
+        <div aria-hidden="true" className="font-mono text-[0.7rem] text-signal-500 tabular-nums">
           {index}
         </div>
         <h2 className="font-mono text-[0.7rem] uppercase tracking-[0.18em] text-ink-400 md:mt-2 md:leading-[1.6]">

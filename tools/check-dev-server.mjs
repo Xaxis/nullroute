@@ -108,11 +108,11 @@ function stop() {
 }
 
 async function main() {
-  vite = spawn(
-    'npx',
-    ['vite', '--port', String(UI_PORT), '--strictPort'],
-    { cwd: `${ROOT}packages/ui`, stdio: 'ignore', detached: true }
-  )
+  vite = spawn('npx', ['vite', '--port', String(UI_PORT), '--strictPort'], {
+    cwd: `${ROOT}packages/ui`,
+    stdio: 'ignore',
+    detached: true,
+  })
 
   let up = false
   for (let attempt = 0; attempt < 60; attempt += 1) {

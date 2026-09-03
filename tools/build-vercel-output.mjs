@@ -29,7 +29,16 @@
  * Then: npx vercel deploy --prebuilt --prod
  */
 
-import { cpSync, mkdirSync, rmSync, writeFileSync, readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
+import {
+  cpSync,
+  mkdirSync,
+  rmSync,
+  writeFileSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  existsSync,
+} from 'node:fs'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createHash } from 'node:crypto'

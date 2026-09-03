@@ -221,9 +221,7 @@ describe('core.qr.bbqr', () => {
         controller.close()
       },
     })
-    const reader = source
-      .pipeThrough<Uint8Array>(new CompressionStream('deflate-raw'))
-      .getReader()
+    const reader = source.pipeThrough<Uint8Array>(new CompressionStream('deflate-raw')).getReader()
     const chunks: Uint8Array[] = []
     for (;;) {
       const { done, value } = await reader.read()

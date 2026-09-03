@@ -28,9 +28,8 @@ function addressesFor(change: boolean, start: number, count: number) {
 }
 
 function setup(overrides: Partial<React.ComponentProps<typeof QuorumAddressesScreen>> = {}) {
-  const onAddresses = vi.fn(
-    async (_d: string, change: boolean, start: number, count: number) =>
-      Promise.resolve(addressesFor(change, start, count))
+  const onAddresses = vi.fn(async (_d: string, change: boolean, start: number, count: number) =>
+    Promise.resolve(addressesFor(change, start, count))
   )
   const onBack = vi.fn()
   render(
@@ -59,9 +58,7 @@ describe('QuorumAddressesScreen', () => {
     expect(screen.getByTestId('quorum-rows').textContent).toContain('recv-0')
     // Which cosigner this device is, in the header, because three devices in a
     // quorum all show the same wallet name.
-    expect(document.querySelector('.nr-screen__subtitle')?.textContent).toContain(
-      'cosigner 2 of 3'
-    )
+    expect(document.querySelector('.nr-screen__subtitle')?.textContent).toContain('cosigner 2 of 3')
 
     const note = screen.getByTestId('quorum-compare').textContent
     expect(note).toContain('another device in this quorum')

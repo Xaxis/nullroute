@@ -142,9 +142,7 @@ describe('ephemeral seed mode', () => {
     // Through withChecksum, because the register path refuses a descriptor
     // without one: a single mistyped character is a valid descriptor for a
     // different wallet.
-    const descriptor = withChecksum(
-      `wsh(sortedmulti(2,${ourKey.xpub}/<0;1>/*,${other}/<0;1>/*))`
-    )
+    const descriptor = withChecksum(`wsh(sortedmulti(2,${ourKey.xpub}/<0;1>/*,${other}/<0;1>/*))`)
 
     const registered = (await call('multisig.register', {
       descriptor,

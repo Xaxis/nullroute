@@ -132,7 +132,9 @@ export function pinnedIdentifiers(version, partitions) {
       ...(partition.filesystem === 'erofs'
         ? { erofsUuid: filesystemUuid(version, partition.name) }
         : {}),
-      ...(partition.filesystem === 'fat' ? { fatVolumeId: fatVolumeId(version, partition.name) } : {}),
+      ...(partition.filesystem === 'fat'
+        ? { fatVolumeId: fatVolumeId(version, partition.name) }
+        : {}),
     })),
   }
 }

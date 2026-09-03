@@ -56,8 +56,15 @@ export const MAX_MESSAGE_LENGTH = 1024
  * dangerous here than in a label: a label sits beside an amount, whereas a
  * message IS the thing being agreed to.
  */
-// eslint-disable-next-line no-control-regex -- matching them is the point
-const FORGEABLE = /[\u0000-\u0008\u000B-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/u
+/* eslint-disable no-control-regex -- matching them is the point.
+   A block rather than a -next-line directive, because the assignment below is
+   too long for one line and the formatter wraps it, which moves the regex off
+   the line the directive covers. That silently disarmed the rule, and the
+   rule is the one that stops a label or a message rendering differently from
+   what it contains. */
+const FORGEABLE =
+  /[\u0000-\u0008\u000B-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/u
+/* eslint-enable no-control-regex */
 
 /**
  * The BIP-340 style tagged hash BIP-322 uses to commit to a message.

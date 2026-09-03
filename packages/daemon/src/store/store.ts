@@ -25,7 +25,15 @@
  * that the blob was encrypted in the first place, not that it was erased.
  */
 
-import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { dirname, join } from 'node:path'
 import { randomBytes } from 'node:crypto'
 import { Secret, masterFingerprint, networkById, type Network } from '@nullroute/core'

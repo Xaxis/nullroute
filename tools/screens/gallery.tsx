@@ -1382,11 +1382,18 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
       'pk-key-a',
       'manage-rename-submit',
     ],
-    ['manage-choose-destroy', 'type:manage-destroy-confirm:Cold storage, three of five',
-      'manage-destroy-submit'],
-    ['manage-choose-passphrase', 'type:manage-passphrase-old:old one',
-      'type:manage-passphrase-new:new one', 'type:manage-passphrase-confirm:new one',
-      'manage-passphrase-submit'],
+    [
+      'manage-choose-destroy',
+      'type:manage-destroy-confirm:Cold storage, three of five',
+      'manage-destroy-submit',
+    ],
+    [
+      'manage-choose-passphrase',
+      'type:manage-passphrase-old:old one',
+      'type:manage-passphrase-new:new one',
+      'type:manage-passphrase-confirm:new one',
+      'manage-passphrase-submit',
+    ],
   ],
   // Typed rather than tapped out on the word keyboard. Twelve words is forty
   // eight taps of harness standing in for one paste, and the screen offers this

@@ -24,12 +24,12 @@ covers:
 inputs:
   - name: sources
     type: readonly EntropySource[]
-    constraints: "1..8 sources, each 16..64 bytes, each tagged with a unique source id of at most 255 UTF-8 bytes"
+    constraints: '1..8 sources, each 16..64 bytes, each tagged with a unique source id of at most 255 UTF-8 bytes'
 
 outputs:
   - name: seed
     type: Secret
-    constraints: "exactly 32 bytes"
+    constraints: 'exactly 32 bytes'
 
 algorithm: >
   Sources are ordered canonically by the UTF-8 bytes of their id (not by

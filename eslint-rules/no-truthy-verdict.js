@@ -73,8 +73,7 @@ export const noTruthyVerdict = {
   meta: {
     type: 'problem',
     docs: {
-      description:
-        'Require === true when reading a verdict field that crossed the IPC boundary.',
+      description: 'Require === true when reading a verdict field that crossed the IPC boundary.',
     },
     schema: [
       {

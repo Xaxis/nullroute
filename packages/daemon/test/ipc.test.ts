@@ -245,7 +245,9 @@ describe('daemon wallet surface', () => {
       descriptor: string
       checksum: string
     }
-    expect(descriptor.descriptor).toMatch(/^wpkh\(\[[0-9a-f]{8}\/84'\/0'\/0'\]xpub.*\/0\/\*\)#\w{8}$/)
+    expect(descriptor.descriptor).toMatch(
+      /^wpkh\(\[[0-9a-f]{8}\/84'\/0'\/0'\]xpub.*\/0\/\*\)#\w{8}$/
+    )
     expect(descriptor.checksum).toHaveLength(8)
   })
 
@@ -265,9 +267,11 @@ describe('daemon wallet surface', () => {
     expect(found.path).toContain("84'/0'/0'")
 
     // Somebody else's address. The device says no rather than shrugging.
-    const other = (await call('wallet.verifyAddress', {
-      address: 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu',
-    })).result as { found: boolean }
+    const other = (
+      await call('wallet.verifyAddress', {
+        address: 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu',
+      })
+    ).result as { found: boolean }
     expect(other.found).toBe(false)
   })
 })

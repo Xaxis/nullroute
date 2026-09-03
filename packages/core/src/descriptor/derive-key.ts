@@ -117,4 +117,3 @@ function readVersion(extended: string): number {
     return 0x0488b21e
   }
 }
-

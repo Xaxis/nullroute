@@ -24,12 +24,12 @@ covers:
 inputs:
   - name: rolls
     type: string
-    constraints: "at least 100 ASCII digits in 1..6, no separators, no whitespace, no trailing newline"
+    constraints: 'at least 100 ASCII digits in 1..6, no separators, no whitespace, no trailing newline'
 
 outputs:
   - name: entropy
     type: Secret
-    constraints: "exactly 32 bytes"
+    constraints: 'exactly 32 bytes'
 
 algorithm: >
   Each roll is one ASCII digit, 0x31 through 0x36. Rolls are concatenated in

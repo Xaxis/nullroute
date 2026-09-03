@@ -20,8 +20,7 @@ import { ManageWalletScreen, WALLET_COLOUR_NAMES } from '../src/screens/ManageWa
 
 afterEach(cleanup)
 
-const button = (testId: string): HTMLButtonElement =>
-  screen.getByTestId<HTMLButtonElement>(testId)
+const button = (testId: string): HTMLButtonElement => screen.getByTestId<HTMLButtonElement>(testId)
 
 function setup(overrides: Partial<React.ComponentProps<typeof ManageWalletScreen>> = {}) {
   const onRename = vi.fn().mockResolvedValue(undefined)

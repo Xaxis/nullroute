@@ -18,7 +18,8 @@ afterEach(cleanup)
 function setup(overrides: Partial<React.ComponentProps<typeof ChildSeedScreen>> = {}) {
   const onDerive = vi.fn().mockResolvedValue({
     path: "m/83696968'/39'/0'/12'/0'",
-    words: 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about',
+    words:
+      'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about',
     wordCount: 12,
   })
   const onBack = vi.fn()

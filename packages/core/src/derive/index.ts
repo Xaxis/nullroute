@@ -1,4 +1,11 @@
-export { HARDENED_OFFSET, PathError, parsePath, normalizePath, formatPath, isFullyHardened } from './path.js'
+export {
+  HARDENED_OFFSET,
+  PathError,
+  parsePath,
+  normalizePath,
+  formatPath,
+  isFullyHardened,
+} from './path.js'
 export type { ParsedPath } from './path.js'
 
 export {

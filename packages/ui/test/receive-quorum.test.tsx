@@ -25,10 +25,14 @@ afterEach(() => {
 })
 
 const ADDRESS = 'bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3'
-const QUORUMS = [{ checksum: '8rf6pq2t', threshold: 2, total: 3, descriptor: 'wsh(sortedmulti(...))#8rf6pq2t' }]
+const QUORUMS = [
+  { checksum: '8rf6pq2t', threshold: 2, total: 3, descriptor: 'wsh(sortedmulti(...))#8rf6pq2t' },
+]
 
 function open(overrides: Record<string, unknown> = {}) {
-  const onAddress = vi.fn().mockResolvedValue({ address: ADDRESS, path: "m/84'/0'/0'/0/0", index: 0 })
+  const onAddress = vi
+    .fn()
+    .mockResolvedValue({ address: ADDRESS, path: "m/84'/0'/0'/0/0", index: 0 })
   const onQuorumAddress = vi
     .fn()
     .mockResolvedValue({ address: ADDRESS, path: 'quorum index 0', index: 0 })
@@ -96,9 +100,7 @@ describe('ReceiveScreen on a device holding a quorum', () => {
 
     expect(onVerifyQuorum).toHaveBeenCalledWith(QUORUMS[0]?.descriptor, ADDRESS)
     expect(onVerify).not.toHaveBeenCalled()
-    expect(screen.getByTestId('receive-verified').textContent).toContain(
-      'belongs to the quorum'
-    )
+    expect(screen.getByTestId('receive-verified').textContent).toContain('belongs to the quorum')
   })
 
   /**
@@ -217,7 +219,10 @@ describe('WalletScreen export on a device holding a quorum', () => {
         quorums={quorums}
         onAddresses={async () => Promise.resolve({ addresses: [] })}
         onDescriptor={async () =>
-          Promise.resolve({ descriptor: 'wpkh([73c5da0a/84h]xpubC/<0;1>/*)#aaaaaaaa', checksum: 'aaaaaaaa' })
+          Promise.resolve({
+            descriptor: 'wpkh([73c5da0a/84h]xpubC/<0;1>/*)#aaaaaaaa',
+            checksum: 'aaaaaaaa',
+          })
         }
         onXpub={async () =>
           Promise.resolve({ xpub: 'xpub', path: "m/84'/0'/0'", masterFingerprint: '73c5da0a' })

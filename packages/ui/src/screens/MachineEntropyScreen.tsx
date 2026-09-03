@@ -160,9 +160,9 @@ export function MachineEntropyScreen(props: MachineEntropyScreenProps): ReactEle
       <div data-must-see className="nr-banner nr-banner--danger" data-testid="machine-warning">
         <strong>A seed you cannot check</strong>
         <span>
-          The dice path can be reproduced with a die and any machine that has sha256sum. That is
-          the property this device exists to give you, and this path has none of it. A correct
-          generator and a backdoored one look identical from out here: both hand you 24 words.
+          The dice path can be reproduced with a die and any machine that has sha256sum. That is the
+          property this device exists to give you, and this path has none of it. A correct generator
+          and a backdoored one look identical from out here: both hand you 24 words.
         </span>
       </div>
 
@@ -177,12 +177,16 @@ export function MachineEntropyScreen(props: MachineEntropyScreenProps): ReactEle
               scrolled to. Whether the device is going to do the thing cannot. */}
 
           {health.unknown && (
-            <div data-must-see className="nr-banner nr-banner--caution" data-testid="machine-unknown">
+            <div
+              data-must-see
+              className="nr-banner nr-banner--caution"
+              data-testid="machine-unknown"
+            >
               <strong>Some sources could not be checked here</strong>
               <span>
-                The rows marked unknown were not observed, which is not the same as being fine.
-                This happens off a real device, where the Linux paths these checks read do not
-                exist. The seed will not be generated while anything is unknown.
+                The rows marked unknown were not observed, which is not the same as being fine. This
+                happens off a real device, where the Linux paths these checks read do not exist. The
+                seed will not be generated while anything is unknown.
               </span>
             </div>
           )}
@@ -193,7 +197,11 @@ export function MachineEntropyScreen(props: MachineEntropyScreenProps): ReactEle
               anything other than a boolean would have hidden it. See
               nullroute/no-truthy-verdict. */}
           {health.healthy !== true && health.unknown !== true && (
-            <div data-must-see className="nr-banner nr-banner--danger" data-testid="machine-unhealthy">
+            <div
+              data-must-see
+              className="nr-banner nr-banner--danger"
+              data-testid="machine-unhealthy"
+            >
               <strong>This device will not generate a seed from these sources</strong>
               <span>Roll dice instead. That path does not depend on any of this.</span>
             </div>

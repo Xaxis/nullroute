@@ -48,7 +48,7 @@ describe('UnlockedScreen', () => {
     // Rendered in groups of four, which is INV-UI-6 and is what makes a
     // fingerprint checkable by glancing between two screens rather than
     // skimmed. So the assertion is on the chunks, not on the raw string.
-    const shown = (screen.getByTestId('unlocked-fingerprint').textContent).replace(/\s+/g, '')
+    const shown = screen.getByTestId('unlocked-fingerprint').textContent.replace(/\s+/g, '')
     expect(shown).toContain('73c5da0a')
 
     const body = screen.getByTestId('unlocked-screen').textContent

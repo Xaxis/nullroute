@@ -525,10 +525,10 @@ export function parseDescriptor(input: string, options: ParseOptions = {}): Desc
     throw new DescriptorParseError(
       verdict.provided === undefined
         ? `Descriptor has no checksum. Expected "#${verdict.expected}". ` +
-          `The checksum is the only defence against a mistyped character, and a single wrong ` +
-          `character produces a valid descriptor for a different wallet.`
+            `The checksum is the only defence against a mistyped character, and a single wrong ` +
+            `character produces a valid descriptor for a different wallet.`
         : `Descriptor checksum is "${verdict.provided}" but should be "${verdict.expected}". ` +
-          `Something was transcribed incorrectly. Do not use this descriptor.`
+            `Something was transcribed incorrectly. Do not use this descriptor.`
     )
   }
 

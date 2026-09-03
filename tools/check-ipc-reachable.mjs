@@ -38,10 +38,7 @@ const DELIBERATELY_UNREACHABLE = new Map([
       'source for one fact.',
   ],
   ['wallet.fingerprint', 'Same: device.status and wallets.unlock both carry it.'],
-  [
-    'store.create',
-    'The single-wallet path, refused outright once the device holds named wallets.',
-  ],
+  ['store.create', 'The single-wallet path, refused outright once the device holds named wallets.'],
   ['store.unlock', 'Same: superseded by wallets.unlock, and refused when a registry exists.'],
   ['store.destroy', 'Same: superseded by wallets.destroy.'],
   [
@@ -68,8 +65,7 @@ const DELIBERATELY_UNREACHABLE = new Map([
  * method fails this check outright; clearing one of these means deleting the
  * line, which makes the cap fall with it.
  */
-const NOT_YET_ON_A_SCREEN = new Map([
-])
+const NOT_YET_ON_A_SCREEN = new Map([])
 
 /**
  * The debt ceiling. Only ever lower this.

@@ -119,7 +119,10 @@ for (const file of files) {
     // INV-PROV-1. The schema already requires a non-empty array; this catches
     // the subtler form where every entry is missing its implementation name.
     if (!assertion.verify.some((v) => typeof v.check === 'string' && v.check.length > 0)) {
-      fail(where, 'has no executable verifier. An assertion that checks nothing is not an assertion.')
+      fail(
+        where,
+        'has no executable verifier. An assertion that checks nothing is not an assertion.'
+      )
     }
 
     // The stage rule. This is the one that keeps the build gate honest.
@@ -147,7 +150,9 @@ for (const file of files) {
     }
 
     // A does_not_cover that merely restates the statement is not a limit.
-    if (assertion.does_not_cover.trim().toLowerCase() === assertion.statement.trim().toLowerCase()) {
+    if (
+      assertion.does_not_cover.trim().toLowerCase() === assertion.statement.trim().toLowerCase()
+    ) {
       fail(where, 'does_not_cover repeats the statement rather than naming a limit.')
     }
 
@@ -161,7 +166,10 @@ for (const file of files) {
   // A backend may only be called supported once the verifiers have actually run
   // against something it built. Until then the word means nothing.
   for (const backend of profile.backends ?? []) {
-    if (backend.status === 'supported' && !existsSync(join(ROOT, 'provisioning/backends', backend.name))) {
+    if (
+      backend.status === 'supported' &&
+      !existsSync(join(ROOT, 'provisioning/backends', backend.name))
+    ) {
       fail(
         `${rel}  backend "${backend.name}"`,
         `is marked "supported" but provisioning/backends/${backend.name} does not exist. ` +
@@ -230,9 +238,27 @@ const built = implemented()
 for (const where of ['provisioning/README.md', 'README.md']) {
   const readme = readFileSync(join(ROOT, where), 'utf8')
   const WORDS = [
-    'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight',
-    'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen',
-    'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty',
+    'zero',
+    'one',
+    'two',
+    'three',
+    'four',
+    'five',
+    'six',
+    'seven',
+    'eight',
+    'nine',
+    'ten',
+    'eleven',
+    'twelve',
+    'thirteen',
+    'fourteen',
+    'fifteen',
+    'sixteen',
+    'seventeen',
+    'eighteen',
+    'nineteen',
+    'twenty',
   ]
   const spell = (n) => WORDS[n] ?? String(n)
   const stated = new RegExp(
@@ -251,7 +277,9 @@ for (const where of ['provisioning/README.md', 'README.md']) {
 }
 
 if (problems > 0) {
-  console.error(`check-profiles: ${problems} problem${problems === 1 ? '' : 's'} in ${files.length} profile(s)`)
+  console.error(
+    `check-profiles: ${problems} problem${problems === 1 ? '' : 's'} in ${files.length} profile(s)`
+  )
   process.exit(1)
 }
 

@@ -19,9 +19,11 @@ import { MAINNET } from '../src/network/networks.js'
 import { normalizePath } from '../src/derive/path.js'
 
 const REPO_ROOT = new URL('../../../', import.meta.url).pathname
-const VECTORS = JSON.parse(
-  readFileSync(join(REPO_ROOT, 'spec/vectors/bip32.json'), 'utf8')
-) as { name: string; seedHex: string; chains: { path: string; extPub: string; extPrv: string }[] }[]
+const VECTORS = JSON.parse(readFileSync(join(REPO_ROOT, 'spec/vectors/bip32.json'), 'utf8')) as {
+  name: string
+  seedHex: string
+  chains: { path: string; extPub: string; extPrv: string }[]
+}[]
 
 describe('core.derive.hd official vectors', () => {
   it('vector-file-is-present', () => {

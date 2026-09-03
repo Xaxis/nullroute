@@ -34,10 +34,7 @@ const SEED_HEX = '000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e
 const PASSPHRASE = 'correct horse battery staple'
 
 function seedBytes(): Secret {
-  return Secret.fromBytes(
-    Uint8Array.from(Buffer.from(SEED_HEX, 'hex')),
-    'test-seed'
-  )
+  return Secret.fromBytes(Uint8Array.from(Buffer.from(SEED_HEX, 'hex')), 'test-seed')
 }
 
 let dir: string
@@ -231,9 +228,12 @@ describe('daemon.store', () => {
     store.create(seed, SIGNET, PASSPHRASE)
 
     for (let i = 1; i < MAX_ATTEMPTS; i += 1) {
-      expect(() => {
-        store.unlock('wrong')
-      }, `attempt ${String(i)}`).toThrow(BadPassphraseError)
+      expect(
+        () => {
+          store.unlock('wrong')
+        },
+        `attempt ${String(i)}`
+      ).toThrow(BadPassphraseError)
       expect(store.exists()).toBe(true)
     }
     expect(() => {

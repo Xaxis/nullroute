@@ -45,12 +45,27 @@ import { Terminal } from '../components/Terminal'
  * Removing a module removes its row rather than leaving a sentence behind.
  */
 const WORKING: readonly { term: string; specs: readonly string[] }[] = [
-  { term: 'Dice into a seed, checkable by hand', specs: ['core.entropy.dice', 'core.bip39.mnemonic', 'core.derive.hd'] },
-  { term: 'Addresses and descriptors other software restores', specs: ['core.address.derive', 'core.descriptor.parse', 'core.descriptor.checksum'] },
-  { term: 'Transactions reviewed before they are signed', specs: ['core.psbt.review', 'core.psbt.sign'] },
-  { term: 'Multisig across several devices', specs: ['core.descriptor.multisig', 'daemon.multisig', 'core.psbt.quorum'] },
+  {
+    term: 'Dice into a seed, checkable by hand',
+    specs: ['core.entropy.dice', 'core.bip39.mnemonic', 'core.derive.hd'],
+  },
+  {
+    term: 'Addresses and descriptors other software restores',
+    specs: ['core.address.derive', 'core.descriptor.parse', 'core.descriptor.checksum'],
+  },
+  {
+    term: 'Transactions reviewed before they are signed',
+    specs: ['core.psbt.review', 'core.psbt.sign'],
+  },
+  {
+    term: 'Multisig across several devices',
+    specs: ['core.descriptor.multisig', 'daemon.multisig', 'core.psbt.quorum'],
+  },
   { term: 'Several wallets, encrypted at rest', specs: ['daemon.store', 'daemon.store.registry'] },
-  { term: 'Backups, labels and child seeds', specs: ['daemon.store.backup', 'core.labels', 'core.bip85'] },
+  {
+    term: 'Backups, labels and child seeds',
+    specs: ['daemon.store.backup', 'core.labels', 'core.bip85'],
+  },
   { term: 'Proving an address, and checking somebody else’s', specs: ['core.message.bip322'] },
   { term: 'Closing itself when you walk away', specs: ['daemon.idle'] },
   { term: 'Data across the gap by camera', specs: ['core.qr.encode', 'core.qr.bbqr'] },
@@ -130,8 +145,8 @@ export default function HomePage() {
               ))}
             </ul>
             <p className="mt-4 text-sm text-ink-500 leading-relaxed">
-              Each line is present because the verifier reports every spec behind it as
-              implemented. Nothing here is typed in by hand.
+              Each line is present because the verifier reports every spec behind it as implemented.
+              Nothing here is typed in by hand.
             </p>
           </div>
         )}

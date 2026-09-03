@@ -103,10 +103,12 @@ export function ScanScreen(props: ScanScreenProps): ReactElement {
     hint,
     onResult,
     onCancel,
-    
+
     identity,
     banner,
-    openCamera = defaultCamera, nav} = props
+    openCamera = defaultCamera,
+    nav,
+  } = props
 
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)

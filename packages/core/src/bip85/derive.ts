@@ -154,11 +154,7 @@ export function bip85Entropy(root: HDKey, path: string): Secret {
  * path is returned with them because it is the other half: without it, the
  * master mnemonic cannot reproduce this child.
  */
-export function deriveBip85Mnemonic(
-  seed: Secret,
-  wordCount: number,
-  index: number
-): Bip85Mnemonic {
+export function deriveBip85Mnemonic(seed: Secret, wordCount: number, index: number): Bip85Mnemonic {
   const bytes = WORD_ENTROPY[wordCount]
   if (bytes === undefined) {
     throw new Bip85Error(
@@ -206,15 +202,9 @@ export function deriveBip85Hex(seed: Secret, bytes: number, index: number): Bip8
  * one a human chose and can remember, because a password nobody can reproduce
  * from memory has exactly one copy and it is on paper.
  */
-export function deriveBip85Password(
-  seed: Secret,
-  length: number,
-  index: number
-): Bip85Password {
+export function deriveBip85Password(seed: Secret, length: number, index: number): Bip85Password {
   if (!Number.isInteger(length) || length < 20 || length > 86) {
-    throw new Bip85Error(
-      `BIP-85 passwords are 20 to 86 characters, not ${String(length)}.`
-    )
+    throw new Bip85Error(`BIP-85 passwords are 20 to 86 characters, not ${String(length)}.`)
   }
   assertIndex(index)
 

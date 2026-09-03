@@ -52,17 +52,10 @@ describe('core.message.legacy', () => {
     const magic = Buffer.from('Bitcoin Signed Message:\n', 'utf8')
     const body = Buffer.from('Hello World', 'utf8')
     const expected = bitcoin.crypto.hash256(
-      Buffer.concat([
-        Buffer.from([magic.length]),
-        magic,
-        Buffer.from([body.length]),
-        body,
-      ])
+      Buffer.concat([Buffer.from([magic.length]), magic, Buffer.from([body.length]), body])
     )
 
-    expect(bytesToHex(legacyMessageHash('Hello World'))).toBe(
-      Buffer.from(expected).toString('hex')
-    )
+    expect(bytesToHex(legacyMessageHash('Hello World'))).toBe(Buffer.from(expected).toString('hex'))
   })
 
   /** INV-MSG-11. What it produces, it can check. */

@@ -52,7 +52,9 @@ const problems = []
  * resource type nobody considered is refused instead of inherited.
  */
 if ((directives.get('default-src') ?? []).join(' ') !== "'none'") {
-  problems.push(`default-src must be 'none', found "${(directives.get('default-src') ?? []).join(' ')}"`)
+  problems.push(
+    `default-src must be 'none', found "${(directives.get('default-src') ?? []).join(' ')}"`
+  )
 }
 
 /**
@@ -115,7 +117,8 @@ if ((directives.get('connect-src') ?? []).some((source) => source !== "'self'"))
  */
 const SCRIPT_ALLOWED = new Set(["'self'", "'wasm-unsafe-eval'"])
 for (const source of directives.get('script-src') ?? []) {
-  if (!SCRIPT_ALLOWED.has(source)) problems.push(`script-src allows ${source}, which is not permitted`)
+  if (!SCRIPT_ALLOWED.has(source))
+    problems.push(`script-src allows ${source}, which is not permitted`)
 }
 
 if (problems.length > 0) {
@@ -124,4 +127,6 @@ if (problems.length > 0) {
   process.exit(1)
 }
 
-console.log(`check-device-csp: device frontend policy is ${String(directives.size)} directives, default-src 'none', no external origin`)
+console.log(
+  `check-device-csp: device frontend policy is ${String(directives.size)} directives, default-src 'none', no external origin`
+)

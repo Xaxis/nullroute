@@ -601,7 +601,6 @@ export class WalletRegistry {
       readonly cosigners?: readonly { readonly xpub: string; readonly label: string }[]
     }
   ): void {
-
     // The label and colour come from the hint, which a passphrase change does
     // not alter. The FINGERPRINT is recomputed from the seed rather than copied
     // from the hint, the same way renaming does it: the hint is unauthenticated

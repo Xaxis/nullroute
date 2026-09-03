@@ -11,7 +11,9 @@ import { SeedScreen } from '../src/screens/SeedScreen.js'
 
 afterEach(cleanup)
 
-const WORDS = 'legal winner thank year wave sausage worth useful legal winner thank yellow'.split(' ')
+const WORDS = 'legal winner thank year wave sausage worth useful legal winner thank yellow'.split(
+  ' '
+)
 
 describe('ui.screens.seed', () => {
   it('shows-every-word-numbered', () => {

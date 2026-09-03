@@ -98,7 +98,11 @@ function quorumOf(input: ReturnType<btc.Transaction['getInput']>): {
   // previous output's script is a key hash with no accompanying script that
   // could add conditions.
   const script = input.witnessUtxo?.script
-  if (script !== undefined && input.witnessScript === undefined && input.redeemScript === undefined) {
+  if (
+    script !== undefined &&
+    input.witnessScript === undefined &&
+    input.redeemScript === undefined
+  ) {
     try {
       const kind = (btc.OutScript.decode(script) as { type: string }).type
       if (kind === 'wpkh' || kind === 'pkh' || kind === 'tr') return { required: 1, cosigners: 1 }
@@ -169,9 +173,7 @@ export function signatureProgress(tx: btc.Transaction): SignatureProgress {
     complete: inputs.length > 0 && inputs.every((input) => input.satisfied),
     untouched: present === 0,
     present,
-    required: allKnown
-      ? inputs.reduce((sum, input) => sum + (input.required ?? 0), 0)
-      : undefined,
+    required: allKnown ? inputs.reduce((sum, input) => sum + (input.required ?? 0), 0) : undefined,
   }
 }
 
@@ -183,10 +185,7 @@ export function signatureProgress(tx: btc.Transaction): SignatureProgress {
  * read twice. Signing again is harmless because the result is byte-identical,
  * but a device that says nothing leaves the user unsure whether it worked.
  */
-export function alreadySignedBy(
-  tx: btc.Transaction,
-  pubkeys: readonly Uint8Array[]
-): boolean {
+export function alreadySignedBy(tx: btc.Transaction, pubkeys: readonly Uint8Array[]): boolean {
   if (pubkeys.length === 0) return false
   const ours = new Set(pubkeys.map((key) => bytesToHex(key)))
 

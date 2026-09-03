@@ -56,9 +56,7 @@ describe('message.review', () => {
       refusals: string[]
       warnings: string[]
     }
-    expect(review.hashHex).toBe(
-      'f0eb03b1a75ac6d9847f55c624a99169b5dccba2a31f5b23bea77ba270de0a7a'
-    )
+    expect(review.hashHex).toBe('f0eb03b1a75ac6d9847f55c624a99169b5dccba2a31f5b23bea77ba270de0a7a')
     expect(review.refusals).toEqual([])
   })
 
@@ -189,9 +187,9 @@ describe('bip85.derive', () => {
     await expect(
       call('bip85.derive', { application: 'mnemonic', wordCount: 15, index: 0 })
     ).rejects.toThrow(/12, 18 or 24 words/)
-    await expect(
-      call('bip85.derive', { application: 'hex', bytes: 8, index: 0 })
-    ).rejects.toThrow(/16 to 64 bytes/)
+    await expect(call('bip85.derive', { application: 'hex', bytes: 8, index: 0 })).rejects.toThrow(
+      /16 to 64 bytes/
+    )
   })
 
   /**
@@ -398,9 +396,7 @@ describe('who still has to sign', () => {
     await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
 
     const btc = await import('@scure/btc-signer')
-    const key = btc.WIF(btc.NETWORK).decode(
-      'L3VFeEujGtevx9w18HD1fhRbCH67Az2dpCymeRE1SoPK6XQtaN2k'
-    )
+    const key = btc.WIF(btc.NETWORK).decode('L3VFeEujGtevx9w18HD1fhRbCH67Az2dpCymeRE1SoPK6XQtaN2k')
     const payment = btc.p2wpkh(
       (await import('@noble/curves/secp256k1.js')).secp256k1.getPublicKey(key, true),
       btc.NETWORK
@@ -477,9 +473,9 @@ describe('multisig.verifyAddress', () => {
     })) as { addresses: { address: string; index: number }[] }
     const address = derived.addresses[0]?.address ?? ''
 
-    expect(
-      await call('multisig.verifyAddress', { descriptor: DESCRIPTOR, address })
-    ).toMatchObject({ found: true, index: 0, change: false })
+    expect(await call('multisig.verifyAddress', { descriptor: DESCRIPTOR, address })).toMatchObject(
+      { found: true, index: 0, change: false }
+    )
   })
 
   /**
@@ -511,9 +507,9 @@ describe('multisig.verifyAddress', () => {
     })) as { addresses: { address: string }[] }
     const address = derived.addresses[0]?.address ?? ''
 
-    expect(
-      await call('multisig.verifyAddress', { descriptor: DESCRIPTOR, address })
-    ).toMatchObject({ found: true, change: true })
+    expect(await call('multisig.verifyAddress', { descriptor: DESCRIPTOR, address })).toMatchObject(
+      { found: true, change: true }
+    )
   })
 })
 

@@ -76,8 +76,7 @@ function returnedFields(method) {
 
   // The end of this method, which is the next entry in the same table.
   const nextCase = handler.slice(start + 1).search(/\n {4}'[a-z][\w]*\.[\w.]+': /)
-  const block =
-    nextCase === -1 ? handler.slice(start) : handler.slice(start, start + 1 + nextCase)
+  const block = nextCase === -1 ? handler.slice(start) : handler.slice(start, start + 1 + nextCase)
 
   const fields = new Set()
   let at = 0
@@ -119,7 +118,10 @@ function returnedFields(method) {
     entries.push(entry)
 
     for (const text of entries) {
-      const trimmed = text.trim().replace(/^\/\/.*$/gm, '').trim()
+      const trimmed = text
+        .trim()
+        .replace(/^\/\/.*$/gm, '')
+        .trim()
       if (trimmed.length === 0) continue
 
       // `name: value`

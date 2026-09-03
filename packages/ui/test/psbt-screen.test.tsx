@@ -261,9 +261,7 @@ describe('PsbtScreen quorum progress', () => {
     const onReview = vi
       .fn()
       .mockResolvedValue(
-        review(
-          options.reviewProgress === undefined ? {} : { signatures: options.reviewProgress }
-        )
+        review(options.reviewProgress === undefined ? {} : { signatures: options.reviewProgress })
       )
     const onSign = vi.fn().mockResolvedValue({
       psbt: 'cHNidP8BSIGNED',
@@ -457,9 +455,7 @@ describe('ui.screens.psbt refusal', () => {
     expect(refusal).not.toContain('high-fee')
 
     cleanup()
-    await reachReview(
-      withWarnings([FEE_WARNING, { ...FEE_WARNING, kind: 'sighash' }], false)
-    )
+    await reachReview(withWarnings([FEE_WARNING, { ...FEE_WARNING, kind: 'sighash' }], false))
     expect(screen.getByTestId('psbt-refusal').textContent).toContain('2 blocking warnings')
   })
 

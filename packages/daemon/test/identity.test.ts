@@ -115,9 +115,9 @@ describe('daemon.store.identity', () => {
   })
 
   it('refuses-a-name-longer-than-a-header-can-show', () => {
-    expect(() =>
-      identity.write({ name: 'x'.repeat(MAX_NAME_LENGTH + 1), colour: 'teal' })
-    ).toThrow(/at most/)
+    expect(() => identity.write({ name: 'x'.repeat(MAX_NAME_LENGTH + 1), colour: 'teal' })).toThrow(
+      /at most/
+    )
     expect(identity.write({ name: 'x'.repeat(MAX_NAME_LENGTH), colour: 'teal' }).name).toHaveLength(
       MAX_NAME_LENGTH
     )

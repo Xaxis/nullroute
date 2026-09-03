@@ -95,7 +95,9 @@ describe('provisioning identifiers', () => {
   it('gives-fat-a-four-byte-serial-rather-than-a-truncated-uuid', () => {
     const id = fatVolumeId(RELEASE, 'boot')
     expect(id).toMatch(/^[0-9A-F]{8}$/)
-    expect(filesystemUuid(RELEASE, 'boot').replaceAll('-', '').slice(0, 8).toUpperCase()).not.toBe(id)
+    expect(filesystemUuid(RELEASE, 'boot').replaceAll('-', '').slice(0, 8).toUpperCase()).not.toBe(
+      id
+    )
   })
 
   /**

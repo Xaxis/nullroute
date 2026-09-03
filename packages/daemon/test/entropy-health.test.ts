@@ -49,7 +49,8 @@ function sources(options: {
 
   return {
     entropyAvail: options.entropyAvail === undefined ? join(dir, 'absent') : entropyPath,
-    hwrng: options.hwrng === undefined || options.hwrng === 'missing' ? join(dir, 'absent') : hwrngPath,
+    hwrng:
+      options.hwrng === undefined || options.hwrng === 'missing' ? join(dir, 'absent') : hwrngPath,
     uptimeSeconds: () => options.uptime ?? null,
   }
 }

@@ -10,7 +10,9 @@ import { renderMarkdown, extractHeadings } from '../../../lib/markdown'
  * A silent blank page is a worse failure than a type error, so this shape is
  * deliberate rather than incidental.
  */
-interface Props { params: Promise<{ slug: string }> }
+interface Props {
+  params: Promise<{ slug: string }>
+}
 
 export function generateStaticParams() {
   return DOCS.map((doc) => ({ slug: doc.slug }))

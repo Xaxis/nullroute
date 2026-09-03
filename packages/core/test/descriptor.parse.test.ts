@@ -8,11 +8,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import {
-  parseDescriptor,
-  parseKeyExpression,
-  descriptorKeys,
-} from '../src/descriptor/parse.js'
+import { parseDescriptor, parseKeyExpression, descriptorKeys } from '../src/descriptor/parse.js'
 import { withChecksum } from '../src/descriptor/checksum.js'
 
 const XPUB =
@@ -144,10 +140,9 @@ describe('core.descriptor.parse script expressions', () => {
     const one = parseDescriptor(`tr(${PUBKEY},pk(${PUBKEY}))`, { allowBadChecksum: true })
     expect(one.script.kind).toBe('tr')
 
-    const nested = parseDescriptor(
-      `tr(${PUBKEY},{{pk(${PUBKEY}),pk(${PUBKEY})},pk(${PUBKEY})})`,
-      { allowBadChecksum: true }
-    )
+    const nested = parseDescriptor(`tr(${PUBKEY},{{pk(${PUBKEY}),pk(${PUBKEY})},pk(${PUBKEY})})`, {
+      allowBadChecksum: true,
+    })
     expect(nested.script.kind).toBe('tr')
     if (nested.script.kind !== 'tr' || nested.script.tree === undefined) {
       throw new Error('expected a script tree')

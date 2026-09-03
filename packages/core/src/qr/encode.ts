@@ -521,8 +521,7 @@ export function encodeQr(data: Uint8Array, options: EncodeOptions = {}): QrCode 
   if (options.mask !== undefined && (options.mask < 0 || options.mask > 7)) {
     throw new QrError(`QR mask ${String(options.mask)} does not exist. Masks run 0 to 7.`)
   }
-  const candidates =
-    options.mask === undefined ? [0, 1, 2, 3, 4, 5, 6, 7] : [options.mask]
+  const candidates = options.mask === undefined ? [0, 1, 2, 3, 4, 5, 6, 7] : [options.mask]
 
   let best: { grid: Grid; mask: number; score: number } | undefined
   for (const mask of candidates) {

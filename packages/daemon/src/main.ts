@@ -31,7 +31,8 @@ import { WalletStore } from './store/store.js'
 import { DeviceIdentityStore } from './store/identity.js'
 import { WalletRegistry } from './store/registry.js'
 
-const REPO_ROOT = process.env['NULLROUTE_ROOT'] ?? fileURLToPath(new URL('../../..', import.meta.url))
+const REPO_ROOT =
+  process.env['NULLROUTE_ROOT'] ?? fileURLToPath(new URL('../../..', import.meta.url))
 const SOCKET_PATH = process.env['NULLROUTE_SOCKET'] ?? '/run/nullroute/nullrouted.sock'
 
 /**
@@ -85,7 +86,9 @@ async function main(): Promise<void> {
   const sweep = setInterval(() => {
     if (idle.expired() && session.hasWallet) {
       session.lock()
-      console.log(`nullrouted: locked after ${String(IDLE_LOCK_SECONDS)}s with nobody at the device`)
+      console.log(
+        `nullrouted: locked after ${String(IDLE_LOCK_SECONDS)}s with nobody at the device`
+      )
     }
   }, 10_000)
   // Never a reason to hold the process open. A device with no wallet loaded has

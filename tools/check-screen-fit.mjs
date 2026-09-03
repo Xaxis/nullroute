@@ -880,7 +880,10 @@ async function main() {
       const there = await cdp(
         page,
         'Runtime.evaluate',
-        { expression: `document.querySelector(${JSON.stringify(selector)}) !== null`, returnByValue: true },
+        {
+          expression: `document.querySelector(${JSON.stringify(selector)}) !== null`,
+          returnByValue: true,
+        },
         state
       )
       if (there.result.value === true) {
@@ -1034,7 +1037,6 @@ async function main() {
       )
     }
 
-
     await cdp(page, 'Runtime.evaluate', { expression: SCROLL_TO_END }, state)
     await sleep(150)
 
@@ -1129,9 +1131,7 @@ async function main() {
   console.log(
     `check-screen-fit: ${String(screens.length)} screen states fit ` +
       `${String(WIDTH)}x${String(HEIGHT)}` +
-      (below.length === 0
-        ? ''
-        : `, ${String(below.length)} with content below the fold`) +
+      (below.length === 0 ? '' : `, ${String(below.length)} with content below the fold`) +
       `, ${String(marked.size)} marked statements all drawn`
   )
 

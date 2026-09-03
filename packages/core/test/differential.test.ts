@@ -92,7 +92,9 @@ function paths(): string[] {
     for (const account of [0, 1, 5]) {
       for (const change of [0, 1]) {
         for (const index of [0, 1, 2, 17, 100, 999]) {
-          out.push(`m/${String(purpose)}'/0'/${String(account)}'/${String(change)}/${String(index)}`)
+          out.push(
+            `m/${String(purpose)}'/0'/${String(account)}'/${String(change)}/${String(index)}`
+          )
         }
       }
     }
@@ -116,12 +118,15 @@ describe('differential: nullroute against bitcoinjs-lib', () => {
     let compared = 0
     for (const path of paths()) {
       const ours = rootFromSeed(seed, MAINNET).derive(path)
-      const theirs = bip32.fromSeed(Buffer.from(seedBytes), bitcoin.networks.bitcoin).derivePath(path)
+      const theirs = bip32
+        .fromSeed(Buffer.from(seedBytes), bitcoin.networks.bitcoin)
+        .derivePath(path)
 
       expect(ours.publicExtendedKey, `${path} xpub`).toBe(theirs.neutered().toBase58())
-      expect(Buffer.from(ours.publicKey ?? new Uint8Array()).toString('hex'), `${path} pubkey`).toBe(
-        Buffer.from(theirs.publicKey).toString('hex')
-      )
+      expect(
+        Buffer.from(ours.publicKey ?? new Uint8Array()).toString('hex'),
+        `${path} pubkey`
+      ).toBe(Buffer.from(theirs.publicKey).toString('hex'))
       compared += 1
     }
     // The brief asks for a thousand derivations. This is the count actually
@@ -228,9 +233,9 @@ describe('core.psbt.sign differential', () => {
     expect(ours, 'our signature').toBeDefined()
 
     // Their side, built independently through bitcoinjs-lib.
-    const node = bip32.fromSeed(Buffer.from(seedBytes), bitcoin.networks.bitcoin).derivePath(
-      SIGNING_PATH
-    )
+    const node = bip32
+      .fromSeed(Buffer.from(seedBytes), bitcoin.networks.bitcoin)
+      .derivePath(SIGNING_PATH)
     const psbt = new bitcoin.Psbt({ network: bitcoin.networks.bitcoin })
     psbt.setVersion(2)
     psbt.setLocktime(0)

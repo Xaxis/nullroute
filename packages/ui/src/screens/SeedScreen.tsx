@@ -279,8 +279,8 @@ export function SeedScreen(props: SeedScreenProps): ReactElement {
         <div className="nr-banner nr-banner--caution" data-must-see data-testid="seed-paper-only">
           <strong>Paper only</strong>
           <span>
-            Do not photograph these words or type them anywhere. Anyone holding them has your
-            money, and this device will not show them again.
+            Do not photograph these words or type them anywhere. Anyone holding them has your money,
+            and this device will not show them again.
           </span>
         </div>
 
@@ -294,8 +294,8 @@ export function SeedScreen(props: SeedScreenProps): ReactElement {
           {/* Two lines, not three. The third ran under the fold, and this is
               the only thing on the device that catches a mistyped passphrase. */}
           <p className="nr-hint">
-            Write this down too. A mistyped passphrase silently opens a different, empty wallet,
-            and only this catches it.
+            Write this down too. A mistyped passphrase silently opens a different, empty wallet, and
+            only this catches it.
           </p>
         </div>
       </div>

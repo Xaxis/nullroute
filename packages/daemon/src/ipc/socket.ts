@@ -67,9 +67,8 @@ export function assertNoNetworkListeners(): void {
   // Node exposes this for exactly this kind of introspection. It is not a
   // public API, so its absence is tolerated rather than fatal: the lint rule
   // and the systemd RestrictAddressFamilies backstop still hold.
-  const getHandles = (
-    process as unknown as { _getActiveHandles?: () => unknown[] }
-  )._getActiveHandles
+  const getHandles = (process as unknown as { _getActiveHandles?: () => unknown[] })
+    ._getActiveHandles
   if (typeof getHandles !== 'function') return
 
   const offenders: string[] = []

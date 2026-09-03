@@ -18,10 +18,7 @@ export type {
 } from './screens/MachineEntropyScreen.js'
 
 export { AssembleQuorumScreen } from './screens/AssembleQuorumScreen.js'
-export type {
-  AssembleQuorumScreenProps,
-  AssembledView,
-} from './screens/AssembleQuorumScreen.js'
+export type { AssembleQuorumScreenProps, AssembledView } from './screens/AssembleQuorumScreen.js'
 
 export { FleetScreen } from './screens/FleetScreen.js'
 export type { FleetScreenProps, FleetQuorum, FleetCosigner } from './screens/FleetScreen.js'

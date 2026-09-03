@@ -31,14 +31,7 @@ function setup(overrides: Partial<React.ComponentProps<typeof ReceiveScreen>> = 
   )
   const onVerify = vi.fn().mockResolvedValue({ found: true, path: "m/84'/0'/0'/0/0" })
   const onBack = vi.fn()
-  render(
-    <ReceiveScreen
-      onAddress={onAddress}
-      onVerify={onVerify}
-      onBack={onBack}
-      {...overrides}
-    />
-  )
+  render(<ReceiveScreen onAddress={onAddress} onVerify={onVerify} onBack={onBack} {...overrides} />)
   return { onAddress, onVerify, onBack }
 }
 

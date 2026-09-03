@@ -131,9 +131,9 @@ describe('core.descriptor.assemble', () => {
    * restoring the wallet later cannot tell whether it is able to sign for it.
    */
   it('refuses-a-key-with-no-origin', () => {
-    expect(() =>
-      assembleQuorum({ threshold: 2, keys: [A, `${XPUB_B}/<0;1>/*`] })
-    ).toThrow(/no origin/)
+    expect(() => assembleQuorum({ threshold: 2, keys: [A, `${XPUB_B}/<0;1>/*`] })).toThrow(
+      /no origin/
+    )
   })
 
   /**

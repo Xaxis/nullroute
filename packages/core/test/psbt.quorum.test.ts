@@ -221,7 +221,9 @@ describe('core.psbt.quorum', () => {
     tx.addInput({ txid: hexToBytes('c'.repeat(64)), index: 0 })
     tx.addOutputAddress(STRANGER, 1_000n, MAINNET)
 
-    const progress = signatureProgress(btc.Transaction.fromPSBT(tx.toPSBT(), { allowUnknownInputs: true }))
+    const progress = signatureProgress(
+      btc.Transaction.fromPSBT(tx.toPSBT(), { allowUnknownInputs: true })
+    )
     expect(progress.inputs[0]?.required).toBeUndefined()
     expect(progress.inputs[0]?.satisfied).toBe(false)
     expect(progress.complete).toBe(false)
