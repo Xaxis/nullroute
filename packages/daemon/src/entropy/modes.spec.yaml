@@ -10,6 +10,13 @@ purpose: >
   present tense, including a UI confirmation, for a long time before either
   existed. This spec covers what was built and what it refuses.
 
+# createHandler, because covers names public API and the method tables behind it
+# are internal: verify enumerates what is reachable from the package entry point,
+# on the argument that requiring a spec for an internal module pushes a project
+# toward specifying its own internals. The code these assertions describe is
+# packages/daemon/src/ipc/methods/entropy.ts, which is worth saying here because
+# it used to be four cases somewhere inside a 2084-line handler.ts and this line
+# was the only pointer anyone had.
 covers:
   - packages/daemon/src/handler.ts::createHandler
 

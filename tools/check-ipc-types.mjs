@@ -41,16 +41,23 @@
  * the screen because it IS the screen's type.
  */
 
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const APP = join(ROOT, 'packages/ui/src/App.tsx')
-const HANDLER = join(ROOT, 'packages/daemon/src/handler.ts')
+const METHODS = join(ROOT, 'packages/daemon/src/ipc/methods')
 
 const app = readFileSync(APP, 'utf8')
-const handler = readFileSync(HANDLER, 'utf8')
+/* The thirteen method tables, concatenated. This read one 2084-line handler.ts
+   and matched `case '<method>':`; the switch is gone and the tables replaced
+   it. Concatenated rather than searched per file because the question asked
+   here is per method, and a method lives in exactly one of them. */
+const handler = readdirSync(METHODS)
+  .filter((name) => name.endsWith('.ts'))
+  .map((name) => readFileSync(join(METHODS, name), 'utf8'))
+  .join('\n')
 
 /**
  * Fields a `case '<method>':` block returns, read from its `return { ... }`.
@@ -59,12 +66,18 @@ const handler = readFileSync(HANDLER, 'utf8')
  * object contains nested ones and a lazy match stops at the first inner close.
  */
 function returnedFields(method) {
-  const start = handler.indexOf(`case '${method}':`)
-  if (start === -1) return null
+  /* `async` is optional: all fifty nine of these turned out to be synchronous
+     once they left the one async switch they lived in, and lint removed the
+     keyword. Matching on it made this tool find nothing and then report
+     success, which is the failure mode it exists to prevent. */
+  const found = new RegExp(`'${method.replace('.', '\\.')}': (?:async )?\\(`).exec(handler)
+  if (found === null) return null
+  const start = found.index
 
-  // The end of this case block, which is the next `case '` at the same level.
-  const nextCase = handler.indexOf("\n      case '", start + 1)
-  const block = handler.slice(start, nextCase === -1 ? handler.length : nextCase)
+  // The end of this method, which is the next entry in the same table.
+  const nextCase = handler.slice(start + 1).search(/\n {4}'[a-z][\w]*\.[\w.]+': /)
+  const block =
+    nextCase === -1 ? handler.slice(start) : handler.slice(start, start + 1 + nextCase)
 
   const fields = new Set()
   let at = 0
@@ -154,7 +167,16 @@ for (const { line, method, fields } of inlineCalls()) {
     // Reported, not passed. A method whose handler this cannot read is a method
     // nobody is checking, and silence there is how a check becomes decorative.
     skipped += 1
-    console.log(`  ${method}: could not read what the handler returns, so not checked`)
+    /* Loud, because this is where the tool went blind. It matched on a shape
+       the daemon stopped having, found nothing for all eighteen methods, and
+       printed a success line reading "0 checked, 18 not checked". A guard that
+       cannot find the thing it guards has failed, not passed. */
+    console.error(
+      `check-ipc-types: cannot find what the daemon returns for "${method}".\n` +
+        `  Either the method is gone, or the shape this tool reads has changed.\n` +
+        `  It looks for "'${method}': (" in packages/daemon/src/ipc/methods.`
+    )
+    process.exit(1)
     continue
   }
   checked += 1

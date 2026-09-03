@@ -22,7 +22,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
-const HANDLER = join(ROOT, 'packages/daemon/src/handler.ts')
+const METHODS = join(ROOT, 'packages/daemon/src/ipc/methods')
 const UI_SRC = join(ROOT, 'packages/ui/src')
 
 /**
@@ -80,11 +80,22 @@ const NOT_YET_ON_A_SCREEN = new Map([
  */
 const MAX_NOT_YET_ON_A_SCREEN = 0
 
-const handler = readFileSync(HANDLER, 'utf8')
+/*
+ * Read from the thirteen method tables rather than from one switch.
+ *
+ * This used to match `case '<method>':` in handler.ts, which was the whole IPC
+ * surface in a single 62-label switch. The tables replaced it. Note the guard
+ * below: a parse that suddenly matches nothing has to be a failure here, since
+ * "no methods found" and "every method is reachable" are the same green line.
+ */
+const handler = readdirSync(METHODS)
+  .filter((name) => name.endsWith('.ts'))
+  .map((name) => readFileSync(join(METHODS, name), 'utf8'))
+  .join('\n')
 
-// Namespaced names only. The handler also switches on plain strings inside a
+// Namespaced names only. A table also switches on plain strings inside a
 // method (the BIP-85 application, for one), and those are not IPC methods.
-const methods = [...handler.matchAll(/case\s+'([a-z][\w]*\.[\w.]+)'\s*:/g)]
+const methods = [...handler.matchAll(/^\s*'([a-z][\w]*\.[\w.]+)':\s*(?:async\s*)?\(/gm)]
   .map((match) => match[1])
   .filter((name) => name !== undefined)
 
