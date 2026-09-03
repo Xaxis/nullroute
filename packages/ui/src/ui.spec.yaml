@@ -613,7 +613,7 @@ invariants:
       - packages/ui/test/wallet-screen.test.tsx::is-absent-rather-than-dead-when-there-is-nowhere-to-get-one
 
   # --- The panel is fixed hardware --------------------------------------------
-  # Held here as well as by tools/check-screen-fit.mjs, which measures the real
+  # Held here as well as by tools/checks/check-screen-fit.mjs, which measures the real
   # layout in a browser. These tests hold the half jsdom can see.
   - id: INV-UI-52
     statement: >
@@ -1133,7 +1133,7 @@ invariants:
       keyboard is fully visible before anything is scrolled, because this
       machine has no other way to type, and the header is one height on every
       screen so the title does not move between them. Held by
-      tools/check-screen-fit.mjs rather than by a unit test: jsdom computes no
+      tools/checks/check-screen-fit.mjs rather than by a unit test: jsdom computes no
       box model, so nothing else in the suite can see either.
     tests:
       - packages/ui/test/keyboard.test.tsx::hides-what-is-typed-by-default

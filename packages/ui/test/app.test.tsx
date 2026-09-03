@@ -510,7 +510,7 @@ describe('ui.app getting home', () => {
    * written down: an escape hatch beside that would be the easier tap.
    *
    * The OTHER exit on that screen, the tappable wallet name, is checked in two
-   * cheaper places rather than here: tools/check-header-rule.mjs proves the
+   * cheaper places rather than here: tools/checks/check-header-rule.mjs proves the
    * wiring in App.tsx, and the Identity tests prove the component renders no
    * control without an onSwitch. Reaching the real seed screen from here costs
    * a hundred dice rolls and a passphrase for one assertion.

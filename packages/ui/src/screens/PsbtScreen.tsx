@@ -331,7 +331,7 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
             zone on the sides you can see, so the user points a phone at it,
             gets nothing, and concludes the light is wrong.
 
-            Held by the QR rule in tools/check-screen-fit.mjs. */}
+            Held by the QR rule in tools/checks/check-screen-fit.mjs. */}
         <div className="nr-split nr-split--note" data-testid="psbt-signed-split">
           <div className="nr-split__col">
             <div className="nr-card nr-card--tight">

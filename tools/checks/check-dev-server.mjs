@@ -23,16 +23,16 @@
  * shell, the bundle and the styles are alive. Screens past that are the screen
  * gallery's job (make screen-fit).
  *
- * Run: node tools/check-dev-server.mjs
+ * Run: node tools/checks/check-dev-server.mjs
  * Needs: Chrome, and an installed workspace.
  */
 
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { chromeProfile, finish, reap } from './lib/browser.mjs'
+import { chromeProfile, finish, reap } from '../lib/browser.mjs'
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url))
+const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 
 // Not 5180. A developer running `make dev` in another terminal is the normal
 // case, and a check that refuses to run because of it would get switched off.
@@ -99,7 +99,7 @@ let vite
 let chrome
 
 /**
- * Kill vite and Chrome. See tools/lib/reap.mjs for why this is not a polite
+ * Kill vite and Chrome. See tools/lib/browser.mjs for why this is not a polite
  * SIGTERM: this file is where that hang was first diagnosed, and the other five
  * browser checks turned out to have the same shape.
  */
@@ -237,7 +237,7 @@ async function main() {
       `(${String(measured.rules)} CSS rules, background ${measured.background}, no CSP violation)`
   )
 
-  // The verdict is printed and nothing is left to wait for. See tools/lib/reap.mjs.
+  // The verdict is printed and nothing is left to wait for. See tools/lib/browser.mjs.
   finish(0)
 }
 

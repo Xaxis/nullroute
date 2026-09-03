@@ -72,14 +72,14 @@ manifest: ## Regenerate MANIFEST.lock from the tracked sources
 	# docs/VERIFICATION.md prints this hash in a transcript a reader is told to
 	# reproduce. Updating it here means it is never a thing someone remembered
 	# to do, which is how it came to be four commits out of date.
-	@node tools/check-manifest-recipe.mjs --write
+	@node tools/checks/check-manifest-recipe.mjs --write
 
 manifest-recipe: ## The commands docs/VERIFICATION.md tells you to run print what it says
 	# A document is not executable, so the page teaching a stranger how to
 	# recompute the root hash had drifted from the tool in four ways at once,
 	# including printing a command that omitted a third of the manifest. This
 	# runs every transcript in that section.
-	@node tools/check-manifest-recipe.mjs
+	@node tools/checks/check-manifest-recipe.mjs
 
 manifest-check: ## Every source under the manifest roots is tracked, and matches MANIFEST.lock
 	# BOTH HALVES, because the second one is where the hole was.
@@ -110,23 +110,23 @@ manifest-check: ## Every source under the manifest roots is tracked, and matches
 	  || { echo 'MANIFEST MISMATCH'; shasum -a 256 -c MANIFEST.lock | grep -v ': OK$$'; exit 1; }
 
 prose: ## No em dashes, no emoji, no overclaiming markers in docs and UI copy
-	@node tools/check-prose.mjs
+	@node tools/checks/check-prose.mjs
 
 links: ## Every internal link resolves, and every anchor exists on its target
-	@node tools/check-links.mjs
+	@node tools/checks/check-links.mjs
 
 invariant-claims: ## The threat model and the specs agree on which invariants hold
 	# A row in the threat model's invariant table is a claim about what this
 	# device protects. One with no spec behind it is a promise nothing keeps,
 	# which this project calls a security bug rather than a documentation chore.
-	@node tools/check-invariant-claims.mjs
+	@node tools/checks/check-invariant-claims.mjs
 
 device-ui: ## The device frontend actually boots under its own CSP. Drives a real browser.
 	# check-device-csp reads the policy and judges it, which cannot catch a
 	# policy so strict the application never starts. That failure is silent
 	# everywhere else: the build succeeds, jsdom tests pass, the panel is black.
 	@npm run build:app --workspace @nullroute/ui >/dev/null
-	@node tools/check-device-ui.mjs
+	@node tools/checks/check-device-ui.mjs
 
 qr-readback: ## Every code leaving this device fails loudly when it is misread
 	# A camera reads a code off this panel into software on a networked machine.
@@ -135,24 +135,24 @@ qr-readback: ## Every code leaving this device fails loudly when it is misread
 	# never written down: seven codes, seven reasons a misread cannot pass. This
 	# keeps the set closed rather than checking the mechanisms, which live in the
 	# receiving software and in invariants of this one.
-	@node tools/check-qr-readback.mjs
+	@node tools/checks/check-qr-readback.mjs
 
 device-csp: ## The device frontend really has the policy INV-NET-3 claims
 	# The threat model claimed this policy while packages/ui/index.html carried
 	# none: the only CSP in the repo was the website's, and the website is not
 	# the device.
-	@node tools/check-device-csp.mjs
+	@node tools/checks/check-device-csp.mjs
 
 profiles: ## Hardening profiles validate, and every assertion is falsifiable
 	# Enforces the rules a JSON Schema cannot: every assertion carries a
 	# verifier, every assertion states what it does NOT cover, and no assertion
 	# claims to check at build time a fact only observable on a running device.
-	@node tools/check-profiles.mjs
+	@node tools/checks/check-profiles.mjs
 	# A build recipe nothing in CI executes is the same shape of problem: it
 	# reads as a working build and checks nothing. This does not check that a
 	# recipe works, which it cannot, only that it and the profile declaring it
 	# agree and that it says plainly it has never been run.
-	@node tools/check-backends.mjs
+	@node tools/checks/check-backends.mjs
 
 sbom: ## Emit a CycloneDX SBOM as a build artifact
 	@node tools/gen-sbom.mjs
@@ -161,7 +161,7 @@ sbom-check: ## The committed SBOM still matches the installed tree
 	@node tools/gen-sbom.mjs --check
 
 repro-check: ## Build twice and assert the output is byte-identical
-	@node tools/check-reproducible.mjs
+	@node tools/checks/check-reproducible.mjs
 
 # --- tests -------------------------------------------------------------------
 
@@ -225,7 +225,7 @@ ui-classes: ## Every nr- class the device UI uses has a rule in styles.css
 	# every unit test passed, because a className is just a string and the tests
 	# assert on data-testid. Nothing else in the toolchain checks that a class
 	# name refers to something.
-	@node tools/check-ui-classes.mjs
+	@node tools/checks/check-ui-classes.mjs
 
 type-check: ## TypeScript, no emit, across the whole monorepo
 	@npx tsc --build tsconfig.build.json --force
@@ -442,31 +442,31 @@ no-dead-ends: ## No screen traps the user with no way out
 	# The device has no back button, no window to close and no keyboard. A
 	# screen that renders no exit is a power cycle. SetupScreen shipped that
 	# way: "add a wallet", change your mind, and you were stuck.
-	@node tools/check-no-dead-ends.mjs
+	@node tools/checks/check-no-dead-ends.mjs
 	# A call that changed the device and nothing re-read it. This shipped:
 	# wallets.unlock did not refresh, so status.hasWallet stayed false all
 	# session and the idle lock never armed. Every test passed.
-	@node tools/check-status-refresh.mjs
+	@node tools/checks/check-status-refresh.mjs
 	# A call type that promises a field the daemon never sends. call() casts
 	# parsed JSON and checks nothing, so the compiler will not catch it: the
 	# value is undefined at runtime and typed as present.
-	@node tools/check-ipc-types.mjs
+	@node tools/checks/check-ipc-types.mjs
 
 docs-reachable: ## Every document is registered on the site and linked from the README
 	# A document nobody can find is not a published document. This happened
 	# twice with the same two files: they built, the sitemap listed them, and
 	# the only route in was to type the URL.
-	@node tools/check-docs-reachable.mjs
+	@node tools/checks/check-docs-reachable.mjs
 
 make-targets: ## Every script the Makefile invokes actually exists
-	@node tools/check-make-targets.mjs
+	@node tools/checks/check-make-targets.mjs
 
 ipc-reachable: ## Every IPC method the daemon implements is reachable from the UI
 	# A feature nobody can reach is not a shipped feature. This has happened
 	# twice: the multi-wallet picker, and then message signing, BIP-85 and
 	# labels. Both times every test passed, because every test called the
 	# daemon directly.
-	@node tools/check-ipc-reachable.mjs
+	@node tools/checks/check-ipc-reachable.mjs
 
 header-rule: ## The header offers one exit or none, never one and a half
 	# Collapsing three header states into one fixed the look and opened a hole:
@@ -474,7 +474,7 @@ header-rule: ## The header offers one exit or none, never one and a half
 	# wallet picker. A screen that withholds the menu and offers a tappable
 	# wallet name two inches away has withheld nothing, and the screens that
 	# withhold it are the seed words and the transaction review.
-	@node tools/check-header-rule.mjs
+	@node tools/checks/check-header-rule.mjs
 
 screens: ## Build the screen gallery, a layout harness that never ships to the device
 	# TYPECHECKED FIRST. vite builds this with esbuild, which strips types
@@ -504,14 +504,14 @@ journeys: build-app ## Every guided journey completes, in the real app against a
 	#
 	# Its own store directory and its own socket, both temporary, so it never
 	# touches wallets on the machine it runs on.
-	@node tools/check-journeys.mjs
+	@node tools/checks/check-journeys.mjs
 
 ui-roles: screens ## Guidance is an info box, not whichever prose style came to hand
 	# Three roles, on purpose: a banner means something is wrong, an info box says
 	# what the screen is for, a hint is micro-copy beside one control. Before the
 	# info box existed there were only the other two, so seventeen paragraphs of
 	# screen-level guidance were written as whichever came to hand.
-	@node tools/check-ui-roles.mjs
+	@node tools/checks/check-ui-roles.mjs
 
 contrast: screens ## No text on the panel is below WCAG AA, in either theme
 	# The whole interface is somebody reading characters off a 7 inch panel and
@@ -521,21 +521,21 @@ contrast: screens ## No text on the panel is below WCAG AA, in either theme
 	#
 	# Measured against what composites under the text rather than read off the
 	# tokens, because most of these sit on a translucent mix over a card.
-	@node tools/check-contrast.mjs
+	@node tools/checks/check-contrast.mjs
 
 screen-fit: screens ## Every device screen fits 800x480. Drives a real browser.
 	# The panel is fixed hardware: no scrollbar, no window to resize. A control
 	# that does not fit is a control that does not exist. jsdom computes no box
 	# model, so nothing in the test suite can see this, and check-device-ui
 	# reaches only the lock screen because there is no daemon behind it.
-	@node tools/check-screen-fit.mjs
+	@node tools/checks/check-screen-fit.mjs
 
 dev-check: ## `make dev` still renders a styled application. Drives a real browser.
 	# The dev server served the whole device UI with no stylesheet for as long
 	# as index.html carried a strict CSP: vite dev injects CSS inline and
 	# style-src 'self' blocks it. Every other CSP check reads the production
 	# build, where Vite emits an external stylesheet the policy allows.
-	@node tools/check-dev-server.mjs
+	@node tools/checks/check-dev-server.mjs
 
 ui-constants: build-app ## Values the frontend restates agree with the daemon that enforces them
 	# Same reason as journeys: this reads the built stylesheet, so it has to be
@@ -543,7 +543,7 @@ ui-constants: build-app ## Values the frontend restates agree with the daemon th
 	# The UI may not import from packages/daemon, so a few lists exist twice.
 	# A colour on one side and not the other is a swatch that produces an
 	# error when tapped, and nothing else in the suite looks at both.
-	@node tools/check-ui-constants.mjs
+	@node tools/checks/check-ui-constants.mjs
 
 clean: ## Remove build output
 	rm -rf packages/*/dist apps/web/.next apps/web/out **/*.tsbuildinfo
@@ -580,13 +580,13 @@ web-type-check: ## TypeScript for the website
 	@npm run type-check --workspace @nullroute/web
 
 web-isolation: ## The site loads nothing off-origin and emits no inline styles
-	@node tools/check-web-isolation.mjs
+	@node tools/checks/check-web-isolation.mjs
 
 web-csp: ## vercel.json's CSP still matches the built inline script hashes
 	@node tools/gen-csp.mjs --check
 
 web-responsive: ## No page scrolls sideways at 320px or 390px. Drives a real browser.
-	@node tools/check-responsive.mjs
+	@node tools/checks/check-responsive.mjs
 
 web-check: web-lint web-type-check web-build web-isolation web-csp web-responsive ## Every website check
 
@@ -594,7 +594,7 @@ web-live-check: ## Load the DEPLOYED site in a real browser and assert nothing i
 	# The one check that caught a broken CSP. Every other check passed while
 	# hydration was dead: 200s, correct HTML, perfect screenshots, React #412 in
 	# the console and nowhere else.
-	@node tools/check-web-live.mjs
+	@node tools/checks/check-web-live.mjs
 
 deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 	# PREBUILT on purpose. Vercel building the same commit on its own runners

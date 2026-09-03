@@ -34,7 +34,7 @@
  * directory that is removed afterwards, so running this never touches wallets
  * on the machine it runs on.
  *
- * Run: node tools/check-journeys.mjs
+ * Run: node tools/checks/check-journeys.mjs
  * Needs: Chrome, `make build` and `make build-app`.
  */
 
@@ -55,9 +55,9 @@ import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import * as btc from '@scure/btc-signer'
 import { base64, hex } from '@scure/base'
-import { finish, reap } from './lib/browser.mjs'
+import { finish, reap } from '../lib/browser.mjs'
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url))
+const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const DIST = join(ROOT, 'packages/ui/dist-app')
 const DAEMON = join(ROOT, 'packages/daemon/dist/main.js')
 

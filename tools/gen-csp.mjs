@@ -18,7 +18,7 @@
  * allowed at all is `'self'`. No `'unsafe-inline'` anywhere, including for
  * styles, which is normally the directive people give up on first. It works
  * here because the build emits no inline <style> and no style attributes;
- * tools/check-web-isolation.mjs keeps it that way.
+ * tools/checks/check-web-isolation.mjs keeps it that way.
  *
  * Scripts are the one place a hash list is needed. Next's App Router inlines a
  * small RSC payload bootstrap into every page, so `script-src 'self'` alone

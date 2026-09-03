@@ -157,7 +157,7 @@ export interface OpenedWallet extends StoredWallet {
  *
  * Extracted so the device name in identity.ts uses THIS definition rather than
  * a copy. Two implementations of "which characters are dangerous in a string we
- * render" is exactly the drift tools/check-ui-constants.mjs exists to catch, and
+ * render" is exactly the drift tools/checks/check-ui-constants.mjs exists to catch, and
  * a second copy would be one that quietly forgets a bidi override.
  *
  * Returns the cleaned string, which may be empty. Callers decide what an empty

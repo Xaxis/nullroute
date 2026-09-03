@@ -12,7 +12,7 @@
  * dependency, an absolute path leaking into output) gets caught at the commit
  * that introduced it, when someone still remembers why they wrote it.
  *
- * Run: node tools/check-reproducible.mjs
+ * Run: node tools/checks/check-reproducible.mjs
  */
 
 import { execFileSync } from 'node:child_process'
@@ -21,7 +21,7 @@ import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createHash } from 'node:crypto'
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url))
+const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const PACKAGES = ['packages/core', 'packages/verify']
 
 function run(cmd, args) {

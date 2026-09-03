@@ -76,7 +76,7 @@
      passed, because jsdom does not compute a cascade and the browser check
      only asserts that React mounted.
 
-     tools/check-ui-constants.mjs now fails the build on an undefined one. */
+     tools/checks/check-ui-constants.mjs now fails the build on an undefined one. */
   --color-bg: #08090b;
   /* The scroll shadow at the top and bottom of a scrolling region.
 
@@ -295,7 +295,7 @@ body {
    and looked at. At 1440x900 the header stretched to 1440, so the menu button
    ended up six hundred pixels from the title it belongs beside, the action bar
    sat at the bottom of a window twice the height of the panel, and everything
-   between was empty. Every measurement in tools/check-screen-fit.mjs is taken at
+   between was empty. Every measurement in tools/checks/check-screen-fit.mjs is taken at
    800x480, so none of it could see that, and the screenshots I was reading were
    not the screen anybody else was looking at.
 
@@ -492,7 +492,7 @@ body {
 
      Nothing here could see it. The action bar was still at the bottom, every
      control was still on screen, and the body no longer overflowed because it
-     had shrunk to fit, so tools/check-screen-fit.mjs reported the screen as
+     had shrunk to fit, so tools/checks/check-screen-fit.mjs reported the screen as
      fitting perfectly.
 
      A positional template is the wrong tool for a container whose child count
@@ -1697,7 +1697,7 @@ body {
 .nr-qr__play {
   /* 44px, not 36. These step through the parts of a multipart transfer, and
      the mis-tap sends the user back a frame in a sequence they are pointing a
-     camera at. Held by tools/check-screen-fit.mjs. */
+     camera at. Held by tools/checks/check-screen-fit.mjs. */
   min-height: 2.75rem;
   min-width: 2.75rem;
   padding: 0 0.75rem;
@@ -1903,12 +1903,12 @@ body {
      Keys come out 48.7px wide, still over the 44px floor this stylesheet holds
      everywhere else.
 
-     Held by the keyboard rule in tools/check-screen-fit.mjs, which measures
+     Held by the keyboard rule in tools/checks/check-screen-fit.mjs, which measures
      this BEFORE scrolling: everything else on a screen can be scrolled to, and
      the input device of a machine with no other input device cannot. */
   grid-template-columns: repeat(14, 1fr);
   /* 6px, not 5. A fingertip is wider than the point the browser reports, and
-     tools/check-screen-fit.mjs holds the floor at 6 for every adjacent pair of
+     tools/checks/check-screen-fit.mjs holds the floor at 6 for every adjacent pair of
      controls on the device. On a keyboard a mis-tap is cheap and instantly
      visible, but the rule is not worth an exception for the one screen where
      it is easiest to satisfy. */

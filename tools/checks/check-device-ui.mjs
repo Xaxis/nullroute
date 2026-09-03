@@ -29,9 +29,9 @@ import { createServer } from 'node:http'
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { chromeProfile, finish, reap } from './lib/browser.mjs'
+import { chromeProfile, finish, reap } from '../lib/browser.mjs'
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url))
+const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const DIST = join(ROOT, 'packages/ui/dist-app')
 const PORT = 9327
 

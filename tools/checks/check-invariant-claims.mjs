@@ -39,7 +39,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url))
+const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const THREAT_MODEL = join(ROOT, 'docs/THREAT-MODEL.md')
 
 const SEARCHED = ['packages', 'tools', 'test', '.github']

@@ -32,7 +32,7 @@
  * It renders from tools/screens, a gallery outside packages/ so no fixture is
  * shipped to the device or covered by MANIFEST.lock.
  *
- * Run: node tools/check-screen-fit.mjs
+ * Run: node tools/checks/check-screen-fit.mjs
  * Needs: Chrome, and the gallery built (make screens).
  */
 
@@ -41,9 +41,9 @@ import { createServer } from 'node:http'
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { chromeProfile, finish, reachStep, reachTarget, reap } from './lib/browser.mjs'
+import { chromeProfile, finish, reachStep, reachTarget, reap } from '../lib/browser.mjs'
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url))
+const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const DIST = join(ROOT, 'tools/screens/dist')
 // 8931 rather than something in the 9400s. Chrome refuses to connect to a list
 // of ports it considers unsafe, and does it by failing the navigation while

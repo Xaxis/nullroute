@@ -249,7 +249,7 @@ describe('ui.screens.wallet xpub', () => {
  * way to scroll a document or resize a window.
  *
  * Nothing here could see that, and nothing here can: jsdom computes no box
- * model. tools/check-screen-fit.mjs measures the real layout. What these tests
+ * model. tools/checks/check-screen-fit.mjs measures the real layout. What these tests
  * hold is the other half, that each route exists at all and that an absent
  * handler leaves no dead control behind.
  */

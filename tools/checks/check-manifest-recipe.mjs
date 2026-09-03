@@ -23,7 +23,7 @@
  * The transcripts are the specification here. Changing how the manifest is
  * built means changing the document, which is the correct order.
  *
- * Run: node tools/check-manifest-recipe.mjs [--write]
+ * Run: node tools/checks/check-manifest-recipe.mjs [--write]
  *   --write updates the example hashes in place, and is what `make manifest`
  *   calls so nobody has to hand-copy a hash into prose ever again.
  */
@@ -32,7 +32,7 @@ import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url))
+const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const DOC = join(ROOT, 'docs/VERIFICATION.md')
 const WRITE = process.argv.includes('--write')
 

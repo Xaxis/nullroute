@@ -27,7 +27,7 @@
     "lint:prove": "node tools/prove-lint.mjs",
     "test": "vitest run",
     "verify": "node packages/verify/dist/cli.js",
-    "prose": "node tools/check-prose.mjs",
+    "prose": "node tools/checks/check-prose.mjs",
     "manifest": "make manifest",
     "clean": "rm -rf packages/*/dist apps/web/.next apps/web/out"
   },

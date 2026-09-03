@@ -45,7 +45,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url))
+const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const APP = join(ROOT, 'packages/ui/src/App.tsx')
 const METHODS = join(ROOT, 'packages/daemon/src/ipc/methods')
 

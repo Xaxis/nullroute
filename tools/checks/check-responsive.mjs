@@ -13,7 +13,7 @@
  * using Node's built-in WebSocket, so it adds no dependency to a project that
  * counts them.
  *
- * Run: node tools/check-responsive.mjs
+ * Run: node tools/checks/check-responsive.mjs
  * Needs: a built site (make web-build) and Chrome. Set CHROME_PATH to override.
  */
 
@@ -23,9 +23,9 @@ import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
-import { chromeProfile, finish, reap } from './lib/browser.mjs'
+import { chromeProfile, finish, reap } from '../lib/browser.mjs'
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url))
+const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const OUT = join(ROOT, 'apps/web/out')
 
 // 320px is the narrowest phone still in real use; 390px is a current iPhone.

@@ -14,13 +14,13 @@
 // mechanism, and it is deliberately visible so an exemption is a decision
 // someone made rather than something that happened.
 //
-// Run: node tools/check-prose.mjs [--fix-hint]
+// Run: node tools/checks/check-prose.mjs [--fix-hint]
 
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url))
+const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 
 const SEARCH_ROOTS = ['docs', 'packages', 'apps', 'spec', 'tools', '.github']
 const ROOT_FILES = ['README.md', 'CONTRIBUTING.md', 'SECURITY.md', 'CHANGELOG.md', 'CLAUDE.md']

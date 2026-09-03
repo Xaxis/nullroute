@@ -10,7 +10,7 @@
  * of any kind. The component tests run in jsdom, which computes no cascade and
  * no box model, so a button row that does not fit the panel, text clipped by a
  * fixed-height header, or an action bar pushed off the bottom of a 480px screen
- * all pass every check in the suite. tools/check-device-ui.mjs drives a real
+ * all pass every check in the suite. tools/checks/check-device-ui.mjs drives a real
  * browser and can only reach the lock screen, because there is no daemon.
  *
  * The failure this was written after: the wallet screen's action bar reached

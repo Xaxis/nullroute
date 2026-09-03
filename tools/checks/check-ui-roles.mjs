@@ -23,16 +23,16 @@
  *
  * Needs: Chrome, and the gallery built (make screens).
  *
- * Run: node tools/check-ui-roles.mjs
+ * Run: node tools/checks/check-ui-roles.mjs
  */
 import { createServer } from 'node:http'
 import { spawn } from 'node:child_process'
 import { readFileSync, existsSync, statSync } from 'node:fs'
 import { join, extname, normalize } from 'node:path'
-import { chromeProfile, finish, reachStep, reap } from './lib/browser.mjs'
+import { chromeProfile, finish, reachStep, reap } from '../lib/browser.mjs'
 import { fileURLToPath } from 'node:url'
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url))
+const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const DIST = join(ROOT, 'tools/screens/dist')
 const PORT = 8981
 const DEBUG = 9461

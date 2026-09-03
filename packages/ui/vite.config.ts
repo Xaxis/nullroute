@@ -88,7 +88,7 @@ function daemonProxy(): Plugin {
  *
  * WHAT THIS TRADES. Dev now differs from the device in one specific way, which
  * means a component that used an inline style would work here and be blocked
- * there. That is why tools/check-device-ui.mjs loads the built bundle under the
+ * there. That is why tools/checks/check-device-ui.mjs loads the built bundle under the
  * real policy and fails on any violation: this relaxation is invisible to it.
  *
  * The replacement is deliberately narrow and deliberately noisy. It rewrites the

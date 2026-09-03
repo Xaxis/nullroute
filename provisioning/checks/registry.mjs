@@ -36,7 +36,7 @@
 /**
  * Verifiers that can only be observed on a running device.
  *
- * Kept here as well as in tools/check-profiles.mjs would be two lists that can
+ * Kept here as well as in tools/checks/check-profiles.mjs would be two lists that can
  * disagree, so the tool reads this one.
  */
 export const RUNTIME_ONLY = new Set(['mount-options', 'no-listening-sockets', 'no-swap'])

@@ -21,7 +21,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url))
+const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 
 /** Pull a `const NAME = [ ... ] as const` array of string literals. */
 function literals(path, name) {

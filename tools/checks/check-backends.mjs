@@ -34,7 +34,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse } from 'yaml'
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url))
+const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const BACKENDS = join(ROOT, 'provisioning/backends')
 const PROFILES = join(ROOT, 'provisioning/profiles')
 

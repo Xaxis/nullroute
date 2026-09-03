@@ -16,14 +16,14 @@
  * `unsafe-inline` into the Content-Security-Policy. A strict CSP is only
  * possible while this stays clean.
  *
- * Run: node tools/check-web-isolation.mjs
+ * Run: node tools/checks/check-web-isolation.mjs
  */
 
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url))
+const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const OUT = join(ROOT, 'apps/web/out')
 
 if (!existsSync(OUT)) {

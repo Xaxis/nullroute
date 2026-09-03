@@ -13,14 +13,14 @@
  * A class name is a reference to something, and nothing in the toolchain checked
  * that the something existed. This does.
  *
- * Run: node tools/check-ui-classes.mjs
+ * Run: node tools/checks/check-ui-classes.mjs
  */
 
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url))
+const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const UI = join(ROOT, 'packages/ui/src')
 const STYLES = join(UI, 'styles.css')
 

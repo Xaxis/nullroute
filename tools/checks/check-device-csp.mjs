@@ -26,7 +26,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
-const INDEX = fileURLToPath(new URL('../packages/ui/index.html', import.meta.url))
+const INDEX = fileURLToPath(new URL('../../packages/ui/index.html', import.meta.url))
 
 const html = readFileSync(INDEX, 'utf8')
 

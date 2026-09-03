@@ -17,7 +17,7 @@
  *   - a profile asserting a capability above its declared tier
  *   - duplicate invariant ids across profiles and code specs
  *
- * Run: node tools/check-profiles.mjs
+ * Run: node tools/checks/check-profiles.mjs
  */
 
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
@@ -25,7 +25,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url))
+const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const PROFILE_DIR = join(ROOT, 'provisioning/profiles')
 const CHECKS_DIR = join(ROOT, 'provisioning/checks')
 const SCHEMA = join(ROOT, 'provisioning/schema.json')

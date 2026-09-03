@@ -17,14 +17,14 @@
  * External links are NOT checked: that would need the network, and this must
  * run offline in the same places everything else does.
  *
- * Run: node tools/check-links.mjs
+ * Run: node tools/checks/check-links.mjs
  */
 
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs'
 import { join, dirname, resolve, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url))
+const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 
 const SKIP_DIRS = new Set([
   'node_modules',

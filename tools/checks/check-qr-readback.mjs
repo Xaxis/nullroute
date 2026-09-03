@@ -25,13 +25,13 @@
  * screen has to say what makes a misread loud, and an entry here has to point
  * at a code that exists.
  *
- * Run: node tools/check-qr-readback.mjs
+ * Run: node tools/checks/check-qr-readback.mjs
  */
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url))
+const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const SCREENS = join(ROOT, 'packages/ui/src/screens')
 
 /**

@@ -28,7 +28,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const ROOT = fileURLToPath(new URL('..', import.meta.url))
+const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const DOCS = join(ROOT, 'docs')
 const REGISTRY = join(ROOT, 'apps/web/lib/docs.ts')
 const README = join(ROOT, 'README.md')
