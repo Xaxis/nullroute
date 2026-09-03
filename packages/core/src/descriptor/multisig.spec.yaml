@@ -36,6 +36,12 @@ algorithm: >
 
   Ownership is decided by comparing the 74 bytes of key material, with the
   version bytes stripped, so a key written as xpub, ypub or Zpub matches itself.
+  That was true of the comparison and not of the parser, which refused the
+  capitalised SLIP-132 prefixes outright: a coordinator export for a P2WSH
+  quorum could not be read at all, so the prefix-agnostic comparison behind it
+  was never reached. The same stripping now also decides duplicates when a
+  quorum is assembled, which compared the base58 text and therefore accepted
+  one device's key listed twice under two prefixes as two cosigners.
 
 invariants:
   - id: INV-MULTI-1

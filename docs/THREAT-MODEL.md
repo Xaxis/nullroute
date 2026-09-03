@@ -247,8 +247,11 @@ This is being addressed rather than merely conceded, and
   be undone, and rests on a closed-source BootROM that nobody outside Raspberry
   Pi can audit. It will never be the default.
 
-Until tier 2, treat the operating system as trusted-by-assumption. Build the
-image yourself, or verify the signature on a published one.
+Until tier 2, treat the operating system as trusted-by-assumption. The usual
+answer would be to build the image yourself or verify a signature on a
+published one, and neither is available: `make image` fails on purpose because
+the build script was never written, and nothing has been published. See
+docs/VERIFICATION.md.
 
 **Evil maid attacks, absent secure boot.** See above. Tier 1 makes an
 unsophisticated modification visible to a user who reads the boot screen. It
@@ -316,8 +319,15 @@ determined adversary who has the device and has you.
 
 ## The trust boundary between the signer and the wallet layer
 
-nullroute ships in two assurance tiers, and which one you are running is visible
-in the manifest root hash on the lock screen.
+nullroute is designed around two assurance tiers. One of them exists.
+
+`packages/wallet` has not been written, phase 5 has not been opened, and the
+verifier reports the literal `signer`, so there is nothing to distinguish and
+the lock screen does not distinguish it. This section described the boundary in
+the present tense, which is the wrong tense for a boundary with one side. What
+follows is the design the phase ordering exists to protect, and INV-WALLET-1 is
+enforced today by a lint rule in the direction that can be enforced without the
+second package.
 
 **Tier 1, the signer** (`packages/core`, `packages/daemon`, `packages/ui`) is
 small on purpose. Every parser and every branch that runs near a private key is
@@ -385,7 +395,7 @@ does not keep.
 | --- | --- |
 | INV-NET-1 | The daemon binds only to a Unix domain socket or `127.0.0.1`. No listener exists on any external interface. |
 | INV-NET-2 | No source file imports `http`, `https`, `net`, `dgram`, `dns`, or `fetch` outside an allowlisted loopback IPC layer. Enforced by lint. |
-| INV-NET-3 | The frontend CSP is `default-src 'none'` with everything else `'self'`. No CDN, no remote fonts, no telemetry. |
+| INV-NET-3 | The frontend CSP is `default-src 'none'` and `connect-src 'self'`, so nothing can be fetched from anywhere. No CDN, no remote fonts, no telemetry. Three narrower allowances exist and are asserted by `make device-csp`: `'wasm-unsafe-eval'` in `script-src` for the QR decoder, `data:` in `img-src` for the codes this device draws, and `blob:` in `media-src` for the camera preview. None of them can reach the network. |
 | INV-KEY-1 | Private key material and seed bytes never leave the daemon process, with three named exceptions: `seed.reveal`, which shows a mnemonic only between generation and confirmation and never for a seed loaded from storage; `bip85.derive`, which returns a hardened child mnemonic because writing it down is the point of BIP-85, capped per unlock; and `backup.create` with `includeSeed`, which seals the seed under a caller-chosen passphrase and says so in its response. |
 | INV-KEY-2 | All buffers holding secrets are zeroized after use, through a typed `Secret` wrapper with explicit `dispose()`. |
 | INV-SIG-1 | Every ECDSA signature uses RFC 6979 deterministic nonces. Every Schnorr signature uses BIP-340 with `aux_rand` set to 32 zero bytes. |

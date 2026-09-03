@@ -304,8 +304,40 @@ export function parseKeyExpression(input: string): KeyExpression {
   // else must be raw hex; there is no third case, and a WIF private key is
   // deliberately not accepted, because a descriptor holding a private key has
   // no business on this device.
+  /*
+   * SLIP-132 prefixes, INCLUDING the capitalised ones.
+   *
+   * Ypub, Zpub, Upub and Vpub are the multisig variants: P2WSH-in-P2SH and
+   * P2WSH, on mainnet and testnet. They were missing, so a coordinator export
+   * for a P2WSH quorum, which is the commonest kind this device is for, was
+   * refused with "neither an extended public key nor hex" and the user's only
+   * route forward was to hand-edit the file. That is exactly the transcription
+   * risk coordinator.ts exists to remove.
+   *
+   * Two other places in this package already assumed they parsed.
+   * derive-key.ts reads the version bytes off the key rather than assuming the
+   * network's, with a comment saying "coordinators legitimately emit xpub,
+   * ypub, Zpub and tpub for the same wallet"; and findOwnKey compares the
+   * version-stripped payload, so membership has always been prefix-agnostic.
+   * The gate here was the only thing in the way.
+   *
+   * Safe because the prefix carries no key material: the same 74 bytes derive
+   * identical public keys whatever four precede them, and what makes a testnet
+   * address testnet is the address encoding downstream.
+   */
   const prefix = rest.slice(0, 4)
-  const isExtended = ['xpub', 'ypub', 'zpub', 'tpub', 'upub', 'vpub'].includes(prefix)
+  const isExtended = [
+    'xpub',
+    'ypub',
+    'zpub',
+    'Ypub',
+    'Zpub',
+    'tpub',
+    'upub',
+    'vpub',
+    'Upub',
+    'Vpub',
+  ].includes(prefix)
 
   if (isExtended) {
     const slash = rest.indexOf('/')

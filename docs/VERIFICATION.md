@@ -65,14 +65,14 @@ Compute the root hash:
 
 ```console
 $ sha256sum MANIFEST.lock
-886e99fabb2365fde4f7fe361599744f67f7fa33fd277b44743685f4d5d923eb  MANIFEST.lock
+3d0a32450ada10c703decf53000b1418a9a0a6713fd77f2d51f7379446a7ea39  MANIFEST.lock
 ```
 
 Regenerate the manifest from scratch and confirm it matches what is committed:
 
 ```console
 $ git ls-files -z packages spec provisioning | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum
-886e99fabb2365fde4f7fe361599744f67f7fa33fd277b44743685f4d5d923eb  -
+3d0a32450ada10c703decf53000b1418a9a0a6713fd77f2d51f7379446a7ea39  -
 ```
 
 On macOS use `shasum -a 256` in place of `sha256sum`. The values are identical.
@@ -174,21 +174,31 @@ A check with nothing to do is recorded as `not-applicable`, never as `passed`.
 Reporting an empty check as a pass would claim assurance the project has not
 earned.
 
-The report records which assurance tier was built (signer only, or signer plus
-wallet layer), and the tier is part of what the root hash covers. A signer-only
-build and a full build have different root hashes by construction, so you can
-prove from the lock screen which one you are holding.
+The report records which assurance tier was built, and the tier is part of what
+the root hash covers, so a signer-only build and a full build would have
+different root hashes by construction.
+
+Today there is one tier. `packages/` holds `core`, `daemon`, `ui` and `verify`;
+`packages/wallet` does not exist, phase 5 has not been opened, and the verifier
+writes the literal `signer`. So the field cannot hold a second value and the
+lock screen distinguishes nothing by it. The mechanism is real and what it
+would prove is not yet a choice anybody has.
 
 ### Reading it yourself
 
 `verification-report.json` is plain JSON. The fields that matter:
 
 - `rootHash`: compare against the lock screen and the published release
-- `tier`: `signer` or `signer+wallet`
+- `tier`: `signer` today, and only `signer`. See above.
 - `coverage.uncovered`: must be empty
 - `invariants[].tests[].status`: every one must be `passed`
-- `dependencyTreeHash`: compare against the published value to confirm your
-  `node_modules` resolved identically
+
+This list used to end with `dependencyTreeHash`, which no version of the report
+has ever carried and which nothing in `packages/`, `tools/` or the Makefile
+computes. It was the only one of these fields covering how `node_modules`
+resolved, so its absence is a gap rather than a tidy-up: what stands in for it
+is `make repro-check`, which builds twice from a clean tree and compares the
+output, and the SBOM.
 
 A report that says everything passed is only as trustworthy as the build that
 produced it, which is why step 2 comes first.
@@ -299,9 +309,11 @@ trusting arithmetic instead of people, and that argument has limits.
 
 **It does not verify the operating system.** The manifest covers the
 application. If the Raspberry Pi OS image you flashed was already backdoored,
-the root hash it displays is whatever the backdoor wants it to say. Build the
-image yourself from `tools/build-image/`, or check the signature on a published
-one. Verification defends the application and cannot bootstrap trust in the
+the root hash it displays is whatever the backdoor wants it to say. Neither
+half of the usual answer is available yet: there is no `tools/build-image/`,
+`make image` fails on purpose and says why, and no image has been published to
+check a signature on. That is the largest hole in what this document promises,
+and it is stated here rather than left to be discovered. Verification defends the application and cannot bootstrap trust in the
 thing that runs it.
 
 **It does not verify the hardware.** We check the software supply chain. We
@@ -463,9 +475,15 @@ $ sudo veritysetup verify /dev/<card>p2 /dev/<card>p3 $(cat system.roothash)
 
 #### At boot
 
-The lock screen shows exactly two hashes: the dm-verity root hash of the system
-partition, and `sha256sum MANIFEST.lock` for the application. Compare both
-against the release.
+The lock screen shows one hash: `sha256sum MANIFEST.lock` for the application.
+Compare it against the release.
+
+It does not show a dm-verity root hash for the system partition, and this
+section used to say it showed both. There is nothing behind that number yet:
+dm-verity lands in provisioning tier 1, the README lists it under what is not
+working, and the boot attestation the daemon builds carries a single
+`rootHash`. A reader who found one hash on the panel and had been told to
+expect two would reasonably conclude they had checked the one that mattered.
 
 **Both numbers are reported by the software you are looking at.** That is not a
 reason to skip reading them, and it is a reason not to treat them as proof on

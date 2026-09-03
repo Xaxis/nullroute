@@ -181,7 +181,10 @@ network, and it is fenced off from the device build the same way
 `packages/bridge` is:
 
 - nothing in `apps/web` ever ships to the Pi
-- `MANIFEST.lock` and the manifest root hash cover `packages/` only
+- `MANIFEST.lock` and the manifest root hash cover `packages/`, `spec/` and
+  `provisioning/`, which is what `make print-manifest-roots` prints. This line
+  said `packages/` only, so anyone following it computed a root hash matching
+  neither the device nor the release.
 - the no-network lint rule applies to `packages/`, not to `apps/web`
 - `apps/web` must never import from `packages/daemon`
 

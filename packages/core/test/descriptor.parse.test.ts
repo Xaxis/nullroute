@@ -244,4 +244,53 @@ describe('core.descriptor.parse script expressions', () => {
     expect(after).toStrictEqual(before)
     expect(() => canonicalKeyExpression('not-a-key')).toThrow()
   })
+
+  /*
+   * SLIP-132, including the capitalised prefixes a coordinator actually emits.
+   *
+   * Ypub, Zpub, Upub and Vpub are the multisig variants: P2WSH-in-P2SH and
+   * P2WSH, mainnet and testnet. They were refused with "neither an extended
+   * public key nor hex", so a coordinator export for a P2WSH quorum, the
+   * commonest kind this device exists for, could not be imported at all and
+   * the workaround was hand-editing the descriptor.
+   *
+   * Two other modules had already assumed they parsed: derive-key.ts reads the
+   * version bytes off the key and says so in a comment naming Zpub, and
+   * findOwnKey compares the version-stripped payload, so membership was always
+   * prefix-agnostic. This gate was the only thing in the way.
+   */
+  it('accepts-every-slip-132-prefix', () => {
+    // Prefix swapping is legitimate here BECAUSE the four version bytes carry
+    // no key material, which is the property the parser relies on. The base58
+    // checksum is not re-derived, so this asserts the gate rather than the
+    // encoding, which is what changed.
+    const gate = (prefix: string): boolean => {
+      try {
+        parseKeyExpression(
+          `${prefix}${'xpub6BosfCnifzxcFwrSzQiqu2DBVTshkCXacvNsWGYJVVhhawA7d4R5WSWGFNbi8Aw6ZRc1brxMyWMzG3DSSSSoekkudhUd9yLb6qx39T9nMdj'.slice(4)}`
+        )
+        return true
+      } catch (err) {
+        return !(err as Error).message.includes('neither an extended public key nor hex')
+      }
+    }
+    for (const prefix of [
+      'xpub',
+      'ypub',
+      'zpub',
+      'Ypub',
+      'Zpub',
+      'tpub',
+      'upub',
+      'vpub',
+      'Upub',
+      'Vpub',
+    ]) {
+      expect(gate(prefix), prefix).toBe(true)
+    }
+    // And still refuses what is neither an extended key nor hex, so widening
+    // the list has not turned the gate off.
+    expect(gate('wpub')).toBe(false)
+    expect(() => parseKeyExpression('not-a-key-at-all')).toThrow(/neither an extended/)
+  })
 })

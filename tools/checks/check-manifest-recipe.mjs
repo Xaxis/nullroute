@@ -27,7 +27,7 @@
  *   --write updates the example hashes in place, and is what `make manifest`
  *   calls so nobody has to hand-copy a hash into prose ever again.
  */
-import { readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
@@ -173,6 +173,52 @@ for (const root of roots) {
         `unchanged root hash proves if the document does not list what went into it.`
     )
   }
+}
+
+/*
+ * Every OTHER document that says what the manifest covers has to agree.
+ *
+ * This read docs/VERIFICATION.md and nothing else, which is precisely why
+ * CONTRIBUTING.md drifted: it said "MANIFEST.lock and the manifest root hash
+ * cover `packages/` only" for the life of the project, while the roots are
+ * packages, spec and provisioning. Anybody following it computed a root hash
+ * matching neither the device nor the release, and the one check that knows
+ * the real answer was not looking at their document.
+ *
+ * A weaker assertion than the transcript above on purpose: these documents
+ * describe the manifest in prose rather than showing a command, so what is
+ * checked is that a document naming the roots names all of them, and that none
+ * of them claims a narrower set.
+ */
+const ALSO_DESCRIBE = ['CONTRIBUTING.md', 'README.md', 'docs/THREAT-MODEL.md']
+for (const relative of ALSO_DESCRIBE) {
+  const path = join(ROOT, relative)
+  if (!existsSync(path)) continue
+  const text = readFileSync(path, 'utf8')
+  /*
+   * Paragraph-scoped, not file-scoped.
+   *
+   * A file-wide search found the README, which mentions `packages/` in its
+   * layout tree and MANIFEST.lock four sections away: two true statements that
+   * are not a claim about each other. The question is only ever what a document
+   * says the manifest covers, so the root has to be named in the same paragraph
+   * as the manifest.
+   */
+  const paragraphs = text
+    .split(/\n\s*\n/)
+    .filter((block) => /MANIFEST\.lock|manifest root/.test(block))
+  const claim = paragraphs.find((block) => roots.some((root) => block.includes(`\`${root}/\``)))
+  if (claim === undefined) continue
+  const named = roots.filter((root) => claim.includes(`\`${root}/\``))
+  const missing = roots.filter((root) => !named.includes(root))
+  if (missing.length === 0) continue
+  fail(
+    relative,
+    `describes what MANIFEST.lock covers and names ${named.join(', ')} but not ` +
+      `${missing.join(', ')}. The roots are ${roots.join(', ')}, which is what ` +
+      `\`make print-manifest-roots\` prints. A reader following a narrower list computes ` +
+      `a root hash matching neither the device nor the release.`
+  )
 }
 
 if (WRITE && patched !== source) writeFileSync(DOC, patched)

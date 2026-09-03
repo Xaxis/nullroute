@@ -61,6 +61,7 @@ import {
   type KeyExpression,
 } from './parse.js'
 import { withChecksum } from './checksum.js'
+import { keyPayload } from './multisig.js'
 
 export class AssembleError extends Error {
   constructor(message: string) {
@@ -164,19 +165,29 @@ export function assembleQuorum(options: AssembleOptions): AssembledQuorum {
     return assertExtendedWithOrigin(expression, raw)
   })
 
-  // Duplicates by xpub, not by the whole string: the same key written with two
-  // different origins is still one key, and a 2-of-3 holding it twice is a
-  // 2-of-2 with a spare that looks completely normal on every screen.
+  /*
+   * Duplicates by the KEY, not by how it was written.
+   *
+   * Not by the whole expression, because the same key with two different
+   * origins is still one key, and a 2-of-3 holding it twice is a 2-of-2 with a
+   * spare that looks completely normal on every screen.
+   *
+   * And not by the base58 text either, which is what this compared. SLIP-132
+   * gives one key several spellings (xpub, ypub, Zpub and their testnet
+   * counterparts differ only in four version bytes), so a quorum listing one
+   * device's key twice under two prefixes passed this check. findOwnKey has
+   * always compared the version-stripped payload for exactly this reason.
+   */
   const seen = new Map<string, number>()
   for (const [index, key] of parsed.entries()) {
-    const previous = seen.get(key.xpub)
+    const previous = seen.get(keyPayload(key.xpub))
     if (previous !== undefined) {
       throw new AssembleError(
         `Keys ${String(previous + 1)} and ${String(index + 1)} are the same extended key. A ` +
           `quorum that lists one key twice needs fewer distinct devices than it appears to.`
       )
     }
-    seen.set(key.xpub, index)
+    seen.set(keyPayload(key.xpub), index)
   }
 
   // Every key has to cover the same branches. One ranged key beside one that is

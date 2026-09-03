@@ -216,11 +216,11 @@ export function findOwnKey(
   // get the same question wrong.
   const keys = quorumKeys(descriptor)
   if (keys === undefined) return undefined
-  const mine = normalizeXpub(accountXpub)
+  const mine = keyPayload(accountXpub)
 
   for (const [position, key] of keys.entries()) {
     if (key.kind !== 'extended') continue
-    if (normalizeXpub(key.xpub) !== mine) continue
+    if (keyPayload(key.xpub) !== mine) continue
     return key.origin === undefined ? { position } : { position, origin: key.origin.path }
   }
   return undefined
@@ -251,7 +251,15 @@ function quorumKeys(descriptor: Descriptor): readonly KeyExpression[] | undefine
  * in this quorum" for a descriptor that in fact contains it. Only the version
  * bytes differ, so they are dropped and the remaining 74 bytes compared.
  */
-function normalizeXpub(value: string): string {
+/**
+ * An extended key without its version bytes, so two spellings compare equal.
+ *
+ * Exported because assembleQuorum needs the same idea for its duplicate check.
+ * It compared the base58 text, and SLIP-132 gives one key several spellings, so
+ * a quorum listing one device twice under xpub and Zpub was accepted as two
+ * distinct cosigners.
+ */
+export function keyPayload(value: string): string {
   try {
     const raw = base58.decode(value)
     // 4 version + 74 payload + 4 checksum. Drop version and checksum.
