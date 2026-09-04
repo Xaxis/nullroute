@@ -9,9 +9,14 @@ purpose: >
   when the unchanged verifiers below pass against its output, and not before.
 
 boards:
+  # raspberrypi-cm5 was here and is not any more. Debian trixie's 6.12 kernel
+  # ships four Raspberry Pi device trees, bcm2711-rpi-4-b, bcm2711-rpi-400,
+  # bcm2711-rpi-cm4-io and bcm2712-rpi-5-b, and none of them is a CM5. A board
+  # named here that the artifact cannot start is the same class of claim as a
+  # hardening rule nobody applies. It comes back when a kernel that has the
+  # device tree does.
   - raspberrypi-5
   - raspberrypi-4
-  - raspberrypi-cm5
 
 backends:
   # ADVISORY. The verifier is forbidden from reading this key (INV-PROV-2),
@@ -348,6 +353,17 @@ assertions:
           # here by whoever puts it on the card, which is the intended cost.
           files:
             - cmdline.txt
+            - config.txt
+            - kernel8.img
+            # Only the boards `boards:` above claims. Debian's 6.12 kernel ships
+            # exactly four Pi device trees and no bcm2712-rpi-cm5, which is why
+            # raspberrypi-cm5 is no longer in that list.
+            - bcm2711-rpi-4-b.dtb
+            - bcm2712-rpi-5-b.dtb
+            # Pi 4 loads these from the card. Pi 5's bootloader is in EEPROM and
+            # reads config.txt directly, so they are inert there.
+            - start4.elf
+            - fixup4.dat
     rationale: >
       Every other region of the card is under the dm-verity hash tree. This one
       cannot be, because it is where the firmware reads the root hash from. An

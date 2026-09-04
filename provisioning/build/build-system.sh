@@ -167,6 +167,83 @@ fi
 echo "  system image     $(wc -c < "$OUT/system.erofs") bytes"
 echo "  root hash        $(cat "$OUT/root-hash")"
 
+# --- what the firmware needs, extracted rather than installed ----------------
+#
+# EXTRACT, DO NOT INSTALL, and that is a rule rather than a convenience. The Pi
+# needs GPU firmware on the boot partition before it will start a kernel, and
+# the package that carries it, Debian's raspi-firmware, ALSO ships six files
+# under lib/firmware/brcm/. Those are Broadcom radio firmware, and INV-PROV-13
+# forbids them: the profile's position is that the radio is removed rather than
+# disabled, so reverting a device tree overlay is not enough to bring it back.
+# Installing the package into the root filesystem fails that assertion. Taking
+# two files out of the .deb does not.
+#
+# PINNED BY VERSION AND BY HASH. `apt-get download <name>` fetches whatever the
+# archive holds today, which makes the card a function of the date. The versions
+# below are exact and the digests are checked, so a changed upstream is a loud
+# failure here rather than a different root hash nobody can explain. When Debian
+# removes a superseded version from the pool this stops working, which is the
+# limitation docs/VERIFICATION.md already states about upstream archives; a
+# download that fails is the correct behaviour for it.
+KERNEL_DEB=linux-image-6.12.94+deb13-arm64_6.12.94-1_arm64.deb
+KERNEL_SHA=72db7fcfb443a4b03448bda98f4e7c1a1fa0d6c21fc57f0b119d704442f8ad49
+FIRMWARE_DEB=raspi-firmware_1.20240424+ds-6_all.deb
+FIRMWARE_SHA=f95a3d3c41df10bac33580be91b595efa1e126ad5e4b7eca75ce26fbbc69af06
+KERNEL_DIR=usr/lib/linux-image-6.12.94+deb13-arm64/broadcom
+
+BOOT="$WORK/boot"
+mkdir -p "$BOOT" "$WORK/debs"
+
+echo "deb $MIRROR $SUITE main non-free-firmware" > /etc/apt/sources.list
+apt-get update >/dev/null 2>&1
+( cd "$WORK/debs" && apt-get download \
+    "linux-image-6.12.94+deb13-arm64=6.12.94-1" \
+    "raspi-firmware=1.20240424+ds-6" >/dev/null 2>&1 )
+
+for pair in "$KERNEL_DEB:$KERNEL_SHA" "$FIRMWARE_DEB:$FIRMWARE_SHA"; do
+  file="${pair%%:*}"
+  want="${pair##*:}"
+  got=$(sha256sum "$WORK/debs/$file" | cut -d" " -f1)
+  if [ "$got" != "$want" ]; then
+    echo "  FAIL  $file" >&2
+    echo "        expected $want" >&2
+    echo "        got      $got" >&2
+    echo "        The archive served something other than the pinned package." >&2
+    exit 1
+  fi
+done
+
+dpkg-deb -x "$WORK/debs/$KERNEL_DEB" "$WORK/kernel"
+dpkg-deb -x "$WORK/debs/$FIRMWARE_DEB" "$WORK/firmware"
+
+# The kernel, under the name the firmware looks for and config.txt names.
+cp "$WORK/kernel/boot/vmlinuz-6.12.94+deb13-arm64" "$BOOT/kernel8.img"
+
+# ONLY THE BOARDS THE PROFILE CLAIMS, and only the ones Debian can actually
+# boot. `boards` used to list raspberrypi-cm5 and this kernel has no
+# bcm2712-rpi-cm5 device tree: it ships exactly four Pi trees and that is not
+# one of them. A board named in a profile that the artifact cannot start is the
+# same class of claim as a hardening rule nobody applies.
+cp "$WORK/kernel/$KERNEL_DIR/bcm2711-rpi-4-b.dtb" "$BOOT/"
+cp "$WORK/kernel/$KERNEL_DIR/bcm2712-rpi-5-b.dtb" "$BOOT/"
+
+# Pi 4 loads its GPU firmware from the card. Pi 5 does not: its bootloader lives
+# in SPI EEPROM and reads config.txt directly, so these two files are there for
+# the 4 and are inert on the 5.
+cp "$WORK/firmware/usr/lib/raspi-firmware/start4.elf" "$BOOT/"
+cp "$WORK/firmware/usr/lib/raspi-firmware/fixup4.dat" "$BOOT/"
+
+# No splash, for the same reason the kernel command line has no `quiet`: a
+# device whose whole claim is that you can watch it verify itself should not
+# hide its own boot behind a picture.
+cat > "$BOOT/config.txt" <<'CONFIG'
+arm_64bit=1
+kernel=kernel8.img
+disable_splash=1
+CONFIG
+
+echo "  boot files       $(ls "$BOOT" | tr '\n' ' ')"
+
 # --- the card ---------------------------------------------------------------
 #
 # A GPT disk with the three partitions the profiles name: boot, system, and the
@@ -185,6 +262,7 @@ mkdir -p "$GEN/input" "$GEN/images" "$GEN/root"
 # The pinned command line, from provisioning/profiles/os-signer.yaml. Passed in
 # rather than written here, for the same reason the identifiers are.
 printf '%s\n' "${NULLROUTE_CMDLINE:?run through the Makefile}" > "$GEN/input/cmdline.txt"
+cp "$BOOT"/* "$GEN/input/"
 cp "$WORK/system.erofs" "$GEN/input/system.img"
 
 # PADDED TO 8 MiB. The hash tree for a 150MiB system partition is about 1.2MiB,
@@ -222,6 +300,12 @@ image boot.vfat {
     # at is exactly the kind of thing that breaks reproducibility invisibly.
     extraargs = "-i ${NULLROUTE_BOOT_VOLUME_ID:?}"
     file "cmdline.txt" { image = "cmdline.txt" }
+    file "config.txt" { image = "config.txt" }
+    file "kernel8.img" { image = "kernel8.img" }
+    file "bcm2711-rpi-4-b.dtb" { image = "bcm2711-rpi-4-b.dtb" }
+    file "bcm2712-rpi-5-b.dtb" { image = "bcm2712-rpi-5-b.dtb" }
+    file "start4.elf" { image = "start4.elf" }
+    file "fixup4.dat" { image = "fixup4.dat" }
   }
   size = 64M
 }

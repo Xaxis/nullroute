@@ -395,10 +395,15 @@ image: ## Build the hardened Raspberry Pi image. NOT IMPLEMENTED YET.
 	@echo '  satisfies eight assertions against it. This target used to say the'
 	@echo '  build system was "still being designed", which stopped being true.'
 	@echo
-	@echo '  WHAT IS MISSING IS THE BOOT HALF, and it is all of it: no GPU'
-	@echo '  firmware, no kernel, no initramfs to open the verity device, and no'
-	@echo '  nullroute binary in the root filesystem. The card that builds today'
-	@echo '  is an artifact for the verifiers to read, not a device.'
+	@echo '  THE BOOT PARTITION IS NOW REAL: Pi 4 GPU firmware, a 6.12 kernel and'
+	@echo '  the device trees for both boards the profile claims, extracted from'
+	@echo '  version-pinned and hash-checked Debian packages.'
+	@echo
+	@echo '  WHAT IS STILL MISSING is what turns those into a running device:'
+	@echo '  no initramfs to open the dm-verity device and pivot onto it, no'
+	@echo '  kernel modules in the root filesystem, and no nullroute binary. A'
+	@echo '  card with a kernel and no initramfs panics on not finding a root'
+	@echo '  filesystem, which is further along and no more bootable.'
 	@echo
 	@echo '  So this refuses rather than emitting that card under a name that'
 	@echo '  invites somebody to flash it. A card that boots to nothing is worse'

@@ -313,8 +313,12 @@ else's proof. Verification needs no key and works with the wallet locked:
 checking a stranger's signature should not cost the passphrase to your money.
 
 *Building one.* Not a flashable device yet. `make image` still refuses, because
-the boot firmware, the kernel and the initramfs are not wired up. What does
-exist is the half that can be checked: `make image-system` builds a Debian root
+there is no initramfs to open the dm-verity device, no kernel modules in the
+root filesystem, and no nullroute binary in it. The boot partition itself is
+real now: Pi 4 GPU firmware, a 6.12 kernel and the device trees for both boards,
+extracted from version-pinned and hash-checked Debian packages rather than
+installed, because the package carrying the firmware also carries Broadcom radio
+firmware the profile forbids. What does exist is the half that can be checked: `make image-system` builds a Debian root
 filesystem in a digest-pinned container and produces a system partition with a
 dm-verity root hash, and `make verify-image` then judges it against the profiles,
 satisfying eight assertions including the one that catches a verity salt
