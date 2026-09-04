@@ -4,6 +4,7 @@ import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
 import { TextKeyboard } from '../components/TextKeyboard.js'
 import { Info } from '../components/Info.js'
+import { useMoreBelow } from '../lib/scroll.js'
 
 /**
  * Checking somebody else's proof that they control an address.
@@ -97,6 +98,7 @@ const FIELDS = [
 ] as const
 
 export function VerifyMessageScreen(props: VerifyMessageScreenProps): ReactElement {
+  const moreBelow = useMoreBelow()
   const { onVerify, onScan, scanned, scannedProof, onBack, identity, banner, nav } = props
 
   const [address, setAddress] = useState('')
@@ -275,7 +277,11 @@ export function VerifyMessageScreen(props: VerifyMessageScreenProps): ReactEleme
           instead of the message. Now it shows the three values, and a tab
           takes them back to editing whichever one is wrong. */}
       {result !== null ? (
-        <div className="nr-card nr-card--tight nr-fill nr-scrolls" data-testid="verify-checked">
+        <div
+          className="nr-card nr-card--tight nr-fill nr-scrolls"
+          ref={moreBelow}
+          data-testid="verify-checked"
+        >
           {FIELDS.map((field) => (
             <div className="nr-field" key={field.id}>
               <span className="nr-field__label">{field.label}</span>

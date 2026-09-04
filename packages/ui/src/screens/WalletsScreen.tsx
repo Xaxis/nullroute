@@ -4,6 +4,7 @@ import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
 import { TextKeyboard } from '../components/TextKeyboard.js'
 import { Info } from '../components/Info.js'
+import { useMoreBelow } from '../lib/scroll.js'
 
 /**
  * Choosing which wallet to open.
@@ -100,6 +101,7 @@ export interface WalletsScreenProps {
 }
 
 export function WalletsScreen(props: WalletsScreenProps): ReactElement {
+  const moreBelow = useMoreBelow()
   const {
     wallets,
     max,
@@ -330,7 +332,11 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
         </div>
       )}
 
-      <div className="nr-wlist nr-wlist--scroll nr-scrolls" data-testid="wallet-rows">
+      <div
+        className="nr-wlist nr-wlist--scroll nr-scrolls"
+        ref={moreBelow}
+        data-testid="wallet-rows"
+      >
         {wallets.map((wallet) => (
           <button
             key={wallet.id}

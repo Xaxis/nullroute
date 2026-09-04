@@ -1,5 +1,6 @@
 import { type ReactElement, useCallback, useMemo, useState } from 'react'
 import { nextLetters, wordsWithPrefix } from '@nullroute/core'
+import { useMoreBelow } from '../lib/scroll.js'
 
 /**
  * Entering a BIP-39 mnemonic with a finger.
@@ -50,6 +51,7 @@ export interface WordKeyboardProps {
 const ALPHABET = 'abcdefghijklmnopqrstuvwxyz'.split('')
 
 export function WordKeyboard(props: WordKeyboardProps): ReactElement {
+  const moreBelow = useMoreBelow()
   const { words, onChange, target, onTyping, testId } = props
   const [prefix, setPrefix] = useState('')
 
@@ -99,7 +101,7 @@ export function WordKeyboard(props: WordKeyboardProps): ReactElement {
 
   return (
     <div className="nr-kb" data-testid={testId}>
-      <div className="nr-kb__entered nr-scrolls" data-testid="kb-words">
+      <div className="nr-kb__entered nr-scrolls" ref={moreBelow} data-testid="kb-words">
         {words.map((word, index) => (
           // Position is the identity here: the same word can legitimately
           // appear several times in a mnemonic.

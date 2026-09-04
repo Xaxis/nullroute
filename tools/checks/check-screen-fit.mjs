@@ -97,42 +97,6 @@ const SCRIM = `(() => {
    design target. */
 const MIN_SCRIM_DELTA = 12
 
-/**
- * Scrollers whose affordance the background trick cannot paint, and why.
- *
- * `.nr-scrolls` draws the shadow as the scroller's own background, which is
- * what makes it self-hiding: the `local` layers cover it when the content
- * reaches an edge, with no scroll listener anywhere. The cost is that an
- * OPAQUE CHILD over the bottom edge hides it completely, and on this device
- * most content sits on a card.
- *
- * Four scrollers are in that position, measured rather than guessed: the
- * wallet list's rows, the entered-words box, and two reference regions whose
- * content is a card. Between them they hide 48, 67, 399 and 491 pixels with
- * nothing on screen saying so, and the 491 is a descriptor with no cut element
- * to hint at it, which is the worst of the four.
- *
- * TWO THINGS THAT DO NOT WORK, so the next person does not spend the time
- * again. Applying the class was measured and changed nothing visible. A sticky
- * `::after` with `animation-timeline: scroll(self block)`, which would paint
- * over the content and self-hide because a scroll timeline is inactive without
- * overflow, computes to `opacity: 0` in this Chrome and painted nothing; it
- * also needed `flex: none` to stop the flex column shrinking it to zero
- * height, which is worth knowing on its own.
- *
- * What is left is a small component that measures its own overflow and renders
- * a fade, which is a layout change across four screens and is not being made
- * blind at the end of a long session.
- *
- * Listed rather than skipped, so a FIFTH scroller in this position fails.
- */
-const NO_AFFORDANCE_YET = new Map([
-  ['nr-kb__entered nr-scrolls', 'the entered words sit on their own surface'],
-  ['nr-wlist nr-wlist--scroll nr-scrolls', 'wallet rows are opaque and flush to the clip'],
-  ['nr-fill nr-scrolls', 'the export tab descriptor sits on a card'],
-  ['nr-split nr-split--note nr-fill nr-scrolls', 'the quorum addresses sit on a card'],
-])
-
 const DIM = '\u001b[2m'
 const OFF = '\u001b[0m'
 
@@ -775,29 +739,33 @@ const INNER_SCROLLERS = `(() => {
        regions of the page that look like they end where they are cut. */
     if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') continue
     /*
-     * Whether the affordance can actually be SEEN, not whether a class is on
+     * Whether the affordance is actually PAINTED, not whether a class is on
      * the element.
      *
-     * The shadow is painted as the scroller's own background, so an opaque
-     * child sitting over the bottom edge hides it completely. That is exactly
-     * what the wallet list does: full-width rows on surface-2, flush to the
-     * clip, so adding the class changed nothing visible. A check that asked
-     * only for the class would have passed on an invisible affordance, which
-     * is the failure this file keeps finding elsewhere.
+     * A class-presence check would have passed on all four of these while
+     * nothing was visible. .nr-scrolls draws the shadow as the scroller's own
+     * background, and each of them has an opaque child over the bottom edge
+     * that covers it, so the class was there and the affordance was not. That
+     * is the exact failure this file keeps finding elsewhere, committed here.
      *
-     * Sampled at the bottom edge, where the shadow is: if the top element
-     * there is the scroller itself, its background shows through.
+     * Two ways to satisfy it. The sticky ::after, which paints over the
+     * content and is marked by useMoreBelow: read its computed opacity and
+     * height. Or the background trick showing through, for a scroller whose
+     * content is transparent: sampled at the bottom edge, where the shadow is.
      */
+    const after = getComputedStyle(el, '::after')
+    const fading = Number.parseFloat(after.opacity) > 0.5 && Number.parseInt(after.height, 10) > 0
     const box = el.getBoundingClientRect()
     const x = Math.round(box.left + box.width / 2)
     const y = Math.round(box.bottom - 3)
-    const top = document.elementFromPoint(x, y)
-    const exposed = top === el
+    const exposed = document.elementFromPoint(x, y) === el
     found.push({
       cls: el.className,
       hidden: el.scrollHeight - el.clientHeight,
-      marked: el.classList.contains('nr-scrolls') && exposed,
-      why: el.classList.contains('nr-scrolls') && !exposed ? 'covered' : 'unmarked',
+      marked: fading || exposed,
+      why: el.classList.contains('nr-scrolls')
+        ? 'marked nr-scrolls, but nothing is painted over the bottom edge'
+        : 'no affordance at all',
     })
   }
   return JSON.stringify(found)
@@ -1117,6 +1085,32 @@ async function main() {
     )
 
     /*
+     * BEFORE the scroll, like MUST_SEE and for the same reason.
+     *
+     * This sat after SCROLL_TO_END on the first attempt, which scrolls every
+     * scroller to its end: `data-more-below` is correctly gone there, and the
+     * check reported four affordances as missing that were working. The
+     * question is what somebody sees when the screen arrives, and "more below"
+     * is only true before they have gone looking.
+     */
+    for (const inner of JSON.parse(
+      (
+        await cdp(
+          page,
+          'Runtime.evaluate',
+          { expression: INNER_SCROLLERS, returnByValue: true },
+          state
+        )
+      ).result.value
+    )) {
+      if (inner.marked === true) continue
+      const key = `${String(inner.cls)}`
+      if (!unmarkedScrollers.has(key)) {
+        unmarkedScrollers.set(key, { label, hidden: inner.hidden, why: inner.why })
+      }
+    }
+
+    /*
      * A keyboard displaced by a refusal gets asked again after one keystroke.
      *
      * The screens that do this promise the banner goes when typing starts, and
@@ -1154,23 +1148,6 @@ async function main() {
       state
     )
     const measured = JSON.parse(result.value)
-    for (const inner of JSON.parse(
-      (
-        await cdp(
-          page,
-          'Runtime.evaluate',
-          { expression: INNER_SCROLLERS, returnByValue: true },
-          state
-        )
-      ).result.value
-    )) {
-      if (inner.marked === true) continue
-      const key = `${String(inner.cls)}`
-      if (NO_AFFORDANCE_YET.has(key)) continue
-      if (!unmarkedScrollers.has(key)) {
-        unmarkedScrollers.set(key, { label, hidden: inner.hidden, why: inner.why })
-      }
-    }
 
     const mustSee = JSON.parse(seen.result.value)
     for (const id of mustSee.drawn) {
@@ -1208,32 +1185,22 @@ async function main() {
    *
    * The fix is a gallery state, not a removed marker.
    */
-  /* Named in the output rather than silent, so the exemption is something a
-     reader trips over rather than something they have to go looking for. */
-  if (unmarkedScrollers.size === 0 && NO_AFFORDANCE_YET.size > 0) {
-    console.log(
-      `${DIM}    ${String(NO_AFFORDANCE_YET.size)} scroller(s) still have no visible ` +
-        `affordance, listed in check-screen-fit.mjs${OFF}`
-    )
-  }
-
   if (unmarkedScrollers.size > 0) {
     console.error(
       `\ncheck-screen-fit: ${String(unmarkedScrollers.size)} scroller(s) with no affordance:\n`
     )
     for (const [cls, where] of unmarkedScrollers) {
-      const note = where.why === 'covered' ? ' (marked, but a child paints over it)' : ''
       console.error(
-        `    ${cls || '(no class)'}  hides ${String(where.hidden)}px${note}  in ${where.label}`
+        `    ${cls || '(no class)'}  hides ${String(where.hidden)}px  ${where.why}\n` +
+          `        seen in ${where.label}`
       )
     }
     console.error(
-      `\n  This panel has no mouse, no scrollbar and no hover. .nr-screen__body carries\n` +
-        `  a scroll shadow because, in its own words, "a user sees text that appears to\n` +
-        `  end at the bottom edge and has no reason to swipe". A scroller nested inside\n` +
-        `  it needs the same: the wallet list on a device with three wallets was an 89px\n` +
-        `  box holding 156px of rows, cut through the middle of the second. Add the\n` +
-        `  nr-scrolls class, and set --scroll-ground to whatever it sits on.\n`
+      `\n  This panel has no mouse, no scrollbar and no hover, so a region cut off at\n` +
+        `  its bottom edge looks exactly like a region that ends there. Add the\n` +
+        `  nr-scrolls class AND the useMoreBelow ref: the class alone paints the shadow\n` +
+        `  as the scroller's own background, which any opaque child covers, and that is\n` +
+        `  measured here rather than assumed. See packages/ui/src/lib/scroll.ts.\n`
     )
     failed += 1
   }

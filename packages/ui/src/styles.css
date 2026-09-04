@@ -1477,6 +1477,57 @@ body {
       0.75rem no-repeat scroll;
 }
 
+/*
+ * The affordance for a scroller whose content is opaque, which is most of them.
+ *
+ * The background trick below is self-hiding and needs no listener, which is
+ * why it is the first choice. Its cost is that it paints the shadow as the
+ * scroller's OWN background, so a child with a background of its own, sitting
+ * over the bottom edge, hides it completely. On this device that is the common
+ * case rather than the exception: measured at 800x480, the export tab hid
+ * 491px of descriptor behind an opaque card, the quorum addresses 399px, the
+ * wallet list 67px behind rows flush to the clip, and the entered words 48px.
+ *
+ * So this one paints OVER the content: a sticky pseudo-element pinned to the
+ * bottom of the scrollport, which comes after the content in paint order.
+ *
+ * IT MUST NOT LIE. A permanent fade under a list that fits says "there is more"
+ * when there is not, which on this device is the same class of defect as a
+ * warning nobody can see. `animation-timeline: scroll(self block)` is the pure
+ * CSS answer, since a scroll timeline is inactive without overflow, and it was
+ * tried and measured: it computes to opacity 0 in this Chrome and paints
+ * nothing. So the presence of overflow is decided in script, by the one thing
+ * that can actually measure it, and written here as an attribute.
+ */
+.nr-scrolls::after {
+  content: '';
+  display: block;
+  position: sticky;
+  bottom: 0;
+  height: 0.75rem;
+  /* Never shrunk. These scrollers are flex columns, and a flex item with a
+     height and the default flex-shrink collapses to zero in a constrained one:
+     measured, this computed to height 0px and painted nothing. */
+  flex: none;
+  /* Pulled back over the content rather than adding to it, so a scroller that
+     fits is not made to overflow by its own affordance. */
+  margin-top: -0.75rem;
+  pointer-events: none;
+  background: linear-gradient(transparent, var(--color-scroll-scrim));
+  /* NO TRANSITION. A fade-in would be invisible to a person, since this
+     appears as the screen does, and it makes the state unmeasurable: a check
+     reading the computed opacity catches it mid-flight and reports an
+     affordance that is there as missing. That happened, twice, to two
+     different probes. State this device can be asked about beats a 120ms
+     easing nobody sees. */
+  opacity: 0;
+}
+
+/* Set by useMoreBelow, and removed the moment the end is reached. */
+.nr-scrolls[data-more-below]::after {
+  opacity: 1;
+}
+
 /* WHY THIS IS A CLASS NOW AND NOT ONE SELECTOR.
 
    The argument above is about the body and applies unchanged to every scroller

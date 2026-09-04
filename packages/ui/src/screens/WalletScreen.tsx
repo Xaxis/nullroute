@@ -3,6 +3,7 @@ import { Screen } from '../components/Screen.js'
 import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
 import { QrDisplay } from '../components/QrDisplay.js'
+import { useMoreBelow } from '../lib/scroll.js'
 
 /**
  * The wallet: accounts, addresses, and export.
@@ -151,6 +152,7 @@ const TABS: { readonly id: Tab; readonly label: string }[] = [
 ]
 
 export function WalletScreen(props: WalletScreenProps): ReactElement {
+  const moreBelow = useMoreBelow()
   const {
     fingerprint,
     quorums = [],
@@ -413,7 +415,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
           looking at. Measured then: ten rows laid out in a 333px window with
           none of them fully on screen, on the screen named Addresses. */}
       {tab === 'addresses' && (
-        <div className="nr-card nr-card--tight nr-fill nr-scrolls">
+        <div className="nr-card nr-card--tight nr-fill nr-scrolls" ref={moreBelow}>
           <table className="nr-table nr-table--dense">
             {/* Sticky, so the headings survive the scroll they now sit above. */}
             <thead className="nr-table__stick">
@@ -514,7 +516,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
       )}
 
       {tab === 'export' && descriptor !== null && (
-        <div className="nr-fill nr-scrolls">
+        <div className="nr-fill nr-scrolls" ref={moreBelow}>
           {/* THE CODE BESIDE THE LINE IT ENCODES, the same way the signed
               transaction and the receive address do it. Everything this device
               hands out is a block of characters and a square, and they belong

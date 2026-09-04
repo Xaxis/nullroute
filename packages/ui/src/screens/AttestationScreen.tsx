@@ -5,6 +5,7 @@ import { Button } from '../components/Button.js'
 import { Hash } from '../components/Hash.js'
 import { type AttestationView } from './LockScreen.js'
 import { Info } from '../components/Info.js'
+import { useMoreBelow } from '../lib/scroll.js'
 
 /**
  * Check the device, after it is open.
@@ -61,6 +62,7 @@ export interface AttestationScreenProps {
 const PASSING = new Set(['passed', 'not-applicable'])
 
 export function AttestationScreen(props: AttestationScreenProps): ReactElement {
+  const moreBelow = useMoreBelow()
   const {
     attestation,
     expanded = false,
@@ -143,11 +145,15 @@ export function AttestationScreen(props: AttestationScreenProps): ReactElement {
           The hash is what somebody compares and the table is what they read,
           and neither is an aside to the other, so they share the row. The table
           scrolls inside itself rather than taking the hash with it. */}
-      <div className="nr-split nr-split--even nr-fill nr-scrolls" data-testid="attestation-split">
+      <div
+        className="nr-split nr-split--even nr-fill nr-scrolls"
+        ref={moreBelow}
+        data-testid="attestation-split"
+      >
         {/* Scrolls too, because the standing caveats moved in here. They are
             about the hash directly above them and they were below the split,
             where they took 100px off a row that had 238 to give. */}
-        <div className="nr-split__col nr-fill nr-scrolls">
+        <div className="nr-split__col nr-fill nr-scrolls" ref={moreBelow}>
           <div className="nr-attest" data-testid="attestation-root">
             <div className="nr-attest__label">Manifest root</div>
             <Hash
@@ -207,7 +213,7 @@ export function AttestationScreen(props: AttestationScreenProps): ReactElement {
         {/* Every check by name, which the lock screen does not have room for. It
           spends its space on the hash, and by the time somebody is here they
           are asking a more detailed question. */}
-        <div className="nr-split__col nr-fill nr-scrolls">
+        <div className="nr-split__col nr-fill nr-scrolls" ref={moreBelow}>
           <table className="nr-table nr-table--dense" data-testid="attestation-checks">
             <thead className="nr-table__stick">
               <tr>

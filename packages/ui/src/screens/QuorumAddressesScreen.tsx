@@ -3,6 +3,7 @@ import { Screen } from '../components/Screen.js'
 import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
 import { Info } from '../components/Info.js'
+import { useMoreBelow } from '../lib/scroll.js'
 
 /**
  * Addresses for a registered quorum.
@@ -60,6 +61,7 @@ export interface QuorumAddressesScreenProps {
 const PAGE = 10
 
 export function QuorumAddressesScreen(props: QuorumAddressesScreenProps): ReactElement {
+  const moreBelow = useMoreBelow()
   const { descriptor, position, onAddresses, onBack, steps, identity, banner, nav } = props
 
   const [change, setChange] = useState(false)
@@ -159,8 +161,12 @@ export function QuorumAddressesScreen(props: QuorumAddressesScreenProps): ReactE
 
           The table scrolls inside itself rather than taking the instruction
           and the branch picker with it. */}
-      <div className="nr-split nr-split--note nr-fill nr-scrolls" data-testid="quorum-split">
-        <div className="nr-split__col nr-fill nr-scrolls">
+      <div
+        className="nr-split nr-split--note nr-fill nr-scrolls"
+        ref={moreBelow}
+        data-testid="quorum-split"
+      >
+        <div className="nr-split__col nr-fill nr-scrolls" ref={moreBelow}>
           <table className="nr-table nr-table--dense" data-testid="quorum-rows">
             <thead className="nr-table__stick">
               <tr>
