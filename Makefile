@@ -158,7 +158,7 @@ profiles: ## Hardening profiles validate, and every assertion is falsifiable
 sbom: ## Emit a CycloneDX SBOM as a build artifact
 	@node tools/gen-sbom.mjs
 
-sbom-check: ## The committed SBOM still matches the installed tree
+sbom-check: ## The SBOM on disk still matches the installed tree
 	@node tools/gen-sbom.mjs --check
 
 repro-check: ## Build twice and assert the output is byte-identical

@@ -439,7 +439,7 @@ A release publishes, alongside the image:
 | `BUILD.lock` | Every value the build pinned to be deterministic: the epoch, the snapshot timestamp, the verity salt, and every UUID and GUID |
 | `PACKAGES.lock` | Exact package list, `dpkg-query` output sorted under `LC_ALL=C` |
 | `DEBS.lock` | Every contributing `.deb` with a sha256 and a resolvable pool URL |
-| `sbom.spdx.json` | Software bill of materials |
+| `sbom.cdx.json` | Software bill of materials, CycloneDX, from `npm sbom` |
 | `REPRODUCE.md` | How to rebuild it and arrive at the same hashes |
 
 Note the shape of `SHA256SUMS`: it is the same choice as `MANIFEST.lock`, for
