@@ -28,8 +28,29 @@ import { chromeProfile, finish, reap } from '../lib/browser.mjs'
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const OUT = join(ROOT, 'apps/web/out')
 
-// 320px is the narrowest phone still in real use; 390px is a current iPhone.
-const WIDTHS = [320, 390]
+/**
+ * 320px is the narrowest phone still in real use; 390px is a current iPhone.
+ *
+ * THE DESKTOP WIDTHS ARE NOT PADDING, AND `mobile` IS THE WHOLE POINT OF THEM.
+ * Phone emulation gives Chrome overlay scrollbars, which take no layout space,
+ * so `100vw` and the content box are exactly equal and a full-bleed element
+ * sized in viewport units fits perfectly. A desktop viewport reserves a real
+ * gutter for the scrollbar, `100vw` then counts it and the content box does
+ * not, and the element is a scrollbar wider than the page it sits on.
+ *
+ * That is not hypothetical. The hero backdrop was `w-screen`, every page long
+ * enough to scroll was 8px too wide at 768, 1024, 1280 and 1600, and this file
+ * reported "14 page renders fit" on every run because it measured the two
+ * widths where the defect is arithmetically impossible. A check that cannot
+ * observe the failure it is named after passes for the wrong reason.
+ */
+const VIEWPORTS = [
+  { width: 320, mobile: true },
+  { width: 390, mobile: true },
+  { width: 768, mobile: false },
+  { width: 1024, mobile: false },
+  { width: 1440, mobile: false },
+]
 const PORT = 8911
 
 const CHROME_CANDIDATES = [
@@ -216,12 +237,12 @@ async function main() {
   let failures = 0
   let checked = 0
 
-  for (const width of WIDTHS) {
+  for (const { width, mobile } of VIEWPORTS) {
     await cdp(page, ++seq, 'Emulation.setDeviceMetricsOverride', {
       width,
       height: 900,
       deviceScaleFactor: 1,
-      mobile: true,
+      mobile,
     })
 
     for (const path of pages) {
@@ -245,7 +266,10 @@ async function main() {
           console.error(`      spans ${o.left}..${o.right}   ${JSON.stringify(o.text)}`)
         }
         console.error(
-          '    A flex or grid item will not shrink below its content unless it has min-width:0.\n'
+          '    A flex or grid item will not shrink below its content unless it has min-width:0.\n' +
+            '    An overhang the width of a scrollbar is a different bug: 100vw (Tailwind\n' +
+            '    w-screen) counts the scrollbar gutter and the content box does not, so a\n' +
+            '    full-bleed backdrop sized that way is always wider than the page.\n'
         )
       }
 
@@ -275,7 +299,10 @@ async function main() {
     console.error(`check-responsive: ${failures} of ${checked} page renders scroll sideways`)
     process.exit(1)
   }
-  console.log(`check-responsive: ${checked} page renders fit at ${WIDTHS.join('px and ')}px`)
+  console.log(
+    `check-responsive: ${checked} page renders fit at ` +
+      `${VIEWPORTS.map((v) => `${v.width}px`).join(', ')}`
+  )
   // The verdict is printed and nothing is left to wait for. See tools/lib/reap.mjs.
   finish(0)
 }

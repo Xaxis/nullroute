@@ -23,19 +23,28 @@ import { DiceDemo } from '../DiceDemo'
 export function Hero({ facts }: { facts: Facts }) {
   return (
     <section className="relative pt-16 pb-14 sm:pt-24 sm:pb-20">
-      {/* A wash rather than a picture. Full bleed because the section sits in a
-          max-w-5xl column and a backdrop clipped to that column reads as a
-          panel. An arbitrary Tailwind value, compiled into the stylesheet, so
-          no inline style reaches the CSP. */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-screen -z-10 overflow-hidden"
-      >
+      {/* A wash rather than a picture. An arbitrary Tailwind value, compiled
+          into the stylesheet, so no inline style reaches the CSP.
+
+          THE SECTION IS FULL WIDTH AND THE COLUMN IS INSIDE IT. This used to be
+          the other way round, with the wash escaping a max-w-5xl parent via
+          `left-1/2 -translate-x-1/2 w-screen`, and that is a bug rather than a
+          style: 100vw counts the vertical scrollbar and the content box does
+          not. On every page long enough to scroll, the wash was 8px wider than
+          the viewport and the whole document scrolled sideways at 768px, 1024px,
+          1280px and 1600px. check-responsive measures 320px and 390px, where
+          mobile emulation uses overlay scrollbars and the gap is exactly zero,
+          so the one bug it exists to catch was invisible to it.
+
+          Inverting the nesting removes the viewport unit instead of correcting
+          it. `inset-0` on a full-width section is the content width by
+          construction, whatever the scrollbar is doing. */}
+      <div aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(70%_60%_at_50%_0%,color-mix(in_srgb,var(--color-signal-500)_6%,transparent)_0%,transparent_70%)]" />
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-ink-950 to-transparent" />
       </div>
 
-      <div className="relative">
+      <div className="relative mx-auto max-w-5xl px-5">
         <p className="font-mono text-xs uppercase tracking-[0.22em] text-ink-500">
           Air-gapped Bitcoin signer
         </p>

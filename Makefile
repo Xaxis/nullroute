@@ -594,7 +594,7 @@ web-isolation: ## The site loads nothing off-origin and emits no inline styles
 web-csp: ## vercel.json's CSP still matches the built inline script hashes
 	@node tools/gen-csp.mjs --check
 
-web-responsive: ## No page scrolls sideways at 320px or 390px. Drives a real browser.
+web-responsive: ## No page scrolls sideways, phone to desktop. Drives a real browser.
 	@node tools/checks/check-responsive.mjs
 
 web-check: web-lint web-type-check web-build web-isolation web-csp web-responsive ## Every website check

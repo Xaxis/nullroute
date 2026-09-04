@@ -426,7 +426,7 @@ jobs:
       # sideways while the build, the types and the tests all stay green.
       - uses: browser-actions/setup-chrome@v1
         id: chrome
-      - name: No page scrolls sideways on a phone
+      - name: No page scrolls sideways, phone to desktop
         run: make web-responsive
         env:
           CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}

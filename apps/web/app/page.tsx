@@ -4,6 +4,7 @@ import { readFacts } from '../lib/facts'
 import { Hero } from '../components/hero/Hero'
 import { Section } from '../components/Section'
 import { Terminal } from '../components/Terminal'
+import { REPO_URL } from '../lib/site'
 
 /**
  * This is a build record, not a product page, and it makes ONE argument: you
@@ -103,128 +104,133 @@ export default function HomePage() {
   const working = WORKING.filter((entry) => entry.specs.every((id) => facts.has(id)))
 
   return (
-    <div className="mx-auto max-w-5xl px-5">
+    <>
+      {/* Outside the column, because its backdrop is full bleed and the only
+          honest way to draw one is to be full width rather than to escape a
+          narrower parent with a viewport unit. See the comment in Hero. */}
       <Hero facts={facts} />
 
-      {/* --- 01 The check ------------------------------------------------- */}
-      <Section index="01" label="How you check it">
-        <p className="text-lg text-ink-200 max-w-2xl leading-relaxed">
-          Every module ships a specification a machine reads. The build fails when the code, the
-          specs and the tests stop agreeing, so the specification cannot quietly fall behind the
-          thing it describes.
-        </p>
+      <div className="mx-auto max-w-5xl px-5">
+        {/* --- 01 The check ----------------------------------------------- */}
+        <Section index="01" label="How you check it">
+          <p className="text-lg text-ink-200 max-w-2xl leading-relaxed">
+            Every module ships a specification a machine reads. The build fails when the code, the
+            specs and the tests stop agreeing, so the specification cannot quietly fall behind the
+            thing it describes.
+          </p>
 
-        <div className="mt-8">
-          <Terminal command="make verify" facts={facts} />
-        </div>
-
-        <p className="mt-8 text-base text-ink-400 max-w-2xl leading-relaxed">
-          The last line is the manifest root: every source file hashed, sorted under{' '}
-          <code className="font-mono text-ink-300">LC_ALL=C</code>, in a format coreutils produced
-          and coreutils can check. The device prints the same string on its lock screen. Build the
-          source yourself and compare the two. If they differ, do not enter your PIN.{' '}
-          <Link
-            href="/docs/verification"
-            className="text-signal-400 hover:text-signal-300 underline underline-offset-4 decoration-ink-700"
-          >
-            How to do that
-          </Link>
-          .
-        </p>
-
-        {working.length > 0 && (
-          <div className="mt-10">
-            <p className="font-mono text-[0.7rem] uppercase tracking-[0.18em] text-ink-500">
-              Specified and implemented
-            </p>
-            <ul className="mt-4 grid gap-x-8 gap-y-2 sm:grid-cols-2">
-              {working.map((entry) => (
-                <li key={entry.term} className="text-sm text-ink-300 leading-relaxed">
-                  {entry.term}
-                </li>
-              ))}
-            </ul>
-            <p className="mt-4 text-sm text-ink-500 leading-relaxed">
-              Each line is present because the verifier reports every spec behind it as implemented.
-              Nothing here is typed in by hand.
-            </p>
+          <div className="mt-8">
+            <Terminal command="make verify" facts={facts} />
           </div>
-        )}
-      </Section>
 
-      {/* --- 02 Reasons not to --------------------------------------------- */}
-      <Section index="02" label="Do not use this">
-        <p className="text-lg text-ink-200 max-w-2xl leading-relaxed">
-          Not modesty. Four specific reasons, and any one of them is enough.
-        </p>
-
-        <dl className="mt-8 divide-y divide-ink-850 border-y border-ink-850">
-          {REFUSALS.map(([term, detail]) => (
-            <div key={term} className="py-5 sm:grid sm:grid-cols-[15rem_minmax(0,1fr)] sm:gap-8">
-              <dt className="text-sm font-medium text-caution-300">{term}</dt>
-              <dd className="mt-1.5 sm:mt-0 text-sm text-ink-400 leading-relaxed">{detail}</dd>
-            </div>
-          ))}
-        </dl>
-
-        <p className="mt-8 text-base text-ink-400 max-w-2xl leading-relaxed">
-          The full list, including what this deliberately does not defend against, is in the{' '}
-          <Link
-            href="/docs/threat-model"
-            className="text-signal-400 hover:text-signal-300 underline underline-offset-4 decoration-ink-700"
-          >
-            threat model
-          </Link>
-          . It is long on purpose.
-        </p>
-      </Section>
-
-      {/* --- 03 Leave ------------------------------------------------------ */}
-      <Section index="03" label="Read it yourself">
-        <p className="text-lg text-ink-200 max-w-2xl leading-relaxed">
-          The useful thing here is not the device. It is the method: specifications a machine can
-          check, invariants bound to named tests, and a build that fails when a claim stops being
-          true. Take that and build your own.
-        </p>
-
-        <p className="mt-5 text-base text-ink-400 max-w-2xl leading-relaxed">
-          There is no download and the source is the deliverable. It runs on a Mac or a Linux box
-          with no hardware at all, and a real one is about $100 in parts. A wallet here is a BIP-39
-          mnemonic and a canonical BIP-380 descriptor, so Bitcoin Core restores it with none of this
-          code involved. No releases, no binaries, no support, no warranty. The most valuable thing
-          you can do with this is find where it is wrong.
-        </p>
-
-        <div className="mt-9 divide-y divide-ink-850 border-y border-ink-850">
-          {DOCS.map((doc) => (
+          <p className="mt-8 text-base text-ink-400 max-w-2xl leading-relaxed">
+            The last line is the manifest root: every source file hashed, sorted under{' '}
+            <code className="font-mono text-ink-300">LC_ALL=C</code>, in a format coreutils produced
+            and coreutils can check. The device prints the same string on its lock screen. Build the
+            source yourself and compare the two. If they differ, do not enter your PIN.{' '}
             <Link
-              key={doc.slug}
-              href={`/docs/${doc.slug}`}
-              className="group block py-4 sm:grid sm:grid-cols-[15rem_minmax(0,1fr)] sm:gap-8"
+              href="/docs/verification"
+              className="text-signal-400 hover:text-signal-300 underline underline-offset-4 decoration-ink-700"
             >
-              <div className="text-sm font-medium text-ink-100 group-hover:text-signal-400 transition-colors">
-                {doc.title}
-              </div>
-              <p className="mt-1 sm:mt-0 text-sm text-ink-400">{doc.question}</p>
+              How to do that
             </Link>
-          ))}
-        </div>
+            .
+          </p>
 
-        <p className="mt-4 text-sm text-ink-500">
-          Rendered from <code className="font-mono text-ink-400">docs/</code> in the repository, the
-          same bytes a reviewer reads in the source.
-        </p>
+          {working.length > 0 && (
+            <div className="mt-10">
+              <p className="font-mono text-[0.7rem] uppercase tracking-[0.18em] text-ink-500">
+                Specified and implemented
+              </p>
+              <ul className="mt-4 grid gap-x-8 gap-y-2 sm:grid-cols-2">
+                {working.map((entry) => (
+                  <li key={entry.term} className="text-sm text-ink-300 leading-relaxed">
+                    {entry.term}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-4 text-sm text-ink-500 leading-relaxed">
+                Each line is present because the verifier reports every spec behind it as
+                implemented. Nothing here is typed in by hand.
+              </p>
+            </div>
+          )}
+        </Section>
 
-        <a
-          href="https://github.com/Xaxis/nullroute"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-9 inline-flex items-center gap-2.5 font-mono text-sm text-ink-200 border-b border-ink-700 pb-1 hover:text-signal-400 hover:border-signal-500 transition-colors"
-        >
-          github.com/Xaxis/nullroute
-          <span aria-hidden="true">&rarr;</span>
-        </a>
-      </Section>
-    </div>
+        {/* --- 02 Reasons not to --------------------------------------------- */}
+        <Section index="02" label="Do not use this">
+          <p className="text-lg text-ink-200 max-w-2xl leading-relaxed">
+            Not modesty. Four specific reasons, and any one of them is enough.
+          </p>
+
+          <dl className="mt-8 divide-y divide-ink-850 border-y border-ink-850">
+            {REFUSALS.map(([term, detail]) => (
+              <div key={term} className="py-5 sm:grid sm:grid-cols-[15rem_minmax(0,1fr)] sm:gap-8">
+                <dt className="text-sm font-medium text-caution-300">{term}</dt>
+                <dd className="mt-1.5 sm:mt-0 text-sm text-ink-400 leading-relaxed">{detail}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <p className="mt-8 text-base text-ink-400 max-w-2xl leading-relaxed">
+            The full list, including what this deliberately does not defend against, is in the{' '}
+            <Link
+              href="/docs/threat-model"
+              className="text-signal-400 hover:text-signal-300 underline underline-offset-4 decoration-ink-700"
+            >
+              threat model
+            </Link>
+            . It is long on purpose.
+          </p>
+        </Section>
+
+        {/* --- 03 Leave ------------------------------------------------------ */}
+        <Section index="03" label="Read it yourself">
+          <p className="text-lg text-ink-200 max-w-2xl leading-relaxed">
+            The useful thing here is not the device. It is the method: specifications a machine can
+            check, invariants bound to named tests, and a build that fails when a claim stops being
+            true. Take that and build your own.
+          </p>
+
+          <p className="mt-5 text-base text-ink-400 max-w-2xl leading-relaxed">
+            There is no download and the source is the deliverable. It runs on a Mac or a Linux box
+            with no hardware at all, and a real one is about $100 in parts. A wallet here is a
+            BIP-39 mnemonic and a canonical BIP-380 descriptor, so Bitcoin Core restores it with
+            none of this code involved. No releases, no binaries, no support, no warranty. The most
+            valuable thing you can do with this is find where it is wrong.
+          </p>
+
+          <div className="mt-9 divide-y divide-ink-850 border-y border-ink-850">
+            {DOCS.map((doc) => (
+              <Link
+                key={doc.slug}
+                href={`/docs/${doc.slug}`}
+                className="group block py-4 sm:grid sm:grid-cols-[15rem_minmax(0,1fr)] sm:gap-8"
+              >
+                <div className="text-sm font-medium text-ink-100 group-hover:text-signal-400 transition-colors">
+                  {doc.title}
+                </div>
+                <p className="mt-1 sm:mt-0 text-sm text-ink-400">{doc.question}</p>
+              </Link>
+            ))}
+          </div>
+
+          <p className="mt-4 text-sm text-ink-500">
+            Rendered from <code className="font-mono text-ink-400">docs/</code> in the repository,
+            the same bytes a reviewer reads in the source.
+          </p>
+
+          <a
+            href={REPO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-9 inline-flex items-center gap-2.5 font-mono text-sm text-ink-200 border-b border-ink-700 pb-1 hover:text-signal-400 hover:border-signal-500 transition-colors"
+          >
+            github.com/Xaxis/nullroute
+            <span aria-hidden="true">&rarr;</span>
+          </a>
+        </Section>
+      </div>
+    </>
   )
 }
