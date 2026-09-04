@@ -345,6 +345,18 @@ image-repro: image-env $(IMAGE_ENVFILE) ## Build the card TWICE and run the repr
 	# whether the pipeline is deterministic, and a second hash of the same bytes
 	# cannot answer it.
 	#
+	# TWO SEPARATE `docker run` INVOCATIONS, and that is the whole point of this
+	# recipe rather than a detail of it. Both builds used to run inside one
+	# container, and that configuration cannot observe anything the container
+	# contributes: mmdebstrap writes the build machine's hostname into
+	# /etc/hostname, Docker assigns a fresh random one per run, and the root
+	# hash was therefore a function of a container id. Four separate runs gave
+	# four different root hashes while this target reported success every time,
+	# because inside one container the hostname is constant.
+	#
+	# A reproducibility check that shares its environment between the two builds
+	# measures the half that was never in doubt.
+	#
 	# Judged by provisioning/checks/, not by a cmp in this file. The whole
 	# design rests on the unchanged verifiers deciding, and a Makefile that
 	# graded its own output would be the backend influencing its own verdict.
@@ -352,9 +364,12 @@ image-repro: image-env $(IMAGE_ENVFILE) ## Build the card TWICE and run the repr
 		-v "$(CURDIR)":/work \
 		-e SOURCE_DATE_EPOCH="$$(git log -1 --format=%ct)" \
 		--env-file $(IMAGE_ENVFILE) \
-		$(IMAGE_ENV) sh -c '\
-			NULLROUTE_WORK=/build-a /work/provisioning/build/build-system.sh /work/out/repro-a >/dev/null && \
-			NULLROUTE_WORK=/build-b /work/provisioning/build/build-system.sh /work/out/repro-b >/dev/null'
+		$(IMAGE_ENV) /work/provisioning/build/build-system.sh /work/out/repro-a >/dev/null
+	@docker run --rm --privileged --platform linux/arm64 \
+		-v "$(CURDIR)":/work \
+		-e SOURCE_DATE_EPOCH="$$(git log -1 --format=%ct)" \
+		--env-file $(IMAGE_ENVFILE) \
+		$(IMAGE_ENV) /work/provisioning/build/build-system.sh /work/out/repro-b >/dev/null
 	@echo "  build A  $$(cat out/repro-a/root-hash)"
 	@echo "  build B  $$(cat out/repro-b/root-hash)"
 	@echo

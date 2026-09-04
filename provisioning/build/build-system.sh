@@ -81,6 +81,23 @@ mkdir -p "$ROOTFS/usr/lib/systemd/system"
 cp /work/provisioning/units/nullrouted.service "$ROOTFS/usr/lib/systemd/system/"
 cp /work/provisioning/units/nullroute-kiosk.service "$ROOTFS/usr/lib/systemd/system/"
 
+# THE HOSTNAME, PINNED, AND THIS IS THE ONE THAT MATTERED.
+#
+# mmdebstrap writes the BUILD MACHINE's hostname into /etc/hostname. Under
+# Docker that is a fresh random container id on every `docker run`, so the root
+# filesystem contained a different byte string every time, and therefore so did
+# the erofs image, and therefore so did the dm-verity root hash. The number the
+# lock screen displays, the number docs/VERIFICATION.md tells a stranger to
+# compare against a published value, was a function of a Docker container id.
+#
+# Measured across four separate runs: four different root hashes, and a diff of
+# two exported root filesystems found exactly one file of 5,046 differing.
+#
+# `make image-repro` passed throughout, because it ran both builds inside ONE
+# container, which is the single configuration where this defect cannot appear.
+# That target now uses two separate runs for exactly this reason.
+printf 'nullroute\n' > "$ROOTFS/etc/hostname"
+
 # The pinned kernel command line, at the path the device will read it from.
 #
 # On a Raspberry Pi /boot/firmware is where the FAT boot partition is mounted,

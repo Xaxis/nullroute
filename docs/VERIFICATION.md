@@ -65,14 +65,14 @@ Compute the root hash:
 
 ```console
 $ sha256sum MANIFEST.lock
-ce9e82b6b7d342bb061c70377001c1bd353747eded40831924a98edc7e7b0ab8  MANIFEST.lock
+da552c087744ecfc6c3a67d2eb3849fbad734e13bb6ae143ac7dc05d1021e33d  MANIFEST.lock
 ```
 
 Regenerate the manifest from scratch and confirm it matches what is committed:
 
 ```console
 $ git ls-files -z packages spec provisioning | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum
-ce9e82b6b7d342bb061c70377001c1bd353747eded40831924a98edc7e7b0ab8  -
+da552c087744ecfc6c3a67d2eb3849fbad734e13bb6ae143ac7dc05d1021e33d  -
 ```
 
 On macOS use `shasum -a 256` in place of `sha256sum`. The values are identical.
@@ -498,10 +498,21 @@ is to build the image yourself and compare hashes. `REPRODUCE.md` in each
 release gives the exact commands, the pinned builder commit, and the snapshot
 timestamp.
 
-Where reproducibility stops short, that is stated rather than glossed. Until the
-image reproduces byte-identically across different machines, different paths and
-different times, the honest claim is a reproducible root filesystem and a
-non-reproducible disk image, and nothing stronger.
+Where reproducibility stops short, that is stated rather than glossed. What is
+measured today is two builds on ONE machine, in two separate containers: `make
+image-repro` runs them and the root hash and the whole card image agree. What is
+not measured is a second machine, a second path, or a second architecture, so
+the honest claim is that the build is deterministic here and unproven elsewhere.
+
+That distinction is not academic, and this document had it wrong in the more
+flattering direction. It used to concede a non-reproducible disk image while
+asserting a reproducible root filesystem, and the root filesystem was the half
+that did not reproduce: `mmdebstrap` writes the build machine's hostname into
+`/etc/hostname`, Docker assigns a fresh container id per run, and the dm-verity
+root hash was therefore a function of that id. Four separate builds of one
+commit produced four different root hashes. The gate did not catch it because it
+ran both builds inside a single container, where the hostname is constant, so
+the one configuration it measured was the one where the defect cannot appear.
 
 ---
 

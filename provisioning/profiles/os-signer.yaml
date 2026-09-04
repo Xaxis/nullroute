@@ -118,10 +118,14 @@ assertions:
       Everything else here is conditional on this. A published hash that a third
       party cannot arrive at independently is a number, not a check.
     does_not_cover: >
-      Reproducibility across different machines, paths and times, which is a
-      strictly stronger property and is gated separately. Until that passes, the
-      honest claim is a reproducible root filesystem and a non-reproducible disk
-      image, and nothing stronger.
+      Reproducibility across different machines, paths and architectures, which
+      is a strictly stronger property and is not measured anywhere yet. What
+      `make image-repro` establishes is two builds on one machine in two
+      separate containers, which is weaker than it sounds and is not nothing:
+      when both builds shared one container it reported success while four
+      separate builds of the same commit were producing four different root
+      hashes, because mmdebstrap had written the container's own hostname into
+      /etc/hostname.
     standard: ['Reproducible Builds']
 
   - id: INV-PROV-5
