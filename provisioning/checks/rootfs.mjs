@@ -21,7 +21,7 @@
  */
 
 import { spawnSync } from 'node:child_process'
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, lstatSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 
 /**
@@ -126,12 +126,124 @@ export function matchesGlob(path, glob) {
 }
 
 /**
+ * Whether a glob could ever have matched, given what is in this rootfs.
+ *
+ * WHY THIS EXISTS. "No wireless kernel module is present" was passing against
+ * an image with no kernel modules AT ALL: `lib/modules` did not exist, the glob
+ * `lib/modules/<version>/kernel/drivers/net/wireless/**` matched nothing, and the
+ * verifier reported the hardening as applied. That is the vacuous green
+ * provisioning/README.md is written against, occurring inside the checker.
+ *
+ * The rule distinguishes the two shapes, because they are genuinely different:
+ *
+ *   `lib/firmware/brcm/**` quantifies over the CONTENTS of a directory that
+ *   should not have any. brcm being absent is the desired outcome, so a
+ *   trailing wildcard matching nothing is a real pass.
+ *
+ *   `lib/modules/<version>/kernel/...` quantifies over a SET, one version per
+ *   match. An empty set means the question was never asked, so an intermediate
+ *   wildcard whose parent is missing or empty makes the glob vacuous.
+ *
+ *   `/dev/rtc0` names one path. If its parent directory is not in the artifact
+ *   there is nothing to conclude. build-system.sh excludes /dev from the export
+ *   and its comment says so: "if one ever does, it will find nothing here and
+ *   must say so rather than pass". This is that.
+ */
+/**
+ * The forms of a glob that could actually match this rootfs.
+ *
+ * MERGED-USR, AND THIS ONE WAS SILENTLY FATAL. Debian has shipped /lib as a
+ * symlink to usr/lib for years, and `walk` deliberately does not follow
+ * symlinks, with a correct reason: a link inside the tree is already reachable
+ * by its real path. The consequence is that the real path is the ONLY one it
+ * enumerates, so a glob written `lib/modules/...` is tested against paths that
+ * all begin `usr/lib/`, and it cannot match however much is there.
+ *
+ * INV-PROV-13 is the assertion that the radio driver and its firmware are
+ * REMOVED rather than disabled, which is the strongest claim in the profile.
+ * Measured with a Broadcom firmware blob and a wireless .ko planted in the
+ * exported rootfs: the verifier returned ok, "2 glob(s) match nothing". It
+ * could not have failed on any modern Debian image.
+ *
+ * A leading slash was the same kind of trap: the generated regex is anchored at
+ * the end only, and `walk` yields paths relative to the root, so `/dev/rtc0`
+ * never matched `dev/rtc0` either.
+ *
+ * Rewriting the profiles to say `usr/lib/...` would work and would be wrong to
+ * rely on: `lib/...` is the path a person writes because it is the path the
+ * running device shows, and a profile that has to be written in the build
+ * system's internal spelling is a profile that will be written incorrectly
+ * again. The verifier resolves it instead.
+ */
+function globForms(root, glob) {
+  const normalised = glob.replace(/^\/+/, '')
+  const forms = [normalised]
+  // The directories Debian merges. A symlink here means the real files live
+  // under usr/ and are the only ones `walk` will have listed.
+  for (const merged of ['lib', 'bin', 'sbin', 'lib32', 'lib64', 'libx32']) {
+    if (!normalised.startsWith(`${merged}/`)) continue
+    let linked = false
+    try {
+      linked = lstatSync(join(root, merged)).isSymbolicLink()
+    } catch {
+      linked = false
+    }
+    if (linked) forms.push(`usr/${normalised}`)
+  }
+  return forms
+}
+
+function vacuousGlobs(root, globs) {
+  const vacuous = []
+  for (const glob of globs) {
+    // Vacuous only if EVERY form of it had nothing to search. One form that
+    // resolves is enough for the question to have been asked.
+    const reasons = []
+    for (const form of globForms(root, glob)) {
+      const segments = form.split('/')
+      const wildcardAt = segments.findIndex((part) => part.includes('*'))
+
+      // A trailing wildcard is the "should be empty" shape and is never vacuous.
+      if (wildcardAt === segments.length - 1 && wildcardAt !== -1) {
+        reasons.length = 0
+        break
+      }
+
+      const scope = segments.slice(0, wildcardAt === -1 ? segments.length - 1 : wildcardAt)
+      if (scope.length === 0) {
+        reasons.length = 0
+        break
+      }
+      const dir = join(root, ...scope)
+
+      if (!existsSync(dir)) {
+        reasons.push(`nothing at ${scope.join('/')}`)
+        continue
+      }
+      if (wildcardAt !== -1 && readdirSync(dir).length === 0) {
+        reasons.push(`${scope.join('/')} is empty`)
+        continue
+      }
+      reasons.length = 0
+      break
+    }
+    if (reasons.length > 0) vacuous.push(`${glob} (${reasons[0]})`)
+  }
+  return vacuous
+}
+
+/**
  * INV-PROV-13, INV-PROV-17. Named paths do not exist in the rootfs.
  *
  * The strongest of these four: a file is either in the filesystem or it is not,
  * and there is no runtime behaviour being inferred. A wireless driver that is
  * absent cannot be loaded by editing a configuration file, which is the whole
  * argument for removing rather than disabling.
+ *
+ * Strong ONLY where the thing being searched exists. See vacuousGlobs: an
+ * assertion is a conjunction, so one glob that could never have matched makes
+ * the whole verdict could-not-run rather than satisfied, the same way
+ * absent-packages refuses to speak without a dpkg database.
  */
 export function absentPaths(root, params) {
   const globs = params.globs ?? []
@@ -140,18 +252,36 @@ export function absentPaths(root, params) {
   const files = walk(root)
   const found = []
   for (const glob of globs) {
-    for (const file of files) {
-      if (matchesGlob(file, glob)) found.push(`${file} (matched ${glob})`)
+    for (const form of globForms(root, glob)) {
+      for (const file of files) {
+        if (matchesGlob(file, form)) found.push(`${file} (matched ${glob})`)
+      }
     }
   }
 
-  return found.length === 0
-    ? verdict('absent-paths', true, `${String(globs.length)} glob(s) match nothing in the rootfs`)
-    : verdict(
-        'absent-paths',
-        false,
-        `${String(found.length)} path(s) present that must not be: ${found.slice(0, 8).join(', ')}`
-      )
+  if (found.length > 0) {
+    return verdict(
+      'absent-paths',
+      false,
+      `${String(found.length)} path(s) present that must not be: ${found.slice(0, 8).join(', ')}`
+    )
+  }
+
+  const vacuous = vacuousGlobs(root, globs)
+  if (vacuous.length > 0) {
+    return unavailable(
+      'absent-paths',
+      `${String(vacuous.length)} of ${String(globs.length)} glob(s) had nothing to search: ` +
+        `${vacuous.join(', ')}. Absent because it was removed and absent because it was never ` +
+        `there are different facts, and only the first one is hardening.`
+    )
+  }
+
+  return verdict(
+    'absent-paths',
+    true,
+    `${String(globs.length)} glob(s) match nothing in the rootfs`
+  )
 }
 
 /**
