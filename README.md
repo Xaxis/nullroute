@@ -315,9 +315,11 @@ the boot firmware, the kernel and the initramfs are not wired up. What does
 exist is the half that can be checked: `make image-system` builds a Debian root
 filesystem in a digest-pinned container and produces a system partition with a
 dm-verity root hash, and `make verify-image` then judges it against the profiles,
-satisfying seven assertions including the one that catches a verity salt
-regenerated per build. Twelve of the fifteen verifiers are written, and CI builds
-the artifact and runs them on every commit. `make fixture-image` runs the image
+satisfying eight assertions including the one that catches a verity salt
+regenerated per build and the one that pins the file list on the boot partition,
+which is the one region the hash tree cannot cover.
+Thirteen of the sixteen verifiers are written, and CI builds the artifact and
+runs them on every commit. `make fixture-image` runs the image
 verifiers against a synthetic card, and runs one that fails on purpose.
 
 **Not working yet, and needed before this is safe for funds:** the dm-verity

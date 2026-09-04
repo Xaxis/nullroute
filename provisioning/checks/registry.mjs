@@ -105,6 +105,11 @@ export const VERIFIERS = {
     status: 'implemented',
     describes: 'the partition layout matches',
   },
+  'boot-files-exact': {
+    status: 'implemented',
+    describes:
+      'the boot partition holds exactly the named files, which matters because it is the one partition the hash tree does not cover',
+  },
   'verity-salt-pinned': {
     status: 'implemented',
     describes: 'the dm-verity salt is pinned, not generated per build',
@@ -141,6 +146,7 @@ export function implemented() {
  * so rather than pass.
  */
 export const NEEDS_IMAGE = new Set([
+  'boot-files-exact',
   'partition-present',
   'verity-salt-pinned',
   'identifiers-pinned',

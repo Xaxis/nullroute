@@ -189,6 +189,18 @@ assertions:
     standard: ['ANSSI-BP-028 R12', 'CIS Debian 1.1.2']
 
   # --- Removing the network, not disabling it ------------------------------
+  # A LANDMINE FOR WHOEVER WIRES THE BOOT PARTITION, recorded here because this
+  # is the assertion it walks into. The Pi needs GPU firmware (start4.elf,
+  # fixup4.dat and the rest) on the boot partition before it will start a
+  # kernel, and the obvious way to get it is Debian's `raspi-firmware`. That
+  # package also installs lib/firmware/brcm/brcmfmac43455-sdio.txt and four
+  # siblings, which is exactly what the absent-paths glob below forbids, so
+  # installing it into the root filesystem fails this assertion.
+  #
+  # That is the design working rather than a conflict to route around. The boot
+  # blobs live in usr/lib/raspi-firmware/ inside the .deb and are what belongs
+  # on the FAT partition; the brcm files are radio firmware and belong nowhere
+  # on this device. Extract, do not install.
   - id: INV-PROV-13
     statement: >
       No wireless or Bluetooth kernel module, firmware file, or userspace
@@ -317,6 +329,38 @@ assertions:
       Any claim that the browser is adequately hardened. It is not, and the
       design response is to keep trust out of it rather than to harden it
       further.
+
+  - id: INV-PROV-22
+    statement: >
+      The boot partition holds exactly the pinned set of files and no others.
+    stage: image
+    verify:
+      - check: boot-files-exact
+        params:
+          partition: boot
+          # THE FULL SET, not a minimum. On the one partition the hash tree does
+          # not cover, an addition is the direction that matters, and a check
+          # that only confirms presence cannot fail on one.
+          #
+          # It is one file today because the boot partition carries one file
+          # today: there is no firmware, no kernel and no initramfs yet, and
+          # `make image` refuses for that reason. Each of those is a line added
+          # here by whoever puts it on the card, which is the intended cost.
+          files:
+            - cmdline.txt
+    rationale: >
+      Every other region of the card is under the dm-verity hash tree. This one
+      cannot be, because it is where the firmware reads the root hash from. An
+      attacker who rewrites it supplies their own initramfs and their own
+      roothash= and the device displays the number they chose, which is why the
+      threat model says tier 1 moves the OS integrity problem rather than
+      closing it. Knowing exactly what is on the unprotected partition does not
+      fix that and is the strongest thing available below a signed boot chain.
+    does_not_cover: >
+      What is inside those files. The check reads names, so a substituted
+      initramfs of the same name passes it, and only tier 2 answers that. It
+      also reads the root directory only, so `overlays/` will need an assertion
+      of its own when a kernel lands.
 
   - id: INV-PROV-21
     statement: >

@@ -382,23 +382,33 @@ image: ## Build the hardened Raspberry Pi image. NOT IMPLEMENTED YET.
 	# written, so `make image` produced a bash "no such file" that reads as a
 	# broken checkout rather than as a feature in design.
 	#
-	# The documentation is honest that the build system is being designed. The
-	# Makefile was not, and the Makefile is what somebody actually runs.
-	@echo 'make image: the image build system is not implemented yet.'
+	# It has since drifted the other way. The message said the build system was
+	# "still being designed" long after `make image-system` started producing a
+	# real GPT card that eight assertions pass against, so the target that
+	# existed to stop the Makefile overstating began understating instead. What
+	# is actually missing is the boot half, and the message now says that.
+	@echo 'make image: there is no bootable image, and this will not pretend to make one.'
 	@echo
-	@echo '  The hardware, the hardening controls and the constraints are settled'
-	@echo '  and written up in docs/VERIFICATION.md. The build system that turns'
-	@echo '  them into a flashable image is still being designed, and this target'
-	@echo '  exists so that is a sentence rather than a missing file.'
+	@echo '  A CARD IMAGE ALREADY BUILDS. "make image-system" produces a GPT card'
+	@echo '  with a Debian root filesystem in an erofs partition, a dm-verity hash'
+	@echo '  tree over it, and every identifier pinned, and "make verify-image"'
+	@echo '  satisfies eight assertions against it. This target used to say the'
+	@echo '  build system was "still being designed", which stopped being true.'
 	@echo
-	@echo '  What DOES exist is the CONTRACT that build has to satisfy, which is'
-	@echo '  the half that had to come first: a backend is supported when the'
-	@echo '  unchanged verifiers pass against its output, and verifiers written'
-	@echo '  afterwards would be written to agree with whatever it produced.'
+	@echo '  WHAT IS MISSING IS THE BOOT HALF, and it is all of it: no GPU'
+	@echo '  firmware, no kernel, no initramfs to open the verity device, and no'
+	@echo '  nullroute binary in the root filesystem. The card that builds today'
+	@echo '  is an artifact for the verifiers to read, not a device.'
 	@echo
+	@echo '  So this refuses rather than emitting that card under a name that'
+	@echo '  invites somebody to flash it. A card that boots to nothing is worse'
+	@echo '  than a target that says why: the first wastes an afternoon and'
+	@echo '  suggests the project is broken, the second is a sentence.'
+	@echo
+	@echo '    make image-system   build the card that does exist, and its root hash'
+	@echo '    make image-repro    build it twice and check the two agree'
+	@echo '    make verify-image   judge a built artifact against the profiles'
 	@echo '    make profiles       what is asserted, and how much of it is checkable'
-	@echo '    make fixture-image  the image verifiers running, including a failure'
-	@echo '    make verify-image   point them at a real artifact, when there is one'
 	@echo
 	@echo '  What else works today: make check, make verify, and make dev to run'
 	@echo '  the daemon and the frontend on this machine.'

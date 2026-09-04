@@ -261,8 +261,12 @@ for (const where of ['provisioning/README.md', 'README.md']) {
     'twenty',
   ]
   const spell = (n) => WORDS[n] ?? String(n)
+  // Whitespace-tolerant, because prose wraps. With literal spaces this failed
+  // on a README that said exactly the right thing with a line break inside it,
+  // and the message read "does not say X" about a document that says X. A check
+  // whose failure text is false is worse than one that is merely strict.
   const stated = new RegExp(
-    `${spell(built.length)} of the ${spell(Object.keys(VERIFIERS).length)} verifiers are written`,
+    `${spell(built.length)}\\s+of\\s+the\\s+${spell(Object.keys(VERIFIERS).length)}\\s+verifiers\\s+are\\s+written`,
     'i'
   )
   if (!stated.test(readme)) {

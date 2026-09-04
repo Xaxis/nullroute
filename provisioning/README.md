@@ -161,11 +161,11 @@ backend, so that the first backend is written against a contract rather than the
 contract being reverse-engineered from whatever the first backend happened to
 do.
 
-Twelve of the fifteen verifiers are written. Three inspect the profiles
-themselves and run on every commit. Five read a root filesystem, four read a
-whole image (two builds to compare, a partition table, a verity superblock), and
-the remaining three need a booted device: mount options, listening sockets and
-swap. That last group stays unwritten on purpose, because reading any of them
+Thirteen of the sixteen verifiers are written. Three inspect the profiles
+themselves and run on every commit. Five read a root filesystem, five read a
+whole image (two builds to compare, a partition table, a verity superblock, the
+boot partition's file list), and the remaining three need a booted device: mount
+options, listening sockets and swap. That last group stays unwritten on purpose, because reading any of them
 from an unbooted rootfs is the false pass described above.
 
 One of the five rootfs verifiers, `systemd-exposure`, also needs
