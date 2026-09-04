@@ -1,0 +1,47 @@
+# Dependency alerts, as proposals rather than as changes.
+#
+# WHY THIS IS HERE AT ALL, given that CLAUDE.md's rule is "never add a
+# dependency without asking". A Dependabot pull request asks. It does not merge,
+# nothing here enables auto-merge, and `make check` still has to pass on the
+# branch like any other change, so the rule this looks like it violates is
+# exactly the rule it implements: somebody reviews, and the lockfile moves only
+# when they say so.
+#
+# The gap it closes was real. fast-uri 3.1.5 carried a high severity advisory
+# (GHSA-5jgf-p345-68v8) and `npm ci` had been printing "1 high severity
+# vulnerability" on every install for long enough that nobody read the line.
+# docs/THREAT-MODEL.md lists "dependency review on every lockfile change" as the
+# supply chain defence, and a notice nobody reads is not review.
+#
+# Grouped into one pull request per ecosystem on purpose. Twelve separate
+# branches a week is how a repository learns to close these unread, which is the
+# failure this is meant to fix rather than reproduce.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      npm:
+        patterns: ['*']
+    commit-message:
+      prefix: deps
+    # Every workspace resolves through the one lockfile at the root, so a single
+    # entry covers packages/ and apps/web both.
+    versioning-strategy: increase-if-necessary
+
+  # CI actions are supply chain too, and a workflow that runs against every
+  # commit has more reach than most of the tree. These are pinned to tags rather
+  # than digests, so `@v5` is whatever the publisher last moved it to.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns: ['*']
+    commit-message:
+      prefix: ci
