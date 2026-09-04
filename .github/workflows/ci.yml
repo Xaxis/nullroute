@@ -436,3 +436,12 @@ jobs:
       # rewrites that into a route, and three of those routes did not exist.
       - name: Every link on the built site resolves
         run: make web-site-links
+
+      # The one falsifiable object on the site. It hands a reader a printf
+      # command and promises their terminal prints the same digest, and it has
+      # been wrong before: the command elided the roll string after 24
+      # characters, so it hashed different bytes than the page displayed.
+      - name: The dice demo agrees with docs/ENTROPY.md
+        run: make web-dice-demo
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}

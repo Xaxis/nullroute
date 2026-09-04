@@ -167,7 +167,19 @@ export function DiceDemo() {
                 <div className="text-xs font-mono uppercase tracking-widest text-ink-500 mb-1">
                   SHA-256 of those digits
                 </div>
-                <div className="hash text-sm text-verify-300 leading-relaxed">{chunk(digest)}</div>
+                {/* Named for the same reason the rolls above are: it is a
+                    64 character run with no words in it, and without a label a
+                    screen reader announces it after a heading it has no way to
+                    connect to. It is also the hook check-dice-demo reads, since
+                    `.hash` is a typography class both of these carry. */}
+                <div
+                  className="hash text-sm text-verify-300 leading-relaxed"
+                  tabIndex={0}
+                  role="region"
+                  aria-label="SHA-256 of those digits"
+                >
+                  {chunk(digest)}
+                </div>
               </div>
 
               <div className="rounded-md border border-ink-800 bg-ink-950 p-3">
