@@ -9,11 +9,11 @@ so and exits rather than pretending otherwise.
 
 So there are two honest things you can do now, and one you cannot.
 
-| | |
+| What you can do | State |
 | --- | --- |
-| **Run the whole device on your computer** | Works today. `make dev`. |
-| **Build the system partition and check it is reproducible** | Works today, needs Docker. `make image-system`. |
-| **Flash a card and boot a Pi** | Not yet. No published image, and no installer. |
+| Run the whole device on your computer | Works today. `make dev`. |
+| Build the system partition and check it is reproducible | Works today, needs Docker. `make image-system`. |
+| Flash a card and boot a Pi | Not yet. No published image, and no installer. |
 
 If you want to try the interface, use the first one. It is the same daemon and
 the same frontend the device runs, on a loopback socket instead of a panel.

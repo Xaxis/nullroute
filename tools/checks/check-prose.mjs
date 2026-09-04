@@ -47,6 +47,17 @@ const TEXT_EXT = new Set(['.md', '.ts', '.tsx', '.mjs', '.js', '.yaml', '.yml', 
 /** @type {{id: string, why: string, test: (line: string) => number | -1}[]} */
 const RULES = [
   {
+    id: 'empty-table-header',
+    why: 'A table with no header renders an empty grey bar above it on the website. Name the columns.',
+    /*
+     * `| | |` is valid GFM and renders `<th></th><th></th>`, which is a blank
+     * strip the width of the table with nothing in it. It looks like a
+     * rendering fault rather than a choice, and it is invisible in the markdown
+     * because the source line reads as a separator. docs/INSTALL.md shipped one.
+     */
+    test: (line) => (/^\s*\|(\s*\|)+\s*$/.test(line) ? line.indexOf('|') : -1),
+  },
+  {
     id: 'em-dash',
     why: 'No em dashes. Use a comma, a colon, parentheses, or two sentences.',
     test: (line) => line.indexOf('—'), // prose-check-ignore

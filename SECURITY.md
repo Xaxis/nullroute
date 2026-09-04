@@ -54,8 +54,8 @@ every release as experimental and do not put material funds on it.
 ## Disclosure
 
 We prefer coordinated disclosure. Tell us first, give us a reasonable window to
-ship a fix, and we will credit you in the advisory and the changelog unless you
-would rather we did not.
+ship a fix, and we will credit you in the advisory unless you would rather we
+did not.
 
 If a vulnerability is being exploited, or if we have not responded within 14
 days, publish. A silent vulnerability in a signing device is worse than an
