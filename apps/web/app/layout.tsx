@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import Link from 'next/link'
 import { DOCS } from '@/lib/docs'
+import { REPO_URL } from '@/lib/site'
 import '../styles/globals.css'
 
 export const metadata: Metadata = {
@@ -55,7 +56,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               nullroute
             </Link>
             <a
-              href="https://github.com/Xaxis/nullroute"
+              href={REPO_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="ml-auto order-1 shrink-0 text-sm text-ink-400 hover:text-ink-100 transition-colors"
@@ -88,7 +89,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <span className="font-mono text-ink-400">nullroute</span>
               <span>MIT licensed</span>
               <a
-                href="https://github.com/Xaxis/nullroute"
+                href={REPO_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-ink-200 transition-colors"

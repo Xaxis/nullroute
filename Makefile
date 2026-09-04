@@ -25,7 +25,7 @@ MANIFEST_ROOTS := packages spec provisioning
         prose links profiles sbom sbom-check repro-check clean dev-daemon build-app web web-build web-lint web-type-check \
         screens screen-fit ui-constants dev-check verify-image docs-reachable no-dead-ends \
         image-env image-shell image-system image-repro journeys \
-        web-isolation web-csp web-responsive web-check web-live-check deploy image
+        web-isolation web-csp web-responsive web-site-links web-check web-live-check deploy image
 
 help: ## List available targets
 	@grep -hE '^[a-z][a-z-]*:.*?## ' $(MAKEFILE_LIST) \
@@ -597,7 +597,10 @@ web-csp: ## vercel.json's CSP still matches the built inline script hashes
 web-responsive: ## No page scrolls sideways, phone to desktop. Drives a real browser.
 	@node tools/checks/check-responsive.mjs
 
-web-check: web-lint web-type-check web-build web-isolation web-csp web-responsive ## Every website check
+web-site-links: ## Every link in the BUILT site resolves, routes and anchors both
+	@node tools/checks/check-site-links.mjs
+
+web-check: web-lint web-type-check web-build web-isolation web-csp web-responsive web-site-links ## Every website check
 
 web-live-check: ## Load the DEPLOYED site in a real browser and assert nothing is broken
 	# The one check that caught a broken CSP. Every other check passed while

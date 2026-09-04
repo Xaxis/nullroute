@@ -430,3 +430,9 @@ jobs:
         run: make web-responsive
         env:
           CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+
+      # Reads the built HTML rather than the markdown behind it. `make links`
+      # checks the repository, where ../README.md is a real file; the site
+      # rewrites that into a route, and three of those routes did not exist.
+      - name: Every link on the built site resolves
+        run: make web-site-links

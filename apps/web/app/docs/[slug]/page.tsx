@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { DOCS, docBySlug, readDoc } from '../../../lib/docs'
 import { renderMarkdown, extractHeadings } from '../../../lib/markdown'
+import { repoBlobUrl } from '../../../lib/site'
 
 /**
  * Note the `Promise` around params. In Next 16 route params are async, and the
@@ -31,7 +32,10 @@ export default async function DocPage({ params }: Props) {
   if (doc === undefined) notFound()
 
   const source = readDoc(doc)
-  const html = await renderMarkdown(source)
+  const html = await renderMarkdown(
+    source,
+    DOCS.map((d) => d.slug)
+  )
   const headings = extractHeadings(source).filter((h) => h.depth === 2)
 
   return (
@@ -81,7 +85,7 @@ export default async function DocPage({ params }: Props) {
           <div className="mt-14 pt-6 border-t border-ink-800 text-sm text-ink-500">
             Rendered from{' '}
             <a
-              href={`https://github.com/Xaxis/nullroute/blob/main/${doc.file}`}
+              href={repoBlobUrl(doc.file)}
               target="_blank"
               rel="noopener noreferrer"
               className="font-mono text-signal-400 hover:text-signal-300"
