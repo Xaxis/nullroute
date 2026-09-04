@@ -546,7 +546,16 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
       identity={identity}
       steps={steps}
       testId="psbt-screen"
-      onScrolledToEnd={setRead}
+      /* Latched, not tracked. Reading is something somebody DID, not somewhere
+         they are: scrolling back up to look at the amounts again would
+         otherwise disable Sign, which is absurd on the screen whose whole
+         claim is that you read it first. It also removes a race, since a
+         review that grows by a pixel after it has been read stops un-reading
+         itself. Cleared in doReview, because a new transaction is a new thing
+         to read. */
+      onScrolledToEnd={(atEnd) => {
+        if (atEnd) setRead(true)
+      }}
       actions={
         <>
           <Button variant="ghost" onClick={onBack} testId="psbt-cancel">

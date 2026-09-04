@@ -148,6 +148,21 @@ describe('ui.screens.psbt', () => {
         expect(sign().disabled).toBe(false)
       })
       expect(screen.queryByTestId('psbt-refusal')).toBeNull()
+
+      /*
+       * And it stays read when they scroll back up to look again.
+       *
+       * The first version tracked the scroll position rather than latching, so
+       * going back to re-read the amounts disabled Sign: absurd on the screen
+       * whose whole claim is that you read it first, and the source of an
+       * intermittent journey failure, because a review that grew by a pixel
+       * after being read un-read itself.
+       */
+      body.scrollTop = 0
+      if (scroller !== null) fireEvent.scroll(scroller)
+      await waitFor(() => {
+        expect(sign().disabled).toBe(false)
+      })
     } finally {
       for (const spy of spies) spy.mockRestore()
     }

@@ -502,6 +502,62 @@ async function main() {
         return s === null ? null : s.getAttribute('data-testid')
       })()`)
 
+    /**
+     * Wait until the screen has stopped changing, rather than sleeping at it.
+     *
+     * WHAT THE FIXED SLEEP COULD NOT DO. Every generic step used to tap and
+     * then sleep 800ms. `tap` retries for four seconds, so a control that
+     * appears late is already handled; what a fixed sleep cannot handle is the
+     * opposite case. If a transition has not landed within 800ms and the NEXT
+     * step's testid also exists on the screen still showing, the harness taps
+     * it immediately, on the wrong screen, and the journey goes somewhere
+     * nobody asked for. Retrying does not help, because the control is there.
+     *
+     * That is the same shape as the word-keyboard bug fixed alongside this one:
+     * reading a screen before it has finished becoming the screen.
+     *
+     * Two consecutive agreeing reads, because one read of the old screen looks
+     * exactly like one read of a screen that is not going to change. Fast in
+     * the common case, which most of these are, and patient when it matters.
+     *
+     * NOT THE SCREEN NAME ALONE. That was the first attempt and it broke the
+     * signing journey: tapping Review renders the whole transaction inside the
+     * SAME screen, so the name was stable before any of it existed, the scroll
+     * step then had nothing to scroll, and Sign stayed refused because the
+     * review had not been read. The signature below is the screen plus how much
+     * there is to read, which is what actually changes when content lands.
+     */
+    const settled = async () => {
+      let previous = null
+      for (let attempt = 0; attempt < 60; attempt += 1) {
+        const now = String(
+          await evaluate(`(() => {
+            const s = document.querySelector('.nr-screen')
+            const b = document.querySelector('.nr-screen__body')
+            const a = document.querySelector('.nr-screen__actions')
+            return [
+              s === null ? 'none' : s.getAttribute('data-testid'),
+              b === null ? 0 : b.scrollHeight,
+              document.querySelectorAll('[data-testid]').length,
+              /* The action bar's own text, because a call in flight changes
+                 nothing else. Tapping Review leaves the screen name, the
+                 content and the element count exactly as they were while the
+                 daemon works, and the only thing that moves is the button
+                 reading "Reading" instead of "Review". Without this the
+                 harness scrolled a body that had not been filled in yet and
+                 then found Sign refused, which is true and was not the
+                 device's fault. */
+              a === null ? '' : (a.textContent || '').trim(),
+            ].join('|')
+          })()`)
+        )
+        if (previous === now) return now
+        previous = now
+        await sleep(80)
+      }
+      return previous
+    }
+
     let words = []
 
     /**
@@ -532,6 +588,7 @@ async function main() {
         if ((await evaluate('document.readyState')) === 'complete') break
       }
       await sleep(1200)
+      await settled()
 
       // Into the goal hub, the way somebody who has not used this before gets
       // there. On a device with a wallet the lock screen's Guide me is gone,
@@ -543,6 +600,7 @@ async function main() {
         entered = await tap('nav-guide')
       }
       await sleep(600)
+      await settled()
       if (entered !== 'ok') {
         failures.push(`${journey.id}: could not reach the goal hub (${entered})`)
         continue
@@ -561,15 +619,43 @@ async function main() {
          * `disabled`, correctly.
          */
         if (step === 'scroll') {
-          await evaluate(`(() => {
-            for (let pass = 0; pass < 2; pass += 1) {
-              for (const el of document.querySelectorAll('*')) {
-                if (el.scrollHeight > el.clientHeight) el.scrollTop = el.scrollHeight
-              }
-            }
-            return 'scrolled'
-          })()`)
-          await sleep(120)
+          /*
+           * Scroll until the screen stops growing under it.
+           *
+           * A single pass is not enough and the reason is the interesting one.
+           * The review arrives from the daemon, so the body can still be empty
+           * when this runs: scrolling nothing leaves the body at the top, the
+           * content then lands, and the screen correctly refuses to sign
+           * because it has not been read. The failure said exactly that,
+           * "Scroll to the end first", once the harness was made to report what
+           * the screen was saying rather than only which screen it was.
+           *
+           * `settled()` cannot cover it either. While a call is in flight the
+           * DOM is perfectly stable, so two agreeing reads mean "nothing is
+           * happening yet" and "nothing is going to happen" alike.
+           *
+           * So: scroll, look again, and stop when the height has stopped
+           * changing and the end is reached. Which is what a person does.
+           */
+          let height = -1
+          for (let attempt = 0; attempt < 40; attempt += 1) {
+            const at = String(
+              await evaluate(`(() => {
+                for (let pass = 0; pass < 2; pass += 1) {
+                  for (const el of document.querySelectorAll('*')) {
+                    if (el.scrollHeight > el.clientHeight) el.scrollTop = el.scrollHeight
+                  }
+                }
+                const b = document.querySelector('.nr-screen__body')
+                if (b === null) return '0|false'
+                return b.scrollHeight + '|' + (b.scrollTop + b.clientHeight >= b.scrollHeight - 1)
+              })()`)
+            )
+            const [now, ended] = at.split('|')
+            if (String(now) === String(height) && ended === 'true') break
+            height = Number(now)
+            await sleep(120)
+          }
           continue
         }
 
@@ -767,10 +853,45 @@ async function main() {
 
         const result = await tap(step)
         if (result !== 'ok') {
-          broke = `${step} was ${result}, on ${String(await screenOf())}`
+          /*
+           * What the screen was SAYING, not just which screen it was.
+           *
+           * "psbt-sign was disabled, on psbt-screen" is true and does not say
+           * whether the device refused, whether a call was still running, or
+           * whether the button had simply not been reached. Every one of those
+           * needs a different fix, and finding out meant screenshotting the
+           * run by hand. The refusal line beside the button, any banner, and
+           * the label of the control itself answer it in the failure text.
+           */
+          const saying = String(
+            await evaluate(`(() => {
+              const bits = []
+              for (const sel of ['[data-testid$="-error"]', '.nr-status--fail', '.nr-banner--danger']) {
+                for (const el of document.querySelectorAll(sel)) {
+                  const t = (el.textContent || '').replace(/\\s+/g, ' ').trim()
+                  if (t.length > 0 && !bits.includes(t)) bits.push(t.slice(0, 90))
+                }
+              }
+              const target = document.querySelector('[data-testid="${step}"]')
+              if (target !== null) {
+                bits.push('the control reads "' + (target.textContent || '').trim().slice(0, 30) + '"')
+              }
+              return bits.join(' / ')
+            })()`)
+          )
+          broke =
+            `${step} was ${result}, on ${String(await screenOf())}` +
+            (saying === '' || saying === 'null' ? '' : `: ${saying}`)
           break
         }
+        /* Both, deliberately. The fixed delay stays because replacing it made
+           things worse rather than better: the signing journey depends on an
+           earlier one leaving a wallet open, and stepping faster changed
+           behaviour I had not accounted for. settled() is added to it, so this
+           is strictly more patient than what was here, which is the only
+           direction that fixes a flake. */
         await sleep(800)
+        await settled()
         await capture(`${journey.id}-${step}`)
       }
 
