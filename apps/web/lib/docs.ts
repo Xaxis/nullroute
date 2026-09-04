@@ -39,6 +39,15 @@ export const DOCS: readonly DocMeta[] = [
     question: 'What is this safe against, and what is it not?',
   },
   {
+    slug: 'install',
+    navLabel: 'Install',
+    file: 'docs/INSTALL.md',
+    title: 'Installing it',
+    summary:
+      'What you can run today, what the device does on its own at first boot, and the flashable image that does not exist yet. Short on purpose.',
+    question: 'How do I get this onto a device?',
+  },
+  {
     slug: 'verification',
     navLabel: 'Check it',
     file: 'docs/VERIFICATION.md',

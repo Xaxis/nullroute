@@ -194,15 +194,21 @@ someone who does not trust this project and should not have to.
 ## The operating system
 
 A verified application on an unverifiable operating system is a lock on a door
-in a paper wall, so nullroute ships its own image rather than asking you to
-harden Raspberry Pi OS yourself.
+in a paper wall, so nullroute is designed around its own image rather than
+asking you to harden Raspberry Pi OS yourself.
 
-**What it is.** A Debian trixie image built with
-[rpi-image-gen](https://github.com/raspberrypi/rpi-image-gen), the official
-Raspberry Pi builder, pinned to an exact commit. The system partition is a
-read-only erofs filesystem with a dm-verity hash tree over it; your wallet lives
-on a separate LUKS2-encrypted partition. No swap, no SSH, no network daemons, and
-the wifi and Bluetooth firmware packages are removed rather than merely disabled.
+**None of it is published yet, and there is nothing to flash.** The system
+partition builds and is reproducible; the boot partition and the installer are
+not written. `make image` says so and exits. See
+[Installing it](docs/INSTALL.md) for what you can actually run today, which is
+the whole device on your computer.
+
+**What it is.** A Debian bookworm image built with `mmdebstrap` and `genimage`
+in a digest-pinned container, so the build host is itself a fixed artifact. The
+system partition is a read-only erofs filesystem with a dm-verity hash tree over
+it; your wallet lives on a separate LUKS2-encrypted partition. No swap, no SSH,
+no network daemons, and the wifi and Bluetooth firmware packages are removed
+rather than merely disabled.
 
 **Why not roll our own from scratch?** Buildroot with SeedSigner's approach is
 philosophically nicer, because the whole OS becomes a single file you can hash.
@@ -333,6 +339,7 @@ Start with whichever question you have:
 | Document | Answers |
 | --- | --- |
 | [Threat model](docs/THREAT-MODEL.md) | What is this safe against, and what is it not? |
+| [Installing it](docs/INSTALL.md) | How do I get this onto a device? |
 | [Checking and building](docs/VERIFICATION.md) | How do I check the device is honest, and build one? |
 | [Using it](docs/USING.md) | What are the screens, and what does each one refuse? |
 | [Entropy](docs/ENTROPY.md) | How do dice become a seed, and how do I check it? |
