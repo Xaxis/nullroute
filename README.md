@@ -203,8 +203,10 @@ not written. `make image` says so and exits. See
 [Installing it](docs/INSTALL.md) for what you can actually run today, which is
 the whole device on your computer.
 
-**What it is.** A Debian bookworm image built with `mmdebstrap` and `genimage`
-in a digest-pinned container, so the build host is itself a fixed artifact. The
+**What it is.** A Debian trixie image built with `mmdebstrap` and `genimage`
+in a digest-pinned container, so the build host is itself a fixed artifact.
+Trixie rather than bookworm because bookworm ships Linux 6.1, which has no
+Raspberry Pi 5 support at all, and one of the three boards above is a Pi 5. The
 system partition is a read-only erofs filesystem with a dm-verity hash tree over
 it; your wallet lives on a separate LUKS2-encrypted partition. No swap, no SSH,
 no network daemons, and the wifi and Bluetooth firmware packages are removed

@@ -23,6 +23,14 @@
  *   file that is not there would fail at build time on a Linux machine an hour
  *   into a run, which is the worst possible moment to discover a typo.
  *
+ *   The suite `build-system.sh` actually builds is the distribution the profile
+ *   declares. These disagreed: the profile said `debian-trixie`, the recipe
+ *   built from `trixie-minbase`, and the script that produces the artifact
+ *   everybody verifies defaulted to bookworm. Three places, two answers, and
+ *   the artifact followed the one nobody had written down as a decision. It was
+ *   not cosmetic either, because the profile lists raspberrypi-5 and bookworm
+ *   ships Linux 6.1, which has no Pi 5 support.
+ *
  * WHAT IT DELIBERATELY DOES NOT DO is check that the recipe works. It cannot,
  * and pretending otherwise would be the false pass this project treats as a
  * security bug. `make verify-image` against real output is the only thing that
@@ -106,6 +114,43 @@ for (const name of onDisk) {
         problems.push(
           `${name}/${entry} requires ${patch}, which is not there. That fails an hour into a ` +
             `build on a machine this repository is not developed on.`
+        )
+      }
+    }
+  }
+}
+
+/**
+ * The suite the build script defaults to is the one the profiles declare.
+ *
+ * Read out of the shell rather than imported, because the shell is what runs.
+ * A constant duplicated into JavaScript for the check to import would be a
+ * third place to disagree.
+ *
+ * `multiple` is skipped: mkosi's whole claim is that it targets many
+ * distributions, so it has no single suite to match against.
+ */
+const BUILD_SCRIPT = join(ROOT, 'provisioning/build/build-system.sh')
+const script = readFileSync(BUILD_SCRIPT, 'utf8')
+const suiteLine = /^SUITE="\$\{NULLROUTE_SUITE:-([a-z][a-z0-9]*)\}"$/m.exec(script)
+if (suiteLine === null) {
+  problems.push(
+    `provisioning/build/build-system.sh has no SUITE="\${NULLROUTE_SUITE:-<suite>}" line this ` +
+      `can read, so the suite it builds is unchecked. If that line moved, this rule is blind ` +
+      `rather than satisfied.`
+  )
+} else {
+  const built = suiteLine[1]
+  for (const { file, profile } of profiles) {
+    for (const backend of profile.backends ?? []) {
+      const distribution = backend.distribution
+      if (typeof distribution !== 'string' || distribution === 'multiple') continue
+      const declaredSuite = distribution.replace(/^debian-/, '')
+      if (declaredSuite !== built) {
+        problems.push(
+          `${file} declares ${backend.name} as "${distribution}" and build-system.sh builds ` +
+            `"${built}". The artifact every verifier reads is the one the script produces, so ` +
+            `the profile is describing something nobody built.`
         )
       }
     }

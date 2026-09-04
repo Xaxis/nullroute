@@ -30,7 +30,21 @@
 set -eu
 
 OUT="${1:?usage: build-system.sh <output directory>}"
-SUITE="${NULLROUTE_SUITE:-bookworm}"
+# THE SUITE THE PROFILE DECLARES, not the one the build host happens to be.
+#
+# This said bookworm while provisioning/profiles/os-signer.yaml declared
+# `distribution: debian-trixie` and the backend recipe next door built from
+# `trixie-minbase`. Three places, two answers, and the artifact followed the one
+# nobody had written down as a decision.
+#
+# It is not a cosmetic disagreement. The profile lists raspberrypi-5 among its
+# boards and bookworm ships Linux 6.1, which has no Pi 5 support at all; trixie
+# ships 6.12, which does. The build was producing a root filesystem for a
+# distribution that cannot serve one of the three boards the profile claims.
+#
+# check-backends now reads this line and the profile together, so the next
+# disagreement is a failure rather than a discovery.
+SUITE="${NULLROUTE_SUITE:-trixie}"
 MIRROR="${NULLROUTE_MIRROR:-http://deb.debian.org/debian}"
 VARIANT="${NULLROUTE_VARIANT:-essential}"
 
