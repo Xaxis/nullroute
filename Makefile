@@ -399,11 +399,15 @@ image: ## Build the hardened Raspberry Pi image. NOT IMPLEMENTED YET.
 	@echo '  the device trees for both boards the profile claims, extracted from'
 	@echo '  version-pinned and hash-checked Debian packages.'
 	@echo
-	@echo '  WHAT IS STILL MISSING is what turns those into a running device:'
-	@echo '  no initramfs to open the dm-verity device and pivot onto it, no'
-	@echo '  kernel modules in the root filesystem, and no nullroute binary. A'
-	@echo '  card with a kernel and no initramfs panics on not finding a root'
-	@echo '  filesystem, which is further along and no more bootable.'
+	@echo '  The root filesystem carries the matching modules, 4182 of them, with'
+	@echo '  the wireless drivers pruned out so INV-PROV-13 has something to be'
+	@echo '  absent from rather than passing against an image with no kernel.'
+	@echo
+	@echo '  WHAT IS STILL MISSING is what turns those parts into a device: an'
+	@echo '  initramfs that opens the dm-verity mapping and pivots onto it, and'
+	@echo '  the nullroute binary itself. A card with a kernel and no initramfs'
+	@echo '  panics on not finding a root filesystem. It is further along and no'
+	@echo '  more bootable, and nothing here has been started on real hardware.'
 	@echo
 	@echo '  So this refuses rather than emitting that card under a name that'
 	@echo '  invites somebody to flash it. A card that boots to nothing is worse'

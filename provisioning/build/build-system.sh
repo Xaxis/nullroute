@@ -112,61 +112,6 @@ cp /work/provisioning/units/nullroute-kiosk.service "$ROOTFS/usr/lib/systemd/sys
 # That target now uses two separate runs for exactly this reason.
 printf 'nullroute\n' > "$ROOTFS/etc/hostname"
 
-# The pinned kernel command line, at the path the device will read it from.
-#
-# On a Raspberry Pi /boot/firmware is where the FAT boot partition is mounted,
-# so a file at that path in the root filesystem is what the running device sees
-# and is where INV-PROV-21's verifier looks. The same string is written to the
-# boot partition itself further down, from the same variable, so the two cannot
-# drift: what the firmware reads and what the verifier reads are one value
-# derived from provisioning/profiles/os-signer.yaml.
-mkdir -p "$ROOTFS/boot/firmware"
-printf '%s\n' "${NULLROUTE_CMDLINE:?run through the Makefile}" > "$ROOTFS/boot/firmware/cmdline.txt"
-
-# EROFS RATHER THAN EXT4, and this reverses what the backend recipe asked for.
-#
-# The recipe chose ext4 and said why: erofs is the better choice for an
-# immutable partition and its reproducibility had not been established here.
-# It has been now, in both directions.
-#
-# ext4 does not reproduce. mkfs.ext4 stamps wall-clock time into three
-# superblock fields and e2fsprogs 1.47.0 ignores SOURCE_DATE_EPOCH, so two
-# builds of identical content produce different images and therefore different
-# root hashes. Pinning the UUID and the hash seed, which is what the recipe's
-# two patches do, does not reach this: measured, 75 bytes still differed, and
-# they were the timestamps and the superblock checksums over them. Setting them
-# afterwards with debugfs does not work either, because debugfs stamps the last
-# write time again as it closes.
-#
-# erofs takes the build time as an argument, and two builds two seconds apart
-# are byte-identical. It is also the right filesystem for the job: read-only by
-# design, under a hash tree that already guarantees integrity.
-mkfs.erofs -T "$SOURCE_DATE_EPOCH" -U "$FS_UUID" "$WORK/system.erofs" "$ROOTFS" >/dev/null
-
-veritysetup format "$WORK/system.erofs" "$WORK/system.verity" \
-  --salt="$VERITY_SALT" --uuid="$VERITY_UUID" \
-  | awk '/Root hash/ { print $3 }' > "$WORK/root-hash"
-
-cp "$WORK/system.erofs" "$WORK/system.verity" "$WORK/root-hash" "$OUT/"
-
-# The root filesystem itself, for `make verify-image ROOT=`, when asked for.
-#
-# WITHOUT /dev, and that is a real limitation rather than a tidy-up. Device
-# nodes cannot be created on a bind mount from macOS, so they are left behind
-# rather than silently arriving as empty files. No verifier in
-# provisioning/checks/ reads /dev today; if one ever does, it will find nothing
-# here and must say so rather than pass. The exclusion is printed for that
-# reason.
-if [ "${NULLROUTE_EXPORT_ROOTFS:-0}" = "1" ]; then
-  rm -rf "$OUT/rootfs"
-  mkdir -p "$OUT/rootfs"
-  ( cd "$ROOTFS" && tar --exclude=./dev -cf - . ) | ( cd "$OUT/rootfs" && tar -xf - ) 2>/dev/null || true
-  echo "  rootfs exported  $OUT/rootfs (without /dev: see build-system.sh)"
-fi
-
-echo "  system image     $(wc -c < "$OUT/system.erofs") bytes"
-echo "  root hash        $(cat "$OUT/root-hash")"
-
 # --- what the firmware needs, extracted rather than installed ----------------
 #
 # EXTRACT, DO NOT INSTALL, and that is a rule rather than a convenience. The Pi
@@ -243,6 +188,82 @@ disable_splash=1
 CONFIG
 
 echo "  boot files       $(ls "$BOOT" | tr '\n' ' ')"
+
+# The pinned kernel command line, at the path the device will read it from.
+#
+# On a Raspberry Pi /boot/firmware is where the FAT boot partition is mounted,
+# so a file at that path in the root filesystem is what the running device sees
+# and is where INV-PROV-21's verifier looks. The same string is written to the
+# boot partition itself further down, from the same variable, so the two cannot
+# drift: what the firmware reads and what the verifier reads are one value
+# derived from provisioning/profiles/os-signer.yaml.
+mkdir -p "$ROOTFS/boot/firmware"
+printf '%s\n' "${NULLROUTE_CMDLINE:?run through the Makefile}" > "$ROOTFS/boot/firmware/cmdline.txt"
+
+# The kernel modules, pruned of what the profile forbids.
+#
+# WHY THE ROOT FILESYSTEM CARRIED NO MODULES AT ALL until now, and why that was
+# worse than it looks. INV-PROV-13 asserts that no wireless kernel module is
+# present, and an image with no modules whatsoever satisfies that for the wrong
+# reason. The assertion only means something once there are modules for it to be
+# absent from.
+#
+# Debian's generic arm64 kernel ships the wireless drivers, so they are deleted
+# here rather than avoided. That is the same extract-and-prune discipline the
+# firmware uses one block up, and for the same reason: the package that carries
+# what this device needs also carries what it must not have.
+cp -a "$WORK/kernel/usr/lib/modules" "$ROOTFS/usr/lib/"
+rm -rf "$ROOTFS/usr/lib/modules"/*/kernel/drivers/net/wireless
+rm -rf "$ROOTFS/usr/lib/firmware/brcm"
+
+# Named, not counted. A silent prune that stopped matching would leave the
+# drivers in place and nothing would say so; INV-PROV-13 is what catches that,
+# and this line is what tells you it had something to do.
+echo "  modules          $(du -sh "$ROOTFS/usr/lib/modules" | cut -f1), wireless drivers removed"
+
+# EROFS RATHER THAN EXT4, and this reverses what the backend recipe asked for.
+#
+# The recipe chose ext4 and said why: erofs is the better choice for an
+# immutable partition and its reproducibility had not been established here.
+# It has been now, in both directions.
+#
+# ext4 does not reproduce. mkfs.ext4 stamps wall-clock time into three
+# superblock fields and e2fsprogs 1.47.0 ignores SOURCE_DATE_EPOCH, so two
+# builds of identical content produce different images and therefore different
+# root hashes. Pinning the UUID and the hash seed, which is what the recipe's
+# two patches do, does not reach this: measured, 75 bytes still differed, and
+# they were the timestamps and the superblock checksums over them. Setting them
+# afterwards with debugfs does not work either, because debugfs stamps the last
+# write time again as it closes.
+#
+# erofs takes the build time as an argument, and two builds two seconds apart
+# are byte-identical. It is also the right filesystem for the job: read-only by
+# design, under a hash tree that already guarantees integrity.
+mkfs.erofs -T "$SOURCE_DATE_EPOCH" -U "$FS_UUID" "$WORK/system.erofs" "$ROOTFS" >/dev/null
+
+veritysetup format "$WORK/system.erofs" "$WORK/system.verity" \
+  --salt="$VERITY_SALT" --uuid="$VERITY_UUID" \
+  | awk '/Root hash/ { print $3 }' > "$WORK/root-hash"
+
+cp "$WORK/system.erofs" "$WORK/system.verity" "$WORK/root-hash" "$OUT/"
+
+# The root filesystem itself, for `make verify-image ROOT=`, when asked for.
+#
+# WITHOUT /dev, and that is a real limitation rather than a tidy-up. Device
+# nodes cannot be created on a bind mount from macOS, so they are left behind
+# rather than silently arriving as empty files. No verifier in
+# provisioning/checks/ reads /dev today; if one ever does, it will find nothing
+# here and must say so rather than pass. The exclusion is printed for that
+# reason.
+if [ "${NULLROUTE_EXPORT_ROOTFS:-0}" = "1" ]; then
+  rm -rf "$OUT/rootfs"
+  mkdir -p "$OUT/rootfs"
+  ( cd "$ROOTFS" && tar --exclude=./dev -cf - . ) | ( cd "$OUT/rootfs" && tar -xf - ) 2>/dev/null || true
+  echo "  rootfs exported  $OUT/rootfs (without /dev: see build-system.sh)"
+fi
+
+echo "  system image     $(wc -c < "$OUT/system.erofs") bytes"
+echo "  root hash        $(cat "$OUT/root-hash")"
 
 # --- the card ---------------------------------------------------------------
 #
