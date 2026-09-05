@@ -35,9 +35,34 @@ After=local-fs.target
 Requires=local-fs.target
 
 [Service]
-Type=notify
-NotifyAccess=main
+# TYPE=exec, NOT notify, AND THIS IS A CORRECTION RATHER THAN A PREFERENCE.
+#
+# It was Type=notify with NotifyAccess=main, and the daemon never sends
+# READY=1, because it cannot: systemd's notification socket is a Unix DATAGRAM
+# socket and Node has no way to write to one without native code. So systemd
+# waited for a readiness message that was never coming, held the job open for
+# its full start timeout, and would then have killed a daemon that was up and
+# listening and restarted it, forever. Under QEMU: "Job nullrouted.service/start
+# running (31s / 1min 47s)" with the socket already created.
+#
+# Type=exec means ready once the process has successfully exec'd, which is
+# honest about what systemd can observe here. What it loses is the guarantee
+# that the socket exists before the kiosk starts, and nullroute-kiosk.service
+# gets that back with an explicit wait rather than by claiming a protocol the
+# daemon does not speak.
+Type=exec
 # --jitless is NOT passed. See the note above.
+# WHERE THE DAEMON LOOKS FOR ITS OWN EVIDENCE. main.js falls back to three
+# directories above itself, which is the repository layout and is not the image
+# layout, so on a device it resolved to /usr and found nothing. The daemon then
+# did exactly what it is supposed to do and refused to start: "No verification
+# report was found." That refusal is the first rule in this project, so the fix
+# is to put the evidence where it looks rather than to loosen the check.
+Environment=NULLROUTE_ROOT=/usr/lib/nullroute
+# The store on the writable partition, not on the read-only root. Without this
+# it would be /usr/lib/nullroute/.nullroute-store, which is inside the erofs
+# image and inside the dm-verity tree, and therefore unwritable by design.
+Environment=NULLROUTE_STORE=/var/lib/nullroute
 ExecStart=/usr/lib/nullroute/bin/node /usr/lib/nullroute/daemon/main.js
 Restart=on-failure
 RestartSec=2

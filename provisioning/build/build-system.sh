@@ -77,7 +77,19 @@ mkdir -p "$ROOTFS" "$OUT"
 echo "  suite            $SUITE"
 echo "  SOURCE_DATE_EPOCH $SOURCE_DATE_EPOCH"
 
+# systemd, because the initramfs pivots into /sbin/init and there was none, and
+# chromium, because nullroute-kiosk.service names /usr/bin/chromium; e2fsprogs
+# and kmod, because the state partition needs mkfs.ext4 and the ext4 module has
+# to be loaded by a modprobe that was not in the image. Both were
+# asserted about by the profile and absent from the image: INV-PROV-18 was
+# scoring the sandbox of a daemon that could not start.
+#
+# --no-install-recommends is not optional here. Recommends would pull
+# systemd-timesyncd, which INV-PROV-16 forbids by name, and this image is the
+# thing that decides what a signer contains.
 mmdebstrap --variant="$VARIANT" --mode=root --format=directory \
+  --include=systemd,systemd-sysv,dbus,chromium,e2fsprogs,kmod \
+  --aptopt='APT::Install-Recommends "false"' \
   "$SUITE" "$ROOTFS" "$MIRROR" >/dev/null 2>&1
 
 # The units the profiles assert about.
@@ -94,6 +106,27 @@ mmdebstrap --variant="$VARIANT" --mode=root --format=directory \
 mkdir -p "$ROOTFS/usr/lib/systemd/system"
 cp /work/provisioning/units/nullrouted.service "$ROOTFS/usr/lib/systemd/system/"
 cp /work/provisioning/units/nullroute-kiosk.service "$ROOTFS/usr/lib/systemd/system/"
+cp /work/provisioning/units/nullroute-state.service "$ROOTFS/usr/lib/systemd/system/"
+
+# ENABLED, WHICH IS NOT THE SAME AS INSTALLED. A unit file under
+# usr/lib/systemd/system is a file systemd knows how to run and will never run
+# on its own; it starts when something wants it. Both of these declared
+# WantedBy= and neither was enabled, so the card booted all the way to a
+# systemd that started nothing: no signing daemon, no frontend, a device that
+# reaches a login prompt it has no accounts for.
+#
+# The symlink IS the enablement, which is all `systemctl enable` does with a
+# WantedBy. Made directly because systemctl in a chroot wants a running
+# systemd, and because a symlink is deterministic and a maintainer script is
+# not. INV-PROV-23 checks it, so this cannot silently stop happening.
+for pair in nullroute-state.service:multi-user nullrouted.service:multi-user nullroute-kiosk.service:graphical; do
+  unit="${pair%%:*}"
+  target="${pair##*:}.target"
+  mkdir -p "$ROOTFS/etc/systemd/system/${target}.wants"
+  ln -sf "/usr/lib/systemd/system/${unit}" "$ROOTFS/etc/systemd/system/${target}.wants/${unit}"
+done
+# The kiosk is wanted by graphical.target, so that has to be what boot aims for.
+ln -sf /usr/lib/systemd/system/graphical.target "$ROOTFS/etc/systemd/system/default.target"
 
 # THE HOSTNAME, PINNED, AND THIS IS THE ONE THAT MATTERED.
 #
@@ -246,7 +279,108 @@ rm -rf "$ROOTFS/usr/lib/firmware/brcm"
 # Named, not counted. A silent prune that stopped matching would leave the
 # drivers in place and nothing would say so; INV-PROV-13 is what catches that,
 # and this line is what tells you it had something to do.
-echo "  modules          $(du -sh "$ROOTFS/usr/lib/modules" | cut -f1), wireless drivers removed"
+# depmod, WITHOUT WHICH modprobe CANNOT WORK AT ALL. Debian runs depmod from
+# the kernel package's postinst, and this build extracts rather than installs,
+# so the tree shipped with no modules.dep and no modules.alias. Nothing noticed
+# until the state partition failed to mount with "unknown filesystem type
+# 'ext4'": ext4 is a module, modprobe had no dependency database to consult, and
+# a device that boots an erofs root still needs ext4 for the partition its
+# wallet lives on.
+depmod -b "$ROOTFS" "$KERNEL_VERSION"
+
+echo "  modules          $(du -sh "$ROOTFS/usr/lib/modules" | cut -f1), wireless drivers removed, depmod run"
+
+# --- the application ---------------------------------------------------------
+#
+# NODE FROM nodejs.org, NOT FROM DEBIAN. package.json requires 24.x and trixie
+# ships 20.19, and the version the daemon runs on is not a detail: the crypto
+# layer's constant-time assumptions were validated against a particular V8.
+# Pinned by version and by the digest nodejs.org publishes for that exact
+# tarball, checked before anything is unpacked, so a substituted download is a
+# failed build rather than a different binary holding the keys.
+NODE_VERSION=24.3.0
+NODE_SHA=9729d0ecc69fad6591e4e19b46854881e8cc9d865cf03fc951a8abc567854f5e
+NODE_TAR="node-v${NODE_VERSION}-linux-arm64.tar.xz"
+
+mkdir -p "$WORK/node"
+curl -fsSL -o "$WORK/$NODE_TAR" "https://nodejs.org/dist/v${NODE_VERSION}/${NODE_TAR}"
+got=$(sha256sum "$WORK/$NODE_TAR" | cut -d' ' -f1)
+if [ "$got" != "$NODE_SHA" ]; then
+  echo "  FAIL  $NODE_TAR" >&2
+  echo "        expected $NODE_SHA" >&2
+  echo "        got      $got" >&2
+  exit 1
+fi
+tar -xJf "$WORK/$NODE_TAR" -C "$WORK/node" --strip-components=1
+
+# At the path nullrouted.service names. Just the interpreter: npm, npx and the
+# bundled headers are a package manager and a build toolchain, and neither
+# belongs on a device that never installs anything.
+mkdir -p "$ROOTFS/usr/lib/nullroute/bin"
+cp "$WORK/node/bin/node" "$ROOTFS/usr/lib/nullroute/bin/node"
+for helper in prepare-state wait-for-daemon; do
+  cp "/work/provisioning/units/$helper" "$ROOTFS/usr/lib/nullroute/bin/$helper"
+  chmod 0755 "$ROOTFS/usr/lib/nullroute/bin/$helper"
+done
+
+# The mountpoint, which cannot be created at runtime on a read-only root.
+mkdir -p "$ROOTFS/var/lib/nullroute"
+
+# The daemon and the frontend, built on the host by `make build` and
+# `make build-app`. Built there rather than here because the build needs the
+# whole workspace and its dev dependencies, none of which belong in the image.
+[ -f /work/packages/daemon/dist/main.js ] || {
+  echo "  FAIL  packages/daemon/dist/main.js is missing. Run 'make build' first." >&2
+  exit 1
+}
+[ -f /work/packages/ui/dist-app/index.html ] || {
+  echo "  FAIL  packages/ui/dist-app/index.html is missing. Run 'make build-app' first." >&2
+  exit 1
+}
+# THE EVIDENCE THE DAEMON REFUSES TO START WITHOUT, at NULLROUTE_ROOT. The
+# verification report, the manifest it hashes to get the root hash the lock
+# screen shows, and the version. Copied from the build, so the report in the
+# image is the one for this exact tree; a stale one fails the daemon's own check
+# rather than passing quietly.
+[ -f /work/verification-report.json ] || {
+  echo "  FAIL  verification-report.json is missing. Run 'make verify' first." >&2
+  exit 1
+}
+cp /work/verification-report.json /work/MANIFEST.lock /work/VERSION "$ROOTFS/usr/lib/nullroute/"
+
+mkdir -p "$ROOTFS/usr/lib/nullroute/daemon" "$ROOTFS/usr/lib/nullroute/ui"
+cp -a /work/packages/daemon/dist/. "$ROOTFS/usr/lib/nullroute/daemon/"
+cp -a /work/packages/ui/dist-app/. "$ROOTFS/usr/lib/nullroute/ui/"
+
+# The runtime closure, and nothing else. The daemon imports @nullroute/core and
+# node: builtins; core reaches @noble and @scure. Listed rather than copied
+# wholesale, because node_modules on the build host also holds vitest, eslint
+# and typescript, and an image is not a place to leave a compiler.
+mkdir -p "$ROOTFS/usr/lib/nullroute/node_modules/@nullroute/core"
+cp -a /work/packages/core/dist "$ROOTFS/usr/lib/nullroute/node_modules/@nullroute/core/"
+cp /work/packages/core/package.json "$ROOTFS/usr/lib/nullroute/node_modules/@nullroute/core/"
+for dep in @noble/hashes @noble/curves @scure/base @scure/bip32 @scure/bip39 @scure/btc-signer micro-packed; do
+  [ -d "/work/node_modules/$dep" ] || { echo "  FAIL  node_modules/$dep is missing" >&2; exit 1; }
+  mkdir -p "$ROOTFS/usr/lib/nullroute/node_modules/$(dirname "$dep")"
+  cp -a "/work/node_modules/$dep" "$ROOTFS/usr/lib/nullroute/node_modules/$dep"
+done
+
+# THE ACCOUNTS THE UNITS RUN AS, with fixed ids.
+#
+# Fixed because everything else here is: an id allocated by whatever order the
+# packages happened to install in would change the passwd file between builds
+# and take the root hash with it. 900 and 901 are below the 1000 where login
+# accounts start, and neither can log in: no shell, no password hash, no home.
+for account in nullroute:900 nullroute-ui:901; do
+  name="${account%%:*}"
+  id="${account##*:}"
+  grep -q "^${name}:" "$ROOTFS/etc/passwd" && continue
+  echo "${name}:x:${id}:${id}::/nonexistent:/usr/sbin/nologin" >> "$ROOTFS/etc/passwd"
+  echo "${name}:!:${id}:" >> "$ROOTFS/etc/group"
+  echo "${name}:!*::" >> "$ROOTFS/etc/shadow"
+done
+
+echo "  application      node $NODE_VERSION, daemon, frontend, and 2 accounts"
 
 # EROFS RATHER THAN EXT4, and this reverses what the backend recipe asked for.
 #
@@ -396,6 +530,15 @@ image nullroute.img {
   partition system-hash {
     image = "hash.img"
     partition-uuid = "${NULLROUTE_SYSTEM_HASH_PART_GUID:?}"
+  }
+  # EMPTY ON PURPOSE. The wallet lives here and nothing on a freshly built card
+  # should. nullroute-state.service makes a filesystem in it the first time the
+  # device boots, which is also the only thing on the card that differs between
+  # two devices built from one image.
+  partition state {
+    partition-type-uuid = "0FC63DAF-8483-4772-8E79-3D69D8477DE4"
+    partition-uuid = "${NULLROUTE_STATE_PART_GUID:?}"
+    size = 512M
   }
 }
 CFG

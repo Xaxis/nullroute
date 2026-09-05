@@ -1,0 +1,96 @@
+#!/bin/sh
+# Make the state partition usable, then mount it at /var/lib.
+#
+# WHY /var/lib AND NOT JUST /var/lib/nullroute. The root filesystem is read-only
+# erofs, which is the point of it, and a Debian userspace needs a writable
+# /var/lib to function at all. nullrouted.service declares
+# StateDirectory=nullroute and exited 238/STATE_DIRECTORY on every boot, and so
+# did systemd-logind, for the same reason and with no relation to this project.
+# Mounting only the daemon's own directory would have fixed the symptom this
+# repository noticed and left the one it did not.
+#
+# FINDS THE PARTITION BY ITS GPT NAME, NOT THROUGH udev. The first version used
+# /dev/disk/by-partlabel/state, and that directory was empty in the booted
+# guest: those symlinks are a udev convenience and are not guaranteed to exist
+# when a unit ordered this early runs, or at all. `blkid -p` reads the partition
+# entry off the disk, which is where the name actually lives, and works the same
+# on a Pi's mmcblk0p4 as on a virtio vda4.
+#
+# NOT LUKS, AND THAT IS A GAP RATHER THAN A DECISION. docs/ describes this
+# partition as LUKS2 encrypted and it is not yet: the key would come from the
+# PIN, the PIN arrives through the daemon, and the daemon cannot start until
+# this has run. Breaking that circle needs the daemon to open the volume itself
+# rather than systemd mounting it. What protects the wallet today is the
+# application's own encryption, which is one layer where the documentation
+# promises two.
+set -eu
+
+MOUNT=/var/lib
+SEED=/run/nullroute-state-seed
+
+# ext4 is a module in Debian's kernel and the root filesystem is erofs, so
+# nothing has loaded it by the time this runs. Not fatal on its own: a kernel
+# with it built in returns success here too.
+modprobe ext4 2>/dev/null || true
+
+find_state() {
+  for candidate in /dev/mmcblk0p* /dev/vd*[0-9] /dev/sd*[0-9] /dev/nvme*p[0-9]; do
+    [ -b "$candidate" ] || continue
+    name=$(blkid -p -s PART_ENTRY_NAME -o value "$candidate" 2>/dev/null || true)
+    if [ "$name" = "state" ]; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+DEVICE=""
+attempt=0
+while [ "$attempt" -lt 100 ]; do
+  DEVICE=$(find_state || true)
+  [ -n "$DEVICE" ] && break
+  attempt=$((attempt + 1))
+  sleep 0.1
+done
+
+if [ -z "$DEVICE" ]; then
+  echo "nullroute-state: no partition named 'state' on any block device." >&2
+  echo "nullroute-state: block devices seen: $(ls /dev/vd* /dev/mmcblk* /dev/sd* 2>/dev/null | tr '\n' ' ')" >&2
+  echo "nullroute-state: the daemon cannot keep a wallet without it." >&2
+  exit 1
+fi
+echo "nullroute-state: state partition is $DEVICE"
+
+# ASKS FOR THE FILESYSTEM TYPE, NOT WHETHER blkid SUCCEEDS. `blkid <partition>`
+# exits 0 on a completely blank partition, because it finds PARTUUID and
+# PARTLABEL in the GPT and reports those. The first version tested its exit
+# status, concluded the empty partition already held a filesystem, skipped the
+# format and failed on the mount with "wrong fs type, bad option, bad
+# superblock". `-p -s TYPE` probes the device itself and prints nothing when
+# there is no filesystem on it.
+FSTYPE=$(blkid -p -s TYPE -o value "$DEVICE" 2>/dev/null || true)
+
+if [ -z "$FSTYPE" ]; then
+  # FORMATS ONLY WHAT IS BLANK. A recognised filesystem means this card has been
+  # used, and reformatting it would destroy a wallet on every boot. The test is
+  # for the absence of a filesystem rather than for a flag file, because a flag
+  # file would live on the thing being tested.
+  echo "nullroute-state: no filesystem on $DEVICE, creating one"
+  mkfs.ext4 -q -F -m 0 -L nullroute-state "$DEVICE"
+
+  # SEEDED FROM THE IMAGE. /var/lib in the read-only root holds what the
+  # packages put there, and mounting an empty partition over it would hide all
+  # of it. Copied once, at format time, so an existing card is never touched.
+  mkdir -p "$SEED"
+  mount "$DEVICE" "$SEED"
+  cp -a /var/lib/. "$SEED/" 2>/dev/null || true
+  umount "$SEED"
+  rmdir "$SEED" 2>/dev/null || true
+fi
+
+mount -o nosuid,nodev "$DEVICE" "$MOUNT"
+mkdir -p "$MOUNT/nullroute"
+chown 900:900 "$MOUNT/nullroute"
+chmod 0700 "$MOUNT/nullroute"
+echo "nullroute-state: $DEVICE (${FSTYPE:-new ext4}) mounted at $MOUNT"

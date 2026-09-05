@@ -568,8 +568,131 @@ function defaultRun(root, unit) {
 }
 
 /** Every rootfs verifier, by the name a profile assertion uses. */
+/**
+ * INV-PROV-23. Every unit can actually start: its program exists and its user
+ * exists.
+ *
+ * WHY THIS WAS MISSING AND WHY IT MATTERS. INV-PROV-18 certifies that
+ * nullrouted.service is hardened to an exposure of 0.5 or better, and
+ * systemd-analyze measures DECLARED DIRECTIVES. It will happily score a unit
+ * whose ExecStart names a file that is not in the image, which is exactly what
+ * this profile was doing: /usr/lib/nullroute/bin/node, the daemon's main.js,
+ * /usr/bin/chromium and the users `nullroute` and `nullroute-ui` were all
+ * absent, and the profile reported the signing daemon as well sandboxed.
+ *
+ * A unit that cannot start is not a hardened unit. It is a unit that fails at
+ * boot on a device with no console anybody is watching.
+ *
+ * WHAT IT READS. ExecStart, ExecStartPre and ExecStop, taking the first token
+ * as the program and stripping systemd's `-`, `@`, `:` and `!` prefixes; and
+ * User and Group, resolved against the rootfs's own passwd and group files
+ * rather than the build machine's.
+ */
+export function unitExecutables(root, params) {
+  const units = params.units ?? []
+  if (units.length === 0) {
+    return verdict('unit-executables', false, 'no units were named to check')
+  }
+
+  const unitDir = ['usr/lib/systemd/system', 'lib/systemd/system', 'etc/systemd/system']
+    .map((d) => join(root, d))
+    .find((d) => existsSync(d))
+  if (unitDir === undefined) {
+    return unavailable('unit-executables', 'the rootfs has no systemd unit directory')
+  }
+
+  const accounts = (file, column = 0) => {
+    const path = join(root, file)
+    if (!existsSync(path)) return null
+    return new Set(
+      readFileSync(path, 'utf8')
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => line.split(':')[column])
+    )
+  }
+  const users = accounts('etc/passwd')
+  const groups = accounts('etc/group')
+
+  const problems = []
+  let checked = 0
+
+  for (const unit of units) {
+    const path = join(unitDir, unit)
+    if (!existsSync(path)) {
+      problems.push(`${unit} is not in the image at all`)
+      continue
+    }
+    // Line continuations first: an ExecStart with backslash-newline is one
+    // directive, and reading it line by line finds a program called `--kiosk`.
+    const text = readFileSync(path, 'utf8').replace(/\\\n\s*/g, ' ')
+
+    for (const match of text.matchAll(/^Exec(?:Start|StartPre|Stop)=(.+)$/gm)) {
+      // systemd's prefixes: `-` ignore failure, `@` argv[0] override, `:` no
+      // variable expansion, `!` and `!!` privilege overrides.
+      const program = (match[1] ?? '')
+        .trim()
+        .replace(/^[-@:!]+/, '')
+        .split(/\s+/)[0]
+      if (program === undefined || !program.startsWith('/')) continue
+      checked += 1
+      if (!existsSync(join(root, program.slice(1)))) {
+        problems.push(`${unit} runs ${program}, which is not in the image`)
+      }
+    }
+
+    // ENABLED, not merely present. A unit file systemd knows how to run and
+    // that nothing wants is a unit that never runs, and both of these shipped
+    // that way: the card booted to a systemd that started neither the signing
+    // daemon nor the frontend. The symlink under <target>.wants/ is what
+    // `systemctl enable` creates and is the only durable evidence of it.
+    const wantedBy = /^WantedBy=(\S+)$/m.exec(text)?.[1]
+    if (wantedBy !== undefined) {
+      checked += 1
+      const wants = ['etc/systemd/system', 'usr/lib/systemd/system']
+        .map((dir) => join(root, dir, `${wantedBy}.wants`, unit))
+        .some(
+          (link) => existsSync(link) || lstatSync(link, { throwIfNoEntry: false }) !== undefined
+        )
+      if (!wants) {
+        problems.push(
+          `${unit} declares WantedBy=${wantedBy} and nothing enables it, so it never starts`
+        )
+      }
+    }
+
+    for (const [directive, known, kind] of [
+      ['User', users, 'user'],
+      ['Group', groups, 'group'],
+    ]) {
+      const name = new RegExp(`^${directive}=(\\S+)$`, 'm').exec(text)?.[1]
+      if (name === undefined) continue
+      checked += 1
+      if (known === null) {
+        problems.push(`${unit} runs as ${kind} ${name} and the image has no ${kind} database`)
+      } else if (!known.has(name)) {
+        problems.push(`${unit} runs as ${kind} ${name}, which does not exist in the image`)
+      }
+    }
+  }
+
+  return verdict(
+    'unit-executables',
+    problems.length === 0,
+    problems.length === 0
+      ? `${String(checked)} program(s) and account(s) across ${String(units.length)} unit(s) all exist in the image`
+      : problems.join('; '),
+    [
+      'checks that the path exists, not that it runs. A truncated binary or one built for another architecture passes here.',
+      'checks that something wants the unit, not that the target it is wanted by is ever reached.',
+      'reads the unit files that ship. A drop-in under systemd/system/<unit>.d/ that overrides ExecStart is not followed.',
+    ]
+  )
+}
+
 export const ROOTFS_VERIFIERS = {
   'absent-paths': absentPaths,
+  'unit-executables': unitExecutables,
   'absent-packages': absentPackages,
   'no-unit-ordering': noUnitOrdering,
   'cmdline-exact': cmdlineExact,

@@ -182,8 +182,23 @@ if [ -n "${NULLROUTE_SELFTEST:-}" ] || grep -q nullroute.selftest /proc/cmdline;
     say "SELFTEST FAILED"
     poweroff -f
   fi
+  # The interpreter the signing daemon runs under, exercised rather than
+  # stat'ed. chroot because it is dynamically linked against the glibc in the
+  # image, not the one in this initramfs, and "the file is present" is a
+  # weaker claim than "it runs".
+  if chroot /sysroot /usr/lib/nullroute/bin/node --version >/dev/null 2>&1; then
+    say "SELFTEST node=$(chroot /sysroot /usr/lib/nullroute/bin/node --version 2>/dev/null)"
+  else
+    say "SELFTEST node=WILL NOT RUN"
+    say "SELFTEST FAILED"
+    poweroff -f
+  fi
+  say "SELFTEST init=$([ -x /sysroot/sbin/init ] && echo present || echo MISSING)"
   say "SELFTEST OK"
-  poweroff -f
+
+  # Not a halt any more. Falling through to switch_root is what makes the next
+  # thing in the log systemd rather than the end of the test, and the daemon
+  # starting is the only evidence that the units point at something real.
 fi
 
 umount /boot

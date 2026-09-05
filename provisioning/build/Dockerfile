@@ -60,6 +60,8 @@ RUN apt-get update \
       cpio=2.13+dfsg-7.1 \
       xz-utils=5.4.1-1+deb12u1 \
       qemu-system-arm=1:7.2+dfsg-7+deb12u18+b3 \
+      curl=7.88.1-10+deb12u15 \
+      kmod=30+20221128-1 \
  && rm -rf /var/lib/apt/lists/*
 
 # Reproducible builds read this. Overridden by the caller with the repository's

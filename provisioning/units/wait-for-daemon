@@ -1,0 +1,49 @@
+#!/bin/sh
+# Block until the signing daemon is actually listening.
+#
+# This is the readiness gate nullrouted.service's Type=notify was pretending to
+# provide. The daemon cannot send systemd a READY message (its notification
+# socket is a Unix datagram socket and Node cannot write to one), so the thing
+# that needs to wait does the waiting, against the fact that actually matters:
+# the socket exists.
+#
+# The kiosk is the only thing that needs this. Starting a browser against a
+# daemon that is not listening yet gives a connection refused on the first
+# screen the device ever shows.
+set -eu
+
+SOCKET=/run/nullroute/nullrouted.sock
+attempt=0
+while [ ! -S "$SOCKET" ] && [ "$attempt" -lt 300 ]; do
+  attempt=$((attempt + 1))
+  sleep 0.1
+done
+
+if [ ! -S "$SOCKET" ]; then
+  echo "wait-for-daemon: $SOCKET never appeared after 30 seconds." >&2
+  echo "wait-for-daemon: the frontend has nothing to talk to." >&2
+  exit 1
+fi
+echo "wait-for-daemon: $SOCKET is listening"
+
+# AND THE PART THAT DOES NOT EXIST YET, named rather than discovered as a blank
+# screen. nullroute-kiosk.service points Chromium at http://127.0.0.1:5180/ and
+# NOTHING IN THE IMAGE SERVES THAT. In development `make dev` runs Vite, which
+# serves the frontend and proxies to this socket; Vite is a dev dependency and
+# never ships. The device needs its own loopback server for the same job, and it
+# is not written.
+#
+# Checked here so the failure reads as the missing component it is. A browser
+# started against a closed port shows a connection error on the first screen the
+# device ever displays, and nothing in the log would say why.
+if command -v ss >/dev/null 2>&1 && ss -ltn 2>/dev/null | grep -q '127\.0\.0\.1:5180'; then
+  echo "wait-for-daemon: 127.0.0.1:5180 is being served"
+  exit 0
+fi
+
+echo "wait-for-daemon: nothing is listening on 127.0.0.1:5180, which is the URL" >&2
+echo "wait-for-daemon: nullroute-kiosk.service points the browser at. The daemon" >&2
+echo "wait-for-daemon: speaks its Unix socket and nothing bridges the two on this" >&2
+echo "wait-for-daemon: image: in development that is Vite, which is a dev" >&2
+echo "wait-for-daemon: dependency and does not ship. That server is unwritten." >&2
+exit 1

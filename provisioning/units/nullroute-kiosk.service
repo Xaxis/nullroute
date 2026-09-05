@@ -25,6 +25,16 @@ Requires=nullrouted.service
 
 [Service]
 Type=simple
+# Waits for the daemon's socket rather than trusting the ordering. After= and
+# Requires= only guarantee that nullrouted.service was STARTED first, and with
+# Type=exec that means "the process exec'd", not "the socket exists". A browser
+# launched into that gap shows connection refused on the first screen the device
+# ever displays.
+# `+` runs it with full privileges, unlike the browser it gates.
+# RuntimeDirectoryMode=0710 on the daemon's /run/nullroute means nullroute-ui
+# cannot so much as stat the socket, which is deliberate: the frontend talks
+# over the loopback bridge, never to the socket directly.
+ExecStartPre=+/usr/lib/nullroute/bin/wait-for-daemon
 ExecStart=/usr/bin/chromium \
   --kiosk \
   --incognito \

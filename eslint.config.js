@@ -14,6 +14,12 @@ export default tseslint.config(
       'apps/web/.next-dev/**',
       'apps/web/out/**',
       'packages/ui/dist-app/**',
+      // Build artifacts from `make image-system`: an exported Debian root
+      // filesystem, which now contains the daemon's own compiled output and the
+      // frontend bundle. Linting a copy of dist/ that happens to live inside an
+      // image is 1,236 findings about minified vendor code and nothing about
+      // this repository. Gitignored, and outside MANIFEST.lock.
+      'out/**',
       // Generated deploy bundle: a copy of apps/web/out plus a config, emitted
       // by tools/build-vercel-output.mjs. Minified vendor code, not ours.
       '.vercel/**',

@@ -161,8 +161,8 @@ backend, so that the first backend is written against a contract rather than the
 contract being reverse-engineered from whatever the first backend happened to
 do.
 
-Thirteen of the sixteen verifiers are written. Three inspect the profiles
-themselves and run on every commit. Five read a root filesystem, five read a
+Fourteen of the seventeen verifiers are written. Three inspect the profiles
+themselves and run on every commit. Six read a root filesystem, five read a
 whole image (two builds to compare, a partition table, a verity superblock, the
 boot partition's file list), and the remaining three need a booted device: mount
 options, listening sockets and swap. That last group stays unwritten on purpose, because reading any of them

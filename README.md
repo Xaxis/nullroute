@@ -313,13 +313,16 @@ else's proof. Verification needs no key and works with the wallet locked:
 checking a stranger's signature should not cost the passphrase to your money.
 
 *Building one.* Not a flashable device yet, and no part of it has run on real
-hardware. `make image` still refuses, because the root filesystem has no init,
-no systemd and no nullroute binary, so there is nothing for the boot to pivot
-into. What does now work is the part tier 1 is actually about: `make
-image-boot-test` boots the card under QEMU, opens the dm-verity mapping, mounts
-the root through it and reads every block, then does the same to a copy with one
-byte changed inside the system partition and requires that one to fail. It does.
-The parts below that are real: the boot partition carries Pi 4 GPU firmware, a 6.12 kernel
+hardware. `make image-boot-test` boots the card under QEMU: it opens the
+dm-verity mapping, mounts the root through it and reads every block, pivots into
+systemd, formats and mounts the state partition, and starts the signing daemon,
+which checks its own verification report and prints the manifest root before
+listening. It then does the same against a copy with one byte changed inside the
+system partition, and requires that one to fail. It does. `make image` still
+refuses, because nothing in the image serves `http://127.0.0.1:5180/`, which is
+where the kiosk unit points the browser: in development that is Vite, a dev
+dependency that does not ship, and the device's own loopback bridge between the
+browser and the daemon's socket is unwritten. The parts below that are real: the boot partition carries Pi 4 GPU firmware, a 6.12 kernel
 and the device trees for both boards, and the root filesystem carries the
 matching 4,182 modules with the wireless drivers pruned out. All of it is
 extracted from version-pinned, hash-checked Debian packages rather than
@@ -331,7 +334,7 @@ dm-verity root hash, and `make verify-image` then judges it against the profiles
 satisfying eight assertions including the one that catches a verity salt
 regenerated per build and the one that pins the file list on the boot partition,
 which is the one region the hash tree cannot cover.
-Thirteen of the sixteen verifiers are written, and CI builds the artifact and
+Fourteen of the seventeen verifiers are written, and CI builds the artifact and
 runs them on every commit. `make fixture-image` runs the image
 verifiers against a synthetic card, and runs one that fails on purpose.
 

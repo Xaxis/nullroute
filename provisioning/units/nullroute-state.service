@@ -1,0 +1,40 @@
+# Prepares the writable partition the signing daemon keeps its store on.
+#
+# WHY THIS UNIT HAS TO EXIST. The root filesystem is read-only erofs under a
+# dm-verity tree, which is the point of it, and nullrouted.service declares
+# StateDirectory=nullroute. systemd creates that under /var/lib, /var/lib is on
+# the read-only root, and the daemon therefore exited 238/STATE_DIRECTORY on
+# every boot: started, failed, restarted, forever. A device that verifies its
+# own integrity perfectly and then cannot hold a wallet is not a signer.
+#
+# So there is a fourth partition, and this makes it usable before anything
+# wants it.
+[Unit]
+Description=nullroute state partition
+Documentation=https://nullroute.diy/docs/verification
+# NO ConditionPathExists, AND THAT IS THE LESSON FROM THIS UNIT.
+#
+# It had ConditionPathExists=/dev/disk/by-partlabel/state, which reads as
+# defensive and behaves as a silent skip. /dev/disk/by-partlabel is written by
+# udev, this unit was ordered ahead of it, the symlink did not exist yet, and
+# systemd skipped the unit without a word. The daemon then failed 238 on every
+# boot for a reason that was two layers away and printed nothing.
+#
+# The wait belongs in the script, where not finding the partition is a loud
+# failure rather than a condition quietly evaluating false.
+#
+# DefaultDependencies stays on, so this lands after sysinit.target and therefore
+# after udev has populated /dev.
+After=systemd-udevd.service
+# Before logind as well as the daemon. logind was failing 238/STATE_DIRECTORY
+# too, because a read-only /var/lib breaks anything with a StateDirectory, not
+# just this project's units.
+Before=nullrouted.service systemd-logind.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/lib/nullroute/bin/prepare-state
+
+[Install]
+WantedBy=multi-user.target

@@ -305,6 +305,34 @@ assertions:
       imported snapshot, which is the wallet layer's problem.
 
   # --- Process isolation ---------------------------------------------------
+  - id: INV-PROV-23
+    statement: >
+      Every unit the image ships can start: the program its ExecStart names and
+      the account it runs as are both present in the image.
+    stage: image
+    verify:
+      - check: unit-executables
+        params:
+          units:
+            - nullroute-state.service
+            - nullrouted.service
+            - nullroute-kiosk.service
+    rationale: >
+      INV-PROV-18 and INV-PROV-19 measure DECLARED directives, so
+      systemd-analyze will score a unit whose ExecStart names a file that is not
+      in the image. That is what this profile was doing. The signing daemon was
+      certified at an exposure of 0.5 while /usr/lib/nullroute/bin/node, its
+      main.js, /usr/bin/chromium and the users nullroute and nullroute-ui were
+      all absent, which is the sandbox of a process that cannot exist. A unit
+      that cannot start is not a hardened unit, it is a boot failure on a device
+      with no console anybody is watching.
+    does_not_cover: >
+      That the program runs. A truncated binary, one built for another
+      architecture, or one whose own dependencies are missing passes this: the
+      check is that the path resolves inside the artifact. It also reads the
+      unit files that ship and does not follow drop-ins under
+      systemd/system/<unit>.d/ that could override ExecStart.
+
   - id: INV-PROV-18
     statement: >
       The signing daemon unit scores at most 0.5 under

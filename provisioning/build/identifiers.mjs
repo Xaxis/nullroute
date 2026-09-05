@@ -67,6 +67,11 @@ const out = [
   ['NULLROUTE_BOOT_PART_GUID', partitionGuid(version, 'boot')],
   ['NULLROUTE_SYSTEM_PART_GUID', partitionGuid(version, 'system')],
   ['NULLROUTE_SYSTEM_HASH_PART_GUID', partitionGuid(version, 'system-hash')],
+  // The state partition's GUID is pinned; the filesystem inside it is not, and
+  // that split is deliberate. The partition is part of the image and has to
+  // reproduce with it. What lives in it is made on first boot on the device and
+  // is the one thing on the card that is genuinely per-device.
+  ['NULLROUTE_STATE_PART_GUID', partitionGuid(version, 'state')],
   // The kernel command line, read out of the profile that pins it rather than
   // written here, so there is one copy and the verifier compares the image
   // against the same string the build wrote.

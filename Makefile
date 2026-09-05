@@ -331,7 +331,10 @@ $(IMAGE_ENVFILE):
 	@mkdir -p out
 	@node provisioning/build/identifiers.mjs > $@
 
-image-system: image-env $(IMAGE_ENVFILE) ## Build the system partition and print its verity root hash
+# `build` and `build-app` first: the image carries the daemon's dist/ and the
+# frontend's dist-app/, and building them inside the image container would mean
+# shipping a toolchain to make a device that never compiles anything.
+image-system: build build-app verify image-env $(IMAGE_ENVFILE) ## Build the system partition and print its verity root hash
 	@docker run --rm --privileged --platform linux/arm64 \
 		-v "$(CURDIR)":/work \
 		-e SOURCE_DATE_EPOCH="$$(git log -1 --format=%ct)" \
@@ -431,11 +434,20 @@ image: ## Build the hardened Raspberry Pi image. NOT IMPLEMENTED YET.
 	@echo '  with one byte changed inside the system partition, and requires that'
 	@echo '  one to fail. It does.'
 	@echo
-	@echo '  WHAT IS STILL MISSING is userspace. The root filesystem has no init,'
-	@echo '  no systemd and no nullroute binary, so the boot would pivot into'
-	@echo '  nothing. Raspberry Pi firmware is unexercised too: QEMU loads the'
-	@echo '  kernel directly, so config.txt and start4.elf are carried and never'
-	@echo '  read, and no part of this has run on real hardware.'
+	@echo '  THE DAEMON RUNS. Under QEMU the card boots systemd on the verified'
+	@echo '  read-only root, formats and mounts its state partition, and starts'
+	@echo '  nullrouted, which checks its own verification report and prints the'
+	@echo '  manifest root before listening on its socket.'
+	@echo
+	@echo '  WHAT IS STILL MISSING is the loopback bridge. nullroute-kiosk.service'
+	@echo '  points Chromium at http://127.0.0.1:5180/ and nothing in the image'
+	@echo '  serves it: in development that is Vite, which is a dev dependency and'
+	@echo '  does not ship. The daemon speaks a Unix socket and nothing joins the'
+	@echo '  two on a device. That server is unwritten, and it needs a spec.'
+	@echo
+	@echo '  Raspberry Pi firmware is also unexercised: QEMU loads the kernel'
+	@echo '  directly, so config.txt and start4.elf are carried and never read,'
+	@echo '  and no part of this has run on real hardware.'
 	@echo
 	@echo '  So this refuses rather than emitting that card under a name that'
 	@echo '  invites somebody to flash it. A card that boots to nothing is worse'

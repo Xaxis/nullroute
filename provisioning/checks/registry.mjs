@@ -83,6 +83,11 @@ export const VERIFIERS = {
     status: 'implemented',
     describes: 'named paths do not exist in the rootfs',
   },
+  'unit-executables': {
+    status: 'implemented',
+    describes:
+      'every unit can actually start: the program its ExecStart names and the account it runs as are both in the image',
+  },
   'no-unit-ordering': {
     status: 'implemented',
     describes: 'no systemd unit declares itself before the signer',
@@ -171,6 +176,7 @@ export const NEEDS_NOTHING = new Set(['profile-self-check', 'verifier-ignores-ba
 
 export const NEEDS_ROOTFS = new Set([
   'absent-packages',
+  'unit-executables',
   'absent-paths',
   'no-unit-ordering',
   'cmdline-exact',

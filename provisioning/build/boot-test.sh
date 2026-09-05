@@ -64,21 +64,33 @@ SYSTEM_START=$(
 )
 [ -n "$SYSTEM_START" ] || { echo "boot-test: could not read the system partition offset" >&2; exit 1; }
 
+# A TIMEOUT IS A NORMAL ENDING HERE, not a failure. The intact boot pivots into
+# systemd, which has no reason to shut down, so the VM runs until it is killed
+# and `timeout` exits 124. The verdict comes from what the console said, not
+# from qemu's exit status, and `|| true` is what stops set -e turning a
+# successful boot into a failed script.
 boot() {
-  timeout 300 qemu-system-aarch64 \
+  timeout "${2:-120}" qemu-system-aarch64 \
     -M virt -cpu cortex-a72 -m 1024 -nographic -no-reboot -nic none \
     -kernel "$KERNEL_TREE/boot/vmlinuz-$KVER" \
     -initrd "$WORK/initramfs.img" \
     -drive "file=$1,format=raw,if=none,id=d0" \
     -device virtio-blk-device,drive=d0 \
-    -append "console=ttyAMA0 nullroute.selftest panic=1" 2>&1
+    -append "console=ttyAMA0 nullroute.selftest panic=1 systemd.journald.forward_to_console=1 systemd.log_target=console" 2>&1 || true
 }
 
 echo ""
 echo "  1. the card as built"
 intact=$(boot "$IMAGE")
-echo "$intact" | grep -E "^nullroute:" | sed 's/^/     /'
-if ! echo "$intact" | grep -q "SELFTEST OK"; then
+# KEPT, NOT SUMMARISED AWAY. The filtered view below is for reading; the full
+# console goes next to the image, because the last three failures here were all
+# diagnosed from lines the filter dropped, and a boot test whose evidence exists
+# only inside a container that has exited is a boot test you cannot debug.
+mkdir -p /work/out/system
+printf '%s\n' "$intact" > /work/out/system/console-intact.log
+cp /work/out/system/console-intact.log "$WORK/console-intact.log"
+grep -E "^nullroute|nullrouted|Starting nullroute" "$WORK/console-intact.log" | head -24 | sed 's/^/     /'
+if ! grep -q "SELFTEST OK" "$WORK/console-intact.log"; then
   echo ""
   echo "  FAILED. The card as built did not reach SELFTEST OK, so the initramfs"
   echo "  could not open its own system partition. Nothing below this line means"
@@ -86,11 +98,27 @@ if ! echo "$intact" | grep -q "SELFTEST OK"; then
   exit 1
 fi
 
+# STARTED, not merely enabled. The unit files shipped for a long time with
+# nothing wanting them, so the card booted all the way to a systemd that ran
+# neither the daemon nor the frontend. The only proof against that is systemd
+# saying it started them.
+if ! grep -qE "nullrouted\.service" "$WORK/console-intact.log"; then
+  echo ""
+  echo "  FAILED. systemd came up and never mentioned nullrouted.service, so the"
+  echo "  signing daemon did not start. A unit file under usr/lib/systemd/system"
+  echo "  is one systemd knows how to run and will never run on its own."
+  echo ""
+  echo "  Last of the console:"
+  tail -12 "$WORK/console-intact.log" | sed 's/^/     /'
+  exit 1
+fi
+
 echo ""
 echo "  2. the same card with one byte flipped inside the system partition"
 cp "$IMAGE" "$WORK/tampered.img"
 printf '\377' | dd of="$WORK/tampered.img" bs=1 seek=$((SYSTEM_START + 40000000)) conv=notrunc status=none
-tampered=$(boot "$WORK/tampered.img")
+tampered=$(boot "$WORK/tampered.img" 120)
+printf '%s\n' "$tampered" > /work/out/system/console-tampered.log
 echo "$tampered" | grep -E "^nullroute:|verity:" | sed 's/^/     /'
 
 if echo "$tampered" | grep -q "SELFTEST OK"; then
