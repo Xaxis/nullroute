@@ -1,0 +1,190 @@
+#!/bin/busybox sh
+# The first userspace this device runs, and the whole of tier 1's boot half.
+#
+# WHAT IT HAS TO DO, and why each step is not optional. The system partition is
+# a read-only erofs image under a dm-verity hash tree. Verity is what makes
+# modification of that partition detectable: every block is checked against the
+# tree as it is read, and the tree is checked against a single root hash. Mount
+# the erofs directly and none of that happens, and the partition is then just a
+# filesystem somebody could have edited.
+#
+# So the root filesystem is NEVER mounted from the raw partition. It is mounted
+# through the verity mapping or the boot stops here.
+#
+# FAILING LOUDLY IS THE POINT. Every error path in this file ends in a message
+# and a halt, never a fallback to an unverified root. A signer that boots anyway
+# when its integrity check fails has an integrity check for decoration.
+set -u
+
+/bin/busybox --install -s /bin
+mount -t proc     -o nosuid,noexec,nodev proc     /proc
+mount -t sysfs    -o nosuid,noexec,nodev sysfs    /sys
+mount -t devtmpfs -o nosuid,mode=0755    devtmpfs /dev
+
+say()  { echo "nullroute: $*"; }
+stop() {
+  echo ""
+  echo "nullroute: STOPPING. $*"
+  echo "nullroute: The root filesystem was not verified, so it will not be mounted."
+  echo ""
+  exec /bin/busybox sh
+}
+
+# Modules rather than built-ins: Debian's arm64 kernel has DM_VERITY=m and
+# EROFS_FS=m, so nothing below works until these are loaded.
+#
+# IN DEPENDENCY ORDER, BY HAND, because modprobe would need a module database in
+# here and this is a fixed list of seven. The order is not arbitrary and each
+# entry earns its place: dm-verity will not link without reed_solomon, which
+# provides its forward error correction, and erofs will not link without the
+# crc32c symbol that libcrc32c exports over the crc32c_generic algorithm. Both
+# were missing on the first boot and the kernel said so.
+#
+# A FAILED insmod IS FATAL. This loop used to print "already present or built
+# in" and carry on, which is what it said while dm-verity was failing to link
+# against three missing symbols. A reassuring message on an error path is the
+# defect this project treats as a security bug, in the one file where the next
+# thing to happen is mounting a root filesystem.
+# fat and vfat before the rest: the boot partition is FAT and the root hash is
+# read off it, so a kernel that cannot mount it gets no further. nls_cp437 and
+# nls_ascii are what vfat decodes short names with, and vfat refuses to mount
+# without a codepage.
+for module in fat vfat nls_cp437 nls_ascii dm-mod dm-bufio reed_solomon dm-verity crc32c_generic libcrc32c erofs; do
+  [ -f "/modules/${module}.ko" ] || stop "the initramfs has no ${module}.ko."
+  # Into a variable rather than a file. The first version redirected to
+  # /tmp/insmod.err, an initramfs has no /tmp, so the redirect failed and every
+  # module looked unloadable with an empty reason attached.
+  if ! err=$(insmod "/modules/${module}.ko" 2>&1); then
+    # Already loaded is the one benign failure, and it is distinguishable.
+    case "$err" in
+      *"File exists"*) : ;;
+      *) stop "could not load ${module}: ${err}" ;;
+    esac
+  fi
+done
+say "device mapper, verity and erofs loaded"
+
+# STORAGE, and this group is tolerant where the group above is not.
+#
+# The card is not readable until the controller driving it has a driver, and
+# which one that is depends on the board: sdhci-iproc drives the SD controller
+# on a Pi 4 and 5, bcm2835 the older host, and virtio_blk is what the QEMU
+# harness presents. A board needs its own and none of the others, so a missing
+# module here is normal and is not fatal.
+#
+# It is not silent either. The first boot of this file found no block device at
+# all and said "no boot partition found", which was true and useless: the disk
+# was there and nothing could see it, because virtio_blk is a module in Debian's
+# kernel and the initramfs did not carry it.
+loaded=""
+for module in virtio_mmio virtio_blk mmc_core sdhci sdhci-pltfm sdhci-iproc bcm2835; do
+  [ -f "/modules/${module}.ko" ] || continue
+  if err=$(insmod "/modules/${module}.ko" 2>&1); then
+    loaded="${loaded} ${module}"
+  else
+    case "$err" in
+      *"File exists"*) loaded="${loaded} ${module}" ;;
+      *) say "note: ${module} did not load, which is expected on a board that has no use for it" ;;
+    esac
+  fi
+done
+say "storage drivers loaded:${loaded:- none}"
+
+# WAITED FOR, NOT ASSUMED. Block devices appear asynchronously: the first boot
+# of this file reached here before virtio had registered its partitions and
+# reported "no boot partition found" about a disk that was on its way. Ten
+# seconds of polling, then a message that says what WAS there, because "not
+# found" without a list is the least useful thing a boot can print.
+BOOT_DEV="${NULLROUTE_BOOT_DEV:-}"
+if [ -z "$BOOT_DEV" ]; then
+  attempt=0
+  while [ "$attempt" -lt 100 ]; do
+    for candidate in /dev/mmcblk0p1 /dev/vda1 /dev/sda1; do
+      [ -b "$candidate" ] && { BOOT_DEV="$candidate"; break; }
+    done
+    [ -n "$BOOT_DEV" ] && break
+    attempt=$((attempt + 1))
+    sleep 0.1
+  done
+fi
+[ -n "$BOOT_DEV" ] || stop "no boot partition. Block devices present: $(ls /dev | tr '\n' ' ')"
+
+# The three partitions are fixed by the profile's layout: boot, system, hash.
+DISK="${BOOT_DEV%1}"
+SYSTEM_DEV="${DISK}2"
+HASH_DEV="${DISK}3"
+
+mkdir -p /boot /sysroot
+mount -t vfat -o ro,nosuid,nodev,noexec "$BOOT_DEV" /boot || stop "could not read the boot partition."
+
+# THE NUMBER THIS ALL TURNS ON. It is read from the boot partition, which is the
+# one region the hash tree does not cover, and that is tier 1's known gap rather
+# than a bug here: an attacker who rewrites this file and the hash tree together
+# gets a device that verifies happily against their own number. Only a signed
+# boot chain closes it. See docs/THREAT-MODEL.md.
+[ -f /boot/system.roothash ] || stop "no system.roothash on the boot partition."
+ROOT_HASH="$(cat /boot/system.roothash)"
+case "$ROOT_HASH" in
+  [0-9a-f]*) : ;;
+  *) stop "system.roothash is not a hex digest." ;;
+esac
+say "root hash ${ROOT_HASH}"
+
+veritysetup open "$SYSTEM_DEV" nullroute-system "$HASH_DEV" "$ROOT_HASH" \
+  || stop "dm-verity refused to open the system partition. It does not match ${ROOT_HASH}."
+# Deliberately not "the system partition matches its root hash". It does not
+# say that yet, and saying it here would be the device overclaiming on its own
+# console. Opening builds the mapping and checks the hash tree's superblock.
+say "dm-verity mapping open against ${ROOT_HASH}, blocks verified as they are read"
+
+mount -t erofs -o ro "/dev/mapper/nullroute-system" /sysroot \
+  || stop "the verified system partition is not a readable erofs filesystem."
+say "root filesystem mounted read only, through the verity mapping"
+
+# WHAT "OPENED" DOES AND DOES NOT MEAN, because the difference is easy to get
+# wrong and this file is where somebody would get it wrong.
+#
+# dm-verity is LAZY. `veritysetup open` builds the mapping and checks the hash
+# tree's own superblock; it does not read the data. Every data block is verified
+# at the moment it is first read, and a block nobody reads is never checked. So
+# a successful open is not a statement that the partition is intact, and neither
+# is a successful mount.
+#
+# Measured: one byte flipped 40MB into the system partition, and the device
+# opened, mounted, and reported success, because nothing in the boot path had
+# read that far. Corrupting a block the mount touches stops it immediately. The
+# protection is real and it is per-block-on-read, which is the correct design
+# for a root filesystem and is not the same as "the card was checked at boot".
+
+# NULLROUTE_INITRAMFS_SELFTEST is set only by the harness that boots this under
+# QEMU. It reports what it proved and halts, so the check has something to read
+# and does not need a full userspace on the other side.
+if [ -n "${NULLROUTE_SELFTEST:-}" ] || grep -q nullroute.selftest /proc/cmdline; then
+  say "SELFTEST hostname=$(cat /sysroot/etc/hostname 2>/dev/null || echo missing)"
+  say "SELFTEST modules=$(ls /sysroot/usr/lib/modules 2>/dev/null | head -1)"
+  # Counted from the MOUNTED root filesystem, which is the only place the
+  # question is answered about what actually ships. Asking it here is what
+  # found 28 wireless and Bluetooth modules in an image whose profile said
+  # there were none: the prune had removed drivers/net/wireless and left the
+  # 802.11 stack and the whole Bluetooth subsystem behind.
+  say "SELFTEST radio_modules=$(find /sysroot/usr/lib/modules \
+        -path '*net/wireless*' -o -path '*mac80211*' -o -path '*bluetooth*' \
+        2>/dev/null | grep -c '\.ko')"
+  # THE WHOLE DEVICE, not a sample. Reading every block is what forces
+  # dm-verity to verify every block, and it is the only way this harness can
+  # answer "does the card match its root hash" rather than "did the mapping
+  # open". A read error here is verity refusing corrupted data, which is the
+  # behaviour the whole tier exists for.
+  if dd if=/dev/mapper/nullroute-system of=/dev/null bs=1M 2>/dev/null; then
+    say "SELFTEST verified_whole_partition=yes"
+  else
+    say "SELFTEST verified_whole_partition=NO, dm-verity rejected a block"
+    say "SELFTEST FAILED"
+    poweroff -f
+  fi
+  say "SELFTEST OK"
+  poweroff -f
+fi
+
+umount /boot
+exec switch_root /sysroot /sbin/init

@@ -16,13 +16,25 @@
 # make that assertion pass or fail for reasons unrelated to this repository.
 # The tools are pinned to exact versions for the same reason.
 #
-# WHAT THIS CANNOT DO, and it is the more important half. Docker Desktop's
-# kernel has no dm-verity target: `veritysetup format` computes a hash tree and
-# a root hash here, which is the build-time half of tier 1, and `veritysetup
-# open` fails with "Kernel does not support dm-verity mapping". Nothing in this
-# container can demonstrate that a device BOOTS with an immutable root. See
-# provisioning/README.md for which assertions that leaves uncounted, and
-# docs/THREAT-MODEL.md for why the distinction is the whole point of tier 1.
+# WHAT THIS CONTAINER'S OWN KERNEL CANNOT DO. Docker Desktop's kernel has no
+# dm-verity target: `veritysetup format` computes a hash tree and a root hash
+# here, and `veritysetup open` fails with "Kernel does not support dm-verity
+# mapping". That was measured again rather than assumed.
+#
+# WHICH IS WHY QEMU IS INSTALLED. The premise used to be that nothing here could
+# demonstrate a device BOOTING with an immutable root, and that was a statement
+# about this container's kernel rather than about the work. A guest kernel is a
+# kernel: qemu-system-aarch64 boots the same Debian kernel the card carries,
+# with the same initramfs, against the same image file, and dm-verity works
+# there because that kernel has the target.
+#
+# `make image-boot-test` does exactly that, twice: once against the card as
+# built, and once against a copy with one byte flipped inside the system
+# partition. The second must fail. See provisioning/build/boot-test.sh.
+#
+# What it still cannot do is run Raspberry Pi firmware, so the path from
+# power-on to this kernel is unexercised. It proves the initramfs and the verity
+# mapping, not the boot chain ahead of them.
 FROM debian:bookworm-slim@sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171
 
 # One layer, so the version pins and the cleanup cannot drift apart.
@@ -44,6 +56,10 @@ RUN apt-get update \
       e2fsprogs \
       dosfstools=4.2-1 \
       uuid-runtime \
+      busybox-static=1:1.35.0-4+deb12u1+b1 \
+      cpio=2.13+dfsg-7.1 \
+      xz-utils=5.4.1-1+deb12u1 \
+      qemu-system-arm=1:7.2+dfsg-7+deb12u18+b3 \
  && rm -rf /var/lib/apt/lists/*
 
 # Reproducible builds read this. Overridden by the caller with the repository's

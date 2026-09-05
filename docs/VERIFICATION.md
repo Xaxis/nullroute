@@ -65,14 +65,14 @@ Compute the root hash:
 
 ```console
 $ sha256sum MANIFEST.lock
-e77366e7f366021c7a74faa7716410bf4d459040e2cee658c0431829f4bdce02  MANIFEST.lock
+8ea1a91e4ce64e0a1497c985c7453a14a720e5b8c59b8769c701d74d754d0a6c  MANIFEST.lock
 ```
 
 Regenerate the manifest from scratch and confirm it matches what is committed:
 
 ```console
 $ git ls-files -z packages spec provisioning | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum
-e77366e7f366021c7a74faa7716410bf4d459040e2cee658c0431829f4bdce02  -
+8ea1a91e4ce64e0a1497c985c7453a14a720e5b8c59b8769c701d74d754d0a6c  -
 ```
 
 On macOS use `shasum -a 256` in place of `sha256sum`. The values are identical.

@@ -25,7 +25,7 @@ MANIFEST_ROOTS := packages spec provisioning
         prose links profiles sbom sbom-check repro-check clean dev-daemon build-app web web-build web-lint web-type-check \
         screens screen-fit ui-constants dev-check verify-image docs-reachable no-dead-ends \
         image-env image-shell image-system image-repro journeys \
-        web-isolation web-csp web-responsive web-site-links web-dice-demo web-check web-live-check deploy image
+        web-isolation web-csp web-responsive web-site-links web-dice-demo web-check web-live-check deploy image image-boot-test
 
 help: ## List available targets
 	@grep -hE '^[a-z][a-z-]*:.*?## ' $(MAKEFILE_LIST) \
@@ -300,11 +300,14 @@ image-env: ## Build the pinned Linux host the image is built on
 		echo "  genimage    $$(genimage --version)"; \
 		echo "  veritysetup $$(veritysetup --version)"'
 	@echo
-	@echo '  Build half only. This kernel has no dm-verity target, so'
-	@echo '  "veritysetup format" computes a root hash here and "veritysetup open"'
-	@echo '  does not work. Nothing in this container can show that a device boots'
-	@echo '  with an immutable root. provisioning/README.md says which assertions'
-	@echo '  that leaves uncounted.'
+	@echo '  This container KERNEL has no dm-verity target, so "veritysetup format"'
+	@echo '  computes a root hash here and "veritysetup open" does not work. That'
+	@echo '  used to mean nothing here could show a device booting with an'
+	@echo '  immutable root, which was a statement about this kernel rather than'
+	@echo '  about the work: "make image-boot-test" boots the card under QEMU,'
+	@echo '  where the guest kernel does have the target, and requires that a'
+	@echo '  modified system partition fails. Raspberry Pi firmware is still not'
+	@echo '  exercised, so the boot chain ahead of the kernel is unproven.'
 
 image-shell: image-env ## A shell in the build host, with the repository mounted
 	# --privileged for loop devices, which mmdebstrap and genimage both need.
@@ -376,6 +379,25 @@ image-repro: image-env $(IMAGE_ENVFILE) ## Build the card TWICE and run the repr
 	@$(MAKE) --no-print-directory verify-image \
 		IMAGE=out/repro-a/nullroute.img COMPARE=out/repro-b/nullroute.img
 
+image-boot-test: image-env $(IMAGE_ENVFILE) ## Boot the card under QEMU and prove dm-verity rejects a modified partition
+	# THE ONLY CHECK HERE THAT ANSWERS TIER 1'S ACTUAL QUESTION. Everything
+	# else in provisioning/ reads an artifact at rest and cannot tell a
+	# working integrity check from an absent one. This boots the card twice,
+	# and the second boot, against an image with one byte flipped inside the
+	# system partition, has to fail.
+	@docker run --rm --privileged --platform linux/arm64 \
+		-v "$(CURDIR)":/work \
+		-e SOURCE_DATE_EPOCH="$$(git log -1 --format=%ct)" \
+		--env-file $(IMAGE_ENVFILE) \
+		$(IMAGE_ENV) sh -c '\
+			cd /tmp && \
+			echo "deb http://deb.debian.org/debian trixie main non-free-firmware" > /etc/apt/sources.list && \
+			apt-get update >/dev/null 2>&1 && \
+			apt-get download linux-image-6.12.94+deb13-arm64 >/dev/null 2>&1 && \
+			dpkg-deb -x linux-image*.deb /tmp/k && \
+			/work/provisioning/build/boot-test.sh \
+				/work/out/system/nullroute.img /tmp/k 6.12.94+deb13-arm64'
+
 image: ## Build the hardened Raspberry Pi image. NOT IMPLEMENTED YET.
 	# Fails on purpose, and says so, rather than calling a script that is not
 	# there. This target used to run tools/build-image/build.sh, which was never
@@ -403,11 +425,17 @@ image: ## Build the hardened Raspberry Pi image. NOT IMPLEMENTED YET.
 	@echo '  the wireless drivers pruned out so INV-PROV-13 has something to be'
 	@echo '  absent from rather than passing against an image with no kernel.'
 	@echo
-	@echo '  WHAT IS STILL MISSING is what turns those parts into a device: an'
-	@echo '  initramfs that opens the dm-verity mapping and pivots onto it, and'
-	@echo '  the nullroute binary itself. A card with a kernel and no initramfs'
-	@echo '  panics on not finding a root filesystem. It is further along and no'
-	@echo '  more bootable, and nothing here has been started on real hardware.'
+	@echo '  THE INITRAMFS WORKS AND IS TESTED. "make image-boot-test" boots this'
+	@echo '  card under QEMU, opens the dm-verity mapping, mounts the erofs root'
+	@echo '  through it and reads every block; then it does the same to a copy'
+	@echo '  with one byte changed inside the system partition, and requires that'
+	@echo '  one to fail. It does.'
+	@echo
+	@echo '  WHAT IS STILL MISSING is userspace. The root filesystem has no init,'
+	@echo '  no systemd and no nullroute binary, so the boot would pivot into'
+	@echo '  nothing. Raspberry Pi firmware is unexercised too: QEMU loads the'
+	@echo '  kernel directly, so config.txt and start4.elf are carried and never'
+	@echo '  read, and no part of this has run on real hardware.'
 	@echo
 	@echo '  So this refuses rather than emitting that card under a name that'
 	@echo '  invites somebody to flash it. A card that boots to nothing is worse'

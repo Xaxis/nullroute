@@ -217,7 +217,19 @@ assertions:
           packages: [firmware-brcm80211, bluez, wpasupplicant, wireless-tools]
       - check: absent-paths
         params:
-          globs: ['lib/modules/*/kernel/drivers/net/wireless/**', 'lib/firmware/brcm/**']
+          # THE STATEMENT SAYS "wireless OR BLUETOOTH", and for a long time the
+          # globs said neither. Only drivers/net/wireless was listed, so the
+          # 802.11 stack (cfg80211, mac80211, lib80211) and every one of the 22
+          # Bluetooth modules satisfied this assertion by not being looked at.
+          # Found by booting the card under QEMU and asking the mounted root
+          # filesystem what was in it.
+          globs:
+            - 'lib/modules/*/kernel/drivers/net/wireless/**'
+            - 'lib/modules/*/kernel/net/wireless/**'
+            - 'lib/modules/*/kernel/net/mac80211/**'
+            - 'lib/modules/*/kernel/net/bluetooth/**'
+            - 'lib/modules/*/kernel/drivers/bluetooth/**'
+            - 'lib/firmware/brcm/**'
     rationale: >
       Disabling a radio in configuration leaves the capability present for
       whoever next edits that configuration. Removing the driver and the
@@ -364,6 +376,15 @@ assertions:
             # reads config.txt directly, so they are inert there.
             - start4.elf
             - fixup4.dat
+            # The dm-verity root hash the initramfs opens the system partition
+            # with. It lives here rather than in the kernel command line so that
+            # INV-PROV-21 can keep pinning that line exactly; this number changes
+            # whenever the system partition's contents do.
+            - system.roothash
+            # Opens the verity mapping and pivots onto it. `make image-boot-test`
+            # boots this under QEMU and requires that a card with one byte
+            # changed inside the system partition fails.
+            - initramfs.img
     rationale: >
       Every other region of the card is under the dm-verity hash tree. This one
       cannot be, because it is where the firmware reads the root hash from. An

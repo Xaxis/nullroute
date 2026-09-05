@@ -312,10 +312,14 @@ signmessage scheme for legacy addresses, and a screen for checking somebody
 else's proof. Verification needs no key and works with the wallet locked:
 checking a stranger's signature should not cost the passphrase to your money.
 
-*Building one.* Not a flashable device yet, and none of it has been started on
-real hardware. `make image` still refuses, because there is no initramfs to open
-the dm-verity mapping and no nullroute binary in the root filesystem. The parts
-below that are real: the boot partition carries Pi 4 GPU firmware, a 6.12 kernel
+*Building one.* Not a flashable device yet, and no part of it has run on real
+hardware. `make image` still refuses, because the root filesystem has no init,
+no systemd and no nullroute binary, so there is nothing for the boot to pivot
+into. What does now work is the part tier 1 is actually about: `make
+image-boot-test` boots the card under QEMU, opens the dm-verity mapping, mounts
+the root through it and reads every block, then does the same to a copy with one
+byte changed inside the system partition and requires that one to fail. It does.
+The parts below that are real: the boot partition carries Pi 4 GPU firmware, a 6.12 kernel
 and the device trees for both boards, and the root filesystem carries the
 matching 4,182 modules with the wireless drivers pruned out. All of it is
 extracted from version-pinned, hash-checked Debian packages rather than

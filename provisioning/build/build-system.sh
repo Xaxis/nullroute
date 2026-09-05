@@ -134,6 +134,7 @@ KERNEL_DEB=linux-image-6.12.94+deb13-arm64_6.12.94-1_arm64.deb
 KERNEL_SHA=72db7fcfb443a4b03448bda98f4e7c1a1fa0d6c21fc57f0b119d704442f8ad49
 FIRMWARE_DEB=raspi-firmware_1.20240424+ds-6_all.deb
 FIRMWARE_SHA=f95a3d3c41df10bac33580be91b595efa1e126ad5e4b7eca75ce26fbbc69af06
+KERNEL_VERSION=6.12.94+deb13-arm64
 KERNEL_DIR=usr/lib/linux-image-6.12.94+deb13-arm64/broadcom
 
 BOOT="$WORK/boot"
@@ -162,7 +163,7 @@ dpkg-deb -x "$WORK/debs/$KERNEL_DEB" "$WORK/kernel"
 dpkg-deb -x "$WORK/debs/$FIRMWARE_DEB" "$WORK/firmware"
 
 # The kernel, under the name the firmware looks for and config.txt names.
-cp "$WORK/kernel/boot/vmlinuz-6.12.94+deb13-arm64" "$BOOT/kernel8.img"
+cp "$WORK/kernel/boot/vmlinuz-$KERNEL_VERSION" "$BOOT/kernel8.img"
 
 # ONLY THE BOARDS THE PROFILE CLAIMS, and only the ones Debian can actually
 # boot. `boards` used to list raspberrypi-cm5 and this kernel has no
@@ -178,16 +179,25 @@ cp "$WORK/kernel/$KERNEL_DIR/bcm2712-rpi-5-b.dtb" "$BOOT/"
 cp "$WORK/firmware/usr/lib/raspi-firmware/start4.elf" "$BOOT/"
 cp "$WORK/firmware/usr/lib/raspi-firmware/fixup4.dat" "$BOOT/"
 
+# The initramfs that opens the dm-verity mapping. Built from the same kernel
+# tree the card carries, so its modules and the kernel cannot be a version
+# apart, which is a boot failure with no console to read it on.
+/work/provisioning/build/build-initramfs.sh "$BOOT" "$WORK/kernel" "$KERNEL_VERSION"
+
 # No splash, for the same reason the kernel command line has no `quiet`: a
 # device whose whole claim is that you can watch it verify itself should not
 # hide its own boot behind a picture.
+#
+# `followkernel` places the initramfs after the kernel in memory rather than at
+# a fixed address, which is what the Pi firmware expects when it is loading both.
 cat > "$BOOT/config.txt" <<'CONFIG'
 arm_64bit=1
 kernel=kernel8.img
+initramfs initramfs.img followkernel
 disable_splash=1
 CONFIG
 
-echo "  boot files       $(ls "$BOOT" | tr '\n' ' ')"
+
 
 # The pinned kernel command line, at the path the device will read it from.
 #
@@ -213,7 +223,24 @@ printf '%s\n' "${NULLROUTE_CMDLINE:?run through the Makefile}" > "$ROOTFS/boot/f
 # firmware uses one block up, and for the same reason: the package that carries
 # what this device needs also carries what it must not have.
 cp -a "$WORK/kernel/usr/lib/modules" "$ROOTFS/usr/lib/"
-rm -rf "$ROOTFS/usr/lib/modules"/*/kernel/drivers/net/wireless
+
+# THE STACK AND THE RADIO, not just the drivers. Removing
+# drivers/net/wireless was the obvious half and it left cfg80211, mac80211,
+# lib80211 and the whole of Bluetooth in place: 28 modules, in an image whose
+# profile says "No wireless or Bluetooth kernel module is present". That was
+# found by booting the card under QEMU and asking the mounted root filesystem,
+# which is a thing no amount of reading the build script would have shown.
+for tree in \
+  kernel/drivers/net/wireless \
+  kernel/net/wireless \
+  kernel/net/mac80211 \
+  kernel/net/bluetooth \
+  kernel/drivers/bluetooth \
+  kernel/net/6lowpan \
+  kernel/net/nfc
+do
+  rm -rf "$ROOTFS/usr/lib/modules"/*/"$tree"
+done
 rm -rf "$ROOTFS/usr/lib/firmware/brcm"
 
 # Named, not counted. A silent prune that stopped matching would leave the
@@ -246,6 +273,26 @@ veritysetup format "$WORK/system.erofs" "$WORK/system.verity" \
   | awk '/Root hash/ { print $3 }' > "$WORK/root-hash"
 
 cp "$WORK/system.erofs" "$WORK/system.verity" "$WORK/root-hash" "$OUT/"
+
+# THE ROOT HASH, ON THE BOOT PARTITION, AS ITS OWN FILE.
+#
+# Not on the kernel command line, and the reason is INV-PROV-21: that assertion
+# pins the command line EXACTLY, which is what lets it catch an addition as well
+# as a removal. A `roothash=` token changes with every change to the system
+# partition's contents, so putting it there would mean either re-pinning the
+# assertion on every build or loosening it to a pattern, and a pinned value that
+# has to be regenerated is one nobody reads.
+#
+# A separate file keeps the command line a constant and puts the varying number
+# where docs/VERIFICATION.md already says a release publishes it, as
+# `system.roothash`. INV-PROV-22 lists it, so it cannot appear or vanish from
+# the unprotected partition without the profile changing.
+#
+# It being readable and rewritable by anyone holding the card is the tier 1 gap,
+# not an oversight: the boot partition is outside the hash tree by construction.
+cp "$WORK/root-hash" "$BOOT/system.roothash"
+
+echo "  boot files       $(ls "$BOOT" | tr '\n' ' ')"
 
 # The root filesystem itself, for `make verify-image ROOT=`, when asked for.
 #
@@ -327,6 +374,8 @@ image boot.vfat {
     file "bcm2712-rpi-5-b.dtb" { image = "bcm2712-rpi-5-b.dtb" }
     file "start4.elf" { image = "start4.elf" }
     file "fixup4.dat" { image = "fixup4.dat" }
+    file "system.roothash" { image = "system.roothash" }
+    file "initramfs.img" { image = "initramfs.img" }
   }
   size = 64M
 }
