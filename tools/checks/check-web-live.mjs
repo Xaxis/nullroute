@@ -15,6 +15,17 @@
  * check passed, and the responsive check passed. Only opening the real
  * deployed URL in a real browser and reading the console found it.
  *
+ * AND IT ALSO ASKS WHETHER THE DEPLOYED SITE IS THE SITE WE BUILT, which is a
+ * different question and was the one nobody was asking. nullroute.diy served a
+ * three week old page: the home page had been cut from 6,568 pixels to 3,605,
+ * the dead links had been fixed, and none of it was live, because `make deploy`
+ * had not been run and nothing anywhere compared the two. Every check in this
+ * file passed against that stale page, because a stale page renders perfectly.
+ *
+ * The comparison is byte-for-byte and can be, because `vercel deploy
+ * --prebuilt` ships exactly the bytes in apps/web/out. Anything less exact
+ * would be a check that tolerates the drift it exists to find.
+ *
  * Uses Chrome over the DevTools Protocol via Node's built-in WebSocket, so it
  * adds no dependency.
  *
@@ -24,6 +35,7 @@
 
 import { spawn } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 import { chromeProfile, finish, reap } from '../lib/browser.mjs'
@@ -55,6 +67,15 @@ function docPages() {
 }
 
 const PAGES = [{ path: '/', expect: 'Built to be checked' }, ...docPages()]
+
+const OUT = join(ROOT, 'apps/web/out')
+
+/** Where `next build` put the page this path serves. */
+function builtFile(path) {
+  return path === '/' ? join(OUT, 'index.html') : join(OUT, `${path.slice(1)}.html`)
+}
+
+const sha256 = (text) => createHash('sha256').update(text).digest('hex')
 
 /** A doc page that renders its shell but not its body would still "load". */
 const MIN_CHARS = 5000
@@ -170,6 +191,35 @@ async function main() {
     const info = JSON.parse(result.value)
 
     const issues = []
+
+    /*
+     * IS THIS THE PAGE WE BUILT. Fetched raw rather than read out of the
+     * browser, because innerHTML is the DOM after parsing and hydration and
+     * this has to compare the bytes that were served.
+     */
+    const local = builtFile(path)
+    if (!existsSync(local)) {
+      issues.push(`no local build at ${local.replace(ROOT, '')}. Run "make web-build" first.`)
+    } else {
+      let served
+      try {
+        served = await (await fetch(`${ORIGIN}${path}`)).text()
+      } catch (err) {
+        served = null
+        issues.push(`could not fetch it: ${err instanceof Error ? err.message : String(err)}`)
+      }
+      if (served !== null) {
+        const expected = readFileSync(local, 'utf8')
+        if (sha256(served) !== sha256(expected)) {
+          issues.push(
+            `the deployed page is not the built page: served ${String(served.length)} bytes ` +
+              `hashing ${sha256(served).slice(0, 12)}, built ${String(expected.length)} bytes ` +
+              `hashing ${sha256(expected).slice(0, 12)}. Run "make deploy".`
+          )
+        }
+      }
+    }
+
     if (!info.h1.includes(expect) && !info.title.includes(expect)) {
       issues.push(`expected "${expect}" in the heading or title, got h1="${info.h1}"`)
     }
@@ -196,7 +246,10 @@ async function main() {
     console.error(`check-web-live: ${failures} of ${PAGES.length} pages are broken at ${ORIGIN}`)
     process.exit(1)
   }
-  console.log(`check-web-live: ${PAGES.length} pages render clean at ${ORIGIN}`)
+  console.log(
+    `check-web-live: ${PAGES.length} pages render clean at ${ORIGIN}, ` +
+      `and every one is byte-identical to the local build`
+  )
   // The verdict is printed and nothing is left to wait for. See tools/lib/reap.mjs.
   finish(0)
 }
