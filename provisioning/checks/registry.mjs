@@ -83,6 +83,11 @@ export const VERIFIERS = {
     status: 'implemented',
     describes: 'named paths do not exist in the rootfs',
   },
+  'file-modes': {
+    status: 'implemented',
+    describes:
+      'a file the design depends on exists with the mode and owner it needs, such as the setuid helper Chromium refuses to run without',
+  },
   'unit-executables': {
     status: 'implemented',
     describes:
@@ -177,6 +182,7 @@ export const NEEDS_NOTHING = new Set(['profile-self-check', 'verifier-ignores-ba
 export const NEEDS_ROOTFS = new Set([
   'absent-packages',
   'unit-executables',
+  'file-modes',
   'absent-paths',
   'no-unit-ordering',
   'cmdline-exact',

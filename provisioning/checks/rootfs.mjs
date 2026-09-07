@@ -690,9 +690,100 @@ export function unitExecutables(root, params) {
   )
 }
 
+/**
+ * INV-PROV-24. A file exists with the mode and owner the design depends on.
+ *
+ * WRITTEN FOR ONE FILE AND KEPT GENERAL. Chromium's own sandbox needs a setuid
+ * helper at /usr/lib/chromium/chrome-sandbox, owned by root and mode 4755.
+ * Debian ships it in a separate package, the image installed `chromium` and not
+ * `chromium-sandbox`, and the browser aborted on every boot with "No usable
+ * sandbox". That is not a missing feature: nullroute-kiosk.service accepts a
+ * systemd exposure of 3.0 where the daemon is held to 0.5, and its own comment
+ * says the trade is made SPECIFICALLY so Chromium can keep its sandbox. Without
+ * the helper the image was paying that price and getting nothing.
+ *
+ * Presence is not the check. A helper without its setuid bit is a helper
+ * Chromium refuses, and it refuses loudly for the right reason: running the
+ * browser unsandboxed on a device that reviews transactions would be worse than
+ * not running it.
+ */
+function isSetuid(path) {
+  try {
+    return (statSync(path).mode & 0o4000) !== 0
+  } catch {
+    return false
+  }
+}
+
+export function fileModes(root, params) {
+  const files = params.files ?? []
+  if (files.length === 0) return verdict('file-modes', false, 'no files were given to check')
+
+  /*
+   * CAN THIS TREE EVEN HOLD A SETUID BIT. It cannot always, and the failure is
+   * silent. build-system.sh assembles the root filesystem inside the container
+   * and copies it out to a bind mount, and a macOS bind mount drops setuid on
+   * the way: the helper is 4755 in the image and 0755 in the exported tree, and
+   * so is every other setuid binary Debian ships. `su` and `mount` are 0755
+   * there too.
+   *
+   * So a verifier that read the exported tree and reported "mode 0755, not
+   * 4755" would be describing the export rather than the image, and the fix
+   * somebody made in response would be to a file that was already correct. A
+   * Debian root filesystem always carries several setuid binaries; none at all
+   * means the filesystem underneath cannot represent one, and the honest answer
+   * is that this cannot be checked here rather than that it failed.
+   */
+  const wantsSetuid = files.some((entry) => /^[2-7]/.test(entry.mode ?? ''))
+  if (wantsSetuid && walk(root).every((path) => !isSetuid(join(root, path)))) {
+    return unavailable(
+      'file-modes',
+      'nothing in this root filesystem has a setuid bit, not even su or mount, so the ' +
+        'filesystem it was exported to cannot represent one. Checking a setuid mode here ' +
+        'would report the export rather than the image. Read it from the image instead.'
+    )
+  }
+
+  const problems = []
+  const checked = []
+  for (const entry of files) {
+    const target = join(root, entry.path.replace(/^\//, ''))
+    let stats
+    try {
+      stats = statSync(target)
+    } catch {
+      problems.push(`${entry.path} is not in the image`)
+      continue
+    }
+    // The low twelve bits: permission plus setuid, setgid and sticky.
+    const mode = (stats.mode & 0o7777).toString(8).padStart(4, '0')
+    if (entry.mode !== undefined && mode !== entry.mode) {
+      problems.push(`${entry.path} is mode ${mode}, not ${entry.mode}`)
+      continue
+    }
+    if (entry.uid !== undefined && stats.uid !== entry.uid) {
+      problems.push(`${entry.path} is owned by uid ${String(stats.uid)}, not ${String(entry.uid)}`)
+      continue
+    }
+    checked.push(`${entry.path} ${mode}`)
+  }
+
+  return verdict(
+    'file-modes',
+    problems.length === 0,
+    problems.length === 0
+      ? `${String(checked.length)} file(s) have the mode and owner they need: ${checked.join(', ')}`
+      : problems.join('; '),
+    [
+      'reads the mode recorded in the filesystem. A partition mounted nosuid ignores a setuid bit that is present, and this cannot see that from an unbooted image.',
+    ]
+  )
+}
+
 export const ROOTFS_VERIFIERS = {
   'absent-paths': absentPaths,
   'unit-executables': unitExecutables,
+  'file-modes': fileModes,
   'absent-packages': absentPackages,
   'no-unit-ordering': noUnitOrdering,
   'cmdline-exact': cmdlineExact,

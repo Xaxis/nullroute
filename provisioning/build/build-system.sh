@@ -80,7 +80,14 @@ echo "  SOURCE_DATE_EPOCH $SOURCE_DATE_EPOCH"
 # systemd, because the initramfs pivots into /sbin/init and there was none, and
 # chromium, because nullroute-kiosk.service names /usr/bin/chromium; e2fsprogs
 # and kmod, because the state partition needs mkfs.ext4 and the ext4 module has
-# to be loaded by a modprobe that was not in the image. Both were
+# to be loaded by a modprobe that was not in the image.
+#
+# chromium-sandbox is a SEPARATE PACKAGE in Debian and holds the setuid helper
+# Chromium's own sandbox needs. Without it the browser aborts with "No usable
+# sandbox", which is the whole design of nullroute-kiosk.service defeated: that
+# unit accepts an exposure of 3.0 rather than 0.5 SPECIFICALLY so Chromium can
+# keep its sandbox, and the image was shipping without one. INV-PROV-24 checks
+# it now. Both were
 # asserted about by the profile and absent from the image: INV-PROV-18 was
 # scoring the sandbox of a daemon that could not start.
 #
@@ -88,9 +95,26 @@ echo "  SOURCE_DATE_EPOCH $SOURCE_DATE_EPOCH"
 # systemd-timesyncd, which INV-PROV-16 forbids by name, and this image is the
 # thing that decides what a signer contains.
 mmdebstrap --variant="$VARIANT" --mode=root --format=directory \
-  --include=systemd,systemd-sysv,dbus,chromium,e2fsprogs,kmod,iproute2 \
+  --include=systemd,systemd-sysv,dbus,chromium,chromium-sandbox,cage,e2fsprogs,kmod,iproute2 \
   --aptopt='APT::Install-Recommends "false"' \
   "$SUITE" "$ROOTFS" "$MIRROR" >/dev/null 2>&1
+
+# THE USERS AND GROUPS THE PACKAGES DECLARE, MADE NOW RATHER THAN AT BOOT.
+#
+# Debian packages ship sysusers.d fragments and systemd-sysusers creates the
+# accounts from them on first boot. That cannot work here: the root filesystem
+# is read-only erofs under a hash tree, /etc/group is part of it, and nothing at
+# runtime can add a line. The image had `video` and not `input` or `render`,
+# because those two come from systemd's own fragment and nobody had run it.
+#
+# The symptom was a long way from the cause. The kiosk unit names
+# SupplementaryGroups and systemd refused to start it with 216/GROUP, which is
+# a permissions-looking error about an account that simply did not exist.
+#
+# Run in the chroot rather than with --root, so it is the image's own
+# systemd-sysusers reading the image's own fragments.
+chroot "$ROOTFS" /usr/bin/systemd-sysusers >/dev/null 2>&1 || true
+echo "  accounts         $(wc -l < "$ROOTFS/etc/group" | tr -d ' ') groups after systemd-sysusers"
 
 # The units the profiles assert about.
 #
@@ -129,6 +153,20 @@ for pair in nullroute-state.service:multi-user nullrouted.service:multi-user \
 done
 # The kiosk is wanted by graphical.target, so that has to be what boot aims for.
 ln -sf /usr/lib/systemd/system/graphical.target "$ROOTFS/etc/systemd/system/default.target"
+
+# NO LOGIN PROMPT ON THE SCREEN THE KIOSK OWNS, and it is a hardening point as
+# well as a fix. systemd starts getty@tty1 by default, it takes the virtual
+# terminal, and the kiosk unit then cannot open it: systemd refuses the service
+# with 208/STDIN, which reads as a stdin configuration problem and is actually
+# another process holding the console.
+#
+# It should not be there regardless. No account on this device has a password
+# hash and none has a shell, so the prompt is an invitation that cannot be
+# accepted, drawn on the panel a user is meant to read a transaction from.
+# Masked rather than disabled, because a mask cannot be undone by something
+# else wanting it.
+ln -sf /dev/null "$ROOTFS/etc/systemd/system/getty@tty1.service"
+ln -sf /dev/null "$ROOTFS/etc/systemd/system/getty.target"
 
 # THE HOSTNAME, PINNED, AND THIS IS THE ONE THAT MATTERED.
 #
@@ -376,6 +414,18 @@ done
 # packages happened to install in would change the passwd file between builds
 # and take the root hash with it. 900 and 901 are below the 1000 where login
 # accounts start, and neither can log in: no shell, no password hash, no home.
+# input and render, WHICH systemd-sysusers DOES NOT CREATE. They come from
+# udev's postinst on a normal Debian install (`addgroup --system input`), and a
+# postinst is exactly what an image assembled with mmdebstrap and never booted
+# does not run. udev's rules chown the touchscreen to `input` and the render
+# node to `render` by NAME, so the names have to exist; the ids only have to be
+# stable, and fixed ones keep /etc/group identical between two builds.
+for group in input:992 render:993; do
+  name="${group%%:*}"
+  gid="${group##*:}"
+  grep -q "^${name}:" "$ROOTFS/etc/group" || echo "${name}:x:${gid}:" >> "$ROOTFS/etc/group"
+done
+
 for account in nullroute:900 nullroute-ui:901 nullroute-bridge:902; do
   name="${account%%:*}"
   id="${account##*:}"
@@ -452,7 +502,13 @@ if [ "${NULLROUTE_EXPORT_ROOTFS:-0}" = "1" ]; then
   rm -rf "$OUT/rootfs"
   mkdir -p "$OUT/rootfs"
   ( cd "$ROOTFS" && tar --exclude=./dev -cf - . ) | ( cd "$OUT/rootfs" && tar -xf - ) 2>/dev/null || true
-  echo "  rootfs exported  $OUT/rootfs (without /dev: see build-system.sh)"
+  # AND WITHOUT setuid, on a macOS host. A bind mount there drops the bit: the
+  # Chromium sandbox helper is 4755 in the image and 0755 in this copy, and so
+  # are su and mount. Printed rather than left to be discovered, because a
+  # verifier reading this tree would otherwise report the export as an image
+  # defect. INV-PROV-24's verifier detects it and says it cannot answer.
+  setuid_count=$(find "$OUT/rootfs" -perm -4000 2>/dev/null | wc -l | tr -d ' ')
+  echo "  rootfs exported  $OUT/rootfs (without /dev, ${setuid_count} setuid files preserved)"
 fi
 
 echo "  system image     $(wc -c < "$OUT/system.erofs") bytes"

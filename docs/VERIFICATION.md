@@ -65,14 +65,14 @@ Compute the root hash:
 
 ```console
 $ sha256sum MANIFEST.lock
-5e7a27369abc2589fe781fb68cf015e7226822fff94f04ae69ff11d4b024b733  MANIFEST.lock
+e92f83afa5da0b97a4b52fe272f31c8341ee6f26fa433375ba5d77d022aac2c9  MANIFEST.lock
 ```
 
 Regenerate the manifest from scratch and confirm it matches what is committed:
 
 ```console
 $ git ls-files -z packages spec provisioning | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum
-5e7a27369abc2589fe781fb68cf015e7226822fff94f04ae69ff11d4b024b733  -
+e92f83afa5da0b97a4b52fe272f31c8341ee6f26fa433375ba5d77d022aac2c9  -
 ```
 
 On macOS use `shasum -a 256` in place of `sha256sum`. The values are identical.
@@ -574,8 +574,8 @@ project makes.
 **The contract that build has to satisfy is written and runs.** That half had to
 come first. A backend is supported when the unchanged verifiers pass against its
 output, and verifiers written afterwards would be written to agree with whatever
-the backend happened to produce, which is not a check. Fourteen of the seventeen
-assertions now carry a verifier that executes: three read the profiles, six
+the backend happened to produce, which is not a check. Fifteen of the eighteen
+assertions now carry a verifier that executes: three read the profiles, seven
 read an assembled root filesystem, and five read an image file.
 
 The four that read an image cover the two defects that would otherwise make the

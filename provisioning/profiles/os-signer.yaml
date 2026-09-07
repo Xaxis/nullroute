@@ -334,6 +334,34 @@ assertions:
       unit files that ship and does not follow drop-ins under
       systemd/system/<unit>.d/ that could override ExecStart.
 
+  - id: INV-PROV-24
+    statement: >
+      The setuid helper Chromium's own sandbox requires is present, owned by
+      root, and mode 4755.
+    stage: image
+    verify:
+      - check: file-modes
+        params:
+          files:
+            - { path: /usr/lib/chromium/chrome-sandbox, mode: '4755', uid: 0 }
+    rationale: >
+      INV-PROV-19 lets the kiosk unit score 3.0 where the daemon is held to 0.5,
+      and its own comment says the trade is made specifically so that Chromium
+      can keep its own sandbox: the directives that would harden the unit force
+      --no-sandbox, and an unsandboxed browser is worse than a higher exposure
+      number. That reasoning is only worth anything if the sandbox exists.
+
+      It did not. Debian ships the helper in a separate `chromium-sandbox`
+      package, the image installed `chromium` alone, and the browser aborted on
+      every boot with "No usable sandbox". The image was paying the exposure
+      price and getting nothing for it, and the assertion that documented the
+      trade had no way to notice.
+    does_not_cover: >
+      Whether the bit is honoured at runtime. A partition mounted nosuid ignores
+      a setuid bit that is present, and an unbooted image cannot show that. It
+      also says nothing about whether Chromium's sandbox is effective, only that
+      the binary it refuses to start without is there and executable as root.
+
   - id: INV-PROV-18
     statement: >
       The signing daemon unit scores at most 0.5 under

@@ -35,11 +35,68 @@ Type=simple
 # cannot so much as stat the socket, which is deliberate: the frontend talks
 # over the loopback bridge, never to the socket directly.
 ExecStartPre=+/usr/lib/nullroute/bin/wait-for-daemon
-# --disable-crash-reporter and --disable-breakpad because crashpad exits with
-# "chrome_crashpad_handler: --database is required" and takes the browser with
-# it (status 5/TRAP). A crash reporter on a device with no network has nowhere
-# to send anything and is one more parser next to the keys.
-ExecStart=/usr/bin/chromium \
+# CAGE, AND THAT IS A CORRECTION. This unit first tried --ozone-platform=drm on
+# the reasoning that a device showing one full screen page has no use for a
+# display server, and the argument was good and the fact was wrong: Debian's
+# Chromium is not built with the DRM ozone backend, and says so at the only
+# moment anybody would find out. "FATAL: Invalid ozone platform: drm".
+#
+# So there is a compositor, and it is the smallest one that exists for this job.
+# cage runs exactly one application, full screen, with no decorations, no
+# launcher, no second window and no way to reach one. What it costs is wlroots;
+# what X would have cost is a display server, a window manager and a session
+# manager. Chromium talks Wayland to it.
+#
+# PAMName=login is what makes this work as a service rather than a login. It
+# opens a logind session on the VT below, and a session is what grants a seat:
+# without one the compositor cannot become DRM master and cannot read the
+# touchscreen, whatever the file permissions say.
+#
+# A WRITABLE PROFILE DIRECTORY, WHICH IS WHAT CRASHPAD WAS ACTUALLY ASKING FOR.
+# The browser died on every boot with "chrome_crashpad_handler: --database is
+# required" and status 5/TRAP, and the obvious reading was that crash reporting
+# needed switching off. It was not: --disable-crash-reporter is a Firefox flag
+# and does nothing here, and the message is crashpad saying it has nowhere to
+# put a database. This user has no home (/nonexistent), the root filesystem is
+# read-only erofs, and Chromium had no writable directory of any kind, so it
+# could not derive one. # THREE DIRECTORIES, NOT ONE. RuntimeDirectory creates exactly what it is
+# named and nothing below it, and Chromium does not create its own crash
+# database directory: pointed at one that does not exist it spawns the crashpad
+# handler with no --database at all, the handler exits, and the browser dies on
+# the broken socket with SIGTRAP. The verbose log says it plainly, once you ask
+# for it: "is_official_chrome_build is false so returning false", and then a
+# handler with no arguments.
+RuntimeDirectory=nullroute-ui nullroute-ui/profile nullroute-ui/crash nullroute-ui/config nullroute-ui/cache
+
+# HOME, WHICH IS THE ONE THAT ACTUALLY MATTERS. This account's home in
+# /etc/passwd is /nonexistent, deliberately, because nothing should log in as
+# it. Chromium derives chrome::DIR_CRASH_DUMPS from the DEFAULT user data
+# directory, $XDG_CONFIG_HOME or $HOME/.config/chromium, and NOT from
+# --user-data-dir. With no usable home it computes an empty path, spawns
+# chrome_crashpad_handler with no --database at all, the handler exits on its
+# own argument check, and the browser dies on the closed socket with SIGTRAP.
+#
+# Four rebuilds went into finding that, each one fixing something plausible and
+# adjacent: the crash reporter flags, a writable profile directory, the missing
+# chromium-sandbox package, Debian's launcher script. All four were real
+# problems. None of them was this one.
+Environment=HOME=/run/nullroute-ui
+Environment=XDG_CONFIG_HOME=/run/nullroute-ui/config
+Environment=XDG_CACHE_HOME=/run/nullroute-ui/cache
+
+#
+# --disable-breakpad, which IS a Chromium flag, stays: a crash reporter on a
+# device with no network has nowhere to send anything and is one more parser
+# next to the keys.
+# THE BINARY, NOT DEBIAN'S LAUNCHER SCRIPT. /usr/bin/chromium is a shell
+# wrapper that sources /etc/chromium.d/*, and what it adds is desktop defaults
+# nobody on this device chose: --enable-remote-extensions, a --load-extension
+# glob over /usr/share/chromium/extensions, and three exported Google API keys.
+# Remote extensions on the machine that reviews transactions is the opposite of
+# what this unit is for, and the keys are meaningless without a network and
+# still baked into every process. Calling the binary directly means the flag
+# list below is the whole flag list.
+ExecStart=/usr/bin/cage -- /usr/lib/chromium/chromium \
   --kiosk \
   --incognito \
   --noerrdialogs \
@@ -47,7 +104,9 @@ ExecStart=/usr/bin/chromium \
   --disable-features=TranslateUI,AutofillServerCommunication \
   --check-for-update-interval=31536000 \
   --disable-background-networking \
-  --disable-crash-reporter \
+  --ozone-platform=wayland \
+  --user-data-dir=/run/nullroute-ui/profile \
+  --crash-dumps-dir=/run/nullroute-ui/crash \
   --disable-breakpad \
   --disable-sync \
   --disable-component-update \
@@ -58,6 +117,22 @@ RestartSec=2
 
 User=nullroute-ui
 Group=nullroute-ui
+# `video` for /dev/dri. DeviceAllow is the cgroup half of that permission and
+# the file mode is the other half: without the group the browser is refused by
+# the filesystem after systemd has already allowed it, which reads as a DRM bug
+# rather than a permissions one.
+SupplementaryGroups=video input render
+# A seat, not just permissions. DeviceAllow and the groups are the cgroup and
+# filesystem halves; logind is the half that hands out DRM master.
+PAMName=login
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+# `tty`, not `tty-fail`. A board with a panel has /dev/tty1; the QEMU harness
+# has a serial console and no virtual terminal, and tty-fail turns that into
+# 208/STDIN before cage runs at all, which hides whatever the compositor would
+# have said. Failing here should be the compositor's job, with its reason.
+StandardInput=tty
 RuntimeDirectory=nullroute-ui
 StateDirectory=nullroute-ui
 StateDirectoryMode=0700

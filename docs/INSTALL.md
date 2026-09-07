@@ -118,7 +118,28 @@ Nothing is typed and nothing is configured.
 The lock screen is what you should see, showing the manifest root before you
 type a passphrase, so you can compare it against what `make image` printed.
 
-**If it does not boot,** attach a serial console or a monitor and read where it
+**The screen is the part nothing here has tested.** Everything above is proven
+under QEMU; step 6 is not, because the emulator has a serial console and no
+virtual terminal, so the compositor never starts there. On your board it should:
+`cage` takes `/dev/tty1`, Chromium draws into it through Wayland, and there is
+no getty competing for the console because both `getty@tty1` and `getty.target`
+are masked in the image.
+
+If the panel stays dark and everything else worked, that is the piece to look
+at, and these are the questions in order:
+
+```console
+$ systemctl status nullroute-kiosk.service
+$ journalctl -u nullroute-kiosk.service -b
+$ ls -l /dev/dri/            # a card0 should be here
+$ ls -l /dev/tty1            # and a virtual terminal
+```
+
+`208/STDIN` means no `/dev/tty1`. `216/GROUP` means an account or group is
+missing. A `cage` error about a seat means logind did not give it one, which is
+what `PAMName=login` in the unit is for.
+
+**If it does not boot at all,** attach a serial console and read where it
 stopped. Every failure path in the initramfs prints a sentence saying what it
 was looking for. That is deliberate: a signer that fails silently is worse than
 one that fails loudly.

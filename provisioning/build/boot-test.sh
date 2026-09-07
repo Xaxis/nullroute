@@ -69,13 +69,22 @@ SYSTEM_START=$(
 # and `timeout` exits 124. The verdict comes from what the console said, not
 # from qemu's exit status, and `|| true` is what stops set -e turning a
 # successful boot into a failed script.
+# THE DEFAULT GREW WITH THE IMAGE. The selftest reads every block of the system
+# partition through the verity mapping, which is the only way to ask whether the
+# card matches its root hash rather than whether the mapping opened. That is
+# roughly a gigabyte of sha256 in an emulated arm64 guest, and it got slower
+# every time the image gained a package: at 120 seconds the intact boot started
+# being killed mid-read and reported as a card that could not open its own
+# system partition, which is a harness timeout wearing the costume of a
+# catastrophe.
 boot() {
-  timeout "${2:-120}" qemu-system-aarch64 \
+  timeout "${2:-420}" qemu-system-aarch64 \
     -M virt -cpu cortex-a72 -m 1024 -nographic -no-reboot -nic none \
     -kernel "$KERNEL_TREE/boot/vmlinuz-$KVER" \
     -initrd "$WORK/initramfs.img" \
     -drive "file=$1,format=raw,if=none,id=d0" \
     -device virtio-blk-device,drive=d0 \
+    -device virtio-gpu-pci \
     -append "console=ttyAMA0 nullroute.selftest panic=1 systemd.journald.forward_to_console=1 systemd.log_target=console" 2>&1 || true
 }
 
@@ -113,11 +122,30 @@ if ! grep -qE "nullrouted\.service" "$WORK/console-intact.log"; then
   exit 1
 fi
 
+# THE KIOSK IS REPORTED, NOT REQUIRED, and the distinction is the honest one.
+# It runs cage on a virtual terminal, and `-M virt` has a serial console and no
+# VT, so systemd refuses it with 208/STDIN before the compositor starts. That is
+# a fact about this harness: a Pi with a panel has /dev/tty1. Requiring it here
+# would mean either a permanently red test or a fake display, and reporting it
+# is what lets the line below be true.
+if grep -q "Started nullroute-kiosk.service" "$WORK/console-intact.log"; then
+  echo ""
+  echo "  the kiosk started"
+else
+  echo ""
+  echo "  the kiosk did NOT start, which is expected here and is the one thing"
+  echo "  this harness cannot judge: it needs a display and a virtual terminal."
+  grep -oE "nullroute-kiosk.service: [A-Za-z ]+, (code|status)=[^ ]+" \
+    "$WORK/console-intact.log" | head -1 | sed 's/^/     /'
+fi
+
 echo ""
 echo "  2. the same card with one byte flipped inside the system partition"
 cp "$IMAGE" "$WORK/tampered.img"
 printf '\377' | dd of="$WORK/tampered.img" bs=1 seek=$((SYSTEM_START + 40000000)) conv=notrunc status=none
-tampered=$(boot "$WORK/tampered.img" 120)
+# The tamper boot stops itself as soon as verity rejects a block, so it needs
+# far less patience than a full read.
+tampered=$(boot "$WORK/tampered.img" 300)
 printf '%s\n' "$tampered" > /work/out/system/console-tampered.log
 echo "$tampered" | grep -E "^nullroute:|verity:" | sed 's/^/     /'
 

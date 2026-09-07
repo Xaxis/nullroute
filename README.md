@@ -334,7 +334,7 @@ dm-verity root hash, and `make verify-image` then judges it against the profiles
 satisfying eight assertions including the one that catches a verity salt
 regenerated per build and the one that pins the file list on the boot partition,
 which is the one region the hash tree cannot cover.
-Fourteen of the seventeen verifiers are written, and CI builds the artifact and
+Fifteen of the eighteen verifiers are written, and CI builds the artifact and
 runs them on every commit. `make fixture-image` runs the image
 verifiers against a synthetic card, and runs one that fails on purpose.
 
