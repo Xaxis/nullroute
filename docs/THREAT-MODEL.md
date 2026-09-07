@@ -64,7 +64,7 @@ loudly if the defence regresses. Invariant identifiers are listed in the
 | Hidden timelock or RBF state | `nLockTime` and `nSequence` surfaced in human terms on the review screen | INV-PSBT-2 |
 | Signing for a script we do not own | Refuse any input whose script does not match a registered descriptor | INV-PSBT-1 |
 | Hostile input parsing (PSBT, QR, SD, snapshot) | Strict size limits, defensive parsers, fuzzing, fail closed | INV-PSBT-1 |
-| Network exfiltration | No network code paths at all, enforced by a lint rule and a runtime listener assertion, not by convention | INV-NET-1, INV-NET-2, INV-NET-3 |
+| Network exfiltration | No network code paths at all, enforced by a lint rule and a runtime listener assertion, not by convention. The one listener is a loopback bridge on 127.0.0.1, whose host is a constant | INV-NET-1, INV-NET-2, INV-NET-3, INV-BRIDGE-1 |
 | Key material reaching the frontend | Frontend receives only xpubs, addresses, descriptors, and PSBTs. Asserted against serialized responses. | INV-KEY-1 |
 | Data remanence in memory | Typed `Secret` wrapper with explicit `dispose()`, raw `Buffer` for secrets banned by lint, heap snapshot test | INV-KEY-2 |
 | Data remanence on disk | No swap, tmpfs for scratch, seed encrypted at rest under Argon2id and AES-256-GCM | INV-KEY-2, INV-STORE-1 |
@@ -396,6 +396,7 @@ does not keep.
 | INV-NET-1 | The daemon binds only to a Unix domain socket or `127.0.0.1`. No listener exists on any external interface. |
 | INV-NET-2 | No source file imports `http`, `https`, `net`, `dgram`, `dns`, or `fetch` outside an allowlisted loopback IPC layer. Enforced by lint. |
 | INV-NET-3 | The frontend CSP is `default-src 'none'` and `connect-src 'self'`, so nothing can be fetched from anywhere. No CDN, no remote fonts, no telemetry. Three narrower allowances exist and are asserted by `make device-csp`: `'wasm-unsafe-eval'` in `script-src` for the QR decoder, `data:` in `img-src` for the codes this device draws, and `blob:` in `media-src` for the camera preview. None of them can reach the network. |
+| INV-BRIDGE-1 | The loopback bridge that serves the kiosk browser binds `127.0.0.1` and nothing else. The host is a constant in `packages/daemon/src/bridge/server.ts`, not a parameter, so no caller and no environment variable can widen it. It exists because a page in a browser speaks HTTP and cannot open a Unix socket. Not numbered INV-NET-4: that id is taken by a `core` invariant about Bitcoin network version bytes, which is a different meaning of the word sharing the same prefix. |
 | INV-KEY-1 | Private key material and seed bytes never leave the daemon process, with three named exceptions: `seed.reveal`, which shows a mnemonic only between generation and confirmation and never for a seed loaded from storage; `bip85.derive`, which returns a hardened child mnemonic because writing it down is the point of BIP-85, capped per unlock; and `backup.create` with `includeSeed`, which seals the seed under a caller-chosen passphrase and says so in its response. |
 | INV-KEY-2 | All buffers holding secrets are zeroized after use, through a typed `Secret` wrapper with explicit `dispose()`. |
 | INV-SIG-1 | Every ECDSA signature uses RFC 6979 deterministic nonces. Every Schnorr signature uses BIP-340 with `aux_rand` set to 32 zero bytes. |

@@ -36,14 +36,18 @@ echo "wait-for-daemon: $SOCKET is listening"
 # Checked here so the failure reads as the missing component it is. A browser
 # started against a closed port shows a connection error on the first screen the
 # device ever displays, and nothing in the log would say why.
-if command -v ss >/dev/null 2>&1 && ss -ltn 2>/dev/null | grep -q '127\.0\.0\.1:5180'; then
-  echo "wait-for-daemon: 127.0.0.1:5180 is being served"
-  exit 0
-fi
+attempt=0
+while [ "$attempt" -lt 300 ]; do
+  if ss -ltn 2>/dev/null | grep -q '127\.0\.0\.1:5180'; then
+    echo "wait-for-daemon: 127.0.0.1:5180 is being served"
+    exit 0
+  fi
+  attempt=$((attempt + 1))
+  sleep 0.1
+done
 
-echo "wait-for-daemon: nothing is listening on 127.0.0.1:5180, which is the URL" >&2
-echo "wait-for-daemon: nullroute-kiosk.service points the browser at. The daemon" >&2
-echo "wait-for-daemon: speaks its Unix socket and nothing bridges the two on this" >&2
-echo "wait-for-daemon: image: in development that is Vite, which is a dev" >&2
-echo "wait-for-daemon: dependency and does not ship. That server is unwritten." >&2
+echo "wait-for-daemon: nothing is listening on 127.0.0.1:5180 after 30 seconds." >&2
+echo "wait-for-daemon: that is nullroute-bridge.service, which serves the frontend" >&2
+echo "wait-for-daemon: and forwards to the daemon's socket. Check its status: the" >&2
+echo "wait-for-daemon: browser has nothing to load without it." >&2
 exit 1

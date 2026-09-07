@@ -23,6 +23,12 @@ const ruleTester = new RuleTester({
 
 ruleTester.run('nullroute/no-network (INV-NET-2)', noNetwork, {
   valid: [
+    {
+      code: `import { createServer } from "node:http";`,
+      filename: '/repo/packages/daemon/src/bridge/server.ts',
+      options: [{ allowLoopbackHttpIn: ['packages/daemon/src/bridge/'] }],
+    },
+
     // Builtins that cannot open a socket are unaffected.
     { code: `import { createHash } from "node:crypto";` },
     { code: `import { readFile } from "node:fs/promises";` },
@@ -61,19 +67,29 @@ ruleTester.run('nullroute/no-network (INV-NET-2)', noNetwork, {
   ],
 
   invalid: [
+    /*
+     * node:http is GATED BY PATH now rather than banned outright, because the
+     * device needs exactly one process that can answer a browser: a page in
+     * Chromium speaks HTTP and cannot open a Unix socket. The exemption is
+     * `allowLoopbackHttpIn` and it names packages/daemon/src/bridge/, whose own
+     * spec is daemon.bridge. Everywhere else it is still an error, and
+     * node:https stays banned with no option at all: a TLS client has no use on
+     * a machine with no route.
+     */
+
     // Every network-capable builtin, in both bare and node: form.
-    { code: `import http from "node:http";`, errors: [{ messageId: 'bannedModule' }] },
+    { code: `import http from "node:http";`, errors: [{ messageId: 'httpOutsideBridge' }] },
     { code: `import https from "node:https";`, errors: [{ messageId: 'bannedModule' }] },
     { code: `import http2 from "node:http2";`, errors: [{ messageId: 'bannedModule' }] },
     { code: `import dgram from "node:dgram";`, errors: [{ messageId: 'bannedModule' }] },
     { code: `import dns from "node:dns";`, errors: [{ messageId: 'bannedModule' }] },
     { code: `import dns from "node:dns/promises";`, errors: [{ messageId: 'bannedModule' }] },
     { code: `import tls from "node:tls";`, errors: [{ messageId: 'bannedModule' }] },
-    { code: `import http from "http";`, errors: [{ messageId: 'bannedModule' }] },
+    { code: `import http from "http";`, errors: [{ messageId: 'httpOutsideBridge' }] },
     { code: `import dns from "dns";`, errors: [{ messageId: 'bannedModule' }] },
 
     // Re-export, which is an import that a naive rule misses.
-    { code: `export * from "node:http";`, errors: [{ messageId: 'bannedModule' }] },
+    { code: `export * from "node:http";`, errors: [{ messageId: 'httpOutsideBridge' }] },
     { code: `export { get } from "node:https";`, errors: [{ messageId: 'bannedModule' }] },
 
     // Dynamic import and require, the obvious ways around a static check.

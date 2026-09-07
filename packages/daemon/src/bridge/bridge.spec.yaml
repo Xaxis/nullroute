@@ -1,0 +1,135 @@
+id: daemon.bridge
+version: 1
+title: The loopback bridge between the kiosk browser and the daemon socket
+assurance_tier: critical
+status: implemented
+
+purpose: >
+  Serve the frontend to the kiosk browser and carry its requests to the daemon,
+  on a device with no network.
+
+  This component was designed and never written. `packages/ui/src/lib/transport.ts`
+  has always said the browser POSTs to `/ipc` and that "in development the proxy
+  is Vite's; on the device it is a small local forwarder started alongside the
+  kiosk", and the forwarder did not exist. The kiosk unit pointed Chromium at
+  http://127.0.0.1:5180/ and nothing on the image listened there, so the first
+  screen a device ever showed would have been a connection error. Vite is a dev
+  dependency and does not ship.
+
+covers:
+  - packages/daemon/src/bridge/server.ts::BRIDGE_HOST
+  - packages/daemon/src/bridge/server.ts::BRIDGE_PORT
+  - packages/daemon/src/bridge/server.ts::MAX_BRIDGE_REQUEST_BYTES
+  - packages/daemon/src/bridge/server.ts::resolveStaticPath
+  - packages/daemon/src/bridge/server.ts::startBridge
+
+algorithm: >
+  An HTTP server bound to 127.0.0.1, never to a wildcard address. It answers two
+  things and refuses everything else.
+
+  POST /ipc reads a JSON body up to a fixed cap, opens the daemon's Unix socket,
+  writes the body followed by a newline, reads back one newline-terminated line
+  and returns it with content-type application/json. One request, one connection,
+  no pooling and no pipelining: the daemon's protocol is a line in and a line
+  out, and a shared connection would let two browser requests interleave.
+
+  GET serves files from one directory. The path is resolved and then checked to
+  be inside that directory, so `..` and an absolute path and a symlink pointing
+  out all fail the same way. A path that names a directory serves index.html,
+  which is what a single page frontend needs on a deep link.
+
+  Everything else is a 405 or a 404. There is no directory listing, no PUT, no
+  DELETE, and no proxying to anywhere but the one socket path it was given.
+
+invariants:
+  - id: INV-BRIDGE-1
+    statement: >
+      The bridge binds 127.0.0.1 and nothing else. The host is a constant, not a
+      parameter, so no caller and no environment variable can widen it to a
+      wildcard address reachable from off the machine.
+    tests:
+      - packages/daemon/test/bridge.test.ts::binds-loopback-and-refuses-to-take-a-host
+      - packages/daemon/test/bridge.test.ts::is-not-reachable-on-a-non-loopback-address
+
+  - id: INV-BRIDGE-2
+    statement: >
+      A static request cannot read a file outside the directory the bridge was
+      given, by traversal, by an absolute path, or by a symlink that leaves it.
+    tests:
+      - packages/daemon/test/bridge.test.ts::refuses-dot-dot-traversal
+      - packages/daemon/test/bridge.test.ts::refuses-an-absolute-path
+      - packages/daemon/test/bridge.test.ts::refuses-a-symlink-that-leaves-the-root
+
+  - id: INV-BRIDGE-3
+    statement: >
+      The bridge forwards a request body to the daemon socket unchanged and
+      returns the daemon's line unchanged. It does not parse, rewrite, or
+      interpret the IPC payload in either direction.
+    tests:
+      - packages/daemon/test/bridge.test.ts::forwards-the-body-verbatim-and-returns-the-line
+      - packages/daemon/test/bridge.test.ts::does-not-alter-a-payload-it-does-not-understand
+
+  - id: INV-BRIDGE-4
+    statement: >
+      A body larger than the cap is refused before it is forwarded, and a socket
+      that is absent or silent produces an error the frontend can render rather
+      than a hang.
+    tests:
+      - packages/daemon/test/bridge.test.ts::refuses-a-body-over-the-cap
+      - packages/daemon/test/bridge.test.ts::reports-a-missing-daemon-socket-as-an-error
+
+  - id: INV-BRIDGE-5
+    statement: >
+      Only POST /ipc and GET are answered. Any other method on any path is
+      refused without touching the daemon socket.
+    tests:
+      - packages/daemon/test/bridge.test.ts::refuses-a-method-other-than-get-or-post
+      - packages/daemon/test/bridge.test.ts::refuses-post-to-a-path-other-than-ipc
+
+threats:
+  - INV-KEY-1
+  - INV-NET-1
+
+security_notes: >
+  WHAT THIS PROCESS IS TRUSTED WITH, AND WHAT IT IS NOT. Everything the browser
+  is allowed to see passes through here: xpubs, addresses, descriptors and
+  PSBTs, which is the INV-KEY-1 boundary. No key material does, because the
+  daemon never sends any. The bridge is therefore exactly as trusted as the
+  frontend and no more, and it runs as its own user for that reason: a process
+  that parses HTTP on behalf of a browser must not share a uid with the process
+  holding the seed.
+
+  THE SOCKET MODE CHANGED FOR THIS, deliberately. daemon.ipc.socket created the
+  socket 0600 and its own spec said "if the daemon ever serves a second client,
+  that assumption has to be revisited rather than inherited". This is that
+  second client. The socket is now 0660 and the bridge's user is in the daemon's
+  group, so the claim narrows from "no other user can open it" to "only a member
+  of the daemon's group can open it", which is what the device actually
+  enforces. The alternative was running the bridge as the daemon's own user,
+  which would have put a browser-facing HTTP parser inside the principal that
+  holds the keys, and that is a worse trade than a group.
+
+  THE INVARIANTS HERE ARE INV-BRIDGE- AND NOT INV-NET-, and that is worth a
+  sentence because the obvious choice is wrong. `INV-NET-` already means two
+  different things in this repository: INV-NET-1 through 3 are the no-network
+  claims in docs/THREAT-MODEL.md, and INV-NET-4 through 7 are in
+  packages/core/src/network/networks.spec.yaml and are about BITCOIN networks,
+  version bytes for mainnet and signet. Numbering this one INV-NET-4 collided
+  with "version bytes are correct for every supported network", and the spec
+  loader refused it. A reader chasing INV-NET-4 from a threat model row would
+  have landed somewhere unrelated.
+
+  IT IS STILL NOT A NETWORK SERVICE. The host is a constant in the module and
+  the listener assertion the daemon already runs would fail on any external
+  bind. What makes this safe is not that it is small, it is that 127.0.0.1 has
+  no route off the machine and the device has no configured interface anyway.
+
+  NO AUTHENTICATION, for the same reason the daemon has none: the only client is
+  the kiosk browser on the same machine, running as a user that cannot open the
+  daemon's socket itself. If anything else ever talks to this port, that has to
+  be revisited rather than inherited.
+
+references:
+  - packages/ui/src/lib/transport.ts
+  - packages/daemon/src/ipc/socket.ts
+  - provisioning/units/nullroute-bridge.service

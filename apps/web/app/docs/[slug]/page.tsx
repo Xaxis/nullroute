@@ -36,7 +36,13 @@ export default async function DocPage({ params }: Props) {
     source,
     DOCS.map((d) => d.slug)
   )
-  const headings = extractHeadings(source).filter((h) => h.depth === 2)
+  /*
+   * H2 AND H3, not H2 alone. docs/USING.md is eleven H2 sections and twenty
+   * eight H3 subsections, and the contents listed eleven of the thirty nine: a
+   * map of a 21,181 pixel page with three quarters of the streets missing. The
+   * page was navigable in principle and a wall in practice.
+   */
+  const headings = extractHeadings(source)
 
   return (
     <div className="mx-auto max-w-5xl px-5 py-10">
@@ -65,10 +71,12 @@ export default async function DocPage({ params }: Props) {
               </summary>
               <ul className="mt-3 space-y-2 border-l border-ink-800">
                 {headings.map((heading) => (
-                  <li key={heading.id}>
+                  <li key={heading.id} className={heading.depth === 3 ? 'ml-3' : ''}>
                     <a
                       href={`#${heading.id}`}
-                      className="block pl-3 -ml-px border-l border-transparent text-sm text-ink-400 leading-snug"
+                      className={`block pl-3 -ml-px border-l border-transparent leading-snug ${
+                        heading.depth === 3 ? 'text-xs text-ink-500' : 'text-sm text-ink-400'
+                      }`}
                     >
                       {heading.text}
                     </a>
@@ -104,12 +112,19 @@ export default async function DocPage({ params }: Props) {
             <div className="font-mono text-xs uppercase tracking-widest text-ink-600 mb-3">
               On this page
             </div>
-            <ul className="space-y-2 border-l border-ink-800">
+            {/* Bounded and scrollable. Thirty nine entries is taller than a
+                laptop viewport, and a sticky column that runs off the bottom of
+                the screen hides the sections nobody can otherwise find. */}
+            <ul className="space-y-1.5 border-l border-ink-800 max-h-[calc(100vh-9rem)] overflow-y-auto pr-2">
               {headings.map((heading) => (
-                <li key={heading.id}>
+                <li key={heading.id} className={heading.depth === 3 ? 'ml-3' : ''}>
                   <a
                     href={`#${heading.id}`}
-                    className="block pl-3 -ml-px border-l border-transparent text-ink-500 hover:text-ink-200 hover:border-signal-500 transition-colors leading-snug"
+                    className={`block pl-3 -ml-px border-l border-transparent hover:border-signal-500 transition-colors leading-snug ${
+                      heading.depth === 3
+                        ? 'text-xs text-ink-600 hover:text-ink-300'
+                        : 'text-ink-400 hover:text-ink-100'
+                    }`}
                   >
                     {heading.text}
                   </a>

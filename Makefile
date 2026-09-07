@@ -25,7 +25,8 @@ MANIFEST_ROOTS := packages spec provisioning
         prose links profiles sbom sbom-check repro-check clean dev-daemon build-app web web-build web-lint web-type-check \
         screens screen-fit ui-constants dev-check verify-image docs-reachable no-dead-ends \
         image-env image-shell image-system image-repro journeys \
-        web-isolation web-csp web-responsive web-site-links web-dice-demo web-check web-live-check deploy image image-boot-test
+        web-isolation web-csp web-responsive web-site-links web-dice-demo device-shots device-shots-check \
+        web-check web-live-check deploy image image-boot-test
 
 help: ## List available targets
 	@grep -hE '^[a-z][a-z-]*:.*?## ' $(MAKEFILE_LIST) \
@@ -401,67 +402,43 @@ image-boot-test: image-env $(IMAGE_ENVFILE) ## Boot the card under QEMU and prov
 			/work/provisioning/build/boot-test.sh \
 				/work/out/system/nullroute.img /tmp/k 6.12.94+deb13-arm64'
 
-image: ## Build the hardened Raspberry Pi image. NOT IMPLEMENTED YET.
-	# Fails on purpose, and says so, rather than calling a script that is not
-	# there. This target used to run tools/build-image/build.sh, which was never
-	# written, so `make image` produced a bash "no such file" that reads as a
-	# broken checkout rather than as a feature in design.
+image: image-system ## Build a flashable card, and the checksum to verify it with
+	# IT PRODUCES A CARD NOW, and for a long time it refused to. The refusal was
+	# right while the root filesystem had no init and the boot partition had no
+	# kernel: a card that boots to nothing wastes an afternoon and reads as a
+	# broken project. That is no longer what happens.
 	#
-	# It has since drifted the other way. The message said the build system was
-	# "still being designed" long after `make image-system` started producing a
-	# real GPT card that eight assertions pass against, so the target that
-	# existed to stop the Makefile overstating began understating instead. What
-	# is actually missing is the boot half, and the message now says that.
-	@echo 'make image: there is no bootable image, and this will not pretend to make one.'
+	# WHAT IS PROVEN. `make image-boot-test` boots this exact image under QEMU,
+	# opens the dm-verity mapping, mounts the erofs root through it, reads every
+	# block, pivots into systemd, formats and mounts the state partition, and
+	# starts the signing daemon, which checks its own verification report and
+	# prints the manifest root before listening. Then it does the same to a copy
+	# with one byte changed inside the system partition and requires that one to
+	# fail. It does.
+	#
+	# WHAT IS NOT. No Raspberry Pi has been switched on. QEMU loads the kernel
+	# directly, so config.txt, start4.elf and the device trees are carried and
+	# never read: the entire firmware path from power-on to the kernel is
+	# untested, and it is the part most likely to be wrong. The kiosk browser
+	# has never had a display to draw on. Flash this to a spare card, not to the
+	# one holding anything.
+	@mkdir -p out/release
+	@cp out/system/nullroute.img out/release/nullroute-$(shell cat VERSION).img
+	@cp out/system/root-hash out/release/system.roothash
+	@cd out/release && shasum -a 256 nullroute-$(shell cat VERSION).img system.roothash > SHA256SUMS
 	@echo
-	@echo '  A CARD IMAGE ALREADY BUILDS. "make image-system" produces a GPT card'
-	@echo '  with a Debian root filesystem in an erofs partition, a dm-verity hash'
-	@echo '  tree over it, and every identifier pinned, and "make verify-image"'
-	@echo '  satisfies eight assertions against it. This target used to say the'
-	@echo '  build system was "still being designed", which stopped being true.'
+	@echo "  image        out/release/nullroute-$(shell cat VERSION).img"
+	@echo "  root hash    $$(cat out/release/system.roothash)"
+	@echo "  checksums    out/release/SHA256SUMS"
 	@echo
-	@echo '  THE BOOT PARTITION IS NOW REAL: Pi 4 GPU firmware, a 6.12 kernel and'
-	@echo '  the device trees for both boards the profile claims, extracted from'
-	@echo '  version-pinned and hash-checked Debian packages.'
+	@echo "  Verify what you are about to flash, then flash it:"
 	@echo
-	@echo '  The root filesystem carries the matching modules, 4182 of them, with'
-	@echo '  the wireless drivers pruned out so INV-PROV-13 has something to be'
-	@echo '  absent from rather than passing against an image with no kernel.'
+	@echo "    cd out/release && shasum -a 256 -c SHA256SUMS"
+	@echo "    sudo dd if=nullroute-$(shell cat VERSION).img of=/dev/diskN bs=4m status=progress"
 	@echo
-	@echo '  THE INITRAMFS WORKS AND IS TESTED. "make image-boot-test" boots this'
-	@echo '  card under QEMU, opens the dm-verity mapping, mounts the erofs root'
-	@echo '  through it and reads every block; then it does the same to a copy'
-	@echo '  with one byte changed inside the system partition, and requires that'
-	@echo '  one to fail. It does.'
-	@echo
-	@echo '  THE DAEMON RUNS. Under QEMU the card boots systemd on the verified'
-	@echo '  read-only root, formats and mounts its state partition, and starts'
-	@echo '  nullrouted, which checks its own verification report and prints the'
-	@echo '  manifest root before listening on its socket.'
-	@echo
-	@echo '  WHAT IS STILL MISSING is the loopback bridge. nullroute-kiosk.service'
-	@echo '  points Chromium at http://127.0.0.1:5180/ and nothing in the image'
-	@echo '  serves it: in development that is Vite, which is a dev dependency and'
-	@echo '  does not ship. The daemon speaks a Unix socket and nothing joins the'
-	@echo '  two on a device. That server is unwritten, and it needs a spec.'
-	@echo
-	@echo '  Raspberry Pi firmware is also unexercised: QEMU loads the kernel'
-	@echo '  directly, so config.txt and start4.elf are carried and never read,'
-	@echo '  and no part of this has run on real hardware.'
-	@echo
-	@echo '  So this refuses rather than emitting that card under a name that'
-	@echo '  invites somebody to flash it. A card that boots to nothing is worse'
-	@echo '  than a target that says why: the first wastes an afternoon and'
-	@echo '  suggests the project is broken, the second is a sentence.'
-	@echo
-	@echo '    make image-system   build the card that does exist, and its root hash'
-	@echo '    make image-repro    build it twice and check the two agree'
-	@echo '    make verify-image   judge a built artifact against the profiles'
-	@echo '    make profiles       what is asserted, and how much of it is checkable'
-	@echo
-	@echo '  What else works today: make check, make verify, and make dev to run'
-	@echo '  the daemon and the frontend on this machine.'
-	@exit 1
+	@echo "  Read the card back and compare before you boot it. docs/INSTALL.md"
+	@echo "  has the whole procedure, including how to find the right disk and"
+	@echo "  what the device should print on its first boot."
 
 verify-image: ## Check a built artifact against the provisioning profiles. ROOT=<dir> and/or IMAGE=<file>, REQUIRE=<ids>
 	# ROOT answers what is in the FILES: packages, paths, unit directives, the
@@ -671,6 +648,12 @@ web-csp: ## vercel.json's CSP still matches the built inline script hashes
 web-responsive: ## No page scrolls sideways, phone to desktop. Drives a real browser.
 	@node tools/checks/check-responsive.mjs
 
+device-shots: screens ## Render real device screens into the website's public directory
+	@node tools/gen-device-shots.mjs
+
+device-shots-check: screens ## The committed screenshots still match the frontend
+	@node tools/gen-device-shots.mjs --check
+
 web-site-links: ## Every link in the BUILT site resolves, routes and anchors both
 	@node tools/checks/check-site-links.mjs
 
@@ -699,4 +682,4 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 
 check-fast: lint format-check ci-parity ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims make-targets ipc-reachable device-csp qr-readback test manifest-check manifest-recipe ## Everything except the slow suites
 
-check: check-fast build verify test-vectors test-differential repro-check sbom device-ui screen-fit contrast ui-roles journeys dev-check web-check ## Everything CI runs
+check: check-fast build verify test-vectors test-differential repro-check sbom device-ui screen-fit contrast ui-roles journeys dev-check device-shots-check web-check ## Everything CI runs

@@ -2,21 +2,21 @@
 
 ## Where this stands today
 
-There is no image to download. The build system that turns this repository into
-a flashable card is half written: the system partition builds and is
-reproducible, the boot partition and the installer are not. `make image` says
-so and exits rather than pretending otherwise.
+There is a card you can build and flash. There is no download: you build it,
+which is the point, and `make image` prints the checksum you verify it with.
 
-So there are two honest things you can do now, and one you cannot.
+**Nothing here has run on a Raspberry Pi.** The image boots under QEMU and the
+signing daemon starts on it, which is a real thing to have proven and is not the
+same as your board coming up. The firmware path from power-on to the kernel is
+carried on the card and has never been executed, and the kiosk browser has never
+had a display to draw on. Flash a spare card. Expect to debug.
 
 | What you can do | State |
 | --- | --- |
 | Run the whole device on your computer | Works today. `make dev`. |
-| Build the system partition and check it is reproducible | Works today, needs Docker. `make image-system`. |
-| Flash a card and boot a Pi | Not yet. No published image, and no installer. |
-
-If you want to try the interface, use the first one. It is the same daemon and
-the same frontend the device runs, on a loopback socket instead of a panel.
+| Build a card and check it is reproducible | Works today, needs Docker. `make image`, `make image-repro`. |
+| Boot that card in an emulator, including a tampered copy | Works today. `make image-boot-test`. |
+| Boot it on a Pi | Untested. You would be the first. |
 
 ## What you need
 
@@ -42,45 +42,102 @@ Your wallet goes in `.nullroute-store/` in the checkout. It is encrypted the
 same way it is on the device, and it is not a device: your computer has a
 network, a swap file and a browser, so treat anything you create here as a toy.
 
-## Building the system partition
 
-Needs Docker, and builds for arm64.
+## Building a card
+
+Needs Docker, and builds for arm64. On Apple silicon this runs natively; on an
+Intel machine it runs under emulation and takes considerably longer.
 
 ```console
-$ make image-system     # builds it, prints the dm-verity root hash
-$ make image-repro      # builds it twice and checks the two agree
+$ make image
 ```
 
-The second one is the point. A root hash that changes between two builds of the
-same commit is a number nobody can compare against anything, which would make
-the hash on the lock screen decorative.
+That builds the root filesystem, makes the erofs system partition, computes the
+dm-verity hash tree over it, assembles the four partitions, and writes:
+
+```
+out/release/nullroute-0.1.0.img    the card
+out/release/system.roothash        the dm-verity root hash
+out/release/SHA256SUMS             checksums over both
+```
+
+Two other targets are worth running before you flash anything.
+
+```console
+$ make image-repro       # builds it twice, in separate containers, and compares
+$ make image-boot-test   # boots it, then boots a copy with one byte changed
+```
+
+The second one is the one that matters. It opens the dm-verity mapping, mounts
+the root through it, reads every block, and starts the daemon; then it corrupts
+a single byte inside the system partition and requires that boot to fail. A
+device that cannot tell those apart is a device whose integrity check is
+decoration.
+
+## Flashing it
+
+Find the card. On macOS `diskutil list`, on Linux `lsblk`. Get this wrong and
+you will overwrite something else, so read the size and confirm it is the card.
+
+```console
+$ cd out/release
+$ shasum -a 256 -c SHA256SUMS
+$ diskutil unmountDisk /dev/diskN          # macOS
+$ sudo dd if=nullroute-0.1.0.img of=/dev/rdiskN bs=4m status=progress
+```
+
+On Linux the device is `/dev/sdX` or `/dev/mmcblkN` and the block size flag is
+`bs=4M`. Read the card back and compare it before you boot it:
+
+```console
+$ sudo dd if=/dev/rdiskN bs=4m count=<image size in 4MB blocks> | shasum -a 256
+```
+
+That is provisioning tier 0: you verified the bytes you wrote. It costs nothing
+irreversible and it is the only tier that works on any board.
 
 ## What the device does at boot
 
-Nothing is typed and nothing is configured. Two services start, in order:
+Nothing is typed and nothing is configured.
 
-1. **`nullrouted.service`**, the signing daemon. It holds the key material, runs
-   as its own user with no network access of any kind, and listens on one Unix
-   socket.
-2. **`nullroute-kiosk.service`**, the frontend, as Chromium in kiosk mode at
-   800x480 with updates, sync and background networking switched off.
+1. The Pi firmware reads `config.txt`, loads `kernel8.img` and the device tree
+   for your board, and hands over to the kernel with `initramfs.img`.
+2. The initramfs loads dm-verity and erofs, reads `system.roothash` off the boot
+   partition, opens the system partition through a verity mapping, and mounts it
+   read only. If the partition does not match that hash, it stops here and says
+   so rather than continuing.
+3. `nullroute-state.service` finds the fourth partition, makes a filesystem on
+   it the first time only, and mounts it at `/var/lib`.
+4. `nullrouted.service` checks its own verification report against the build it
+   is running from, prints the manifest root, and listens on a Unix socket. It
+   refuses to start if the report is missing or does not describe this build.
+5. `nullroute-bridge.service` serves the frontend on `127.0.0.1:5180` and
+   forwards to that socket.
+6. `nullroute-kiosk.service` starts Chromium against it, full screen.
 
-The second cannot start before the first, and the lock screen is what you see.
-It shows the hash of the application before you type a passphrase, so you can
-compare it against the release. The daemon holds the keys and the browser
-receives xpubs, addresses, descriptors and PSBTs, and nothing else.
+The lock screen is what you should see, showing the manifest root before you
+type a passphrase, so you can compare it against what `make image` printed.
 
-## Verifying before you flash
+**If it does not boot,** attach a serial console or a monitor and read where it
+stopped. Every failure path in the initramfs prints a sentence saying what it
+was looking for. That is deliberate: a signer that fails silently is worse than
+one that fails loudly.
 
-Once there is an image to flash, the sequence is: check the signature on the
-release, compare the hash you compute against the published one, flash, then
-read the card back and compare it again. That is provisioning tier 0, it works
-on any board, and it costs nothing irreversible.
+## Verifying before you flash, and the tiers
 
-Two tiers above it are described in
-[docs/VERIFICATION.md](VERIFICATION.md#building-a-device), along with what each
-one actually proves. Tier 1 detects modification of the system partition and
-does not prevent it, and the difference matters: read that page before relying
-on either.
+Building the card yourself, checking its hash, and reading it back after writing
+is provisioning tier 0. It works on any board, it costs nothing irreversible,
+and it is what the commands above are.
 
-For what you can check today, see [How you verify it](../README.md#how-you-verify-it).
+Tier 1 is the dm-verity tree the device opens at boot, and it is on this card.
+It DETECTS modification of the system partition and does not prevent it: the
+boot partition holds the root hash and cannot be under the tree that hash
+describes, so an attacker who rewrites that partition supplies their own number
+and the device displays exactly what they chose. Only tier 2, a signed boot
+chain, closes that, and it burns one-time fuses and stays in phase 7.
+
+[docs/VERIFICATION.md](VERIFICATION.md#building-a-device) has what each tier
+actually proves. Read it before relying on any of them.
+
+For what you can check without a Pi at all, see
+[How you verify it](../README.md#how-you-verify-it).

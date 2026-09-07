@@ -155,6 +155,14 @@ jobs:
       # device shipping unable to create a wallet.
       - name: Guided journeys complete
         run: make journeys
+
+      # The committed screenshots on nullroute.diy are the real frontend. If it
+      # is redesigned and they are not regenerated, the site shows a device that
+      # no longer exists.
+      - name: The site's device screenshots match the frontend
+        run: make device-shots-check
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
         env:
           CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
 

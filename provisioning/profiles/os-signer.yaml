@@ -316,6 +316,7 @@ assertions:
           units:
             - nullroute-state.service
             - nullrouted.service
+            - nullroute-bridge.service
             - nullroute-kiosk.service
     rationale: >
       INV-PROV-18 and INV-PROV-19 measure DECLARED directives, so

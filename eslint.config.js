@@ -76,12 +76,27 @@ export default tseslint.config(
             // testing. Listed here rather than disabled inline so the exemption
             // is one place, reviewable, and greppable.
             'packages/daemon/test/ipc.test.ts',
+            // The bridge is the socket's only client on a device.
+            'packages/daemon/src/bridge/',
+            'packages/daemon/test/bridge.test.ts',
           ],
           // The browser's half of the same IPC layer. It POSTs to a same-origin
           // loopback proxy, which is the only channel the page has: the CSP
           // sets connect-src 'self', so this fetch cannot reach off the machine
           // even if the path were widened by accident.
-          allowFetchIn: ['packages/ui/src/lib/transport.ts'],
+          // The device's answer to `fetch('/ipc')`. A browser cannot open a
+          // Unix socket, so one process has to speak both; it binds 127.0.0.1
+          // as a module constant and its own spec is daemon.bridge.
+          allowLoopbackHttpIn: [
+            'packages/daemon/src/bridge/',
+            'packages/daemon/test/bridge.test.ts',
+          ],
+          allowFetchIn: [
+            'packages/ui/src/lib/transport.ts',
+            // The bridge's own test has to be an HTTP client to the server it
+            // is testing, the same exemption ipc.test.ts has for node:net.
+            'packages/daemon/test/bridge.test.ts',
+          ],
         },
       ],
 

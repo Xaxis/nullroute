@@ -1,0 +1,58 @@
+# The loopback bridge between the kiosk browser and the daemon.
+#
+# WHY THIS IS A THIRD USER AND NOT THE DAEMON. Everything the browser is allowed
+# to see passes through this process: xpubs, addresses, descriptors and PSBTs,
+# which is the INV-KEY-1 boundary. No key material does, because the daemon
+# never sends any. So the bridge is exactly as trusted as the frontend, and a
+# process that parses HTTP on a browser's behalf must not share a uid with the
+# one holding a seed. It is in the daemon's group, which is what lets it open
+# the socket (0660); it is not the daemon's user, so the state directory at
+# 0700 stays closed to it.
+#
+# The browser's own user is in neither, and cannot reach the socket at all.
+[Unit]
+Description=nullroute loopback bridge
+Documentation=https://nullroute.diy/docs/verification
+After=nullrouted.service
+Requires=nullrouted.service
+Before=nullroute-kiosk.service
+
+[Service]
+Type=exec
+Environment=NULLROUTE_SOCKET=/run/nullroute/nullrouted.sock
+Environment=NULLROUTE_UI=/usr/lib/nullroute/ui
+ExecStart=/usr/lib/nullroute/bin/node /usr/lib/nullroute/bridge/main.js
+Restart=on-failure
+RestartSec=2
+
+User=nullroute-bridge
+Group=nullroute-bridge
+SupplementaryGroups=nullroute
+
+# --- The filesystem ---------------------------------------------------------
+# It reads the frontend and writes nothing at all.
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectProc=invisible
+ProcSubset=pid
+InaccessiblePaths=/boot /var/lib/nullroute
+
+# --- Privileges -------------------------------------------------------------
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+# AF_UNIX to reach the daemon, AF_INET to listen on 127.0.0.1. Nothing else:
+# no AF_INET6, no AF_NETLINK, no AF_PACKET.
+RestrictAddressFamilies=AF_UNIX AF_INET
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+PrivateUsers=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources @obsolete @mount @debug
+
+[Install]
+WantedBy=multi-user.target

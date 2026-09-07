@@ -88,7 +88,7 @@ echo "  SOURCE_DATE_EPOCH $SOURCE_DATE_EPOCH"
 # systemd-timesyncd, which INV-PROV-16 forbids by name, and this image is the
 # thing that decides what a signer contains.
 mmdebstrap --variant="$VARIANT" --mode=root --format=directory \
-  --include=systemd,systemd-sysv,dbus,chromium,e2fsprogs,kmod \
+  --include=systemd,systemd-sysv,dbus,chromium,e2fsprogs,kmod,iproute2 \
   --aptopt='APT::Install-Recommends "false"' \
   "$SUITE" "$ROOTFS" "$MIRROR" >/dev/null 2>&1
 
@@ -107,6 +107,7 @@ mkdir -p "$ROOTFS/usr/lib/systemd/system"
 cp /work/provisioning/units/nullrouted.service "$ROOTFS/usr/lib/systemd/system/"
 cp /work/provisioning/units/nullroute-kiosk.service "$ROOTFS/usr/lib/systemd/system/"
 cp /work/provisioning/units/nullroute-state.service "$ROOTFS/usr/lib/systemd/system/"
+cp /work/provisioning/units/nullroute-bridge.service "$ROOTFS/usr/lib/systemd/system/"
 
 # ENABLED, WHICH IS NOT THE SAME AS INSTALLED. A unit file under
 # usr/lib/systemd/system is a file systemd knows how to run and will never run
@@ -119,7 +120,8 @@ cp /work/provisioning/units/nullroute-state.service "$ROOTFS/usr/lib/systemd/sys
 # WantedBy. Made directly because systemctl in a chroot wants a running
 # systemd, and because a symlink is deterministic and a maintainer script is
 # not. INV-PROV-23 checks it, so this cannot silently stop happening.
-for pair in nullroute-state.service:multi-user nullrouted.service:multi-user nullroute-kiosk.service:graphical; do
+for pair in nullroute-state.service:multi-user nullrouted.service:multi-user \
+            nullroute-bridge.service:multi-user nullroute-kiosk.service:graphical; do
   unit="${pair%%:*}"
   target="${pair##*:}.target"
   mkdir -p "$ROOTFS/etc/systemd/system/${target}.wants"
@@ -348,9 +350,12 @@ mkdir -p "$ROOTFS/var/lib/nullroute"
 }
 cp /work/verification-report.json /work/MANIFEST.lock /work/VERSION "$ROOTFS/usr/lib/nullroute/"
 
-mkdir -p "$ROOTFS/usr/lib/nullroute/daemon" "$ROOTFS/usr/lib/nullroute/ui"
+mkdir -p "$ROOTFS/usr/lib/nullroute/daemon" "$ROOTFS/usr/lib/nullroute/ui" "$ROOTFS/usr/lib/nullroute/bridge"
 cp -a /work/packages/daemon/dist/. "$ROOTFS/usr/lib/nullroute/daemon/"
 cp -a /work/packages/ui/dist-app/. "$ROOTFS/usr/lib/nullroute/ui/"
+# The bridge is built from the same tree as the daemon and shares its runtime
+# closure, so it is a copy of dist/bridge rather than a second bundle.
+cp -a /work/packages/daemon/dist/bridge/. "$ROOTFS/usr/lib/nullroute/bridge/"
 
 # The runtime closure, and nothing else. The daemon imports @nullroute/core and
 # node: builtins; core reaches @noble and @scure. Listed rather than copied
@@ -371,7 +376,7 @@ done
 # packages happened to install in would change the passwd file between builds
 # and take the root hash with it. 900 and 901 are below the 1000 where login
 # accounts start, and neither can log in: no shell, no password hash, no home.
-for account in nullroute:900 nullroute-ui:901; do
+for account in nullroute:900 nullroute-ui:901 nullroute-bridge:902; do
   name="${account%%:*}"
   id="${account##*:}"
   grep -q "^${name}:" "$ROOTFS/etc/passwd" && continue
@@ -379,6 +384,13 @@ for account in nullroute:900 nullroute-ui:901; do
   echo "${name}:!:${id}:" >> "$ROOTFS/etc/group"
   echo "${name}:!*::" >> "$ROOTFS/etc/shadow"
 done
+
+# THE ONE GROUP MEMBERSHIP ON THE DEVICE, and it is the whole access control
+# story. The daemon's socket is 0660 owned by nullroute:nullroute; putting
+# nullroute-bridge in that group is what lets the bridge open it, and leaving
+# nullroute-ui out is what keeps the browser away from it. The state directory
+# stays 0700, so the bridge can talk to the daemon and cannot read the store.
+sed -i 's/^nullroute:!:900:$/nullroute:!:900:nullroute-bridge/' "$ROOTFS/etc/group"
 
 echo "  application      node $NODE_VERSION, daemon, frontend, and 2 accounts"
 

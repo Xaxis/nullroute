@@ -20,9 +20,10 @@
  *      binding and throws if anything is listening on a TCP or UDP address.
  *      The lint rule proves no source file CAN open a socket; this proves
  *      nothing HAS. They fail differently and that is the point.
- *   2. The socket file is created with mode 0600 in a directory the daemon
- *      owns, so another user on the machine cannot connect to it. On the device
- *      there is one user, but the daemon should not depend on that.
+ *   2. The socket file is created with mode 0660 in a directory the daemon
+ *      owns, so only a member of the daemon's group can connect to it. That
+ *      group has one member, the loopback bridge, and the browser's own user is
+ *      not in it. See the chmod below for why this is 0660 and not 0600.
  */
 
 import { createServer, type Server, type Socket } from 'node:net'
@@ -150,9 +151,24 @@ export function startIpcServer(options: IpcServerOptions): Promise<Server> {
     server.on('error', reject)
     // `path`, never `port`. This is the line the whole file is about.
     server.listen({ path: socketPath }, () => {
-      // Owner only. There is one user on the device, and the daemon should not
-      // rely on that being true.
-      chmodSync(socketPath, 0o600)
+      /*
+       * OWNER AND GROUP, and the group is the change.
+       *
+       * This was 0600, and the spec beside it said "if the daemon ever serves a
+       * second client, that assumption has to be revisited rather than
+       * inherited". The device now has one: the loopback bridge, which answers
+       * the kiosk browser because a page in Chromium speaks HTTP and cannot open
+       * a Unix socket.
+       *
+       * The bridge runs as its own user in this daemon's group. The alternative
+       * was running it as THIS user, which would have put a browser-facing HTTP
+       * parser inside the principal that holds the seed, and a group is a better
+       * trade than that. The claim narrows honestly: not "no other user can open
+       * it" but "only a member of the daemon's group can", and the state
+       * directory stays 0700 so the bridge cannot read the store even though it
+       * can talk to the socket.
+       */
+      chmodSync(socketPath, 0o660)
       try {
         assertNoNetworkListeners()
       } catch (err) {

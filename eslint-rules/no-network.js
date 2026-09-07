@@ -19,7 +19,6 @@
 
 /** Modules whose only purpose is to talk to a network. Never allowed. */
 const BANNED_MODULES = new Set([
-  'node:http',
   'node:https',
   'node:http2',
   'node:dgram',
@@ -27,7 +26,6 @@ const BANNED_MODULES = new Set([
   'node:dns/promises',
   'node:tls',
   // Bare specifiers resolve to the same builtins.
-  'http',
   'https',
   'http2',
   'dgram',
@@ -38,6 +36,22 @@ const BANNED_MODULES = new Set([
 
 /** Allowed only inside the paths named by the `allowUnixSocketIn` option. */
 const SOCKET_MODULES = new Set(['node:net', 'net'])
+
+/**
+ * Allowed only inside the paths named by `allowLoopbackHttpIn`.
+ *
+ * `node:http` used to be in BANNED_MODULES with no way out, and that was right
+ * until the device needed the one thing it could not do without: the frontend
+ * is a page in a browser, a browser speaks HTTP and cannot open a Unix socket,
+ * so something has to answer `fetch('/ipc')`. In development that is Vite. On
+ * the device it is packages/daemon/src/bridge, which binds 127.0.0.1 as a
+ * module constant.
+ *
+ * Gated by path rather than removed from the rule, and separately from
+ * `node:net`, so the two exemptions cannot be widened by one edit. `node:https`
+ * stays banned outright: a TLS client has no use on a machine with no route.
+ */
+const LOOPBACK_HTTP_MODULES = new Set(['node:http', 'http'])
 
 /** @type {import('eslint').Rule.RuleModule} */
 export const noNetwork = {
@@ -59,6 +73,14 @@ export const noNetwork = {
             description:
               'Path substrings where node:net may be imported for Unix domain socket IPC.',
           },
+          allowLoopbackHttpIn: {
+            type: 'array',
+            items: { type: 'string' },
+            description:
+              'Path substrings where node:http may be imported, for the loopback bridge that ' +
+              'serves the kiosk browser. The host it binds is a constant in that module, not ' +
+              'something this rule can check, which is why the path list is short.',
+          },
           allowFetchIn: {
             type: 'array',
             items: { type: 'string' },
@@ -77,6 +99,10 @@ export const noNetwork = {
         "INV-NET-2: '{{name}}' may only be imported in the loopback IPC layer. " +
         'If this file genuinely needs a Unix domain socket, add it to allowUnixSocketIn ' +
         'in eslint.config.js so the exemption is reviewable.',
+      httpOutsideBridge:
+        "INV-NET-2: '{{name}}' may only be imported in the loopback bridge. " +
+        'If this file genuinely has to answer a browser on 127.0.0.1, add it to ' +
+        'allowLoopbackHttpIn in eslint.config.js so the exemption is reviewable.',
       bannedFetch:
         'INV-NET-2: calling global fetch() is forbidden. nullroute must not perform network I/O.',
     },
@@ -85,11 +111,13 @@ export const noNetwork = {
   create(context) {
     const options = context.options[0] ?? {}
     const allowUnixSocketIn = options.allowUnixSocketIn ?? []
+    const allowLoopbackHttpIn = options.allowLoopbackHttpIn ?? []
     const allowFetchIn = options.allowFetchIn ?? []
     const filename = context.filename ?? context.getFilename()
     // Normalise so the allowlist can be written with forward slashes on any OS.
     const normalised = filename.replaceAll('\\', '/')
     const ipcAllowed = allowUnixSocketIn.some((frag) => normalised.includes(frag))
+    const httpAllowed = allowLoopbackHttpIn.some((frag) => normalised.includes(frag))
     // The frontend's transport reaches a same-origin loopback proxy. INV-NET-2
     // permits an allowlisted IPC layer, and this is the browser's half of it.
     // Listed by path so the exemption is one place and shows up in a diff.
@@ -108,6 +136,9 @@ export const noNetwork = {
       }
       if (SOCKET_MODULES.has(name) && !ipcAllowed) {
         context.report({ node, messageId: 'socketOutsideIpc', data: { name } })
+      }
+      if (LOOPBACK_HTTP_MODULES.has(name) && !httpAllowed) {
+        context.report({ node, messageId: 'httpOutsideBridge', data: { name } })
       }
     }
 

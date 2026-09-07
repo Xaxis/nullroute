@@ -4,6 +4,7 @@ import { readFacts } from '../lib/facts'
 import { Hero } from '../components/hero/Hero'
 import { Section } from '../components/Section'
 import { Terminal } from '../components/Terminal'
+import { Device } from '../components/Device'
 import { REPO_URL } from '../lib/site'
 
 /**
@@ -86,12 +87,12 @@ const REFUSALS: readonly (readonly [string, string])[] = [
     'One person wrote it. No third party has reviewed the cryptography, and the code that holds keys has never been looked at by anyone but its author.',
   ],
   [
-    'The OS integrity gap is open',
-    'dm-verity and boot attestation are not landed. Until they are, a device whose boot partition was rewritten displays whatever root hash the attacker chose.',
+    'Nothing has run on real hardware',
+    'The card boots under QEMU, opens its dm-verity mapping, refuses a partition with one byte changed, and starts the daemon. No Raspberry Pi has been switched on. The firmware path from power to kernel is carried and unexercised.',
   ],
   [
-    'There is no image to flash',
-    'The build that would put this on a card does not exist yet. What exists is the contract that build has to satisfy.',
+    'The boot partition is not covered',
+    'dm-verity detects modification of the system partition and does not prevent it. The boot partition holds the root hash and cannot be under the tree that hash describes, so an attacker who rewrites it supplies their own number. Only a signed boot chain closes that, and it burns one-time fuses.',
   ],
   [
     'It will not save you from a person',
@@ -111,8 +112,18 @@ export default function HomePage() {
       <Hero facts={facts} />
 
       <div className="mx-auto max-w-5xl px-5">
-        {/* --- 01 The check ----------------------------------------------- */}
-        <Section index="01" label="How you check it">
+        {/* --- 01 The device ---------------------------------------------- */}
+        <Section index="01" label="What it is">
+          <p className="text-lg text-ink-200 max-w-2xl leading-relaxed">
+            Six screens from the real frontend, at the panel&rsquo;s real 800x480. Rendered by a
+            browser from the same gallery the layout and contrast checks measure, so this is the
+            device rather than a picture of one.
+          </p>
+          <Device />
+        </Section>
+
+        {/* --- 02 The check ----------------------------------------------- */}
+        <Section index="02" label="How you check it">
           <p className="text-lg text-ink-200 max-w-2xl leading-relaxed">
             Every module ships a specification a machine reads. The build fails when the code, the
             specs and the tests stop agreeing, so the specification cannot quietly fall behind the
@@ -157,8 +168,8 @@ export default function HomePage() {
           )}
         </Section>
 
-        {/* --- 02 Reasons not to --------------------------------------------- */}
-        <Section index="02" label="Do not use this">
+        {/* --- 03 Reasons not to ------------------------------------------ */}
+        <Section index="03" label="Do not use this">
           <p className="text-lg text-ink-200 max-w-2xl leading-relaxed">
             Not modesty. Four specific reasons, and any one of them is enough.
           </p>
@@ -184,8 +195,8 @@ export default function HomePage() {
           </p>
         </Section>
 
-        {/* --- 03 Leave ------------------------------------------------------ */}
-        <Section index="03" label="Read it yourself">
+        {/* --- 04 Leave ---------------------------------------------------- */}
+        <Section index="04" label="Read it yourself">
           <p className="text-lg text-ink-200 max-w-2xl leading-relaxed">
             The useful thing here is not the device. It is the method: specifications a machine can
             check, invariants bound to named tests, and a build that fails when a claim stops being

@@ -35,6 +35,10 @@ Type=simple
 # cannot so much as stat the socket, which is deliberate: the frontend talks
 # over the loopback bridge, never to the socket directly.
 ExecStartPre=+/usr/lib/nullroute/bin/wait-for-daemon
+# --disable-crash-reporter and --disable-breakpad because crashpad exits with
+# "chrome_crashpad_handler: --database is required" and takes the browser with
+# it (status 5/TRAP). A crash reporter on a device with no network has nowhere
+# to send anything and is one more parser next to the keys.
 ExecStart=/usr/bin/chromium \
   --kiosk \
   --incognito \
@@ -43,6 +47,8 @@ ExecStart=/usr/bin/chromium \
   --disable-features=TranslateUI,AutofillServerCommunication \
   --check-for-update-interval=31536000 \
   --disable-background-networking \
+  --disable-crash-reporter \
+  --disable-breakpad \
   --disable-sync \
   --disable-component-update \
   --window-size=800,480 \

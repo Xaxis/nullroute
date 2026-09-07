@@ -81,3 +81,18 @@ export {
   THEMES,
 } from './store/identity.js'
 export type { DeviceIdentity, Theme } from './store/identity.js'
+
+/*
+ * The loopback bridge. Exported here rather than only being a process, because
+ * `make verify` enumerates the daemon's runtime exports by walking this file
+ * and a module reachable only from a unit file is a module the spec system
+ * cannot see. daemon.bridge covers these.
+ */
+export {
+  BRIDGE_HOST,
+  BRIDGE_PORT,
+  MAX_BRIDGE_REQUEST_BYTES,
+  resolveStaticPath,
+  startBridge,
+} from './bridge/server.js'
+export type { BridgeOptions } from './bridge/server.js'

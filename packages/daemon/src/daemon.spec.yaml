@@ -29,7 +29,7 @@ algorithm: >
   The server binds with listen({ path }), never listen({ port }). A Unix domain
   socket has no address family reaching off the machine, no port and no route;
   it lives in node:net only because that is where the API is. The socket file is
-  chmod 0600 so another user on the machine cannot connect.
+  chmod 0660 so only the daemon's group, which is the bridge, can connect.
 
   After binding, the process inspects its own active handles and throws if any
   reports an address carrying a port, which is what distinguishes a TCP or UDP
@@ -154,13 +154,22 @@ security_notes: >
   intended or an error message interpolating something it should not, not a
   method deliberately returning a key.
 
-  The 0600 mode on the socket is meaningful only where more than one user
-  exists. On the device there is one, and the daemon does not rely on that.
+  The socket is 0660 and was 0600. The sentence below used to say that if the
+  daemon ever served a second client the assumption had to be revisited rather
+  than inherited, and it now has one: the loopback bridge (daemon.bridge), which
+  exists because the frontend is a page in a browser and a browser cannot open a
+  Unix socket. The bridge runs as its own user in this daemon's group.
+
+  So the claim is narrower and is stated as such: not that no other user can
+  open the socket, but that only a member of the daemon's group can. Running the
+  bridge as this daemon's own user would have kept 0600 and put a browser-facing
+  HTTP parser inside the principal holding the seed, which is worse. The state
+  directory remains 0700, so the bridge can talk to the socket and cannot read
+  the store.
 
   This module does not authenticate its caller. On the device the only client is
-  the local kiosk, reaching a socket no other user can open. If the daemon ever
-  serves a second client, that assumption has to be revisited rather than
-  inherited.
+  the bridge, reaching a socket the browser's own user cannot open. If anything
+  else ever connects, that has to be revisited rather than inherited.
 
 references:
   - docs/THREAT-MODEL.md
