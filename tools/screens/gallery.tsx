@@ -72,6 +72,17 @@ import '../../packages/ui/src/styles.css'
  */
 const never = (): Promise<never> =>
   Promise.reject(new Error('The gallery calls nothing. This is a layout harness.'))
+
+/**
+ * A call that is still running, for measuring a screen mid-flight.
+ *
+ * `never` above REJECTS, which is the right default: a screen whose call fails
+ * visibly beats one rendered half populated. It is the wrong tool for a busy
+ * state, because the rejection lands before anything can be measured. This one
+ * never settles, so a screen reached through it stays in the state a user
+ * actually sits and looks at while the device works.
+ */
+const pending = (): Promise<never> => new Promise<never>(() => undefined)
 const noop = (): void => undefined
 
 /** A named device, so the header chip is measured on every screen. */
@@ -481,6 +492,26 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       attemptsRemaining={2}
       maxAttempts={10}
       onSubmit={never}
+      onCancel={noop}
+    />
+  ),
+  /*
+   * Unlock, mid-derivation.
+   *
+   * Argon2id at 64 MiB and three passes: 643ms on a machine considerably
+   * faster than a Pi, so several seconds on the device. That pause used to be
+   * a disabled button and nothing else, which on a panel with no other
+   * feedback is where somebody decides it has frozen. This state is what they
+   * are looking at while it works, so the layout and contrast checks measure
+   * it like any other.
+   */
+  'passphrase-working': () => (
+    <PassphraseScreen
+      identity={DEVICE}
+      mode="enter"
+      attemptsRemaining={2}
+      maxAttempts={10}
+      onSubmit={pending}
       onCancel={noop}
     />
   ),
@@ -1418,6 +1449,7 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   'device-name': [['device-name-save']],
   message: [['pk-key-a', 'message-review']],
   passphrase: [['pk-key-a', 'passphrase-submit']],
+  'passphrase-working': [['pk-key-a', 'passphrase-submit']],
   // Acknowledged and generated, which is the only route to this screen's last
   // banner: the button is gated on both the tick and a healthy report.
   'machine-failed': [['machine-acknowledge', 'machine-generate']],

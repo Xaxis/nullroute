@@ -157,6 +157,27 @@ export function PassphraseScreen(props: PassphraseScreenProps): ReactElement {
         </>
       }
     >
+      {/* WHAT IS HAPPENING DURING THE PAUSE, and FIRST for the same reason the
+          refusal below is first: it landed under the keyboard, which is off the
+          bottom of an 800x480 panel, so the one explanation a user needs while
+          they wait was the one thing they could not see.
+          
+          The work is Argon2id at 64 MiB and three passes, measured at 643ms on
+          a machine considerably faster than a Pi, so several seconds here. A
+          disabled button and nothing else, for several seconds, on a panel with
+          no other feedback, is where somebody decides it has frozen and pulls
+          the power in the middle of a write.
+          
+          It says WHY it is slow, because the slowness is the feature: the same
+          arithmetic runs on every guess an attacker makes. */}
+      {busy && (
+        <Info label="Deriving the key" testId="passphrase-working">
+          This takes a few seconds, and it is meant to. The same arithmetic runs on every guess an
+          attacker makes, so a key that is slow to derive once is expensive to attack repeatedly. Do
+          not power the device off while it is working.
+        </Info>
+      )}
+
       {/* FIRST IN THE BODY, because a refusal nobody sees is a refusal that
           did not happen. This sat last, under everything the screen holds, on
           a 480px panel: tapping the button and being refused changed nothing
@@ -243,18 +264,31 @@ export function PassphraseScreen(props: PassphraseScreenProps): ReactElement {
         )}
       </div>
 
-      <TextKeyboard
-        value={field === 'confirm' ? confirm : value}
-        onChange={(next) => {
-          setError(null)
-          if (field === 'confirm') setConfirm(next)
-          else setValue(next)
-        }}
-        onSubmit={() => {
-          if (ready && !busy) void submit()
-        }}
-        testId="passphrase-keyboard"
-      />
+      {/* NO KEYBOARD WHILE IT WORKS.
+          
+          Nothing can be typed during derivation, and a full keyboard that looks
+          tappable and does nothing is the worst possible thing to show somebody
+          who is already wondering whether the device has frozen. Hiding it also
+          collapses the body, which is what finally made the explanation above
+          visible: the panel is 800x480 and the message kept landing under a
+          keyboard that filled the rest of it. */}
+      {!busy && (
+        <TextKeyboard
+          value={field === 'confirm' ? confirm : value}
+          onChange={(next) => {
+            setError(null)
+            if (field === 'confirm') setConfirm(next)
+            else setValue(next)
+          }}
+          onSubmit={() => {
+            // No `!busy` here any more: this keyboard is not rendered while the
+            // key is being derived, so the guard could never be false and the
+            // compiler says so.
+            if (ready) void submit()
+          }}
+          testId="passphrase-keyboard"
+        />
+      )}
 
       {setting ? (
         <Info label="What a passphrase is for" testId="passphrase-info">
