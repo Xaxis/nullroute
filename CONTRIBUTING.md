@@ -142,6 +142,38 @@ A change touching a parser additionally needs adversarial corpus entries. Add
 them to the corpus rather than only testing the happy path. Malformed input is
 the input we actually care about.
 
+### Changing the image
+
+`provisioning/` is a contract, not a recipe. A profile states what must be true
+of the built artifact and every assertion carries a verifier that reads the
+artifact, so a backend is supported when the unchanged verifiers pass against
+its output and not because somebody reviewed its configuration.
+
+That means the order is: write the assertion and its verifier first, watch the
+verifier fail against the current image, then change the build. A verifier
+written afterwards is one written to agree with whatever the build happened to
+produce.
+
+```bash
+make image-system      # build the root filesystem and the card
+make verify-image ROOT=out/system/rootfs IMAGE=out/system/nullroute.img
+make image-repro       # two builds, two containers, byte-identical or not
+make image-boot-test   # boot it, then boot a copy with one byte changed
+```
+
+`make image-boot-test` is the one that answers the question the rest cannot. It
+boots the card under QEMU with a kernel that has the dm-verity target, reads
+every block of the system partition through the mapping, and then requires a
+corrupted copy to fail. Everything else in `provisioning/` reads an artifact at
+rest and cannot tell a working integrity check from an absent one.
+
+**A verifier that cannot answer must say so.** Several here report could-not-run
+rather than passing: `/dev` is not in the exported tree, a macOS bind mount
+drops setuid, `lib/modules` may be empty. Absent because it was removed and
+absent because it was never there are different facts, and only the first one is
+hardening. Reporting the second as a pass is the failure this whole directory
+was written about.
+
 ### What a test failure means
 
 Failing tests block merge. There is no "flaky, re-run it" culture here. If a
