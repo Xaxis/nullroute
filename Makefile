@@ -26,7 +26,7 @@ MANIFEST_ROOTS := packages spec provisioning
         screens screen-fit ui-constants dev-check verify-image docs-reachable no-dead-ends \
         image-env image-shell image-system image-repro journeys \
         web-isolation web-csp web-responsive web-site-links web-dice-demo device-shots device-shots-check \
-        web-check web-live-check deploy image image-boot-test verify-runtime slow-feedback
+        web-check web-live-check deploy image image-boot-test verify-runtime slow-feedback typeable
 
 help: ## List available targets
 	@grep -hE '^[a-z][a-z-]*:.*?## ' $(MAKEFILE_LIST) \
@@ -591,6 +591,18 @@ journeys: build-app ## Every guided journey completes, in the real app against a
 	# touches wallets on the machine it runs on.
 	@node tools/checks/check-journeys.mjs
 
+typeable: ## A field somebody has to fill needs something on the panel to fill it with
+	# docs/USING.md opens by saying this device has no cursor and no keyboard.
+	# No virtual keyboard is installed and cage provides none, so an input with
+	# no on-screen TextKeyboard bound to it cannot be filled on the hardware,
+	# and can be filled perfectly under `make dev` in a browser. Four screens
+	# shipped that way, including the one that answers "is this address mine".
+	#
+	# Five fields are still unreachable and listed there with the measurement
+	# that says why not yet. The list is not permission: it cannot grow without
+	# this failing.
+	@node tools/checks/check-typeable.mjs
+
 slow-feedback: ## An operation that derives a key has to say so on the screen
 	# The bug this exists for shipped on SIX screens and was found by reading.
 	# Argon2id at 64 MiB is several seconds on a Pi, and `reseal` is twice
@@ -719,6 +731,6 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 
 # --- aggregates --------------------------------------------------------------
 
-check-fast: lint format-check ci-parity ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims make-targets ipc-reachable slow-feedback device-csp qr-readback test manifest-check manifest-recipe ## Everything except the slow suites
+check-fast: lint format-check ci-parity ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims make-targets ipc-reachable slow-feedback typeable device-csp qr-readback test manifest-check manifest-recipe ## Everything except the slow suites
 
 check: check-fast build verify test-vectors test-differential repro-check sbom device-ui screen-fit contrast ui-roles journeys dev-check device-shots-check web-check ## Everything CI runs
