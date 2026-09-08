@@ -4,6 +4,7 @@ import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
 import { WALLET_COLOUR_NAMES } from './ManageWalletScreen.js'
 import { Info } from '../components/Info.js'
+import { TextKeyboard } from '../components/TextKeyboard.js'
 
 /**
  * Naming this physical device.
@@ -107,6 +108,14 @@ export function DeviceNameScreen(props: DeviceNameScreenProps): ReactElement {
         </Refusal>
       )}
 
+      {/* THE FIELD WAS NOT FILLABLE ON THE DEVICE. docs/USING.md opens with
+          "there is no cursor, no keyboard", and this screen offered a bare
+          input and nothing to type into it with. It worked perfectly under
+          `make dev`, in a browser, on a workstation with a real keyboard,
+          which is the only place anybody had ever used it.
+
+          The input is kept, read-only, because it is where the text appears.
+          The keyboard below it is how the text gets there. */}
       <div className="nr-field">
         <span className="nr-field__label">What to call it</span>
         <input
@@ -121,6 +130,15 @@ export function DeviceNameScreen(props: DeviceNameScreenProps): ReactElement {
           data-testid="device-name-input"
         />
       </div>
+
+      <TextKeyboard
+        value={name}
+        onChange={(next) => {
+          setError(null)
+          setName(next.slice(0, 48))
+        }}
+        testId="device-name-keyboard"
+      />
 
       <div className="nr-swatches" data-testid="device-name-colours">
         {WALLET_COLOUR_NAMES.map((option) => (

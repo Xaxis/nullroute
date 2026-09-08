@@ -2,6 +2,7 @@ import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Refusal } from '../components/Refusal.js'
 import { Working } from '../components/Working.js'
+import { TextKeyboard } from '../components/TextKeyboard.js'
 import { Button } from '../components/Button.js'
 import { Info } from '../components/Info.js'
 
@@ -144,6 +145,10 @@ export function FleetScreen(props: FleetScreenProps): ReactElement {
 
         <div className="nr-field">
           <span className="nr-field__label">Type the checksum to confirm</span>
+          {/* Read-only, with the keyboard below. This screen had no way to
+              type at all, so the confirmation it demands could not be given on
+              the device: forgetting a quorum was gated behind an eight
+              character checksum and a field nothing could fill. */}
           <input
             className="nr-input nr-mono"
             value={typed}
@@ -155,6 +160,15 @@ export function FleetScreen(props: FleetScreenProps): ReactElement {
             data-testid="fleet-forget-confirm"
           />
         </div>
+
+        {!busy && (
+          <TextKeyboard
+            value={typed}
+            onChange={setTyped}
+            placeholder={forgetting.checksum}
+            testId="fleet-forget-keyboard"
+          />
+        )}
 
         {/* FORGETTING A QUORUM RESEALS THE WALLET, which is not what the word
             suggests. It verifies the passphrase by opening the envelope and

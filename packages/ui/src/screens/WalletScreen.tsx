@@ -4,6 +4,7 @@ import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
 import { QrDisplay } from '../components/QrDisplay.js'
 import { useMoreBelow } from '../lib/scroll.js'
+import { TextKeyboard } from '../components/TextKeyboard.js'
 
 /**
  * The wallet: accounts, addresses, and export.
@@ -611,20 +612,46 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
 
       {tab === 'verify' && (
         <>
-          <div className="nr-field">
-            <span className="nr-field__label">Address to check</span>
-            <input
-              className="nr-input"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value)
-              }}
-              placeholder="bc1..."
-              data-testid="verify-input"
-              spellCheck={false}
-              autoComplete="off"
-            />
-          </div>
+          {/* THE WORST OF THE FOUR THAT COULD NOT BE FILLED, because of what
+              this tab is for. Checking whether an address belongs to this
+              wallet is how somebody catches a receive address that was
+              swapped between the device and the machine they pasted it into.
+              It shipped as a bare input on a device that docs/USING.md opens
+              by saying has no keyboard, so the answer to "is this mine" could
+              not be asked at all except under `make dev` in a browser.
+
+              An address is 42 to 62 characters of base32. Tapping one out is
+              possible and nobody should have to, so the camera is offered
+              first and the keyboard is the fallback. */}
+          {/* NO SEPARATE FIELD ABOVE THE KEYBOARD. It would show the same
+              string the keyboard's own readout shows, and measured on the
+              panel it put 11px of keys under the action bar. The rename panel
+              on ManageWalletScreen learned this first: the label is the
+              keyboard's readout. */}
+          <input
+            className="nr-input nr-break"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value)
+            }}
+            data-testid="verify-input"
+            spellCheck={false}
+            autoComplete="off"
+          />
+          {/* THE CAMERA WOULD BE BETTER HERE AND IS NOT WIRED YET. Every other
+              scan on this device routes back to a stage whose name matches the
+              screen it came from; returning to the wallet's verify tab with
+              text in hand does not fit that shape, and a half-wired camera
+              button is worse than an honest keyboard. Tapping an address is
+              tedious and a typo reads as "not yours", which is the safe
+              direction to be wrong in. */}
+          <TextKeyboard
+            value={query}
+            onChange={setQuery}
+            secret={false}
+            placeholder="Address to check, bc1..."
+            testId="verify-keyboard"
+          />
           <Button
             variant="primary"
             disabled={query.trim().length === 0 || busy}
