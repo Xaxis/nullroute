@@ -82,6 +82,12 @@ echo "  SOURCE_DATE_EPOCH $SOURCE_DATE_EPOCH"
 # and kmod, because the state partition needs mkfs.ext4 and the ext4 module has
 # to be loaded by a modprobe that was not in the image.
 #
+# cryptsetup-bin so the device can ask its own kernel which dm-verity root
+# hash it is running on. The initramfs has veritysetup and the image did not,
+# so the attestation unit was reporting "no mapping" about a mapping that was
+# open: it is the difference between a number read from the kernel and a number
+# read from a file somebody wrote on the boot partition.
+#
 # chromium-sandbox is a SEPARATE PACKAGE in Debian and holds the setuid helper
 # Chromium's own sandbox needs. Without it the browser aborts with "No usable
 # sandbox", which is the whole design of nullroute-kiosk.service defeated: that
@@ -95,7 +101,7 @@ echo "  SOURCE_DATE_EPOCH $SOURCE_DATE_EPOCH"
 # systemd-timesyncd, which INV-PROV-16 forbids by name, and this image is the
 # thing that decides what a signer contains.
 mmdebstrap --variant="$VARIANT" --mode=root --format=directory \
-  --include=systemd,systemd-sysv,dbus,chromium,chromium-sandbox,cage,e2fsprogs,kmod,iproute2 \
+  --include=systemd,systemd-sysv,dbus,chromium,chromium-sandbox,cage,cryptsetup-bin,e2fsprogs,kmod,iproute2 \
   --aptopt='APT::Install-Recommends "false"' \
   "$SUITE" "$ROOTFS" "$MIRROR" >/dev/null 2>&1
 
@@ -132,6 +138,7 @@ cp /work/provisioning/units/nullrouted.service "$ROOTFS/usr/lib/systemd/system/"
 cp /work/provisioning/units/nullroute-kiosk.service "$ROOTFS/usr/lib/systemd/system/"
 cp /work/provisioning/units/nullroute-state.service "$ROOTFS/usr/lib/systemd/system/"
 cp /work/provisioning/units/nullroute-bridge.service "$ROOTFS/usr/lib/systemd/system/"
+cp /work/provisioning/units/nullroute-attest.service "$ROOTFS/usr/lib/systemd/system/"
 
 # ENABLED, WHICH IS NOT THE SAME AS INSTALLED. A unit file under
 # usr/lib/systemd/system is a file systemd knows how to run and will never run
@@ -144,8 +151,9 @@ cp /work/provisioning/units/nullroute-bridge.service "$ROOTFS/usr/lib/systemd/sy
 # WantedBy. Made directly because systemctl in a chroot wants a running
 # systemd, and because a symlink is deterministic and a maintainer script is
 # not. INV-PROV-23 checks it, so this cannot silently stop happening.
-for pair in nullroute-state.service:multi-user nullrouted.service:multi-user \
-            nullroute-bridge.service:multi-user nullroute-kiosk.service:graphical; do
+for pair in nullroute-state.service:multi-user nullroute-attest.service:multi-user \
+            nullrouted.service:multi-user nullroute-bridge.service:multi-user \
+            nullroute-kiosk.service:graphical; do
   unit="${pair%%:*}"
   target="${pair##*:}.target"
   mkdir -p "$ROOTFS/etc/systemd/system/${target}.wants"
@@ -358,7 +366,7 @@ tar -xJf "$WORK/$NODE_TAR" -C "$WORK/node" --strip-components=1
 # belongs on a device that never installs anything.
 mkdir -p "$ROOTFS/usr/lib/nullroute/bin"
 cp "$WORK/node/bin/node" "$ROOTFS/usr/lib/nullroute/bin/node"
-for helper in prepare-state wait-for-daemon; do
+for helper in prepare-state wait-for-daemon attest-verity; do
   cp "/work/provisioning/units/$helper" "$ROOTFS/usr/lib/nullroute/bin/$helper"
   chmod 0755 "$ROOTFS/usr/lib/nullroute/bin/$helper"
 done

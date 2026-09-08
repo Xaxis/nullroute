@@ -21,6 +21,7 @@ covers:
   - packages/daemon/src/ipc/socket.ts::IpcError
   - packages/daemon/src/boot/attestation.ts::requirePassingVerification
   - packages/daemon/src/boot/attestation.ts::manifestRootHash
+  - packages/daemon/src/boot/attestation.ts::readVerityRootHash
   - packages/daemon/src/boot/attestation.ts::abbreviateHash
   - packages/daemon/src/boot/attestation.ts::AttestationError
   - packages/daemon/src/handler.ts::createHandler
@@ -133,6 +134,16 @@ invariants:
       - packages/daemon/test/phase4.ipc.test.ts::refuses-when-no-wallet-is-loaded
       - packages/daemon/test/phase4.ipc.test.ts::writes-nothing-to-the-device
 
+  - id: INV-BOOT-1
+    statement: >
+      The device reports the dm-verity root hash of the mapping it is running
+      on, read from the live device-mapper table rather than from the boot
+      partition, and reports nothing at all where there is no mapping.
+    tests:
+      - packages/daemon/test/verity-attestation.test.ts::reports-the-root-hash-of-the-running-mapping
+      - packages/daemon/test/verity-attestation.test.ts::reports-nothing-rather-than-a-blank-where-there-is-no-mapping
+      - packages/daemon/test/verity-attestation.test.ts::refuses-anything-that-is-not-a-root-hash
+
 threats:
   - INV-NET-1
   - INV-NET-2
@@ -166,6 +177,24 @@ security_notes: >
   HTTP parser inside the principal holding the seed, which is worse. The state
   directory remains 0700, so the bridge can talk to the socket and cannot read
   the store.
+
+  TIER 1'S HALF OF THE ATTESTATION, and what it is worth. The manifest root
+  says the application is the published one and says nothing about the operating
+  system underneath it. INV-BOOT-1 adds the dm-verity root hash of the mapping
+  the device is running on, so a user comparing numbers against a release is
+  comparing two things rather than one.
+
+  It is read from the live device-mapper table by a separate privileged unit,
+  not from /boot/system.roothash. That file sits on the one partition the hash
+  tree cannot cover, so it reports what somebody wrote rather than what is in
+  force. Neither answer defends against an attacker who rewrote the boot
+  partition, because they would supply a hash and the initramfs would open a
+  mapping against it: only a signed boot chain closes that, and it is tier 2.
+  The difference is that one number describes something running.
+
+  Null rather than empty where there is no mapping. A blank on the lock screen
+  reads as a value that has not loaded, and a device with no verity should say
+  so by the absence of a hash.
 
   This module does not authenticate its caller. On the device the only client is
   the bridge, reaching a socket the browser's own user cannot open. If anything

@@ -1411,6 +1411,39 @@ body {
   color: var(--color-text-faint);
 }
 
+/* The second attestation, quieter than the first.
+ *
+ * The manifest root is the number this device asks you to compare, and it keeps
+ * the emphasis. The verity root hash sits under it at the same type size,
+ * because both are 64 characters somebody reads character by character, but
+ * without competing for the eye on arrival. Two boxes of equal weight would
+ * make a user decide which one matters, which is a decision the screen should
+ * be making for them. */
+/* The second hash, inside the first box and under a hairline.
+ *
+ * A rule rather than a second card: these are two values of the same kind and
+ * separating them into panels made a user decide which one mattered, which is a
+ * decision the screen should already have made. */
+.nr-attest__second {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+}
+
+/* An absence, said in words rather than left blank.
+ *
+ * A missing hash rendered as empty space reads as one that has not loaded, and
+ * the user waits for a number that is never coming. `make dev` on a laptop has
+ * no verity mapping, and the honest thing is a sentence saying which guarantee
+ * is not in force. */
+.nr-attest__absent {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--color-text-dim);
+}
+
 /* A row of short facts. Wraps rather than scrolls: on a 480px panel a value
    that needs scrolling to reach is a value nobody reads. */
 .nr-facts {

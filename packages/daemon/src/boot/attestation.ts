@@ -45,6 +45,12 @@ export interface VerificationReport {
 /** What the lock screen shows before unlock. */
 export interface BootAttestation {
   readonly rootHash: string
+  /**
+   * The dm-verity root hash of the mapping this device is running on, or null
+   * where there is no verity device: a laptop under `make dev` has none, and
+   * saying so is more useful than an empty string that reads as a value.
+   */
+  readonly verityRootHash: string | null
   readonly specCount: number
   readonly invariantCount: number
   readonly tier: string
@@ -117,6 +123,42 @@ function asReport(value: unknown): VerificationReport {
   }
 }
 
+/**
+ * The dm-verity root hash of the mapping this device booted on.
+ *
+ * TIER 1'S HALF OF THE ATTESTATION. The manifest root above says the
+ * APPLICATION is the published one. It says nothing about the operating system
+ * underneath it, and a verified application on an unverified system is a lock
+ * on a door in a paper wall. This is the number that covers the rest of the
+ * partition: every block of the root filesystem is checked against it as it is
+ * read.
+ *
+ * READ FROM THE ACTIVE MAPPING, NOT FROM THE CARD. `nullroute-attest.service`
+ * asks the running kernel what the device-mapper table actually says and writes
+ * the answer here. Reading /boot/system.roothash instead would report the
+ * number somebody wrote on the card, which is the number an attacker who
+ * rewrote the boot partition would have chosen. Neither is a defence against
+ * that attacker, and only one of them is a statement about what is running.
+ *
+ * Null rather than a throw when the file is absent. There is no verity device
+ * under `make dev`, and a daemon that refused to start on a laptop would be a
+ * daemon nobody develops against. What must never happen is a value appearing
+ * where there is no mapping, which is why this reads a file written by
+ * something that queried the kernel rather than deriving it.
+ */
+export function readVerityRootHash(path = '/run/nullroute-attest/verity-roothash'): string | null {
+  let raw: string
+  try {
+    raw = readFileSync(path, 'utf8')
+  } catch {
+    return null
+  }
+  const value = raw.trim()
+  // The same shape as any other root hash. Anything else is a file that has
+  // been meddled with, and a malformed hash is not a hash.
+  return /^[0-9a-f]{64}$/.test(value) ? value : null
+}
+
 /** The root hash: SHA-256 of MANIFEST.lock, exactly `sha256sum MANIFEST.lock`. */
 export function manifestRootHash(repoRoot: string): string {
   const manifest = readFileSync(join(repoRoot, 'MANIFEST.lock'), 'utf8')
@@ -184,6 +226,7 @@ export function requirePassingVerification(repoRoot: string, version: string): B
 
   return {
     rootHash: actual,
+    verityRootHash: readVerityRootHash(),
     specCount: report.specCount,
     invariantCount: report.invariantCount,
     tier: report.tier,

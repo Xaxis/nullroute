@@ -194,6 +194,7 @@ if [ -n "${NULLROUTE_SELFTEST:-}" ] || grep -q nullroute.selftest /proc/cmdline;
     poweroff -f
   fi
   say "SELFTEST init=$([ -x /sysroot/sbin/init ] && echo present || echo MISSING)"
+  say "SELFTEST verity_active=$(veritysetup status nullroute-system 2>/dev/null | awk '/root hash:/ { print $NF }')"
   say "SELFTEST OK"
 
   # Not a halt any more. Falling through to switch_root is what makes the next

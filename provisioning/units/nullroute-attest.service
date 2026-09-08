@@ -1,0 +1,35 @@
+# Publishes the dm-verity root hash the device is running on.
+#
+# Separate from the daemon because reading the device-mapper table needs
+# privileges the daemon deliberately does not have: nullrouted runs with an
+# empty capability bounding set and no @privileged syscalls, which is the whole
+# point of it. This runs once, as root, writes one number to a tmpfs, and exits.
+#
+# The daemon reads that file if it is there and shows null if it is not, so a
+# laptop under `make dev` has no verity mapping and says so.
+[Unit]
+Description=nullroute verity attestation
+Documentation=https://nullroute.diy/docs/verification
+After=systemd-udevd.service
+Before=nullrouted.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+RuntimeDirectory=nullroute-attest
+RuntimeDirectoryMode=0755
+ExecStart=/usr/lib/nullroute/bin/attest-verity
+
+# It reads one device-mapper table and writes one file.
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

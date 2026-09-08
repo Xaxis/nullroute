@@ -21,6 +21,13 @@ export function deviceMethods(ctx: HandlerContext): MethodTable {
       return {
         rootHash: state.attestation.rootHash,
         rootHashShort: abbreviateHash(state.attestation.rootHash),
+        // Null on a machine with no verity mapping, which the frontend renders
+        // as an absence rather than as a blank value. See readVerityRootHash.
+        verityRootHash: state.attestation.verityRootHash,
+        verityRootHashShort:
+          state.attestation.verityRootHash === null
+            ? null
+            : abbreviateHash(state.attestation.verityRootHash),
         specCount: state.attestation.specCount,
         invariantCount: state.attestation.invariantCount,
         tier: state.attestation.tier,

@@ -1,0 +1,78 @@
+#!/bin/sh
+# Report the dm-verity root hash this device is actually running on.
+#
+# ASKS THE KERNEL, NOT THE CARD. /boot/system.roothash is a file on the one
+# partition the hash tree does not cover, so it says what somebody wrote rather
+# than what is in force. `veritysetup status` reads the live device-mapper
+# table, which is the number every block of the root filesystem is being checked
+# against right now.
+#
+# That is not a defence against an attacker who rewrote the boot partition: they
+# would supply their own hash, the initramfs would open a mapping against it,
+# and this would faithfully report their number. Only a signed boot chain closes
+# that, and it is tier 2. What this buys is the smaller, real thing: the number
+# on the screen is the number in the kernel, so a user comparing it against a
+# published release is comparing something that is running.
+#
+# Writes nothing and exits 0 when there is no mapping. A device booted without
+# verity should say so by the absence of a hash, not by failing to boot.
+set -eu
+
+MAPPING=nullroute-system
+OUT=/run/nullroute-attest/verity-roothash
+
+# THE TOOL FIRST, AND SAY SO IF IT IS ABSENT. This script ran for two builds
+# reporting "no nullroute-system mapping" about a device whose mapping was
+# sitting in /dev/mapper the whole time, because veritysetup was not installed
+# in the image at all and `2>&1` turned "command not found" into a tidy sentence
+# about there being no verity. A discarded stderr is how a missing binary
+# impersonates a measurement.
+if ! command -v veritysetup >/dev/null 2>&1; then
+  echo "attest-verity: veritysetup is not installed, so this device cannot ask" >&2
+  echo "attest-verity: its own kernel what it is running on. Install cryptsetup-bin." >&2
+  exit 1
+fi
+
+# WAITED FOR. The mapping is created in the initramfs and survives switch_root
+# as kernel state, but this unit can be reached before udev has finished
+# repopulating /dev in the new root.
+attempt=0
+status=''
+while [ "$attempt" -lt 100 ]; do
+  if status=$(veritysetup status "$MAPPING" 2>&1); then break; fi
+  attempt=$((attempt + 1))
+  sleep 0.1
+done
+
+if ! veritysetup status "$MAPPING" >/dev/null 2>&1; then
+  # Not an error. A device booted without verity has no hash to report and says
+  # so by the absence of one, which is what the lock screen renders. But the
+  # reason is printed, because "this card has no verity" and "this device could
+  # not see its own mapping" are different facts that looked identical here.
+  echo "attest-verity: no $MAPPING mapping after 10 seconds, so there is no root hash to report"
+  echo "attest-verity: veritysetup said: ${status}"
+  echo "attest-verity: /dev/mapper holds: $(ls /dev/mapper 2>/dev/null | tr '\n' ' ')"
+  exit 0
+fi
+
+# `veritysetup status` prints "root hash:" followed by the value. Taken from the
+# last field so a change in the label's spacing does not silently produce an
+# empty file.
+hash=$(veritysetup status "$MAPPING" 2>/dev/null | awk '/root hash:/ { print $NF }')
+
+case "$hash" in
+  [0-9a-f]*)
+    if [ "${#hash}" -ne 64 ]; then
+      echo "attest-verity: root hash is ${#hash} characters, not 64" >&2
+      exit 1
+    fi
+    ;;
+  *)
+    echo "attest-verity: could not read a root hash from veritysetup status" >&2
+    exit 1
+    ;;
+esac
+
+printf '%s\n' "$hash" > "$OUT"
+chmod 0644 "$OUT"
+echo "attest-verity: running on verity root hash $hash"

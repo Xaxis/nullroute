@@ -342,6 +342,43 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       attestation={{
         rootHash: '942b6a2b53d02c1bce1ce4e7592d3f13e44f23db8dea4ef02c4aea2970813600',
         rootHashShort: '942b6a2b',
+        verityRootHash: 'c30d56036f3729bac36a5683533133016638af11d2d59debf9b90f09e8b56ade',
+        specCount: 37,
+        invariantCount: 283,
+        tier: 'signer',
+        version: '0.1.0',
+        checks: [
+          { name: 'coverage', status: 'passed', detail: '' },
+          { name: 'invariants', status: 'passed', detail: '' },
+          { name: 'vectors', status: 'passed', detail: '' },
+          { name: 'differential', status: 'passed', detail: '' },
+          { name: 'integrity', status: 'passed', detail: '' },
+        ],
+      }}
+      network={{ id: 'mainnet', label: 'Mainnet', isMainnet: true }}
+      fingerprint="73c5da0a"
+      nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} walletOpen={false} />}
+      onGuide={noop}
+      onUnlock={noop}
+      onToggleExpanded={noop}
+    />
+  ),
+  /*
+   * The menu open, on the gate screen, which is the reason it is a menu.
+   *
+   * The fit harness measures this state: a floating panel is the one thing on
+   * this device that is not laid out by the screen grid, so nothing else would
+   * catch it running off the bottom of 480px.
+   */
+  'lock-no-verity': () => (
+    <LockScreen
+      identity={NO_WALLET}
+      attestation={{
+        rootHash: '942b6a2b53d02c1bce1ce4e7592d3f13e44f23db8dea4ef02c4aea2970813600',
+        rootHashShort: '942b6a2b',
+        // No mapping, which is what `make dev` on a laptop reports. The screen
+        // has to say which guarantee is absent rather than leave a gap.
+        verityRootHash: null,
         specCount: 37,
         invariantCount: 283,
         tier: 'signer',

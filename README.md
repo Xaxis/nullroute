@@ -138,13 +138,13 @@ and anything involving a cloud.
 
 ## Status
 
-**Phases 1, 2 and 4 complete. Phase 3 in progress.**
+**Phases 1 through 4 complete.**
 
 | Phase | Scope | State |
 | --- | --- | --- |
 | 1 | Spec system, entropy, BIP-39/32, daemon, lock screen, networks | **Complete** |
 | 2 | Descriptors, addresses, PSBT review, signing. Provisioning tier 0. | **Complete** |
-| 3 | Encrypted store, passphrase, multisig, cosigner registration. Tier 1 boot attestation outstanding. | In progress |
+| 3 | Encrypted store, passphrase, multisig, cosigner registration, tier 1 boot attestation | **Complete** |
 | 4 | BIP-322 message signing, BIP-85 child seeds, BIP-329 labels | **Complete** |
 | 5 | Wallet layer, optional and lower assurance | Not started |
 | 6 | Bridge companion, runs on a networked machine | Not started |
@@ -162,8 +162,11 @@ wallet locked.
 **The card boots.** Under QEMU: dm-verity opens, the root mounts through it,
 every block verifies, systemd starts, the state partition is created, and the
 signing daemon attests itself and listens. A copy with one byte changed is
-refused. The image is judged against a profile of assertions rather than a
-recipe, and fifteen of the eighteen verifiers are written: the three that are
+refused. The lock screen shows two numbers now: the manifest root, which attests
+the application, and the dm-verity root hash the running kernel is checking every
+block of the root filesystem against, read from the live device-mapper table
+rather than from the card. The image is judged against a profile of assertions
+rather than a recipe, and fifteen of the eighteen verifiers are written: the three that are
 not need a booted device, and reading them from an unbooted image would be a
 confident false pass.
 
@@ -173,8 +176,8 @@ has never had a display: `make image-boot-test` reports that component rather
 than judging it, because an emulator with no virtual terminal cannot. Tier 1
 boot attestation is the outstanding item in phase 3.
 
-**Not safe for funds** until at least the dm-verity boot attestation lands and
-somebody other than the author has read the cryptography.
+**Not safe for funds** until somebody other than the author has read the
+cryptography, and until this has run on real hardware.
 
 ## Documentation
 

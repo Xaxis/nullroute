@@ -122,6 +122,35 @@ if ! grep -qE "nullrouted\.service" "$WORK/console-intact.log"; then
   exit 1
 fi
 
+# THE TWO READINGS OF THE ROOT HASH HAVE TO AGREE.
+#
+# The initramfs reads system.roothash off the boot partition and opens the
+# mapping with it. nullroute-attest.service then asks the RUNNING KERNEL what
+# the device-mapper table actually says, and that second number is the one the
+# lock screen shows. If they ever differ, the device is displaying something
+# other than what it is enforcing, which is worse than displaying nothing.
+opened=$(grep -oE 'verity_active=[0-9a-f]{64}' "$WORK/console-intact.log" | head -1 | cut -d= -f2)
+running=$(grep -oE 'running on verity root hash [0-9a-f]{64}' "$WORK/console-intact.log" | head -1 | awk '{print $NF}')
+
+echo ""
+if [ -z "$opened" ] || [ -z "$running" ]; then
+  echo "  FAILED. The root hash was not reported twice."
+  echo "     initramfs opened with: ${opened:-nothing}"
+  echo "     kernel reports:        ${running:-nothing}"
+  echo ""
+  echo "  The lock screen shows the second one. Without it the device would"
+  echo "  display no system partition hash at all, which is tier 1's whole claim."
+  exit 1
+fi
+if [ "$opened" != "$running" ]; then
+  echo "  FAILED. The device is enforcing one root hash and would display another."
+  echo "     opened with:    $opened"
+  echo "     kernel reports: $running"
+  exit 1
+fi
+echo "  the root hash the mapping was opened with is the one the kernel reports"
+echo "     $running"
+
 # THE KIOSK IS REPORTED, NOT REQUIRED, and the distinction is the honest one.
 # It runs cage on a virtual terminal, and `-M virt` has a serial console and no
 # VT, so systemd refuses it with 208/STDIN before the compositor starts. That is

@@ -50,6 +50,8 @@ import { NetworkBanner } from '../components/NetworkBanner.js'
 export interface AttestationView {
   readonly rootHash: string
   readonly rootHashShort: string
+  /** Null where there is no dm-verity mapping, such as `make dev` on a laptop. */
+  readonly verityRootHash?: string | null
   readonly specCount: number
   readonly invariantCount: number
   readonly tier: string
@@ -237,9 +239,42 @@ export function LockScreen(props: LockScreenProps): ReactElement {
           onToggle={onToggleExpanded}
           testId="manifest-root-hash"
         />
+
+        {/* Directly under the hash it describes. At the bottom of the box it
+            landed under the sentence saying there is no verity mapping, where
+            it reads as an instruction to tap that sentence. */}
         <div className="nr-attest__hint">
-          {expanded ? 'Tap to shorten.' : 'Tap to show all 64 characters.'}
+          {expanded ? 'Tap a hash to shorten it.' : 'Tap a hash to show all 64 characters.'}
         </div>
+
+        {/* IN THE SAME BOX, NOT A SECOND ONE.
+            
+            These are two numbers a user compares against a release, and they
+            belong together. Given a box each they took 200 pixels of an
+            480 pixel panel and pushed the system partition hash below the fold,
+            on the one screen whose entire job is showing a number to compare.
+            One box, one hint, two labelled rows.
+            
+            Rendered as an absence rather than a blank when there is no
+            mapping: an empty value here reads as a number that has not loaded,
+            and `make dev` on a laptop has no verity device. */}
+        {attestation.verityRootHash !== undefined && (
+          <div className="nr-attest__second" data-testid="verity-attestation">
+            <div className="nr-attest__label">System partition</div>
+            {attestation.verityRootHash === null ? (
+              <div className="nr-attest__absent" data-testid="verity-root-absent">
+                No dm-verity mapping. This system partition is not checked as it is read.
+              </div>
+            ) : (
+              <Hash
+                value={attestation.verityRootHash}
+                expanded={expanded}
+                onToggle={onToggleExpanded}
+                testId="verity-root-hash"
+              />
+            )}
+          </div>
+        )}
       </div>
 
       {/* Two facts, not five. The spec and invariant counts are on the

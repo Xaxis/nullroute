@@ -145,6 +145,8 @@ const PARAMS: Record<string, Record<string, unknown> | undefined> = {
 
 const attestation: BootAttestation = {
   rootHash: 'f'.repeat(64),
+  // No verity mapping, which is what a test host and a laptop both are.
+  verityRootHash: null,
   specCount: 1,
   invariantCount: 1,
   tier: 'signer',
@@ -205,6 +207,16 @@ describe('daemon.ipc.socket', () => {
     const { result } = await call('attestation.get')
     expect((result as { rootHash: string }).rootHash).toBe('f'.repeat(64))
     expect((result as { rootHashShort: string }).rootHashShort).toBe('ffffffff...ffffffff')
+
+    // NULL, NOT ABSENT AND NOT EMPTY. The frontend renders a missing verity
+    // hash as "no mapping" and a present one as a number to compare, and it can
+    // only tell those apart if the daemon is explicit. An undefined here was
+    // how this surfaced: abbreviateHash threw on it and the whole method
+    // returned an error rather than an attestation.
+    const payload = result as { verityRootHash: string | null; verityRootHashShort: string | null }
+    expect(payload.verityRootHash).toBeNull()
+    expect(payload.verityRootHashShort).toBeNull()
+    expect('verityRootHash' in (result as object)).toBe(true)
   })
 
   /*

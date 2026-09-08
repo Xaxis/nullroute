@@ -10,6 +10,7 @@ export {
   AttestationError,
   requirePassingVerification,
   manifestRootHash,
+  readVerityRootHash,
   abbreviateHash,
 } from './boot/attestation.js'
 export type { BootAttestation, VerificationReport, VerificationCheck } from './boot/attestation.js'
