@@ -14,6 +14,16 @@
  * `make device-shots-check` fails the build if the committed images stop
  * matching the frontend, because a picture of a device that has been redesigned
  * since is worse than no picture.
+ *
+ * THE LIGHTBOX HAS NO JAVASCRIPT, and that is a constraint rather than a boast.
+ * The site's policy is `default-src 'none'` with every inline script pinned by
+ * hash, and INV-NET-3 is the assertion that says so. A modal built the usual
+ * way would mean a new script, a new hash, and a page about not trusting things
+ * asking to run more code. `:target` does the whole job in CSS: the thumbnail
+ * is a link to the overlay's id, the overlay is hidden until the URL names it,
+ * and the browser's own back button closes it. It works with JavaScript off,
+ * every view is linkable, and the keyboard already does the right thing because
+ * the controls are links.
  */
 
 const SCREENS: readonly { file: string; caption: string; detail: string }[] = [
@@ -57,28 +67,67 @@ const SCREENS: readonly { file: string; caption: string; detail: string }[] = [
 
 export function Device() {
   return (
-    <div className="mt-10 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+    <>
+      <div className="mt-10 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+        {SCREENS.map((screen) => (
+          <figure key={screen.file} className="min-w-0">
+            {/* A border rather than a drawn bezel. The panel is a flat 7 inch
+                rectangle and a rendered plastic case would be the one dishonest
+                pixel on a page about not being lied to. */}
+            <a
+              href={`#shot-${screen.file}`}
+              className="group block rounded-md border border-ink-800 bg-ink-950 overflow-hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-signal-500 hover:border-ink-700 transition-colors"
+            >
+              <img
+                src={`/device/${screen.file}.png`}
+                alt={screen.caption}
+                width={1600}
+                height={960}
+                loading="lazy"
+                className="block w-full h-auto transition-opacity group-hover:opacity-90"
+              />
+            </a>
+            <figcaption className="mt-3">
+              <div className="text-sm font-medium text-ink-100">{screen.caption}</div>
+              <p className="mt-1 text-sm text-ink-400 leading-relaxed">{screen.detail}</p>
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+
+      {/* The overlays. Last in the section so the reading order is the grid,
+          then six things that are not shown. Each closes to #what-it-is rather
+          than to a bare "#", which would jump the page to the top.
+
+          No aria-hidden on these: `display: none` already keeps a closed
+          overlay out of the accessibility tree, and marking it hidden as well
+          would hide the OPEN one too, which is the only state in which a
+          screen reader has any reason to be inside it. */}
       {SCREENS.map((screen) => (
-        <figure key={screen.file} className="min-w-0">
-          {/* A border rather than a drawn bezel. The panel is a flat 7 inch
-              rectangle and a rendered plastic case would be the one dishonest
-              pixel on a page about not being lied to. */}
-          <div className="rounded-md border border-ink-800 bg-ink-950 overflow-hidden">
+        <div key={screen.file} id={`shot-${screen.file}`} className="shot">
+          <a href="#what-it-is" className="shot__backdrop" tabIndex={-1} aria-label="Close" />
+          <figure className="shot__panel">
             <img
               src={`/device/${screen.file}.png`}
               alt={screen.caption}
               width={1600}
               height={960}
-              loading="lazy"
-              className="block w-full h-auto"
+              className="shot__image"
             />
-          </div>
-          <figcaption className="mt-3">
-            <div className="text-sm font-medium text-ink-100">{screen.caption}</div>
-            <p className="mt-1 text-sm text-ink-400 leading-relaxed">{screen.detail}</p>
-          </figcaption>
-        </figure>
+            <figcaption className="shot__caption">
+              <div>
+                <div className="text-sm font-medium text-ink-100">{screen.caption}</div>
+                <p className="mt-1 text-sm text-ink-400 leading-relaxed max-w-2xl">
+                  {screen.detail}
+                </p>
+              </div>
+              <a href="#what-it-is" className="shot__close">
+                Close
+              </a>
+            </figcaption>
+          </figure>
+        </div>
       ))}
-    </div>
+    </>
   )
 }

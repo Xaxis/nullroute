@@ -113,7 +113,7 @@ export default function HomePage() {
 
       <div className="mx-auto max-w-5xl px-5">
         {/* --- 01 The device ---------------------------------------------- */}
-        <Section index="01" label="What it is">
+        <Section index="01" label="What it is" id="what-it-is">
           <p className="text-lg text-ink-200 max-w-2xl leading-relaxed">
             Six screens from the real frontend, at the panel&rsquo;s real 800x480. Rendered by a
             browser from the same gallery the layout and contrast checks measure, so this is the

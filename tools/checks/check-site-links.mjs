@@ -110,7 +110,24 @@ for (const file of pages) {
       continue
     }
 
-    const targetFile = routes.get(target) ?? routes.get(target.replace(/\/$/, ''))
+    let targetFile = routes.get(target) ?? routes.get(target.replace(/\/$/, ''))
+
+    /*
+     * A STATIC FILE IS A VALID TARGET TOO. This check knew about pages and
+     * nothing else, which was fine while every internal link went to one. Next
+     * emits `<link rel="preload" href="/device/lock.png">` for the screenshots
+     * on the home page, and six real files that ship in the build were reported
+     * as routes the site does not publish. A check that cries wolf about
+     * correct output gets ignored the day it is right.
+     */
+    if (targetFile === undefined) {
+      const asset = join(OUT, target.slice(1))
+      if (existsSync(asset) && statSync(asset).isFile()) {
+        // Assets have no anchors, so there is nothing further to check.
+        continue
+      }
+    }
+
     if (targetFile === undefined) {
       console.error(`${from}: "${href}" goes to ${target}, which the site does not publish`)
       const near = [...routes.keys()].filter((r) => r.startsWith('/docs/')).join(', ')

@@ -14,14 +14,20 @@
 export function Section({
   index,
   label,
+  id,
   children,
 }: {
   index: string
   label: string
+  /** An anchor, so something can link back to this section. */
+  id?: string
   children: React.ReactNode
 }) {
   return (
-    <section className="border-t border-ink-800 py-14 md:py-20 grid gap-4 md:gap-12 md:grid-cols-[9rem_minmax(0,1fr)]">
+    <section
+      {...(id === undefined ? {} : { id })}
+      className="border-t border-ink-800 py-14 md:py-20 grid gap-4 md:gap-12 md:grid-cols-[9rem_minmax(0,1fr)] scroll-mt-20"
+    >
       <div className="flex items-baseline gap-3 md:block md:sticky md:top-24 md:self-start md:text-right">
         {/* Ornamental, and hidden from screen readers rather than left to be
             announced as a bare number ahead of the heading it decorates. It is

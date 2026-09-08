@@ -273,3 +273,79 @@ body {
     animation-duration: 0.01ms !important;
   }
 }
+
+/* --- The device screenshot lightbox ---------------------------------------
+ *
+ * NO JAVASCRIPT, BECAUSE THE POLICY SAYS SO. INV-NET-3 pins this site to
+ * `default-src 'none'` with every inline script hashed, and a page arguing that
+ * you should not have to trust anyone is a poor place to ask for another
+ * script. `:target` is the whole mechanism: the thumbnail links to an id, the
+ * overlay matching that id stops being `display: none`, and the back button
+ * closes it because it is just history.
+ *
+ * Hidden with `display: none` rather than opacity, so the six copies of the
+ * image are never painted and never fetched until one is opened, and nothing
+ * inside them can be tabbed to while they are closed.
+ */
+.shot {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  padding: clamp(0.75rem, 4vw, 3rem);
+  align-items: center;
+  justify-content: center;
+}
+.shot:target {
+  display: flex;
+}
+.shot__backdrop {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--color-ink-950) 88%, transparent);
+  backdrop-filter: blur(2px);
+}
+.shot__panel {
+  position: relative;
+  width: min(100%, 72rem);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.shot__image {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* The panel is 800x480 and the caption needs room underneath, so the image is
+     capped by height rather than width on a short window. */
+  max-height: calc(100vh - 12rem);
+  object-fit: contain;
+  border: 1px solid var(--color-ink-800);
+  border-radius: 0.375rem;
+  background: var(--color-ink-950);
+}
+.shot__caption {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+.shot__close {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--color-ink-400);
+  border: 1px solid var(--color-ink-700);
+  border-radius: 0.25rem;
+  padding: 0.5rem 0.875rem;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+.shot__close:hover {
+  color: var(--color-ink-100);
+  border-color: var(--color-signal-500);
+}

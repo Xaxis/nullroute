@@ -21,7 +21,7 @@ had a display to draw on. Flash a spare card. Expect to debug.
 ## What you need
 
 The parts list is in the README, under
-[What you need](../README.md#what-you-need). One line of it matters here: the
+[What you need to build one](../README.md#what-you-need-to-build-one). One line of it matters here: the
 device never uses a network, so you do not need to give it one, and the wifi and
 Bluetooth firmware are removed from the image rather than switched off.
 
@@ -161,4 +161,4 @@ chain, closes that, and it burns one-time fuses and stays in phase 7.
 actually proves. Read it before relying on any of them.
 
 For what you can check without a Pi at all, see
-[How you verify it](../README.md#how-you-verify-it).
+[Check it yourself](../README.md#check-it-yourself).
