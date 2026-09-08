@@ -139,6 +139,7 @@ cp /work/provisioning/units/nullroute-kiosk.service "$ROOTFS/usr/lib/systemd/sys
 cp /work/provisioning/units/nullroute-state.service "$ROOTFS/usr/lib/systemd/system/"
 cp /work/provisioning/units/nullroute-bridge.service "$ROOTFS/usr/lib/systemd/system/"
 cp /work/provisioning/units/nullroute-attest.service "$ROOTFS/usr/lib/systemd/system/"
+cp /work/provisioning/units/nullroute-runtime-facts.service "$ROOTFS/usr/lib/systemd/system/"
 
 # ENABLED, WHICH IS NOT THE SAME AS INSTALLED. A unit file under
 # usr/lib/systemd/system is a file systemd knows how to run and will never run
@@ -153,6 +154,7 @@ cp /work/provisioning/units/nullroute-attest.service "$ROOTFS/usr/lib/systemd/sy
 # not. INV-PROV-23 checks it, so this cannot silently stop happening.
 for pair in nullroute-state.service:multi-user nullroute-attest.service:multi-user \
             nullrouted.service:multi-user nullroute-bridge.service:multi-user \
+            nullroute-runtime-facts.service:multi-user \
             nullroute-kiosk.service:graphical; do
   unit="${pair%%:*}"
   target="${pair##*:}.target"
@@ -175,6 +177,63 @@ ln -sf /usr/lib/systemd/system/graphical.target "$ROOTFS/etc/systemd/system/defa
 # else wanting it.
 ln -sf /dev/null "$ROOTFS/etc/systemd/system/getty@tty1.service"
 ln -sf /dev/null "$ROOTFS/etc/systemd/system/getty.target"
+
+# NOEXEC ON THE SCRATCH FILESYSTEMS, WHICH INV-PROV-12 HAS ALWAYS CLAIMED AND
+# THE IMAGE HAS NEVER DONE.
+#
+# Found by booting the card and reading /proc/self/mountinfo, which is the only
+# thing that can answer this: the assertion says these three are noexec, and
+# nothing in the image made them so. Debian ships tmp.mount with
+# mode=1777,strictatime,nosuid,nodev and no noexec, /var/tmp was just a
+# directory on the read-only root, and /run is whatever PID 1 mounted it as.
+# Every offline check passed the whole time, because there is no /proc/mounts
+# in an unbooted rootfs to disagree with.
+#
+# An fstab entry beats the static tmp.mount: systemd-fstab-generator writes a
+# unit from it, and a generated unit takes precedence over the shipped one.
+cat > "$ROOTFS/etc/fstab" <<'FSTAB'
+# Scratch space, and the reason it is here rather than left to systemd's
+# defaults. INV-PROV-12 in provisioning/profiles/os-signer.yaml asserts that
+# these are tmpfs and noexec: they hold decrypted material in the ordinary
+# course of operation, they must not survive a power cut, and nothing on this
+# device has any business executing out of them.
+#
+# Sizes are capped so a runaway write cannot exhaust memory on a board that has
+# no swap to fall back on, which is INV-PROV-11's other half.
+tmpfs /tmp     tmpfs rw,nosuid,nodev,noexec,mode=1777,size=128M 0 0
+tmpfs /var/tmp tmpfs rw,nosuid,nodev,noexec,mode=1777,size=64M  0 0
+FSTAB
+
+# /run IS NOT IN FSTAB, BECAUSE IT CANNOT BE. PID 1 mounts /run itself before
+# it reads any configuration at all, so the only way to change its flags is to
+# remount after the fact. This is the smallest unit that does it, ordered
+# before anything that matters and before the daemon exists.
+#
+# Nothing on this device executes from /run: the units run programs out of
+# /usr/lib/nullroute/bin and /usr/bin, and what lives under /run is sockets and
+# the two attestation files. If that ever stops being true this unit is where
+# the boot will fail, loudly, which is the right place for it to.
+cat > "$ROOTFS/usr/lib/systemd/system/nullroute-harden-run.service" <<'UNIT'
+[Unit]
+Description=Remount /run noexec
+DefaultDependencies=no
+After=systemd-remount-fs.service
+Before=sysinit.target nullrouted.service
+ConditionPathIsMountPoint=/run
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# nodev and nosuid are already set by PID 1 and are restated so a future
+# systemd changing its defaults cannot quietly drop one.
+ExecStart=/usr/bin/mount -o remount,nosuid,nodev,noexec /run
+
+[Install]
+WantedBy=sysinit.target
+UNIT
+mkdir -p "$ROOTFS/etc/systemd/system/sysinit.target.wants"
+ln -sf /usr/lib/systemd/system/nullroute-harden-run.service \
+  "$ROOTFS/etc/systemd/system/sysinit.target.wants/nullroute-harden-run.service"
 
 # THE HOSTNAME, PINNED, AND THIS IS THE ONE THAT MATTERED.
 #
@@ -366,7 +425,7 @@ tar -xJf "$WORK/$NODE_TAR" -C "$WORK/node" --strip-components=1
 # belongs on a device that never installs anything.
 mkdir -p "$ROOTFS/usr/lib/nullroute/bin"
 cp "$WORK/node/bin/node" "$ROOTFS/usr/lib/nullroute/bin/node"
-for helper in prepare-state wait-for-daemon attest-verity; do
+for helper in prepare-state wait-for-daemon attest-verity runtime-facts; do
   cp "/work/provisioning/units/$helper" "$ROOTFS/usr/lib/nullroute/bin/$helper"
   chmod 0755 "$ROOTFS/usr/lib/nullroute/bin/$helper"
 done

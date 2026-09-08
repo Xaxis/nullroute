@@ -97,6 +97,7 @@ jobs:
           make invariant-claims
           make make-targets
           make ipc-reachable
+          make slow-feedback
           make device-csp
           make qr-readback
           make manifest-recipe

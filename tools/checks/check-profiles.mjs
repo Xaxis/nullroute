@@ -35,7 +35,9 @@ const require = createRequire(join(ROOT, 'packages/verify/package.json'))
 const { VERIFIERS, implemented, NEEDS_ROOTFS } = await import(
   join(ROOT, 'provisioning/checks/registry.mjs')
 )
-const { NEEDS_IMAGE, NEEDS_NOTHING } = await import(join(ROOT, 'provisioning/checks/registry.mjs'))
+const { NEEDS_IMAGE, NEEDS_NOTHING, RUNTIME_ONLY } = await import(
+  join(ROOT, 'provisioning/checks/registry.mjs')
+)
 const { profileSelfCheck, verifierIgnoresBackends, documentedWeakness } = await import(
   join(ROOT, 'provisioning/checks/meta.mjs')
 )
@@ -296,7 +298,19 @@ const declared = Object.keys(VERIFIERS).length
 // an image that does not exist yet.
 const needRootfs = built.filter((name) => NEEDS_ROOTFS.has(name))
 const needImage = built.filter((name) => NEEDS_IMAGE.has(name))
-const runNow = built.length - needRootfs.length - needImage.length
+// A FOURTH BUCKET, because three verifiers moved into a state this line could
+// not express. It reported "run on every commit" for anything implemented that
+// was neither rootfs nor image, and the runtime three are implemented and are
+// neither: the summary went straight from "3 need a booted device" to "0 need a
+// booted device, 6 run on every commit" the moment they were written. Both
+// halves of that were false, and it is the line most people read.
+// THE REGISTRY'S SET, NOT THE ONE ABOVE. RUNTIME_ONLY_CHECKS is a wider list
+// used for stage validation and includes no-unit-ordering, which is a rootfs
+// verifier: counting with it subtracts that one twice and reported "2 run on
+// every commit" where the answer is 3. Two sets that mean different things,
+// and only one of them is the authority on this question.
+const needConsole = built.filter((name) => RUNTIME_ONLY.has(name))
+const runNow = built.length - needRootfs.length - needImage.length - needConsole.length
 console.log(
   `check-profiles: ${files.length} profile(s) valid, ` +
     `${invariantOwner.size} provisioning invariants declared, ` +
@@ -304,5 +318,6 @@ console.log(
     `(${String(runNow)} run on every commit, ` +
     `${String(needRootfs.length)} run against a root filesystem via "make verify-image ROOT=...", ` +
     `${String(needImage.length)} against an image via "make verify-image IMAGE=...", ` +
-    `${String(declared - built.length)} need a booted device)`
+    `${String(needConsole.length)} against a boot console log via "make verify-runtime", ` +
+    `${String(declared - built.length)} with no verifier yet)`
 )

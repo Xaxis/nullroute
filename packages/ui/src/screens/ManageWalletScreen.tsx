@@ -1,6 +1,7 @@
 import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Refusal } from '../components/Refusal.js'
+import { Working } from '../components/Working.js'
 import { Button } from '../components/Button.js'
 import { Choice } from '../components/Choice.js'
 import { TextKeyboard } from '../components/TextKeyboard.js'
@@ -187,6 +188,18 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
           </Refusal>
         )}
 
+        {/* TWO DERIVATIONS, NOT ONE: the old passphrase is verified by opening
+            the envelope and the new one is sealed with, so this is the longest
+            wait on the device outside a restore. It is also the one where a
+            user who gives up halfway has the most to lose, since what is being
+            rewritten is the file the wallet lives in. */}
+        {busy && (
+          <Working label="Changing the passphrase" testId="manage-passphrase-working">
+            The wallet file is being rewritten with the new passphrase. Leave the device alone until
+            it says it is done.
+          </Working>
+        )}
+
         {/* FIRST, above the fields, because the single most dangerous thing a
             user can believe on this screen is that they are changing the
             passphrase that derives their keys. They are not, that one cannot
@@ -316,6 +329,15 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
           </Refusal>
         )}
 
+        {/* Renaming reseals. It verifies the passphrase by opening the
+            envelope and then writes a new one, so choosing a different colour
+            costs exactly as much arithmetic as unlocking twice. */}
+        {busy && (
+          <Working label="Saving the wallet" testId="manage-rename-working">
+            The wallet file is being rewritten, so leave the device alone until it is finished.
+          </Working>
+        )}
+
         {/* The name and the colour on one row. They are the two halves of one
             answer to one question, and stacked they cost 60px above a keyboard
             that had nowhere left to go: the bottom four of its five rows were
@@ -361,15 +383,22 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
             network banner this screen was 37px over with its bottom row of keys
             off the panel. The readout has to say something before anything is
             typed, so it says which field this is. */}
-        <TextKeyboard
-          value={passphrase}
-          onChange={(next) => {
-            setError(null)
-            setPassphrase(next)
-          }}
-          placeholder="Passphrase for this wallet"
-          testId="manage-passphrase"
-        />
+        {/* Hidden while it works, for the same reason as every other screen
+            that derives a key: nothing can be typed, and a keyboard that looks
+            tappable and does nothing is the worst thing to show somebody
+            already wondering whether the device is alive. It also collapses
+            the body, which is what puts the message above on the panel. */}
+        {!busy && (
+          <TextKeyboard
+            value={passphrase}
+            onChange={(next) => {
+              setError(null)
+              setPassphrase(next)
+            }}
+            placeholder="Passphrase for this wallet"
+            testId="manage-passphrase"
+          />
+        )}
 
         {/* Said out loud, because the counter on the unlock screen is
             prominent enough that a user would reasonably assume it applies

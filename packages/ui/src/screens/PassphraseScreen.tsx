@@ -4,6 +4,7 @@ import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
 import { TextKeyboard } from '../components/TextKeyboard.js'
 import { Info } from '../components/Info.js'
+import { Working } from '../components/Working.js'
 
 /**
  * Setting a passphrase, and entering one.
@@ -170,13 +171,7 @@ export function PassphraseScreen(props: PassphraseScreenProps): ReactElement {
           
           It says WHY it is slow, because the slowness is the feature: the same
           arithmetic runs on every guess an attacker makes. */}
-      {busy && (
-        <Info label="Deriving the key" testId="passphrase-working">
-          This takes a few seconds, and it is meant to. The same arithmetic runs on every guess an
-          attacker makes, so a key that is slow to derive once is expensive to attack repeatedly. Do
-          not power the device off while it is working.
-        </Info>
-      )}
+      {busy && <Working label="Deriving the key" testId="passphrase-working" />}
 
       {/* FIRST IN THE BODY, because a refusal nobody sees is a refusal that
           did not happen. This sat last, under everything the screen holds, on

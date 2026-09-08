@@ -26,7 +26,7 @@ MANIFEST_ROOTS := packages spec provisioning
         screens screen-fit ui-constants dev-check verify-image docs-reachable no-dead-ends \
         image-env image-shell image-system image-repro journeys \
         web-isolation web-csp web-responsive web-site-links web-dice-demo device-shots device-shots-check \
-        web-check web-live-check deploy image image-boot-test
+        web-check web-live-check deploy image image-boot-test verify-runtime slow-feedback
 
 help: ## List available targets
 	@grep -hE '^[a-z][a-z-]*:.*?## ' $(MAKEFILE_LIST) \
@@ -401,6 +401,30 @@ image-boot-test: image-env $(IMAGE_ENVFILE) ## Boot the card under QEMU and prov
 			dpkg-deb -x linux-image*.deb /tmp/k && \
 			/work/provisioning/build/boot-test.sh \
 				/work/out/system/nullroute.img /tmp/k 6.12.94+deb13-arm64'
+	# THE VERDICT IS REACHED HERE, OUTSIDE THE CONTAINER, and that is the
+	# design rather than a convenience. The guest printed six /proc files to
+	# its console and judged none of them. The image is the artifact under
+	# test, so it does not get to grade itself: raw evidence in a log can be
+	# re-judged by anyone who has the log, and a PASS printed by a script
+	# inside the image can only be believed.
+	#
+	# It also has to be here. The build container has no node, deliberately.
+	@$(MAKE) --no-print-directory verify-runtime
+
+verify-runtime: ## Judge the boot console log from image-boot-test against the profiles
+	# The three assertions no inspection of an artifact at rest can answer:
+	# mount flags in force, swap in use, sockets listening. REQUIRE makes their
+	# absence an error rather than a quiet "not checked", because this target
+	# exists for exactly these three and reporting could-not-run and exiting
+	# zero would make it decorative.
+	@test -f out/system/console-intact.log || { \
+	  echo 'make verify-runtime: out/system/console-intact.log does not exist.'; \
+	  echo '  It is written by "make image-boot-test", which boots the card.'; \
+	  exit 2; \
+	}
+	@node tools/verify-image.mjs \
+	  --console out/system/console-intact.log \
+	  --require-checked INV-PROV-11,INV-PROV-12,INV-PROV-15
 
 image: image-system ## Build a flashable card, and the checksum to verify it with
 	# IT PRODUCES A CARD NOW, and for a long time it refused to. The refusal was
@@ -440,7 +464,7 @@ image: image-system ## Build a flashable card, and the checksum to verify it wit
 	@echo "  has the whole procedure, including how to find the right disk and"
 	@echo "  what the device should print on its first boot."
 
-verify-image: ## Check a built artifact against the provisioning profiles. ROOT=<dir> and/or IMAGE=<file>, REQUIRE=<ids>
+verify-image: ## Check a built artifact against the profiles. ROOT=<dir>, IMAGE=<file>, CONSOLE=<log>, REQUIRE=<ids>
 	# ROOT answers what is in the FILES: packages, paths, unit directives, the
 	# kernel command line. IMAGE answers what is in the BYTES between and
 	# underneath filesystems: the partition table, the verity superblock,
@@ -462,8 +486,8 @@ verify-image: ## Check a built artifact against the provisioning profiles. ROOT=
 	# own: a job that exists to check unit exposure goes green on a machine
 	# without systemd-analyze, having checked nothing. Whoever runs it knows what
 	# their machine was supposed to see, so they say so.
-	@test -n "$(ROOT)$(IMAGE)" || { \
-	  echo 'make verify-image: pass ROOT=<directory>, IMAGE=<file>, or both.'; \
+	@test -n "$(ROOT)$(IMAGE)$(CONSOLE)" || { \
+	  echo 'make verify-image: pass ROOT=<directory>, IMAGE=<file>, CONSOLE=<log>, or a mix.'; \
 	  echo; \
 	  echo '  There is no image build system yet, so there is nothing real on'; \
 	  echo '  this machine to point it at. To see the image verifiers run:'; \
@@ -474,6 +498,7 @@ verify-image: ## Check a built artifact against the provisioning profiles. ROOT=
 	@node tools/verify-image.mjs \
 	  $(if $(ROOT),--root "$(ROOT)") \
 	  $(if $(IMAGE),--image "$(IMAGE)") \
+	  $(if $(CONSOLE),--console "$(CONSOLE)") \
 	  $(if $(COMPARE),--compare "$(COMPARE)") \
 	  $(if $(RELEASE),--release "$(RELEASE)") \
 	  $(if $(REQUIRE),--require-checked "$(REQUIRE)")
@@ -565,6 +590,20 @@ journeys: build-app ## Every guided journey completes, in the real app against a
 	# Its own store directory and its own socket, both temporary, so it never
 	# touches wallets on the machine it runs on.
 	@node tools/checks/check-journeys.mjs
+
+slow-feedback: ## An operation that derives a key has to say so on the screen
+	# The bug this exists for shipped on SIX screens and was found by reading.
+	# Argon2id at 64 MiB is several seconds on a Pi, and `reseal` is twice
+	# that because it opens and then seals. Every one of them showed a
+	# disabled button whose label changed to one word, on panels with no
+	# other feedback, which is where somebody decides the device has frozen
+	# and pulls the power in the middle of a write.
+	#
+	# It reads the daemon for which methods derive a key rather than trusting
+	# the list in the check, because a hand-maintained list of dangerous
+	# things is exactly the shape that goes quietly out of date. That half
+	# found four paths the hand audit had missed.
+	@node tools/checks/check-slow-feedback.mjs
 
 ui-roles: screens ## Guidance is an info box, not whichever prose style came to hand
 	# Three roles, on purpose: a banner means something is wrong, an info box says
@@ -680,6 +719,6 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 
 # --- aggregates --------------------------------------------------------------
 
-check-fast: lint format-check ci-parity ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims make-targets ipc-reachable device-csp qr-readback test manifest-check manifest-recipe ## Everything except the slow suites
+check-fast: lint format-check ci-parity ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims make-targets ipc-reachable slow-feedback device-csp qr-readback test manifest-check manifest-recipe ## Everything except the slow suites
 
 check: check-fast build verify test-vectors test-differential repro-check sbom device-ui screen-fit contrast ui-roles journeys dev-check device-shots-check web-check ## Everything CI runs

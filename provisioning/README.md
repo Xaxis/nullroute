@@ -161,12 +161,31 @@ backend, so that the first backend is written against a contract rather than the
 contract being reverse-engineered from whatever the first backend happened to
 do.
 
-Fifteen of the eighteen verifiers are written. Three inspect the profiles
+Eighteen of the eighteen verifiers are written. Three inspect the profiles
 themselves and run on every commit. Seven read a root filesystem, five read a
 whole image (two builds to compare, a partition table, a verity superblock, the
 boot partition's file list), and the remaining three need a booted device: mount
-options, listening sockets and swap. That last group stays unwritten on purpose, because reading any of them
-from an unbooted rootfs is the false pass described above.
+options, listening sockets and swap.
+
+Those last three used to be unwritten on purpose, because reading any of them
+from an unbooted rootfs is the false pass described above. They are written now,
+and the split is what makes them honest. `nullroute-runtime-facts.service` runs
+on the booted device and prints six files from `/proc` to the console, marking
+each section and saying how many lines it printed. It reaches no verdict at all.
+`provisioning/checks/runtime.mjs` parses that log on the host and decides,
+against the profile, under the manifest.
+
+The artifact under test does not get to grade itself. A `PASS` printed by a
+script inside the image can only be believed; raw evidence in a log can be
+re-judged by anyone who has the log. The line counts are there because a
+console cut off mid-dump has no swap and no listening sockets, which is
+indistinguishable from a clean device, so a short read is an error rather than
+an empty set. For the same reason `no-listening-sockets` requires the permitted
+listener to be PRESENT: without that, the earliest possible sample is the one
+most likely to pass.
+
+Run them with `make verify-runtime` after `make image-boot-test`, or directly
+with `make verify-image CONSOLE=<log>`.
 
 One of the five rootfs verifiers, `systemd-exposure`, also needs
 `systemd-analyze` on the machine running it, and reports could-not-run rather

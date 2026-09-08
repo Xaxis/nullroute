@@ -676,16 +676,44 @@ export function unitExecutables(root, params) {
     }
   }
 
+  // THE LIST HAS TO BE COMPLETE, and until now nothing said so.
+  //
+  // This verifier checked the units the profile NAMED. A unit shipped in the
+  // image and left out of that list was never read at all: its ExecStart could
+  // point at nothing, it could run as an account that does not exist, and every
+  // check in this repository passed. The only thing standing between the image
+  // and that hole was somebody remembering to edit a YAML list in another file
+  // after adding a unit.
+  //
+  // It is the same shape as the manifest's omission problem, which CLAUDE.md
+  // already describes: `shasum -c` answers "does every file listed still hash
+  // to this" and cannot answer "does the list name every file". An omission
+  // looks exactly like a thing that is fine.
+  //
+  // Found by adding nullroute-runtime-facts.service and noticing that nothing
+  // failed when it was absent from INV-PROV-23.
+  const shipped = readdirSync(unitDir)
+    .filter((name) => name.startsWith('nullroute') && name.endsWith('.service'))
+    .sort()
+  const unlisted = shipped.filter((name) => !units.includes(name))
+  for (const unit of unlisted) {
+    problems.push(
+      `${unit} ships in the image and no assertion names it, so nothing checks that it can start`
+    )
+  }
+
   return verdict(
     'unit-executables',
     problems.length === 0,
     problems.length === 0
-      ? `${String(checked)} program(s) and account(s) across ${String(units.length)} unit(s) all exist in the image`
+      ? `${String(checked)} program(s) and account(s) across ${String(units.length)} unit(s) all exist in the image, ` +
+          `and every nullroute unit shipped (${String(shipped.length)}) is named by the assertion`
       : problems.join('; '),
     [
       'checks that the path exists, not that it runs. A truncated binary or one built for another architecture passes here.',
       'checks that something wants the unit, not that the target it is wanted by is ever reached.',
       'reads the unit files that ship. A drop-in under systemd/system/<unit>.d/ that overrides ExecStart is not followed.',
+      'completeness is checked for units named nullroute*.service only. A unit of this project under another name would still be invisible here.',
     ]
   )
 }

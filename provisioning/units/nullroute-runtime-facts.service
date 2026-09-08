@@ -1,0 +1,88 @@
+# Prints the kernel's view of mounts, swap and listening sockets to the console.
+#
+# Evidence for INV-PROV-11, INV-PROV-12 and INV-PROV-15, which are the three
+# assertions that cannot be read off an unbooted image. It writes no verdict:
+# provisioning/checks/runtime.mjs reaches those on the host, against the
+# profile. See the header of runtime-facts for why the artifact under test is
+# not allowed to grade itself.
+#
+# LAST, DELIBERATELY. Ordered after the bridge because the bridge is the one
+# listener the profile permits, and a dump taken before it binds would show a
+# device with no listening sockets at all. That is a pass, reached by measuring
+# too early, which is the exact shape of every false pass this directory exists
+# to prevent. no-listening-sockets requires each permitted listener to be
+# PRESENT for the same reason.
+[Unit]
+Description=nullroute runtime facts
+Documentation=https://nullroute.diy/docs/verification
+After=nullroute-bridge.service nullrouted.service
+Wants=nullroute-bridge.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# WAITS FOR THE SOCKET, BECAUSE After= DOES NOT MEAN WHAT IT LOOKS LIKE.
+#
+# After=nullroute-bridge.service only guarantees the bridge was STARTED first,
+# and started means the process exists, not that it has bound anything. The
+# first real boot proved it: the facts were printed while /proc/net/tcp was
+# still empty, and no-listening-sockets refused the log rather than passing it,
+# which is exactly why that verifier requires each permitted listener to be
+# PRESENT. A sample taken early has no listeners and would otherwise be the
+# easiest possible pass.
+#
+# The same trap and the same fix as nullroute-kiosk.service, which learned it
+# by showing a connection error on the first screen a device ever displayed.
+ExecStartPre=+/usr/lib/nullroute/bin/wait-for-daemon
+ExecStart=/usr/lib/nullroute/bin/runtime-facts
+StandardOutput=journal+console
+
+# NO MOUNT NAMESPACE DIRECTIVES, AND THAT IS THE WHOLE POINT OF THIS BLOCK.
+#
+# This unit first shipped with ProtectSystem=strict, ProtectHome=true and
+# PrivateTmp=true, on the reasonable-sounding argument that a unit reading six
+# files should be sandboxed like every other. It made the measurement false.
+#
+# Every one of those directives builds the service a PRIVATE MOUNT NAMESPACE,
+# so /proc/self/mountinfo then describes the sandbox rather than the device.
+# The first real boot reported /tmp as
+#
+#   /systemd-private-a14b71dc...-nullroute-runtime-facts.service-3VHNq9/tmp
+#
+# which is PrivateTmp's own tmpfs, mounted rw,nosuid,nodev and NOT noexec, and
+# /var/tmp as /systemd/empty. INV-PROV-12 is a claim about the device's /tmp.
+# Checked against those lines it would have failed, correctly in form and about
+# the wrong filesystem entirely, and the obvious response to that failure would
+# have been to go and "fix" a mount that was never broken.
+#
+# The general rule, which cost a boot to learn twice over: a unit whose job is
+# to observe the system must not be given a private view of it. PrivateNetwork
+# is the same trap one file along, and it is why RestrictAddressFamilies below
+# is as far as this goes: it constrains what the process may do without
+# changing what it can see.
+#
+# What is left is everything that does not build a namespace. This unit writes
+# nothing anywhere, so it loses nothing by not declaring ProtectSystem.
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+# ProtectKernelTunables and ProtectKernelModules are absent for the same reason
+# as the three above, and it is easy to miss: both are implemented BY MOUNTING.
+# The first remounts /proc/sys and /sys read-only, the second binds
+# /usr/lib/modules over with an inaccessible directory, and the first real boot
+# printed that bind in the middle of the mount table it was supposed to be
+# reporting. A hardening directive that edits the thing being measured cannot
+# be applied to the measuring instrument.
+#
+# ProtectClock stays: it is a capability and a device rule, and it mounts
+# nothing.
+ProtectClock=true
+SystemCallArchitectures=native
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

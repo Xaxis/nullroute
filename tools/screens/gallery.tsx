@@ -304,6 +304,24 @@ const QUORUM = {
   unreadable: null,
 }
 
+/**
+ * A state built from another state with some props replaced.
+ *
+ * Cloning rather than restating, for the same reason withSteps and withBanner
+ * below do it: the multisig fixture alone is sixty lines of cosigner detail,
+ * and two copies of it would drift with only one of them being looked at.
+ *
+ * Throws on an unknown name rather than asserting non-null. A typo here would
+ * otherwise be a state that renders undefined, and the visual harnesses would
+ * measure it and report that it fits.
+ */
+function variant(name: string, props: object): React.ReactElement {
+  const base = SCREENS[name]
+  if (base === undefined)
+    throw new Error(`gallery: no state named "${name}" to build a variant from`)
+  return cloneElement(base(), props)
+}
+
 const SCREENS: Record<string, () => React.ReactElement> = {
   // A FAILING attestation, not a passing one. The failure path is the one that
   // matters and the one nobody sees while developing, and it is the longest
@@ -990,6 +1008,23 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       onBack={noop}
     />
   ),
+  /*
+   * Registering a quorum, mid-reseal.
+   *
+   * THE SLOWEST OF THE FOUR: reseal opens the envelope and then seals it, so it
+   * is two Argon2id runs rather than one.
+   *
+   * Built by cloning the state above rather than restating sixty lines of
+   * cosigner fixture, which is the same reason withSteps and withBanner further
+   * down do it. Two copies of this descriptor would drift, and the copy that
+   * drifts is the one nobody is looking at. Safe inside the literal because the
+   * arrow body runs when the state is requested, long after SCREENS exists.
+   *
+   * Worth measuring separately rather than assuming it fits: this panel was
+   * once 548px of content in a 317px body, so it is the likeliest of the four
+   * to push something under the fold.
+   */
+  'multisig-working': () => variant('multisig', { onRegister: pending }),
   quorum: () => (
     <QuorumAddressesScreen
       identity={DEVICE}
@@ -1056,6 +1091,49 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       onCreate={never}
       onDescribe={never}
       onRestore={never}
+      onBack={noop}
+    />
+  ),
+  /*
+   * Writing a backup, mid-encryption.
+   *
+   * `pending` rather than `never`, and that distinction is why this state can
+   * exist at all: `never` REJECTS, which is the right default for a layout
+   * harness and lands before a busy state can be drawn, so these screens were
+   * only ever measured idle. Sealing is one Argon2id at 64 MiB, and the file
+   * being produced is the one the user is about to rely on.
+   */
+  'backup-create-working': () => (
+    <BackupScreen
+      identity={DEVICE}
+      onScan={noop}
+      nav={MENU}
+      onCreate={pending}
+      onDescribe={never}
+      onRestore={never}
+      onBack={noop}
+    />
+  ),
+  /*
+   * Restoring one. The slowest thing this screen does and the one that replaces
+   * the wallet, so it is the worst of the four to walk away from.
+   */
+  'backup-restore-working': () => (
+    <BackupScreen
+      identity={DEVICE}
+      onScan={noop}
+      nav={MENU}
+      onCreate={never}
+      onDescribe={async () =>
+        Promise.resolve({
+          label: 'nullroute wallet',
+          network: 'bitcoin',
+          hasSeed: true,
+          registrations: 1,
+          createdWith: 'nullroute 0.1.0',
+        })
+      }
+      onRestore={pending}
       onBack={noop}
     />
   ),
@@ -1357,6 +1435,23 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       onBack={noop}
     />
   ),
+  /*
+   * Renaming, mid-reseal. Two derivations, because renaming verifies the
+   * passphrase by opening the envelope before it writes a new one.
+   */
+  'manage-rename-working': () => variant('manage', { onRename: pending }),
+  /*
+   * Changing the passphrase, mid-reseal. The tallest state on the tallest panel
+   * this screen has: a banner about what it does not change, three fields, a
+   * paragraph about what cannot be recovered, and now this. Worth measuring for
+   * that reason rather than assumed to fit.
+   */
+  'manage-passphrase-working': () => variant('manage', { onChangePassphrase: pending }),
+  /*
+   * Forgetting a quorum, which reseals and so takes as long as renaming,
+   * despite being the word on this device that sounds most instant.
+   */
+  'fleet-forget-working': () => variant('fleet', { onForget: pending }),
 }
 
 /**
@@ -1383,6 +1478,18 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
     // the passphrase being non-empty, not on it being any good.
     ['backup-choose-create', 'pk-key-a', 'backup-create-submit'],
   ],
+  'backup-create-working': [['backup-choose-create', 'pk-key-a', 'backup-create-submit']],
+  // Read the file first: the passphrase field and the restore button only exist
+  // once the header has been described, so the busy state is two steps in.
+  'backup-restore-working': [
+    [
+      'backup-choose-restore',
+      'type:backup-input:nullroute-backup-v1',
+      'backup-describe',
+      'pk-key-a',
+      'backup-restore-submit',
+    ],
+  ],
   quorum: [['quorum-branch-change']],
   // The word check, which puts a full word keyboard on the screen that decides
   // whether a backup is real.
@@ -1403,6 +1510,7 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   'verify-message-failed': [['verify-run']],
   // The reviewed quorum, which is where cosigner names appear.
   multisig: [['multisig-review']],
+  'multisig-working': [['multisig-review', 'multisig-register']],
   // Verified, which adds a paragraph under a screen that already holds a QR
   // code, an address in large type and a warning banner.
   receive: [['receive-verify']],
@@ -1505,6 +1613,26 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   fleet: [
     ['fleet-forget-start'],
     ['fleet-forget-start', 'type:fleet-forget-confirm:8rf6pq2t', 'fleet-forget-submit'],
+  ],
+  'fleet-forget-working': [
+    ['fleet-forget-start', 'type:fleet-forget-confirm:8rf6pq2t', 'fleet-forget-submit'],
+  ],
+  'manage-rename-working': [
+    [
+      'manage-choose-rename',
+      'type:manage-label:Cold storage, three of five',
+      'pk-key-a',
+      'manage-rename-submit',
+    ],
+  ],
+  'manage-passphrase-working': [
+    [
+      'manage-choose-passphrase',
+      'type:manage-passphrase-old:old one',
+      'type:manage-passphrase-new:new one',
+      'type:manage-passphrase-confirm:new one',
+      'manage-passphrase-submit',
+    ],
   ],
   // Typed, reviewed, and then signed. The signed state is the one that matters:
   // it holds the QR carrying the address, the message and the signature, and

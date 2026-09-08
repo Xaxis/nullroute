@@ -166,9 +166,12 @@ refused. The lock screen shows two numbers now: the manifest root, which attests
 the application, and the dm-verity root hash the running kernel is checking every
 block of the root filesystem against, read from the live device-mapper table
 rather than from the card. The image is judged against a profile of assertions
-rather than a recipe, and fifteen of the eighteen verifiers are written: the three that are
-not need a booted device, and reading them from an unbooted image would be a
-confident false pass.
+rather than a recipe, and eighteen of the eighteen verifiers are written. The last
+three answer questions no artifact at rest can: mount flags in force, swap in
+use, sockets listening. Reading those from an unbooted image is a confident
+false pass, so instead the booted guest prints the kernel's own files to its
+console and the verdict is reached on the host, against the profile. The image
+does not grade itself.
 
 **What is not done.** No Raspberry Pi has been switched on. The firmware path
 from power-on to the kernel is carried and unexercised, and the kiosk browser

@@ -1,0 +1,82 @@
+#!/bin/sh
+# Print the kernel's own view of mounts, swap and listening sockets.
+#
+# WHY THIS EXISTS. Three assertions in os-signer.yaml are about the RUNNING
+# device: mount flags actually in force, swap actually absent, sockets actually
+# listening. provisioning/README.md explains at length why none of them can be
+# read off an unbooted root filesystem, and CLAUDE.md records what happens when
+# somebody tries: an offline scan reports noexec and nosuid as passing while the
+# same scan reports the partition does not exist, because there is no
+# /proc/mounts to disagree with it. A confident false pass is worse than a gap.
+#
+# THIS SCRIPT DOES NOT JUDGE ANYTHING, and that is the design rather than an
+# omission. It prints raw kernel files to the console and stops. The verdict is
+# reached on the host by provisioning/checks/runtime.mjs, against the profile,
+# under the manifest.
+#
+# The reason is that a PASS printed by a script inside the image is worth
+# nothing. The image is the artifact under test. If it could grade itself, an
+# attacker who modified it would modify the grader too, and every offline check
+# in provisioning/ exists because reading an artifact's own claims about itself
+# is not verification. Raw evidence can be re-judged by anyone with the log;
+# a verdict cannot be un-trusted once it is the only thing recorded.
+#
+# WHAT WOULD BREAK IT SILENTLY. PrivateNetwork=true in the unit would give this
+# process an empty network namespace, /proc/net/tcp would list nothing, and
+# no-listening-sockets would pass by measuring a namespace that does not exist
+# anywhere else. The unit deliberately does not set it, and says so.
+set -eu
+
+# Every line self-identifies, because it is going to a console shared with
+# systemd, the kernel and every other unit's stdout. Kernel timestamps, syslog
+# prefixes and colour escapes all end up in front of it, so the host parser
+# looks for this marker anywhere in a line rather than at the start of one.
+say() {
+  section=$1
+  file=$2
+  count=0
+  if [ -r "$file" ]; then
+    while IFS= read -r line; do
+      printf 'nullroute-facts %s| %s\n' "$section" "$line"
+      count=$((count + 1))
+    done < "$file"
+  else
+    # SAID OUT LOUD, because silence here looked exactly like a clean device.
+    # An unreadable file used to produce nothing but "complete, 0 line(s)",
+    # which is well formed, internally consistent, and read by the host as no
+    # swap and no listening sockets. The host now refuses an empty section on
+    # its own account, since all six of these files carry at least a header on
+    # a booted system, but a log that says why is worth more than one that is
+    # merely rejected.
+    printf 'nullroute-facts: section %s UNREADABLE at %s\n' "$section" "$file"
+  fi
+  # THE LINE THAT MAKES TRUNCATION LOUD. Without it a console log cut off
+  # mid-dump reads exactly like a device with no listening sockets and no swap,
+  # which is a pass. The host requires this line and requires the count to match
+  # what it actually parsed, so a partial log fails instead of passing.
+  printf 'nullroute-facts: section %s complete, %s line(s)\n' "$section" "$count"
+}
+
+printf 'nullroute-facts: begin\n'
+
+# PER-MOUNT FLAGS, NOT THE SUPERBLOCK'S. /proc/mounts folds the two together;
+# /proc/self/mountinfo keeps them in separate fields, and noexec on the mount is
+# the one that is enforced. A filesystem can be mounted twice with different
+# flags, and only mountinfo can say so.
+say mountinfo /proc/self/mountinfo
+
+# Zero data rows under the header is the whole claim. A swap file that was
+# swapped off is not here, which is correct: this asks what is active now.
+say swaps /proc/swaps
+
+# THE KERNEL'S SOCKET TABLES, not `ss` output. ss lives in iproute2, which is a
+# package this image does not have and which CLAUDE.md forbids adding without
+# asking. These files are the same data the tool formats, and reading them here
+# means the evidence does not depend on a userspace parser being installed,
+# correct, or the one the verifier expected.
+say tcp /proc/net/tcp
+say tcp6 /proc/net/tcp6
+say udp /proc/net/udp
+say udp6 /proc/net/udp6
+
+printf 'nullroute-facts: end\n'

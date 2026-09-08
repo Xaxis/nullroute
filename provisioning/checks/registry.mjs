@@ -30,14 +30,26 @@
  *                partition table, a verity superblock.
  *   needs-device it can only be observed on a running device, because reading
  *                it from an unbooted rootfs produces confident false passes.
- *                See provisioning/README.md.
+ *                See provisioning/README.md. NOTHING HOLDS THIS STATUS ANY
+ *                MORE. The last three moved to `implemented` when the evidence
+ *                path was built: the guest prints raw kernel files to the
+ *                console and provisioning/checks/runtime.mjs judges them on the
+ *                host. Needing a booted device is still true of them, and is
+ *                now expressed by RUNTIME_ONLY and by needing --console, rather
+ *                than by being unwritten. The status is kept because the
+ *                distinction it names is real and the next such assertion will
+ *                pass through it.
  */
 
 /**
- * Verifiers that can only be observed on a running device.
+ * Verifiers whose evidence can only come from a device that has booted.
  *
  * Kept here as well as in tools/checks/check-profiles.mjs would be two lists that can
  * disagree, so the tool reads this one.
+ *
+ * These are implemented now, and this set no longer means "unwritten". It means
+ * they are fed by `--console <boot log>` rather than by --root or --image, and
+ * that no inspection of an artifact at rest can stand in for them.
  */
 export const RUNTIME_ONLY = new Set(['mount-options', 'no-listening-sockets', 'no-swap'])
 
@@ -125,10 +137,30 @@ export const VERIFIERS = {
     describes: 'the dm-verity salt is pinned, not generated per build',
   },
 
-  // --- Need a running device. Reading these from an image lies. ------------
-  'mount-options': { status: 'needs-device', describes: 'noexec and nosuid are actually enforced' },
-  'no-listening-sockets': { status: 'needs-device', describes: 'nothing listens beyond loopback' },
-  'no-swap': { status: 'needs-device', describes: 'no swap is active' },
+  // --- Need a booted device. Reading these from an image lies. -------------
+  // Implemented, and fed by --console rather than --root or --image. The guest
+  // prints six kernel files and judges nothing; the verdict is reached on the
+  // host in provisioning/checks/runtime.mjs, because an artifact that grades
+  // itself has been asked the one question it cannot be trusted to answer.
+  'mount-options': {
+    status: 'implemented',
+    describes:
+      'the named mounts are the named filesystem with the named flags, read from /proc/self/mountinfo on the running device',
+  },
+  'no-listening-sockets': {
+    status: 'implemented',
+    // NOT "nothing listens beyond loopback", which is what this said while the
+    // verifier was unwritten and while the assertion above it claimed zero
+    // non-AF_UNIX sockets. Three descriptions of one property, no two of them
+    // the same, and nothing running to notice. The device listens on exactly
+    // one such socket by design and the wording now says which.
+    describes:
+      'exactly the permitted sockets listen outside AF_UNIX, each on loopback, and every permitted one is present',
+  },
+  'no-swap': {
+    status: 'implemented',
+    describes: 'no swap area is active, read from /proc/swaps on the running device',
+  },
 }
 
 /** Verifiers that run today. */

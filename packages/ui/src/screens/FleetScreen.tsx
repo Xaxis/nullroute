@@ -1,6 +1,7 @@
 import { type ReactElement, type ReactNode, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Refusal } from '../components/Refusal.js'
+import { Working } from '../components/Working.js'
 import { Button } from '../components/Button.js'
 import { Info } from '../components/Info.js'
 
@@ -154,6 +155,18 @@ export function FleetScreen(props: FleetScreenProps): ReactElement {
             data-testid="fleet-forget-confirm"
           />
         </div>
+
+        {/* FORGETTING A QUORUM RESEALS THE WALLET, which is not what the word
+            suggests. It verifies the passphrase by opening the envelope and
+            then writes a new one, so this costs two key derivations, the same
+            as renaming. "Forgetting" sounds instant and takes the longest of
+            anything on this screen. */}
+        {busy && (
+          <Working label="Forgetting the quorum" testId="fleet-forget-working">
+            The wallet file is being rewritten without it, so leave the device alone until it is
+            finished.
+          </Working>
+        )}
 
         {error !== null && (
           <Refusal title="Not forgotten" testId="fleet-forget-error">

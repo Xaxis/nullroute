@@ -6,6 +6,7 @@ import { Choice } from '../components/Choice.js'
 import { TextKeyboard } from '../components/TextKeyboard.js'
 import { QrDisplay } from '../components/QrDisplay.js'
 import { Info } from '../components/Info.js'
+import { Working } from '../components/Working.js'
 
 /**
  * Writing a backup, and restoring one.
@@ -329,6 +330,18 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
           </Refusal>
         )}
 
+        {/* SAME PLACEMENT RULE AS THE REFUSAL ABOVE, for the same reason and
+            found the same way. Writing a backup seals an envelope, which is one
+            Argon2id at 64 MiB, and the only sign of it was the button reading
+            "Writing". This is mid-write: the file being produced is the one the
+            user is about to rely on, and a power cut here is how they end up
+            with a truncated backup they will not test until they need it. */}
+        {busy && (
+          <Working label="Encrypting the backup" testId="backup-create-working">
+            The file is being written now, so leave the device alone until it says it is done.
+          </Working>
+        )}
+
         {/* THE CHOICE ABOVE THE KEYBOARD, NOT UNDER IT.
 
             Whether this file carries the seed is the only consequential
@@ -355,14 +368,21 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
             {includeSeed ? 'Including the seed' : 'Not including the seed'}
           </button>
         </div>
-        <TextKeyboard
-          value={passphrase}
-          onChange={(next) => {
-            setError(null)
-            setPassphrase(next)
-          }}
-          testId="backup-passphrase"
-        />
+        {/* Hidden while it works. Nothing can be typed, and a keyboard that
+            looks tappable and does nothing is the worst thing to show somebody
+            already wondering whether the device is alive. Removing it also
+            collapses the body, which is what makes the message above visible on
+            a 480px panel. */}
+        {!busy && (
+          <TextKeyboard
+            value={passphrase}
+            onChange={(next) => {
+              setError(null)
+              setPassphrase(next)
+            }}
+            testId="backup-passphrase"
+          />
+        )}
 
         {includeSeed ? (
           <div className="nr-banner nr-banner--danger" data-testid="backup-seed-warning">
@@ -446,6 +466,15 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
         </Refusal>
       )}
 
+      {/* Restoring opens the envelope, which is the same Argon2id. This one
+          REPLACES the wallet on the device, so an interrupted restore is the
+          worst of the four to walk away from. */}
+      {busy && described !== null && (
+        <Working label="Opening the backup" testId="backup-restore-working">
+          This replaces the wallet on the device, so leave it alone until it is finished.
+        </Working>
+      )}
+
       {described === null ? (
         <div className="nr-field">
           <span className="nr-field__label">The backup file</span>
@@ -482,23 +511,31 @@ export function BackupScreen(props: BackupScreenProps): ReactElement {
             </div>
           </div>
 
-          {/* Not dismissible. Everything above came from outside the encryption
-              and anyone holding the file could have written it. */}
-          <p className="nr-note" data-testid="backup-unverified">
-            None of that is confirmed yet. It is read from the outside of the file, which anyone
-            holding it could have edited. What actually gets restored comes from inside the
-            encryption, and the device will show you that instead once it opens.
-          </p>
+          {/* AN INFO, NOT A NOTE, and it took a new gallery state to notice.
+              This paragraph has always been screen-level guidance written in
+              the style that predates the Info box, and nothing measured it
+              because no state rendered the described-header panel until the
+              busy state for restoring was added. More coverage, one more
+              honest box. */}
+          <Info label="Not confirmed yet" testId="backup-unverified">
+            All of that is read from the OUTSIDE of the file, which anyone holding it could have
+            edited. What actually gets restored comes from inside the encryption, and the device
+            will show you that instead once it opens.
+          </Info>
 
-          <span className="nr-field__label">Passphrase for this file</span>
-          <TextKeyboard
-            value={passphrase}
-            onChange={(next) => {
-              setError(null)
-              setPassphrase(next)
-            }}
-            testId="backup-restore-passphrase"
-          />
+          {!busy && (
+            <>
+              <span className="nr-field__label">Passphrase for this file</span>
+              <TextKeyboard
+                value={passphrase}
+                onChange={(next) => {
+                  setError(null)
+                  setPassphrase(next)
+                }}
+                testId="backup-restore-passphrase"
+              />
+            </>
+          )}
         </>
       )}
     </Screen>

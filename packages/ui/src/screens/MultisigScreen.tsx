@@ -1,6 +1,7 @@
 import { type ReactElement, type ReactNode, useEffect, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Refusal } from '../components/Refusal.js'
+import { Working } from '../components/Working.js'
 import { Button } from '../components/Button.js'
 import { Hash } from '../components/Hash.js'
 import { QrDisplay } from '../components/QrDisplay.js'
@@ -442,6 +443,17 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
         </Refusal>
       )}
 
+      {/* THE SLOWEST OF THE FOUR. Registering a quorum reseals the store, which
+          OPENS the envelope and then SEALS it, so it is two Argon2id runs back
+          to back rather than one. On a Pi that is long enough to read as a
+          device that has stopped responding, and the only sign of it was a
+          button reading "Registering". */}
+      {busy && (
+        <Working label="Rewriting the wallet" testId="multisig-working">
+          The wallet file is being rewritten, so leave the device alone until it is finished.
+        </Working>
+      )}
+
       {/* THE KEY YOU HAND OVER AND THE ONE THAT COMES BACK, SIDE BY SIDE.
 
           Stacked, this screen was 548px of content in a 317px body, and what
@@ -620,10 +632,29 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
                             maxLength={32}
                             placeholder="Name it, for you"
                             spellCheck={false}
+                            // THROUGH run(), NOT `void`. Two things were wrong
+                            // with firing this bare.
+                            //
+                            // Naming a cosigner RESEALS THE WALLET: it verifies
+                            // the passphrase by opening the envelope and writes
+                            // a new one, which is two Argon2id runs and several
+                            // seconds on a Pi. Outside run() nothing set busy,
+                            // so the device went away for seconds with no
+                            // disabled control and no message, triggered by
+                            // tapping away from a text field.
+                            //
+                            // And `void` DISCARDED THE REJECTION. A reseal that
+                            // failed left the typed name sitting in the input
+                            // looking saved. The name is not key material, but
+                            // a silently dropped write is how somebody comes to
+                            // trust a label that does not exist on the device.
                             onBlur={(e) => {
                               const full = cosigner.fullXpub
                               if (full === undefined) return
-                              void onNameCosigner(full, e.target.value)
+                              const name = e.target.value
+                              void run(async () => {
+                                await onNameCosigner(full, name)
+                              })
                             }}
                             data-testid={`cosigner-rename-${String(cosigner.position)}`}
                           />

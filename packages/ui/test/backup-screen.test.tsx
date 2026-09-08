@@ -152,8 +152,11 @@ describe('BackupScreen', () => {
       expect(screen.getByTestId('backup-described')).toBeTruthy()
     })
     expect(screen.getByTestId('backup-described').textContent).toContain('Family Vault')
+    // The caveat, wherever it is worded. What matters is that the panel says
+    // the header is unverified and says why, because everything shown above it
+    // came from outside the encryption.
     const note = screen.getByTestId('backup-unverified').textContent
-    expect(note).toContain('None of that is confirmed')
+    expect(note).toContain('Not confirmed yet')
     expect(note).toContain('anyone holding it could have edited')
   })
 

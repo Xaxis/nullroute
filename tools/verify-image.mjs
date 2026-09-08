@@ -48,6 +48,7 @@ import {
 } from '../provisioning/checks/registry.mjs'
 import { ROOTFS_VERIFIERS } from '../provisioning/checks/rootfs.mjs'
 import { IMAGE_VERIFIERS } from '../provisioning/checks/image.mjs'
+import { RUNTIME_VERIFIERS, parseFacts } from '../provisioning/checks/runtime.mjs'
 import { pinnedIdentifiers, veritySalt } from '../provisioning/checks/identifiers.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
@@ -61,8 +62,13 @@ function argument(name) {
 const rootfs = argument('root')
 const image = argument('image')
 const compare = argument('compare')
+// A THIRD KIND OF EVIDENCE, and the only one that comes from a device rather
+// than an artifact. See provisioning/checks/runtime.mjs: the guest prints raw
+// kernel files to its console and this reads them. Three assertions can be
+// answered no other way, and reading them off a rootfs answers them wrongly.
+const consoleLog = argument('console')
 
-if (rootfs === undefined && image === undefined) {
+if (rootfs === undefined && image === undefined && consoleLog === undefined) {
   console.error('verify-image: pass --root <directory>, --image <file>, or both.')
   console.error('')
   console.error('  --root  the assembled root filesystem. Answers what is in the files:')
@@ -72,6 +78,9 @@ if (rootfs === undefined && image === undefined) {
   console.error('          filesystem identifiers.')
   console.error('  --compare a second image, for the reproducibility check. One image')
   console.error('          cannot demonstrate that two builds agree.')
+  console.error('  --console a boot console log from "make image-boot-test". Answers what')
+  console.error('          only a running kernel knows: mount flags in force, swap in use,')
+  console.error('          sockets listening. No artifact at rest can stand in for it.')
   console.error('')
   console.error('  Neither is mounted: mounting needs root, and a verification tool that')
   console.error('  must run privileged is one people run less often.')
@@ -84,12 +93,17 @@ if (rootfs !== undefined && (!existsSync(rootfs) || !statSync(rootfs).isDirector
 for (const [flag, path] of [
   ['image', image],
   ['compare', compare],
+  ['console', consoleLog],
 ]) {
   if (path !== undefined && (!existsSync(path) || !statSync(path).isFile())) {
     console.error(`verify-image: --${flag} ${path} is not a file.`)
     process.exit(2)
   }
 }
+
+// Parsed once. Every runtime verifier reads the same block, and re-parsing per
+// assertion would let two of them disagree about what the device said.
+const facts = consoleLog === undefined ? undefined : parseFacts(readFileSync(consoleLog, 'utf8'))
 
 const wanted = argument('profile')
 const profiles = readdirSync(PROFILES)
@@ -179,9 +193,17 @@ function classify(verifiers) {
     // set alone put `daemon-starts-under-mdwe` in the "nobody has written it"
     // pile, and it is written down as needing a device: the same small false
     // statement this breakdown was added to stop, one line further along.
-    if (declared?.status === 'needs-device' || RUNTIME_ONLY.has(entry.check)) {
-      return 'needs a booted device'
+    // WRITTEN, AND NOT POINTED AT A BOOT. This used to read "needs a booted
+    // device" for all three unconditionally, which was true while they were
+    // unwritten and became a lie the moment they were not: it put finished work
+    // in the same bucket as work nobody has done. The distinction is the same
+    // one the rest of this function exists to make.
+    if (RUNTIME_ONLY.has(entry.check)) {
+      return declared?.status === 'implemented'
+        ? 'no boot console log was given'
+        : 'needs a booted device'
     }
+    if (declared?.status === 'needs-device') return 'needs a booted device'
     if (declared === undefined || declared.status !== 'implemented')
       return 'no verifier written yet'
     return NEEDS_IMAGE.has(entry.check) ? 'no image was given' : 'no root filesystem was given'
@@ -189,6 +211,7 @@ function classify(verifiers) {
   for (const rank of [
     'needs a booted device',
     'no verifier written yet',
+    'no boot console log was given',
     'checked by "make profiles" instead',
   ]) {
     if (reasons.includes(rank)) return rank
@@ -221,6 +244,13 @@ for (const { file, profile } of profiles) {
         continue
       }
 
+      if (RUNTIME_ONLY.has(entry.check)) {
+        const run = RUNTIME_VERIFIERS[entry.check]
+        if (run === undefined || facts === undefined) continue
+        results.push(run(facts, params))
+        continue
+      }
+
       const run = ROOTFS_VERIFIERS[entry.check]
       if (run === undefined || rootfs === undefined) continue
       results.push(run(rootfs, params))
@@ -235,7 +265,11 @@ for (const { file, profile } of profiles) {
         if (NEEDS_NOTHING.has(entry.check)) {
           return `${entry.check}: checked by "make profiles", which needs no artifact`
         }
-        if (RUNTIME_ONLY.has(entry.check)) return `${entry.check}: needs a booted device`
+        if (RUNTIME_ONLY.has(entry.check)) {
+          return VERIFIERS[entry.check]?.status === 'implemented'
+            ? `${entry.check}: no --console given (needs a boot log)`
+            : `${entry.check}: needs a booted device`
+        }
         const declared = VERIFIERS[entry.check]
         if (declared === undefined) return `${entry.check}: not declared`
         // Written and not pointed at anything is a different state from not

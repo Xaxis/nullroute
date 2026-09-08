@@ -241,19 +241,53 @@ assertions:
       certainty.
     standard: ['ANSSI-BP-028 R9']
 
+  # THIS ASSERTION USED TO BE FALSE, and it is worth saying how rather than
+  # quietly fixing it. It read "zero sockets listen on any address family other
+  # than AF_UNIX", which no device that boots can satisfy: the kiosk loads
+  # http://127.0.0.1:5180/ and nullroute-bridge.service answers it, because a
+  # browser cannot be pointed at a Unix socket. So the profile asserted the
+  # negation of a thing the image is built to do.
+  #
+  # It survived because the verifier was unwritten. An assertion nothing runs
+  # is not weakly checked, it is unchecked, and it can say anything at all.
+  # What made it visible was sitting down to write the verifier: the honest
+  # implementation could not pass, and the tempting one was to soften the
+  # verifier to "nothing beyond loopback" and leave the sentence above it
+  # standing. That is how a verifier ends up documenting the artifact instead
+  # of testing it.
   - id: INV-PROV-15
     statement: >
-      At runtime, zero sockets listen on any address family other than AF_UNIX.
+      At runtime, exactly one socket listens outside AF_UNIX: the loopback
+      bridge, bound to 127.0.0.1 on the pinned port. Nothing listens on a
+      routable address, and nothing else listens at all.
     stage: boot
     verify:
       - check: no-listening-sockets
+        params:
+          # THE ALLOWANCE IS A LIST OF ONE, ENUMERATED, so that a second
+          # listener is a failure rather than a judgement call. "Loopback only"
+          # would pass a debug server somebody left on 127.0.0.1:9229, which is
+          # the actual risk here: node's inspector binds loopback and hands over
+          # the process, key material included.
+          allow:
+            - { address: 127.0.0.1, port: 5180, why: nullroute-bridge.service serves the frontend }
     rationale: >
       This is INV-NET-1 checked at the layer below the application. The lint
-      rule proves no source file can open a socket; this proves nothing on the
-      running device has.
+      rule proves no source file in packages/ can open a socket; this proves
+      nothing on the running device has, whatever its source.
+
+      The one permitted listener is the narrowest thing that lets a browser
+      reach a daemon that holds keys on a Unix socket it cannot be pointed at.
+      It binds 127.0.0.1 rather than a wildcard, which is the property that
+      matters and is separately asserted in daemon.bridge.
     does_not_cover: >
       Outbound connections, which are separately prevented by there being no
       route and no configured interface.
+
+      It also says nothing about what the permitted listener SERVES. A bridge
+      bound correctly to loopback and answering anything asked of it would
+      satisfy this assertion completely. What it may answer is daemon.bridge's
+      subject, not this one.
 
   - id: INV-PROV-16
     statement: >
@@ -316,8 +350,10 @@ assertions:
           units:
             - nullroute-state.service
             - nullroute-attest.service
+            - nullroute-harden-run.service
             - nullrouted.service
             - nullroute-bridge.service
+            - nullroute-runtime-facts.service
             - nullroute-kiosk.service
     rationale: >
       INV-PROV-18 and INV-PROV-19 measure DECLARED directives, so
