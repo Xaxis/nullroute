@@ -511,8 +511,10 @@ export function systemdExposure(root, params, run = defaultRun) {
   }
 
   let exposure
+  let parsedRaw = null
   try {
     const parsed = JSON.parse(outcome.stdout)
+    parsedRaw = parsed
     const row = Array.isArray(parsed) ? parsed[0] : parsed
     exposure = Number(row?.exposure ?? row?.Exposure)
   } catch {
@@ -525,7 +527,32 @@ export function systemdExposure(root, params, run = defaultRun) {
   }
 
   if (!Number.isFinite(exposure)) {
-    return verdict('systemd-exposure', false, 'no exposure score in the output', limits)
+    /*
+     * WHAT IT PRODUCED, not merely that it was not what we wanted.
+     *
+     * This said "no exposure score in the output" and stopped, which names the
+     * symptom and rules nothing out: a systemd whose JSON uses another key, a
+     * unit the --root scan did not find, an empty array, a version whose
+     * `security` subcommand reports per setting rather than per unit. On a
+     * workstation without systemd at all the verifier never reaches here, so
+     * the one machine that can answer is CI and the message it sent back said
+     * nothing.
+     */
+    const shape = Array.isArray(parsedRaw)
+      ? `an array of ${String(parsedRaw.length)}`
+      : `an object with keys ${
+          Object.keys(parsedRaw ?? {})
+            .slice(0, 8)
+            .join(', ') || '(none)'
+        }`
+    const sample = outcome.stdout.trim().slice(0, 220)
+    return verdict(
+      'systemd-exposure',
+      false,
+      `no exposure score in the output: systemd-analyze returned ${shape}, ` +
+        `beginning ${sample === '' ? '(nothing)' : JSON.stringify(sample)}`,
+      limits
+    )
   }
 
   return exposure <= max

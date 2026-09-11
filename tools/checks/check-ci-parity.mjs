@@ -214,6 +214,47 @@ if (missing.length > 0) {
     if (/^\s*[|>][-+]?\s*$/.test(rest)) blockIndent = indent
   }
 
+  /*
+   * A `run:` written as a plain scalar over several lines.
+   *
+   * YAML folds those into one line, so
+   *
+   *     run: make lint
+   *       make shell
+   *
+   * reaches the shell as `make lint make shell`, and make stops on "No rule to
+   * make target 'make'". The check above this one greps the workflow as text
+   * and sees both targets present, which is exactly what it saw when this
+   * happened: parity passed and the job died.
+   *
+   * A block scalar, `run: |`, is the fix and is what every other step here
+   * uses.
+   */
+  const folded = []
+  for (const [index, line] of lines.entries()) {
+    const run = /^(\s*)run:\s*(\S.*)$/.exec(line)
+    if (run === null) continue
+    const [, spaces, first] = run
+    if (first.startsWith('|') || first.startsWith('>')) continue
+    const next = lines[index + 1]
+    if (next === undefined || next.trim() === '' || next.trimStart().startsWith('#')) continue
+    if (next.length - next.trimStart().length > spaces.length) {
+      folded.push({ line: index + 1, text: first.trim() })
+    }
+  }
+  if (folded.length > 0) {
+    console.error('\ncheck-ci-parity: a run: step spans lines without a block scalar\n')
+    for (const { line, text } of folded) {
+      console.error(`    line ${String(line)}: run: ${text}`)
+    }
+    console.error(
+      '\n  YAML folds a plain scalar onto one line, so the next line becomes another\n' +
+        '  argument to the command above it rather than a command of its own. Write\n' +
+        '  `run: |` and put each command on its own line, or split the step in two.\n'
+    )
+    process.exit(1)
+  }
+
   if (duplicates.length > 0) {
     console.error('\ncheck-ci-parity: the workflow has a key GitHub will reject\n')
     for (const { key, line } of duplicates) {

@@ -351,6 +351,21 @@ async function main() {
   const socketPath = join(work, 'd.sock')
   const storeDir = join(work, 'store')
 
+  /*
+   * THE DAEMON'S OUTPUT IS KEPT, because without it this check cannot tell a
+   * slow start from a dead one.
+   *
+   * It was spawned with stdio: 'ignore'. When the socket failed to appear on
+   * CI, all this could say was "the daemon never created its socket", which is
+   * the symptom and says nothing about why: a crash on startup, a missing
+   * build, a permission, a port. Twelve seconds of waiting and then a sentence
+   * that rules nothing out, on the only machine where it was happening.
+   *
+   * So the pipes are read and the exit is recorded, and the failure below
+   * quotes them. Same argument as the daemon's own rule about swallowed
+   * exceptions, one level up: a harness that discards the evidence reports the
+   * thing it noticed rather than the thing that happened.
+   */
   const daemon = spawn(process.execPath, [DAEMON], {
     env: {
       ...process.env,
@@ -358,7 +373,19 @@ async function main() {
       NULLROUTE_STORE: storeDir,
       NULLROUTE_ROOT: ROOT,
     },
-    stdio: 'ignore',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+
+  let said = ''
+  let ended = null
+  daemon.stdout.on('data', (chunk) => {
+    said += String(chunk)
+  })
+  daemon.stderr.on('data', (chunk) => {
+    said += String(chunk)
+  })
+  daemon.on('exit', (code, signal) => {
+    ended = signal === null ? `exit ${String(code)}` : `signal ${signal}`
   })
 
   const server = serve(socketPath)
@@ -367,7 +394,11 @@ async function main() {
 
   try {
     for (let attempt = 0; attempt < 80 && !existsSync(socketPath); attempt += 1) await sleep(150)
-    if (!existsSync(socketPath)) throw new Error('the daemon never created its socket')
+    if (!existsSync(socketPath)) {
+      const why = ended === null ? 'it is still running' : `it ended with ${ended}`
+      const tail = said.trim() === '' ? 'and printed nothing' : `and said:\n${said.trim()}`
+      throw new Error(`the daemon never created its socket at ${socketPath}: ${why} ${tail}`)
+    }
 
     await new Promise((resolve) => server.listen(PORT, '127.0.0.1', resolve))
 
