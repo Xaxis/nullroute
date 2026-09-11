@@ -846,7 +846,29 @@ const KEYBOARD = `(() => {
     })
   }
 
-  return JSON.stringify({ problems: problems })
+  /*
+   * Where each key that is a word rather than a character sits.
+   *
+   * Compared across layers by the caller. These are the keys somebody reaches
+   * for by memory while looking at what they are typing, and one of them
+   * reveals a passphrase on a lit panel.
+   */
+  const wide = {}
+  for (const el of document.querySelectorAll('.nr-kb__key--wide')) {
+    const id = el.getAttribute('data-testid')
+    if (id === null) continue
+    const r = el.getBoundingClientRect()
+    wide[id] = Math.round(r.left) + ',' + Math.round(r.top)
+  }
+
+  return JSON.stringify({
+    problems: problems,
+    // So the caller knows whether there is anything to type on, and where the
+    // keys ended, without parsing it back out of a sentence.
+    keyboard: kb === null ? null : Math.round(kb.getBoundingClientRect().bottom),
+    limit: Math.round(limit),
+    wide: wide,
+  })
 })()`
 
 async function cdp(ws, method, params, state) {
@@ -1037,7 +1059,7 @@ async function main() {
       const acted = await cdp(
         page,
         'Runtime.evaluate',
-        { expression: reachStep(step), returnByValue: true },
+        { expression: reachStep(step), returnByValue: true, awaitPromise: true },
         state
       )
       if (acted.result.value !== 'clicked') {
@@ -1111,13 +1133,132 @@ async function main() {
     }
 
     /*
-     * A keyboard displaced by a refusal gets asked again after one keystroke.
+     * THE KEYBOARD IS ASKED AGAIN AFTER ONE KEYSTROKE, ALWAYS.
      *
-     * The screens that do this promise the banner goes when typing starts, and
-     * this is where that promise is tested rather than trusted. One key: enough
-     * to change the value, and the smallest thing a person could do next.
+     * It began as the retry for one case: a refusal costs about 50px at the top
+     * of the body, on six screens that was enough to push the bottom row of
+     * keys under the action bar, and those screens promise the banner goes when
+     * typing starts. This is where that promise is tested rather than trusted.
+     *
+     * IT RUNS UNCONDITIONALLY NOW, because the first measurement is of a state
+     * nobody types in. The readout above the keys took its line box from
+     * whichever of a 13px placeholder, a 15px value or a row of dots was in it,
+     * so every keyboard on the device moved down 3px on the first character.
+     *
+     * THAT ONE DID NOT PUT ANY KEYS UNDER THE BAR. It landed the bottom row at
+     * 407 with the bar at 407 on two panels, which is flush, and passes on the
+     * single pixel of tolerance below. So this rule was written for a defect
+     * that had not happened yet, which is worth saying plainly: what it catches
+     * is the next thing above a keyboard that grows on a keystroke, on a screen
+     * that has no pixels left to absorb it. The reason to have it is that the
+     * measurement the rest of this check makes is of a state nobody types in,
+     * and typing is the one thing the user is certain to do next.
+     *
+     * One key: enough to change the value, and the smallest thing a person
+     * could do.
      */
-    if (JSON.parse(keys.result.value).problems.some((p) => p.clearedByTyping === true)) {
+    const arrived = JSON.parse(keys.result.value)
+
+    /*
+     * THE KEYBOARD IS MEASURED ON ITS TALLEST LAYER, NOT THE ONE IT OPENS ON.
+     *
+     * 14 columns was chosen so the 26 letters fill two rows with two cells left
+     * for Shift, and the 42 symbols fill exactly three, which leaves the wide
+     * keys a fourth. So the letter layer is 144px and the symbol layer is 194,
+     * and every screen carrying a keyboard needs 50px more headroom than the
+     * layer it opens on suggests.
+     *
+     * Five did not have it, including the unlock gate, which is the first
+     * screen anybody touches on a provisioned device: the bottom row of the
+     * symbol keys sat 48px under the action bar. A passphrase with a digit in
+     * it is the path PassphraseScreen's own strength estimate rewards, so this
+     * was not an exotic state. Nothing reported it for as long as the symbol
+     * layer has existed, because every measurement here was of the letters.
+     *
+     * Tapped rather than computed. The layer is a piece of component state and
+     * the only honest way to ask how tall it is, is to switch to it.
+     */
+    let widest = arrived
+    /** Faults found by switching layers, which is a state no rule above sees. */
+    const layerProblems = []
+    if (arrived.keyboard !== null) {
+      const flipped = await cdp(
+        page,
+        'Runtime.evaluate',
+        {
+          expression: `(() => {
+            const key = document.querySelector('[data-testid="pk-symbols"]')
+            if (key === null || key.disabled === true) return false
+            key.click()
+            return true
+          })()`,
+          returnByValue: true,
+        },
+        state
+      )
+      if (flipped.result.value === true) {
+        await sleep(220)
+        const onSymbols = JSON.parse(
+          (
+            await cdp(
+              page,
+              'Runtime.evaluate',
+              { expression: KEYBOARD, returnByValue: true },
+              state
+            )
+          ).result.value
+        )
+        if (onSymbols.keyboard !== null && onSymbols.keyboard > widest.keyboard) widest = onSymbols
+        /*
+         * AND NOTHING IN THE WIDE ROW MOVED, which is a separate hazard from
+         * the height and a sharper one.
+         *
+         * These are the keys somebody reaches for by memory: Space, Back, and
+         * the one that reveals what they have typed. Letting them flow with the
+         * grid slid every key after Shift two columns between the letter layer
+         * and the symbol layer, and on the unlock gate that put Show exactly
+         * where Back had been. Tapping ?123 and then reaching for Back by
+         * memory would reveal the passphrase on a panel in whatever room the
+         * device is in, and nothing would say it had happened.
+         *
+         * A key present on one layer and absent on the other is fine, and is
+         * the deliberate swap that paid for a second page of symbols. A key on
+         * both, in two different places, is not.
+         */
+        for (const [id, where] of Object.entries(arrived.wide ?? {})) {
+          const moved = (onSymbols.wide ?? {})[id]
+          if (moved === undefined || moved === where) continue
+          layerProblems.push({
+            kind: 'key-moves-between-layers',
+            detail:
+              id +
+              ' is at ' +
+              where +
+              ' on the letters and ' +
+              moved +
+              ' on the symbols. These are reached by memory while somebody is ' +
+              'looking at what they type, and one of them reveals it.',
+          })
+        }
+        // Back to letters, so everything measured after this is the state the
+        // screen was in rather than one this check put it in.
+        await cdp(
+          page,
+          'Runtime.evaluate',
+          {
+            expression: `(() => {
+              const key = document.querySelector('[data-testid="pk-symbols"]')
+              if (key !== null && key.disabled !== true) key.click()
+            })()`,
+          },
+          state
+        )
+        await sleep(220)
+      }
+    }
+
+    let afterTyping = null
+    if (arrived.keyboard !== null) {
       await cdp(
         page,
         'Runtime.evaluate',
@@ -1130,12 +1271,15 @@ async function main() {
         state
       )
       await sleep(220)
-      keys = await cdp(
-        page,
-        'Runtime.evaluate',
-        { expression: KEYBOARD, returnByValue: true },
-        state
+      afterTyping = JSON.parse(
+        (await cdp(page, 'Runtime.evaluate', { expression: KEYBOARD, returnByValue: true }, state))
+          .result.value
       )
+      // The displaced-by-a-refusal case: the screen said the banner would go,
+      // and the state that matters is the one after it has.
+      if (arrived.problems.some((p) => p.clearedByTyping === true)) {
+        keys = { result: { value: JSON.stringify(afterTyping) } }
+      }
     }
 
     await cdp(page, 'Runtime.evaluate', { expression: SCROLL_TO_END }, state)
@@ -1153,8 +1297,69 @@ async function main() {
     for (const id of mustSee.drawn) {
       if (!drawn.has(id)) drawn.set(id, label)
     }
+    /*
+     * The keys were on the panel and then somebody typed a character.
+     *
+     * Reported separately from `keyboard-below-the-fold` because it is a
+     * different defect with a different fix: the screen is not too full, it
+     * GREW, and what grew is something above the keys that changed size on a
+     * keystroke. Only when the arriving screen was clean, or this would restate
+     * a failure already reported against the state it arrived in.
+     */
+    const grew =
+      afterTyping !== null &&
+      arrived.problems.length === 0 &&
+      afterTyping.keyboard !== null &&
+      afterTyping.keyboard > afterTyping.limit + 1
+        ? [
+            {
+              kind: 'keyboard-moved-by-typing',
+              detail:
+                'the keys ended at ' +
+                String(arrived.keyboard) +
+                ' when the screen arrived and at ' +
+                String(afterTyping.keyboard) +
+                ' after one character, with the action bar at ' +
+                String(afterTyping.limit) +
+                '. Something above the keyboard changes size on a keystroke, which ' +
+                'moves the keys under the finger already on them.',
+            },
+          ]
+        : []
+
+    /*
+     * The tallest layer, when the layer it opened on was fine.
+     *
+     * Reported separately because the fix is different: the screen is not too
+     * full for the keys it is showing, it is too full for the keys one tap
+     * away. Only when the arriving measurement was clean, or this restates a
+     * failure already reported against the state the screen arrives in.
+     */
+    const tallest =
+      arrived.problems.length === 0 &&
+      widest.keyboard !== null &&
+      widest.keyboard > widest.limit + 1
+        ? [
+            {
+              kind: 'keyboard-taller-on-another-layer',
+              detail:
+                'the letter keys end at ' +
+                String(arrived.keyboard) +
+                ' and the symbol keys at ' +
+                String(widest.keyboard) +
+                ', with the action bar at ' +
+                String(widest.limit) +
+                '. A passphrase with a digit or a symbol in it is typed on the layer ' +
+                'that does not fit.',
+            },
+          ]
+        : []
+
     const problems = [
       ...JSON.parse(keys.result.value).problems,
+      ...tallest,
+      ...layerProblems,
+      ...grew,
       ...(scrolled ? [] : mustSee.problems),
       ...measured.problems,
     ]

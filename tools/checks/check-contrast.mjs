@@ -269,7 +269,7 @@ async function main() {
           const acted = await cdp(
             page,
             'Runtime.evaluate',
-            { expression: reachStep(step), returnByValue: true },
+            { expression: reachStep(step), returnByValue: true, awaitPromise: true },
             st
           )
           if (acted.result.value === 'clicked') break

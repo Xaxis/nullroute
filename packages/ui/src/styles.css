@@ -2039,11 +2039,35 @@ body {
   cursor: default;
 }
 
-/* Two columns of the fourteen. Shift lands in the two cells the alphabet
-   leaves at the end of its second row, and the rest share the row below. */
+/* Two columns of the fourteen, for the keys that are words rather than
+   characters. */
 .nr-kb__key--wide {
   grid-column: span 2;
   font-size: 0.8125rem;
+}
+
+/* The first of them starts a row, always.
+
+   NOT WHAT MADE THE KEYBOARD FIT. Splitting the 42 symbols across two pages did
+   that, and this rule was written believing it had helped; the mutation says
+   otherwise, because 21 symbols leave too few cells for the wide keys to tuck
+   into either way.
+
+   WHAT IT ACTUALLY HOLDS, measured. Letting these flow puts Shift in the two
+   cells the alphabet leaves at the end of its second row on the letter layer,
+   and nothing there on the symbol layer, so every key after it slides two
+   columns. On the unlock gate that is 107px: Space moved from x=127 to x=20,
+   Back from 342 to 235, and SHOW LANDED EXACTLY WHERE BACK HAD BEEN. Somebody
+   who taps ?123 and reaches for Back by memory reveals their passphrase on a
+   lit panel instead of deleting a character.
+
+   Naming column 1 rather than a span makes auto-placement wrap whenever the
+   current row is not empty, so this row is the last row on every layer and
+   every key in it keeps its cell. Only the first pair changes what it is, and
+   it changes its label with it. The letter grid above carries the same rule in
+   its own words: a key that relocates as you type is a key you mis-hit. */
+.nr-kb__key--row {
+  grid-column: 1 / span 2;
 }
 
 .nr-kb__key--space {
@@ -2068,6 +2092,33 @@ body {
   background-color: var(--color-surface-2);
   font-family: var(--font-mono);
   word-break: break-all;
+}
+
+/* THE BOX IS THE SAME HEIGHT EMPTY AS IT IS FULL.
+
+   The readout holds three different things at three different sizes: a 13px
+   placeholder before anything is typed, and after that either the value in 15px
+   mono or a row of dots in the same. The line box followed whichever was in it,
+   so the readout was 38px until the first keystroke and 41px afterwards, and
+   the keyboard under it moved down 3px at the moment somebody started typing.
+
+   WHAT THAT ACTUALLY COST, measured rather than asserted, because the first
+   version of this comment claimed the keys went under the action bar and they
+   did not. On the two panels at the limit the keys ended at 407 with the bar at
+   407: flush, and passing the fit check on its one pixel of tolerance. So this
+   is not a fix for a screen that was broken. It is the difference between two
+   pixels of margin and none, on the screens with the least of it, and it buys
+   that on every keyboard on the device.
+
+   The rule it belongs to is `.nr-field__labelrow`, one element down: nothing
+   above a keyboard changes size while somebody is typing on it. A layout that
+   holds only because 3px of growth happens to land exactly on the boundary is
+   one that the next 13px banner breaks without anybody having touched it.
+
+   20px, which is what the placeholder already measured, so the empty state is
+   unchanged. */
+.nr-pk__value > * {
+  line-height: 1.25rem;
 }
 
 .nr-pk__dots {
@@ -2428,11 +2479,24 @@ body {
   grid-template-columns: minmax(0, 1fr) 16rem;
 }
 
-/* The narrow column first. For a short field beside something with a natural
-   width of its own: a wallet name beside the eight colour swatches, which need
-   422px to stay on one row and wrap to two the moment they get less. */
-.nr-split--lead {
-  grid-template-columns: 16rem minmax(0, 1fr);
+/* Three fields on one row, because one row is the whole budget.
+
+   THE MEASUREMENT THIS EXISTS FOR. A screen carrying the on-screen keyboard has
+   287px of body, the keyboard is 188px of it, and the panel's 14px gap takes
+   another, so everything else on the screen adds up to 70px: exactly one row of
+   labelled fields, and no second row at any height.
+
+   Stacked, the three passphrase fields were 204px and the keyboard had nowhere
+   to go, so changing a passphrase could not be done on the device at all. The
+   row is also the keyboard's selector, the same way `--even` is on the unlock
+   gate: tapping a field is what says which one the keys fill.
+
+   Three columns of 242px at 800px wide. The labels are written to fit that and
+   check-screen-fit measures the consequence: a label four characters too long
+   wraps, the row grows, and the bottom of the keyboard goes under the action
+   bar. */
+.nr-split--trio {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 /* Something with a natural width, and a line about it taking whatever is left.

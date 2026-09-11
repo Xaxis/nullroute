@@ -340,12 +340,18 @@ invariants:
     statement: >
       The text keyboard types exactly what was tapped. No autocorrect, no
       automatic capitalisation, and a space is kept rather than trimmed. Shift
-      applies to one character.
+      applies to one character. Every character it has ever been able to produce
+      it can still produce, on a layer no taller than the letters: the symbols
+      are two pages rather than one long one, because a character removed from
+      this keyboard is a character nobody can type, and somebody whose
+      passphrase contains it can never open their wallet again.
     tests:
       - packages/ui/test/keyboard.test.tsx::types-exactly-what-was-tapped
       - packages/ui/test/keyboard.test.tsx::applies-shift-once-and-then-releases-it
       - packages/ui/test/keyboard.test.tsx::types-a-space-without-trimming-it
       - packages/ui/test/keyboard.test.tsx::reaches-digits-and-symbols
+      - packages/ui/test/keyboard.test.tsx::can-still-type-every-symbol-it-ever-offered
+      - packages/ui/test/keyboard.test.tsx::keeps-the-wide-keys-in-the-same-order-on-every-layer
 
   - id: INV-UI-29
     statement: >
@@ -506,12 +512,17 @@ invariants:
   # Renaming and erasing sit one tap apart and have nothing else in common.
   - id: INV-UI-42
     statement: >
-      Erasing a wallet requires its name to be typed, states before that is
-      possible that a written mnemonic is the only thing that recovers it, and
-      reports a refusal rather than claiming the wallet went.
+      Erasing a wallet requires its name to be typed on the device's own
+      keyboard, which is the only way to type on this hardware, states before
+      that is possible that a written mnemonic is the only thing that recovers
+      it, and reports a refusal rather than claiming the wallet went. Case and
+      runs of whitespace do not count: what the gesture proves is that the
+      person knows which wallet this is, and a confirmation nobody can complete
+      is not a safeguard but a wallet that cannot be erased.
     tests:
       - packages/ui/test/manage-wallet-screen.test.tsx::will-not-erase-on-a-tap
-      - packages/ui/test/manage-wallet-screen.test.tsx::ignores-whitespace-around-the-typed-name
+      - packages/ui/test/manage-wallet-screen.test.tsx::is-confirmed-on-the-on-screen-keyboard-and-nothing-else
+      - packages/ui/test/manage-wallet-screen.test.tsx::ignores-case-and-whitespace-around-the-typed-name
       - packages/ui/test/manage-wallet-screen.test.tsx::says-what-erasing-costs-before-it-is-possible
       - packages/ui/test/manage-wallet-screen.test.tsx::reports-a-refused-erase-without-claiming-it-happened
 
@@ -520,8 +531,16 @@ invariants:
       Renaming requires the passphrase, says that a wrong one does not count
       against the attempts that erase the wallet, offers exactly the colours the
       daemon accepts, and does not present an unconfirmed name as a chosen one.
+      The name and the passphrase share one on-screen keyboard, because the
+      panel holds one: tapping a field is what selects it, the keys start on the
+      passphrase so that a passphrase typed in error is not displayed in plain
+      text and sealed as a name, and the keyboard honours the name length the
+      daemon enforces, which an input's maxLength does not.
     tests:
       - packages/ui/test/manage-wallet-screen.test.tsx::renames-with-the-passphrase-and-says-a-wrong-one-is-free
+      - packages/ui/test/manage-wallet-screen.test.tsx::fills-whichever-field-was-tapped
+      - packages/ui/test/manage-wallet-screen.test.tsx::types-into-the-passphrase-until-a-field-is-chosen
+      - packages/ui/test/manage-wallet-screen.test.tsx::will-not-let-the-keyboard-type-past-the-name-limit
       - packages/ui/test/manage-wallet-screen.test.tsx::offers-every-colour-the-daemon-accepts
       - packages/ui/test/manage-wallet-screen.test.tsx::says-when-the-name-was-never-confirmed
       - packages/ui/test/manage-wallet-screen.test.tsx::reports-a-refused-rename-and-clears-the-passphrase
@@ -951,11 +970,15 @@ invariants:
 
   - id: INV-UI-84
     statement: >
-      Forgetting a quorum requires the checksum to be typed, states that it
-      loses no money and what it does cost, and reports a refusal rather than
-      claiming the registration went.
+      Forgetting a quorum requires the checksum to be typed on the device's own
+      keyboard, states that it loses no money and what it does cost, and reports
+      a refusal rather than claiming the registration went. The checksum stays
+      on the panel while it is being copied, because a target that is only a
+      placeholder disappears on the first keystroke and leaves the person
+      recalling the rest of it.
     tests:
       - packages/ui/test/fleet-screen.test.tsx::will-not-forget-on-a-tap
+      - packages/ui/test/fleet-screen.test.tsx::keeps-the-checksum-on-screen-while-it-is-being-typed
       - packages/ui/test/fleet-screen.test.tsx::says-what-forgetting-costs-and-what-it-does-not
       - packages/ui/test/fleet-screen.test.tsx::reports-a-refusal-rather-than-claiming-it-went
       - packages/ui/test/fleet-screen.test.tsx::offers-nothing-when-there-is-nowhere-to-send-it
@@ -986,15 +1009,18 @@ invariants:
 
   - id: INV-UI-87
     statement: >
-      Changing a passphrase says first that it changes no address, refuses
-      until the new one is typed twice identically, refuses one identical to
-      the old, states what cannot be recovered before the change rather than
-      after, and reports a refusal rather than claiming the change went
-      through.
+      Changing a passphrase says that it changes no address, refuses until the
+      new one is typed twice identically, refuses one identical to the old,
+      states what cannot be recovered before the change rather than after, and
+      reports a refusal rather than claiming the change went through. All three
+      fields are filled from one on-screen keyboard, because the panel holds
+      one, and the keys go to the field that was tapped and to no other.
     tests:
       - packages/ui/test/manage-passphrase.test.tsx::says-first-that-this-does-not-change-any-address
       - packages/ui/test/manage-passphrase.test.tsx::will-not-change-anything-until-the-new-one-is-typed-twice-the-same
       - packages/ui/test/manage-passphrase.test.tsx::refuses-a-new-passphrase-identical-to-the-old-one
+      - packages/ui/test/manage-passphrase.test.tsx::fills-each-of-the-three-fields-from-the-one-keyboard
+      - packages/ui/test/manage-passphrase.test.tsx::types-into-the-field-that-was-tapped
       - packages/ui/test/manage-passphrase.test.tsx::says-what-cannot-be-recovered-before-the-change-happens
       - packages/ui/test/manage-passphrase.test.tsx::reports-a-refusal-rather-than-claiming-it-changed
       - packages/ui/test/manage-passphrase.test.tsx::confirms-the-change-rather-than-returning-silently
@@ -1129,12 +1155,18 @@ invariants:
 
   - id: INV-UI-97
     statement: >
-      Every screen fits the panel without hiding the input device. The on-screen
-      keyboard is fully visible before anything is scrolled, because this
-      machine has no other way to type, and the header is one height on every
-      screen so the title does not move between them. Held by
-      tools/checks/check-screen-fit.mjs rather than by a unit test: jsdom computes no
-      box model, so nothing else in the suite can see either.
+      Every screen fits the panel without hiding the input device, and every
+      field somebody has to fill has something on that panel to fill it with.
+      The on-screen keyboard is fully visible before anything is scrolled and
+      stays visible after the first keystroke, because this machine has no other
+      way to type and nothing above a keyboard may change size while somebody is
+      typing on it. It is measured on its tallest layer rather than the one it
+      opens on, because the symbol layer was a row taller than the letters and
+      ran under the action bar on five screens including the unlock gate. The header is one height on every screen so the title does
+      not move between them. Held by tools/checks/check-screen-fit.mjs and
+      tools/checks/check-typeable.mjs rather than by a unit test: jsdom computes
+      no box model and types into anything, so nothing else in the suite can see
+      either. Five fields shipped with no keyboard bound to them at all.
     tests:
       - packages/ui/test/keyboard.test.tsx::hides-what-is-typed-by-default
       - packages/ui/test/keyboard.test.tsx::shows-what-is-typed-when-it-is-not-a-secret

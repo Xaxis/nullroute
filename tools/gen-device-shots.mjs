@@ -160,6 +160,10 @@ async function main() {
         const r = await cdp(page, 'Runtime.evaluate', {
           expression: reachStep(step),
           returnByValue: true,
+          // A `keys:` step types on the on-screen keyboard and has to wait for
+          // React between taps, so it resolves rather than returning. Harmless
+          // for the rest: CDP returns a non-promise result unchanged.
+          awaitPromise: true,
         })
         if (r.result.value === 'clicked') break
         await sleep(80)

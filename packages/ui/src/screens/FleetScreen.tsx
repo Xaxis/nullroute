@@ -82,11 +82,22 @@ export function FleetScreen(props: FleetScreenProps): ReactElement {
 
   // --- Confirming a removal -------------------------------------------------
   if (forgetting !== null) {
-    const confirmed = typed.trim() === forgetting.checksum
+    // Case folded, for the reason the erase panel folds it: the only keyboard
+    // on this device has a one-shot shift, and what the gesture proves is that
+    // the person can read the checksum off the header, not that they can work
+    // the shift key. The checksum is lower case base32 to begin with.
+    const confirmed = typed.trim().toLowerCase() === forgetting.checksum.toLowerCase()
     return (
       <Screen
         title="Forget this quorum"
-        subtitle={`${String(forgetting.threshold)} of ${String(forgetting.total)}`}
+        /* THE CHECKSUM IS IN THE HEADER BECAUSE IT HAS TO SURVIVE BEING COPIED.
+           It used to appear only as the placeholder on the field and on the
+           keyboard, and a placeholder is gone the moment somebody types into
+           it: you tapped one character of an eight character base32 string and
+           the other seven were no longer on the screen. The header does not
+           scroll, which is the same reason the erase panel puts the wallet name
+           there. */
+        subtitle={`${String(forgetting.threshold)} of ${String(forgetting.total)}, checksum ${forgetting.checksum}`}
         banner={banner}
         nav={nav}
         identity={identity}
@@ -130,44 +141,16 @@ export function FleetScreen(props: FleetScreenProps): ReactElement {
           </>
         }
       >
-        {/* What it costs, which is not what people assume. A registration is
-            not a key, so nothing here loses money. What it loses is the
-            device's ability to tell this quorum's change from a stranger. */}
-        <div className="nr-banner nr-banner--caution" data-testid="fleet-forget-cost">
-          <strong>This does not lose any money</strong>
-          <span>
-            A registration is not a key. What you lose is this device recognising that
-            quorum&rsquo;s change as its own, so change coming back from it will read as a payment
-            to a stranger on the signing screen until you register the descriptor again. Keep the
-            descriptor somewhere if you might want it back.
-          </span>
-        </div>
-
-        <div className="nr-field">
-          <span className="nr-field__label">Type the checksum to confirm</span>
-          {/* Read-only, with the keyboard below. This screen had no way to
-              type at all, so the confirmation it demands could not be given on
-              the device: forgetting a quorum was gated behind an eight
-              character checksum and a field nothing could fill. */}
-          <input
-            className="nr-input nr-mono"
-            value={typed}
-            spellCheck={false}
-            placeholder={forgetting.checksum}
-            onChange={(e) => {
-              setTyped(e.target.value)
-            }}
-            data-testid="fleet-forget-confirm"
-          />
-        </div>
-
-        {!busy && (
-          <TextKeyboard
-            value={typed}
-            onChange={setTyped}
-            placeholder={forgetting.checksum}
-            testId="fleet-forget-keyboard"
-          />
+        {/* FIRST IN THE BODY, because a refusal nobody sees is a refusal that
+            did not happen. This was last, under the keyboard, which put it at
+            528..568 on a panel whose body ends at 407: a hundred and sixty one
+            pixels below the fold. Tapping Forget it and being refused changed
+            nothing the user could see. ManageWalletScreen carries the same
+            comment for the same reason. */}
+        {error !== null && (
+          <Refusal title="Not forgotten" testId="fleet-forget-error">
+            {error}
+          </Refusal>
         )}
 
         {/* FORGETTING A QUORUM RESEALS THE WALLET, which is not what the word
@@ -182,11 +165,55 @@ export function FleetScreen(props: FleetScreenProps): ReactElement {
           </Working>
         )}
 
-        {error !== null && (
-          <Refusal title="Not forgotten" testId="fleet-forget-error">
-            {error}
-          </Refusal>
+        {/* What it costs, which is not what people assume. A registration is
+            not a key, so nothing here loses money. What it loses is the
+            device's ability to tell this quorum's change from a stranger.
+
+            A HEADING AND TWO LINES, because the panel holds a keyboard and the
+            budget above the keys is 70px. This said four lines and the field
+            below it took another 68, so the keys ran to 514 against an action
+            bar at 407: a hundred and seven pixels of the only input device this
+            machine has, underneath the bar. Nothing had ever reported it,
+            because the tap that reaches this panel is a row low in a list, and
+            the harness scrolled the body to reach it before measuring. */}
+        <div className="nr-banner nr-banner--caution" data-testid="fleet-forget-cost">
+          <strong>This does not lose any money</strong>
+          <span>
+            A registration is not a key. Change coming back from that quorum will read as a payment
+            to a stranger until you register the descriptor again.
+          </span>
+        </div>
+
+        {/* THE KEYBOARD READOUT IS THE FIELD, the way it is on the panel that
+            erases a wallet. A labelled input above the keys showed the same
+            eight characters twice and cost 82px of the 70 there are, and it
+            showed them in plain mono while the readout under it showed dots:
+            the same value, on the same panel, contradicting itself about
+            whether it was a secret.
+
+            It is not. A checksum is what you compare against the header, and
+            dots compare to nothing. */}
+        {!busy && (
+          <TextKeyboard
+            value={typed}
+            onChange={(next) => {
+              setError(null)
+              setTyped(next)
+            }}
+            secret={false}
+            placeholder="Type the checksum to confirm"
+            testId="fleet-forget-keyboard"
+          />
         )}
+
+        {/* Below the keys, because it is advice rather than a warning: what to
+            do if you might want the quorum back, which is not a thing anybody
+            needs to read before deciding. */}
+        <Info testId="fleet-forget-keep">
+          Keep the descriptor somewhere if you might want it back. Registering it again is the only
+          way this device recognises that quorum&rsquo;s change as its own, and nothing here can
+          reconstruct a descriptor it has forgotten.
+        </Info>
       </Screen>
     )
   }

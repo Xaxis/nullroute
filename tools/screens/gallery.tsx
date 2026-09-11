@@ -1577,29 +1577,71 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   manage: [
     ['manage-choose-rename'],
     ['manage-choose-destroy'],
-    // The tallest state on this screen: a banner about what it does not
-    // change, three password fields, and a paragraph about what cannot be
-    // recovered.
+    // The tallest state on this screen: three password fields on one row, a
+    // keyboard, and below them a banner about what this does not change.
     ['manage-choose-passphrase'],
-    // The name field starts empty when the label is unverified, which is what
-    // this fixture is, so it is typed rather than assumed.
+    /*
+     * TYPED ON THE DEVICE'S OWN KEYBOARD, which is the point of these three.
+     *
+     * Every one of these panels used to be reached with `type:`, which sets an
+     * input's value through the React setter. That is what a workstation with a
+     * real keyboard does. This hardware has no keyboard and installs no virtual
+     * one, so `type:` was reporting five fields as reachable that a person
+     * holding the device could not fill at all.
+     *
+     * `keys:` taps the keys, so it also measures the state somebody is actually
+     * in while typing: the keyboard on the panel, the field it is filling
+     * marked, and whatever the row above it has grown into.
+     */
     [
       'manage-choose-rename',
-      'type:manage-label:Cold storage, three of five',
-      'pk-key-a',
+      // The name field starts empty when the label is unverified, which is
+      // what this fixture is, so it is typed rather than assumed. Tapped
+      // first: the keyboard starts on the passphrase, because a passphrase
+      // typed into the name field would be shown in plain text and then
+      // sealed as the wallet's name.
+      'manage-label',
+      'keys:cold storage',
+      'manage-rename-passphrase',
+      'keys:abc',
       'manage-rename-submit',
     ],
-    [
-      'manage-choose-destroy',
-      'type:manage-destroy-confirm:Cold storage, three of five',
-      'manage-destroy-submit',
-    ],
+    /*
+     * The whole wallet name, on the keyboard, including the comma.
+     *
+     * Twenty seven taps with one shift and a trip to the symbol layer, which is
+     * the most expensive gesture on the device and is supposed to be. It is
+     * also the one that proves the confirmation can be completed at all: this
+     * panel shipped with a field and no keyboard, so the wallet could not be
+     * erased from the hardware and could be erased from a browser.
+     */
+    ['manage-choose-destroy', 'keys:Cold storage, three of five', 'manage-destroy-submit'],
     [
       'manage-choose-passphrase',
-      'type:manage-passphrase-old:old one',
-      'type:manage-passphrase-new:new one',
-      'type:manage-passphrase-confirm:new one',
+      'manage-passphrase-old',
+      'keys:old one',
+      'manage-passphrase-new',
+      'keys:new one',
+      'manage-passphrase-confirm',
+      'keys:new one',
       'manage-passphrase-submit',
+    ],
+    /*
+     * The two new passphrases do not match, which is a sentence in the action
+     * bar rather than a line under the third field.
+     *
+     * MEASURED BECAUSE OF WHERE IT MOVED TO. Under the field it would appear on
+     * a keystroke and push the bottom row of keys down, which is the rule the
+     * stylesheet states for `.nr-field__labelrow`. In the bar it shares a fixed
+     * row with the way out of the screen and the button it is explaining, and
+     * nothing had ever drawn that row with a sentence in it.
+     */
+    [
+      'manage-choose-passphrase',
+      'manage-passphrase-new',
+      'keys:new one',
+      'manage-passphrase-confirm',
+      'keys:new onr',
     ],
   ],
   // Typed rather than tapped out on the word keyboard. Twelve words is forty
@@ -1609,28 +1651,35 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
     ['import-typed-toggle'],
     ['import-typed-toggle', `type:import-mnemonic:${MNEMONIC}`, 'import-submit'],
   ],
-  // Forgetting a quorum, confirmed by typing its checksum back.
-  fleet: [
-    ['fleet-forget-start'],
-    ['fleet-forget-start', 'type:fleet-forget-confirm:8rf6pq2t', 'fleet-forget-submit'],
-  ],
-  'fleet-forget-working': [
-    ['fleet-forget-start', 'type:fleet-forget-confirm:8rf6pq2t', 'fleet-forget-submit'],
-  ],
+  /*
+   * Forgetting a quorum, confirmed by typing its checksum back.
+   *
+   * ON THE KEYS, not through the input's value. The checksum is eight
+   * characters of base32 and four of them are digits, so this is also the only
+   * reach on the device that crosses to the symbol layer and back, which is a
+   * thing a person has to do here and nothing had ever checked was possible.
+   */
+  fleet: [['fleet-forget-start'], ['fleet-forget-start', 'keys:8rf6pq2t', 'fleet-forget-submit']],
+  'fleet-forget-working': [['fleet-forget-start', 'keys:8rf6pq2t', 'fleet-forget-submit']],
   'manage-rename-working': [
     [
       'manage-choose-rename',
-      'type:manage-label:Cold storage, three of five',
-      'pk-key-a',
+      'manage-label',
+      'keys:cold storage',
+      'manage-rename-passphrase',
+      'keys:abc',
       'manage-rename-submit',
     ],
   ],
   'manage-passphrase-working': [
     [
       'manage-choose-passphrase',
-      'type:manage-passphrase-old:old one',
-      'type:manage-passphrase-new:new one',
-      'type:manage-passphrase-confirm:new one',
+      'manage-passphrase-old',
+      'keys:old one',
+      'manage-passphrase-new',
+      'keys:new one',
+      'manage-passphrase-confirm',
+      'keys:new one',
       'manage-passphrase-submit',
     ],
   ],

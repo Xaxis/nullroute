@@ -41,6 +41,29 @@ function type(testId: string, value: string): void {
   fireEvent.change(screen.getByTestId(testId), { target: { value } })
 }
 
+/**
+ * Tap a field to select it, then type on the device's own keyboard.
+ *
+ * ONE KEYBOARD FOR THREE FIELDS, because the panel holds one: the body is 287px
+ * and the keyboard is 188 of it, so everything above the keys is 70px, which is
+ * one row. Stacked, these three fields were 204px, which is why this screen
+ * shipped with three inputs and no way to fill any of them on the hardware.
+ */
+function tapOut(testId: string, text: string): void {
+  fireEvent.click(screen.getByTestId(testId))
+  for (const character of text) {
+    if (character === ' ') {
+      fireEvent.click(screen.getByTestId('pk-space'))
+      continue
+    }
+    const letter = /[a-zA-Z]/.test(character)
+    const onSymbols = screen.getByTestId('pk-symbols').textContent === 'abc'
+    if (letter === onSymbols) fireEvent.click(screen.getByTestId('pk-symbols'))
+    if (/[A-Z]/.test(character)) fireEvent.click(screen.getByTestId('pk-shift'))
+    fireEvent.click(screen.getByTestId(`pk-key-${character}`))
+  }
+}
+
 describe('ManageWalletScreen passphrase change', () => {
   /**
    * INV-UI-87. The single most dangerous belief a user can leave this screen
@@ -81,6 +104,51 @@ describe('ManageWalletScreen passphrase change', () => {
 
     expect(screen.getByTestId('manage-passphrase-same')).toBeTruthy()
     expect(screen.getByTestId<HTMLButtonElement>('manage-passphrase-submit').disabled).toBe(true)
+  })
+
+  /**
+   * INV-UI-87. All three fields are fillable on the panel this ships on.
+   *
+   * THE DEFECT THIS EXISTS FOR. These three inputs had no keyboard bound to
+   * them at all. They could be filled perfectly under `make dev` in a browser,
+   * every test on this screen passed, and on the device there was no way to
+   * change a passphrase: no virtual keyboard is installed in the image and cage
+   * provides none. Typing through `fireEvent.change` is what hid it, so this
+   * one taps the keys.
+   */
+  it('fills-each-of-the-three-fields-from-the-one-keyboard', async () => {
+    const { onChange } = open()
+
+    tapOut('manage-passphrase-old', 'old one')
+    tapOut('manage-passphrase-new', 'new one')
+    tapOut('manage-passphrase-confirm', 'new one')
+
+    expect(screen.getByTestId<HTMLButtonElement>('manage-passphrase-submit').disabled).toBe(false)
+    fireEvent.click(screen.getByTestId('manage-passphrase-submit'))
+    await waitFor(() => {
+      expect(onChange).toHaveBeenCalledWith('old one', 'new one')
+    })
+  })
+
+  /**
+   * The keys go to the field that was tapped, and to no other.
+   *
+   * The loose half of this is the dangerous one: a keyboard that kept filling
+   * the first field while the user looked at the third would produce two
+   * passphrases that do not match and no way to see why.
+   */
+  it('types-into-the-field-that-was-tapped', () => {
+    open()
+    tapOut('manage-passphrase-old', 'abc')
+    tapOut('manage-passphrase-new', 'de')
+
+    expect(screen.getByTestId<HTMLInputElement>('manage-passphrase-old').value).toBe('abc')
+    expect(screen.getByTestId<HTMLInputElement>('manage-passphrase-new').value).toBe('de')
+    expect(screen.getByTestId<HTMLInputElement>('manage-passphrase-confirm').value).toBe('')
+    // The readout follows the selection rather than the last thing typed
+    // anywhere, which is the only thing on the panel saying which field the
+    // next key lands in.
+    expect(screen.getByTestId('pk-length').textContent).toBe('2')
   })
 
   /**

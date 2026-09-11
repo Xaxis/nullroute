@@ -66,6 +66,48 @@ for (const pair of pairs) {
   }
 }
 
+/**
+ * A number the frontend enforces against the one the daemon enforces.
+ *
+ * THE DRIFT THIS EXISTS FOR. The rename field carried maxLength={48} and
+ * `normaliseLabel` refused anything over 32. Everything between the two was
+ * typeable, accepted by the field, and then refused after the passphrase had
+ * been derived twice: several seconds of a device that looks frozen, followed
+ * by a refusal quoting a rule the screen had just contradicted.
+ *
+ * A string comparison on the digits, for the same reason the lists above are
+ * compared as text: parsing TypeScript to read two integers would be a more
+ * impressive check and a less reliable one.
+ */
+function integer(path, name) {
+  const source = readFileSync(join(ROOT, path), 'utf8')
+  const match = new RegExp(`${name}\\s*=\\s*(\\d+)`).exec(source)
+  if (match === null) {
+    console.error(`check-ui-constants: ${name} not found in ${path}, so this check is blind.`)
+    process.exit(1)
+  }
+  return match[1]
+}
+
+const limits = [
+  {
+    what: 'the longest wallet name',
+    a: { path: 'packages/daemon/src/store/registry.ts', name: 'MAX_LABEL' },
+    b: { path: 'packages/ui/src/screens/ManageWalletScreen.tsx', name: 'NAME_LIMIT' },
+  },
+]
+
+for (const limit of limits) {
+  const a = integer(limit.a.path, limit.a.name)
+  const b = integer(limit.b.path, limit.b.name)
+  if (a !== b) {
+    failures.push(
+      `  ${limit.what}: ${limit.a.name} is ${a} and ${limit.b.name} is ${b}, so every name ` +
+        `between them is one the field accepts and the daemon refuses`
+    )
+  }
+}
+
 // Every colour the daemon accepts needs a swatch rule, or the swatch renders as
 // nothing and the user taps an invisible button.
 const css = readFileSync(join(ROOT, 'packages/ui/src/styles.css'), 'utf8')
@@ -186,7 +228,7 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `check-ui-constants: ${String(pairs.length)} constant(s) restated in the frontend agree with ` +
+  `check-ui-constants: ${String(pairs.length + limits.length)} constant(s) restated in the frontend agree with ` +
     `the daemon, every custom property the stylesheet reads is defined and emitted, ` +
     `every journey routes to a stage that exists`
 )

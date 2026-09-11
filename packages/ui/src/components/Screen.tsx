@@ -127,6 +127,32 @@ export function Screen(props: ScreenProps): ReactElement {
     report()
   }, [report, children])
 
+  /**
+   * A NEW SCREEN STARTS AT THE TOP OF ITSELF.
+   *
+   * React reconciles the several panels a screen returns as the same element in
+   * the same position, so this body is one DOM node across all of them and kept
+   * whatever scroll offset the last one had. Every screen here is reached by
+   * tapping a control, and a control low in a list is one the user scrolled to,
+   * so the panel that replaced it opened part way down.
+   *
+   * MEASURED, not supposed. Tapping "Change the passphrase" on the manage menu
+   * arrived at the passphrase panel scrolled 58px: its row of three fields sat
+   * at 77..145 against a body that starts at 121, so forty four of its sixty
+   * eight pixels were above the top of the visible area, labels first. Tapping
+   * a quorum to forget arrived with the caution banner saying what forgetting
+   * costs already scrolled off.
+   *
+   * KEYED ON testId AND NOTHING ELSE. Not on `children`, which changes on every
+   * keystroke: PsbtScreen refuses to sign until the body has reached its end,
+   * and resetting there would make that gate unreachable and would throw away
+   * the reading position of somebody halfway down a transaction.
+   */
+  useEffect(() => {
+    const el = body.current
+    if (el !== null) el.scrollTop = 0
+  }, [testId])
+
   return (
     <section className="nr-screen" data-testid={testId}>
       <header className="nr-screen__head">

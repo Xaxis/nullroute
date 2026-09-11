@@ -58,25 +58,28 @@ const BY_WORDS = new Map([
 ])
 
 /**
- * KNOWN UNREACHABLE, WITH THE MEASUREMENT THAT SAYS WHY NOT YET.
+ * FIELDS WITH NO KEYBOARD YET, WITH THE MEASUREMENT THAT SAYS WHY NOT.
  *
- * These are defects, listed rather than hidden, and the list is not permission.
- * The fix was written and check-screen-fit refused it with numbers: the keyboard
- * is 144px tall and has to start by 263px for its bottom row to clear the action
- * bar, and these panels start it where each entry says. Every one needs content
- * cut above the keyboard, which is a redesign per panel rather than a nudge, and
- * a layout whose bottom rows of keys sit under the action bar is not better than
- * one that is honestly missing.
+ * Empty, and it was not. Five fields sat here: the three that change a
+ * passphrase, the one that renames a wallet, and the one that confirms an
+ * erase. Every one of them was a defect listed rather than hidden, and the
+ * first attempt at fixing them was refused by check-screen-fit with numbers.
  *
- * The point of listing them is that the set cannot GROW without this failing.
+ * THE NUMBER THAT MADE IT POSSIBLE. The body of a screen on this panel is
+ * 287px. The keyboard is 188 of it and the gap above it another 14, so
+ * everything else on a screen that can be typed on adds up to 70px: one row of
+ * labelled fields, and no second row at any height. Three stacked fields are
+ * 204 and there was no arrangement of them that left room for the keys.
+ *
+ * So the rows went sideways, the explanations went below the keys, and on the
+ * erase panel the keyboard's own readout became the field, because a labelled
+ * input showing the same string twice costs 82px of the 70 there are.
+ *
+ * The list stays because the rule is that it cannot GROW without this failing.
+ * An entry here needs the measurement that says why not yet, and a layout whose
+ * bottom rows of keys sit under the action bar is not one.
  */
-const UNREACHABLE = new Map([
-  ['manage-passphrase-old', 'ManageWalletScreen passphrase panel, keyboard would start at 414'],
-  ['manage-passphrase-new', 'ManageWalletScreen passphrase panel, keyboard would start at 414'],
-  ['manage-passphrase-confirm', 'ManageWalletScreen passphrase panel, keyboard would start at 475'],
-  ['manage-label', 'ManageWalletScreen rename panel, keyboard would start at 398'],
-  ['manage-destroy-confirm', 'ManageWalletScreen destroy panel, keyboard would start at 407'],
-])
+const UNREACHABLE = new Map()
 
 let problems = 0
 const fail = (message) => {
@@ -85,6 +88,8 @@ const fail = (message) => {
 }
 
 const found = new Set()
+/** Fields a keyboard on their own screen is bound to. */
+const byKeyboard = new Set()
 let fields = 0
 
 for (const file of readdirSync(SCREENS).filter((name) => name.endsWith('.tsx'))) {
@@ -110,6 +115,7 @@ for (const file of readdirSync(SCREENS).filter((name) => name.endsWith('.tsx')))
     if (BY_CAMERA.has(id) || BY_WORDS.has(id)) continue
 
     const bound = bindings.some((expression) => new RegExp(`\\b${value}\\b`).test(expression))
+    if (bound) byKeyboard.add(id)
     if (!bound) {
       fail(
         `${file} has ${id}, which somebody has to fill, and no keyboard on the ` +
@@ -132,6 +138,40 @@ for (const [name, why] of [...UNREACHABLE, ...BY_CAMERA, ...BY_WORDS]) {
   }
 }
 
+/**
+ * A field the keyboard fills is REACHED through the keyboard.
+ *
+ * THE SECOND HALF OF THE SAME BUG. The screen gallery reaches a state by tapping
+ * testids, and one of its steps is `type:<testid>:<text>`, which finds the input
+ * and sets its value through the React setter. That is what a workstation with a
+ * real keyboard does, and it is how five unfillable fields were measured,
+ * screenshotted and contrast-checked for months while reading as reachable.
+ *
+ * Fixing the fields is not enough on its own: nothing stopped the next reach
+ * list from going back to the easy route, and a harness that types the way the
+ * hardware cannot is a harness that certifies screens nobody can use.
+ *
+ * So `type:` is now reserved for the fields that are genuinely filled some other
+ * way: the camera ones, and the mnemonic box that exists to be pasted into. Use
+ * `keys:<text>` for anything else, which taps the keys and fails when the string
+ * cannot be produced on the keyboard this device actually has.
+ */
+const GALLERY = join(ROOT, 'tools/screens/gallery.tsx')
+let reached = 0
+for (const match of readFileSync(GALLERY, 'utf8').matchAll(/'type:([^:']+):/g)) {
+  const id = match[1]
+  reached += 1
+  if (BY_CAMERA.has(id) || BY_WORDS.has(id)) continue
+  if (!byKeyboard.has(id)) continue
+  fail(
+    `the gallery reaches ${id} with a "type:" step, and that field is filled by ` +
+      'an on-screen keyboard on the device. Setting its value directly is a route ' +
+      'the hardware does not have, so every guard that measures the state after it ' +
+      'is measuring something nobody can reach. Use "keys:" instead, which taps the ' +
+      'keys.'
+  )
+}
+
 if (problems > 0) {
   console.error(`\ncheck-typeable: ${String(problems)} problem(s)`)
   process.exit(1)
@@ -140,5 +180,7 @@ if (problems > 0) {
 console.log(
   `check-typeable: ${String(fields)} writable field(s), ` +
     `${String(BY_CAMERA.size)} filled by camera, ${String(BY_WORDS.size)} by the word keyboard, ` +
-    `${String(UNREACHABLE.size)} still unreachable and listed, the rest bound to a keyboard`
+    `${String(UNREACHABLE.size)} still unreachable and listed, ${String(byKeyboard.size)} bound to ` +
+    `a keyboard, and ${String(reached)} gallery "type:" step(s), none of them on a field a ` +
+    `keyboard fills`
 )

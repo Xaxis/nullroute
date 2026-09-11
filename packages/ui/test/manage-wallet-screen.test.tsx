@@ -22,6 +22,33 @@ afterEach(cleanup)
 
 const button = (testId: string): HTMLButtonElement => screen.getByTestId<HTMLButtonElement>(testId)
 
+/**
+ * Type on the device's own keyboard, the way somebody holding it has to.
+ *
+ * NOT `fireEvent.change`, which is what these tests used and is the reason the
+ * screen shipped with fields nobody could fill. Setting an input's value is
+ * what a workstation with a real keyboard does; this hardware installs no
+ * virtual keyboard and cage provides none, so the only way in is the keys on
+ * the panel. A test that types the other way passes against a screen a user
+ * cannot operate, which is exactly what happened here on four screens.
+ *
+ * Shift is one-shot and the symbol layer is sticky, so this handles them the
+ * way a finger does.
+ */
+function tapOut(text: string): void {
+  for (const character of text) {
+    if (character === ' ') {
+      fireEvent.click(screen.getByTestId('pk-space'))
+      continue
+    }
+    const letter = /[a-zA-Z]/.test(character)
+    const onSymbols = screen.getByTestId('pk-symbols').textContent === 'abc'
+    if (letter === onSymbols) fireEvent.click(screen.getByTestId('pk-symbols'))
+    if (/[A-Z]/.test(character)) fireEvent.click(screen.getByTestId('pk-shift'))
+    fireEvent.click(screen.getByTestId(`pk-key-${character}`))
+  }
+}
+
 function setup(overrides: Partial<React.ComponentProps<typeof ManageWalletScreen>> = {}) {
   const onRename = vi.fn().mockResolvedValue(undefined)
   const onDestroy = vi.fn().mockResolvedValue(undefined)
@@ -52,15 +79,12 @@ describe('ManageWalletScreen', () => {
     fireEvent.click(screen.getByTestId('manage-choose-destroy'))
     expect(button('manage-destroy-submit').disabled).toBe(true)
 
-    // A near miss is still a miss.
-    fireEvent.change(screen.getByTestId('manage-destroy-confirm'), {
-      target: { value: 'Family Vaul' },
-    })
+    // A near miss is still a miss, and it is typed on the keyboard the device
+    // actually has rather than pushed into an input.
+    tapOut('Family Vaul')
     expect(button('manage-destroy-submit').disabled).toBe(true)
 
-    fireEvent.change(screen.getByTestId('manage-destroy-confirm'), {
-      target: { value: 'Family Vault' },
-    })
+    tapOut('t')
     expect(button('manage-destroy-submit').disabled).toBe(false)
 
     fireEvent.click(screen.getByTestId('manage-destroy-submit'))
@@ -70,15 +94,38 @@ describe('ManageWalletScreen', () => {
   })
 
   /**
-   * A touchscreen keyboard adds trailing spaces the user cannot see, and
-   * refusing over an invisible character teaches nothing.
+   * The confirmation has to be completable on the panel it ships on.
+   *
+   * THE DEFECT THIS REPLACED. This screen had a labelled input and no keyboard
+   * bound to it, so the name could be typed in a browser under `make dev` and
+   * nowhere on the hardware: a wallet that could not be erased by the person
+   * holding it. Typing it out is the whole gesture, so the gesture has to work.
    */
-  it('ignores-whitespace-around-the-typed-name', () => {
+  it('is-confirmed-on-the-on-screen-keyboard-and-nothing-else', () => {
     setup()
     fireEvent.click(screen.getByTestId('manage-choose-destroy'))
-    fireEvent.change(screen.getByTestId('manage-destroy-confirm'), {
-      target: { value: '  Family Vault ' },
-    })
+    // There is no field to fill. The keyboard's own readout is the field.
+    expect(screen.queryByTestId('manage-destroy-confirm')).toBeNull()
+    tapOut('Family Vault')
+    // Shown in plain text, because the gesture is comparing it against the name
+    // in the header and a row of dots compares to nothing.
+    expect(screen.getByTestId('pk-plain').textContent).toBe('Family Vault')
+    expect(button('manage-destroy-submit').disabled).toBe(false)
+  })
+
+  /**
+   * Case is not part of the proof, and on this keyboard it is expensive.
+   *
+   * What the gesture proves is that you know which wallet this is. Shift is
+   * one-shot on the on-screen keyboard, so requiring exact capitalisation adds
+   * failures rather than proof, and somebody who cannot finish it cannot erase
+   * a wallet they own. Whitespace is collapsed for the same reason the daemon
+   * collapses it in `normaliseLabel`.
+   */
+  it('ignores-case-and-whitespace-around-the-typed-name', () => {
+    setup()
+    fireEvent.click(screen.getByTestId('manage-choose-destroy'))
+    tapOut('family vault ')
     expect(button('manage-destroy-submit').disabled).toBe(false)
   })
 
@@ -117,6 +164,72 @@ describe('ManageWalletScreen', () => {
     await waitFor(() => {
       expect(onRename).toHaveBeenCalledWith('Cold', 'amber', 'ab')
     })
+  })
+
+  /**
+   * The name is typeable on the device, and the keyboard says which field it is
+   * filling.
+   *
+   * ONE KEYBOARD, TWO FIELDS, because 480px of panel holds one: the body is
+   * 287px and the keyboard is 188 of it. Tapping a field is what selects it,
+   * the same way the unlock gate does it, and the field says so about itself
+   * rather than a pair of tabs saying it on the field's behalf.
+   */
+  it('fills-whichever-field-was-tapped', async () => {
+    const { onRename } = setup({ labelVerified: false })
+
+    fireEvent.click(screen.getByTestId('manage-choose-rename'))
+    // The name starts empty on a wallet whose label was never sealed, and
+    // before this there was no way at all to put anything in it on the device.
+    expect(screen.getByTestId<HTMLInputElement>('manage-label').value).toBe('')
+
+    fireEvent.click(screen.getByTestId('manage-label'))
+    tapOut('cold')
+    expect(screen.getByTestId<HTMLInputElement>('manage-label').value).toBe('cold')
+
+    fireEvent.click(screen.getByTestId('manage-rename-passphrase'))
+    tapOut('abc')
+    // The name kept what it had: the keys went to the other field.
+    expect(screen.getByTestId<HTMLInputElement>('manage-label').value).toBe('cold')
+
+    fireEvent.click(screen.getByTestId('manage-rename-submit'))
+    await waitFor(() => {
+      expect(onRename).toHaveBeenCalledWith('cold', 'teal', 'abc')
+    })
+  })
+
+  /**
+   * THE KEYBOARD STARTS ON THE PASSPHRASE, and which mistake it costs is the
+   * reason. Defaulting to the name means somebody who taps straight into the
+   * keys types their passphrase into a field that shows it in plain text on a
+   * lit panel, and then seals it as the wallet's name. Defaulting this way, a
+   * name typed into the wrong field appears as dots and is noticed at once.
+   */
+  it('types-into-the-passphrase-until-a-field-is-chosen', () => {
+    setup()
+    fireEvent.click(screen.getByTestId('manage-choose-rename'))
+    tapOut('secret')
+    expect(screen.getByTestId<HTMLInputElement>('manage-label').value).toBe('Family Vault')
+    expect(screen.getByTestId('pk-hidden')).toBeTruthy()
+    expect(screen.getByTestId('pk-length').textContent).toBe('6')
+  })
+
+  /**
+   * maxLength is an attribute of an input element, and the keyboard is not one.
+   *
+   * The field advertised a limit that held for a browser and not for the
+   * device: the keys called onChange with whatever had been tapped. A name past
+   * the daemon's limit is refused by `normaliseLabel` AFTER the passphrase has
+   * been derived twice, so the cost of not capping it here is several seconds
+   * of a device that looks frozen followed by a refusal.
+   */
+  it('will-not-let-the-keyboard-type-past-the-name-limit', () => {
+    setup()
+    fireEvent.click(screen.getByTestId('manage-choose-rename'))
+    fireEvent.click(screen.getByTestId('manage-label'))
+    // Starts at 'Family Vault', twelve characters, and the limit is 32.
+    tapOut('abcdefghijklmnopqrstuvwxyz')
+    expect(screen.getByTestId<HTMLInputElement>('manage-label').value.length).toBe(32)
   })
 
   it('offers-every-colour-the-daemon-accepts', () => {
@@ -165,9 +278,7 @@ describe('ManageWalletScreen', () => {
     setup({ onDestroy })
 
     fireEvent.click(screen.getByTestId('manage-choose-destroy'))
-    fireEvent.change(screen.getByTestId('manage-destroy-confirm'), {
-      target: { value: 'Family Vault' },
-    })
+    tapOut('Family Vault')
     fireEvent.click(screen.getByTestId('manage-destroy-submit'))
 
     await waitFor(() => {

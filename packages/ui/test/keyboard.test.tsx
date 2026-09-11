@@ -226,6 +226,138 @@ describe('TextKeyboard', () => {
     expect(value).toBe('Ab')
   })
 
+  /**
+   * INV-UI-29. EVERY SYMBOL THIS KEYBOARD HAS EVER PRODUCED IS STILL REACHABLE.
+   *
+   * The 42 symbols used to be one layer. At fourteen columns that is three rows
+   * of symbols and a fourth for the wide keys, so the symbol layer was 194px
+   * where the letter layer is 144, and five screens did not have the extra 50:
+   * the bottom row sat 48px under the action bar on the unlock gate. They are
+   * two pages of 21 now, and both pages are the same height as the letters.
+   *
+   * THE WAY THAT FIX COULD HAVE GONE WRONG is deleting symbols until the row
+   * fit. A character missing from this keyboard is a character nobody can type,
+   * and somebody whose passphrase contains it can never open their wallet
+   * again: no error, no explanation, no recovery. So the list here is written
+   * out in full rather than derived from the component, because a test that
+   * asks the component which symbols it has would agree with it after somebody
+   * deleted one.
+   */
+  it('can-still-type-every-symbol-it-ever-offered', () => {
+    // Written out one character at a time rather than spread from strings, for
+    // the reason TextKeyboard writes its own rows out: spreading a string
+    // produces code points and splitting one produces code units, and a
+    // keyboard is the last place to be casually wrong about characters. ESLint
+    // holds that line across this repo and caught this test taking the shortcut.
+    const EVERY = [
+      '0',
+      '1',
+      '2',
+      '3',
+      '4',
+      '5',
+      '6',
+      '7',
+      '8',
+      '9',
+      '!',
+      '@',
+      '#',
+      '$',
+      '%',
+      '^',
+      '&',
+      '*',
+      '(',
+      ')',
+      '-',
+      '_',
+      '=',
+      '+',
+      '[',
+      ']',
+      '{',
+      '}',
+      '|',
+      ';',
+      ':',
+      "'",
+      ',',
+      '.',
+      '<',
+      '>',
+      '/',
+      '?',
+      '~',
+      '`',
+      '"',
+      '\\',
+    ]
+    expect(EVERY.length).toBe(42)
+    expect(new Set(EVERY).size).toBe(42)
+
+    for (const character of EVERY) {
+      let value = ''
+      const onChange = vi.fn((next: string) => {
+        value = next
+      })
+      const view = render(<TextKeyboard value={value} onChange={onChange} testId="pk" />)
+      const again = (): void => {
+        view.rerender(<TextKeyboard value={value} onChange={onChange} testId="pk" />)
+      }
+
+      fireEvent.click(screen.getByTestId('pk-symbols'))
+      again()
+      // At most one page turn to reach any of them.
+      if (screen.queryByTestId(`pk-key-${character}`) === null) {
+        fireEvent.click(screen.getByTestId('pk-symbols-more'))
+        again()
+      }
+      const key = screen.queryByTestId(`pk-key-${character}`)
+      expect(key, `${character} is not on either symbol page`).not.toBeNull()
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- asserted above
+      fireEvent.click(key!)
+      again()
+      expect(value).toBe(character)
+      view.unmount()
+    }
+  })
+
+  /**
+   * INV-UI-29. The two pages are interchangeable in shape, so nothing under a
+   * finger moves when somebody turns one.
+   *
+   * jsdom computes no box model, so this asks the question it can: the same
+   * wide keys, in the same order, on both pages and on the letters. The height
+   * itself is check-screen-fit's, which measures the tallest layer.
+   */
+  it('keeps-the-wide-keys-in-the-same-order-on-every-layer', () => {
+    const wide = (): string[] =>
+      [...document.querySelectorAll('.nr-kb__key--wide')].map(
+        (el) => el.getAttribute('data-testid') ?? '?'
+      )
+
+    const onChange = vi.fn()
+    const view = render(
+      <TextKeyboard value="" onChange={onChange} onSubmit={vi.fn()} testId="pk" />
+    )
+    const letters = wide()
+    expect(letters[0]).toBe('pk-shift')
+
+    fireEvent.click(screen.getByTestId('pk-symbols'))
+    view.rerender(<TextKeyboard value="" onChange={onChange} onSubmit={vi.fn()} testId="pk" />)
+    const pageOne = wide()
+
+    fireEvent.click(screen.getByTestId('pk-symbols-more'))
+    view.rerender(<TextKeyboard value="" onChange={onChange} onSubmit={vi.fn()} testId="pk" />)
+    expect(wide()).toEqual(pageOne)
+
+    // The first cell is the only one that changes, and it changes to the page
+    // key, which is what paid for the second page of symbols.
+    expect(pageOne[0]).toBe('pk-symbols-more')
+    expect(pageOne.slice(1)).toEqual(letters.slice(1))
+  })
+
   it('reaches-digits-and-symbols', () => {
     let value = ''
     const onChange = vi.fn((next: string) => {

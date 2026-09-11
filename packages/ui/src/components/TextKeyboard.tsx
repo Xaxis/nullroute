@@ -76,15 +76,49 @@ const UPPER: readonly (readonly string[])[] = [
   ['K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T'],
   ['U', 'V', 'W', 'X', 'Y', 'Z'],
 ]
-const SYMBOLS: readonly (readonly string[])[] = [
+/**
+ * The symbols, on TWO PAGES, and the reason is a row of pixels.
+ *
+ * THE DEFECT THIS FIXES. All 42 were one layer. At 14 columns that is exactly
+ * three rows of symbols, which leaves the wide keys a fourth, so the symbol
+ * layer was 194px where the letter layer is 144. Five screens did not have the
+ * extra 50: measured against an action bar at 407, the bottom row of the symbol
+ * keys sat at 455 on the unlock gate, on both passphrase panels, and at 444 on
+ * the two that confirm an erase. The unlock gate is the first screen anybody
+ * touches on a provisioned device, and a passphrase with a digit in it is the
+ * path that screen's own strength estimate rewards.
+ *
+ * NOT FIXED BY REMOVING SYMBOLS, and this is the important half. A character
+ * dropped from this keyboard is a character nobody can type, and somebody whose
+ * passphrase contains it can never open their wallet again. There is no
+ * recovery from that and no way for them to find out why. Every one of the 42
+ * is still here, in at most one more tap than before.
+ *
+ * 21 and 21, so both pages are two rows of keys and the wide row lands in the
+ * same place on each. A page that was one row shorter would move Space and Back
+ * up as somebody switched pages, which is the rule `.nr-kb__keys` already
+ * states about letters that relocate under a finger.
+ *
+ * SPLIT BY WHAT PEOPLE TYPE, not down the middle of the old list. The first
+ * page is the digits and the punctuation that appears in a sentence, because
+ * the advice on the passphrase screen is to use one and a wallet on this device
+ * is called something like "Cold storage, three of five". Splitting it in list
+ * order put the comma and the apostrophe behind a page turn and left ^ and &
+ * on the first page, which is backwards. The second page is the rest, all of it
+ * still one tap from the first.
+ */
+const SYMBOLS_ONE: readonly (readonly string[])[] = [
   ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
-  ['!', '@', '#', '$', '%', '^', '&', '*', '(', ')'],
-  ['-', '_', '=', '+', '[', ']', '{', '}', '|', ';'],
-  [':', "'", ',', '.', '<', '>', '/', '?', '~', '`'],
-  ['"', '\\'],
+  ['.', ',', "'", '"', '!', '?', '-', ':', ';', '_'],
+  ['@'],
+]
+const SYMBOLS_TWO: readonly (readonly string[])[] = [
+  ['#', '$', '%', '^', '&', '*', '(', ')', '=', '+'],
+  ['[', ']', '{', '}', '|', '<', '>', '/', '~', '`'],
+  ['\\'],
 ]
 
-type Layer = 'lower' | 'upper' | 'symbols'
+type Layer = 'lower' | 'upper' | 'symbols' | 'symbols2'
 
 export function TextKeyboard(props: TextKeyboardProps): ReactElement {
   const { value, onChange, onSubmit, secret = true, placeholder = 'Nothing typed', testId } = props
@@ -92,7 +126,15 @@ export function TextKeyboard(props: TextKeyboardProps): ReactElement {
   const [layer, setLayer] = useState<Layer>('lower')
   const [revealed, setRevealed] = useState(false)
 
-  const rows = layer === 'lower' ? LOWER : layer === 'upper' ? UPPER : SYMBOLS
+  const rows =
+    layer === 'lower'
+      ? LOWER
+      : layer === 'upper'
+        ? UPPER
+        : layer === 'symbols'
+          ? SYMBOLS_ONE
+          : SYMBOLS_TWO
+  const onSymbols = layer === 'symbols' || layer === 'symbols2'
 
   const press = useCallback(
     (character: string) => {
@@ -140,27 +182,64 @@ export function TextKeyboard(props: TextKeyboardProps): ReactElement {
           ))
         )}
 
+        {/* THE WIDE KEYS ALWAYS START A ROW OF THEIR OWN.
+
+            `grid-column: 1 / span 2` rather than `span 2`, so auto-placement
+            cannot tuck the first of them into whatever cells the layer above
+            happened to leave. Letting them flow moves every key after it two
+            columns between the letter layer and the symbol layer: measured on
+            the unlock gate, Space went from x=127 to x=20 and Show landed
+            exactly where Back had been, so reaching for Back by memory after
+            tapping ?123 reveals the passphrase instead of deleting a
+            character. See `.nr-kb__key--row`. */}
+        {/* ONE KEY AT COLUMN 1, AND IT IS THE ONLY ONE THAT CHANGES.
+
+            The wide row has fourteen columns to spend and, on a screen whose
+            caller wants a return key, exactly fourteen to spend: Shift, the
+            layer key, Space at four, Back, Show and Return. Adding a second
+            symbol page had to come out of that budget or the row wrapped and
+            the keyboard grew by 50px, which is the whole defect this is fixing.
+
+            It comes out of Shift, which is the one key on a symbol layer with
+            nothing to do that is not already one tap away: from here, abc then
+            Shift. NO CHARACTER BECOMES UNTYPEABLE, which is the only line that
+            matters on this component. Every other key stays in the same cells
+            on every layer, so nothing relocates under a finger. */}
+        {onSymbols ? (
+          <button
+            type="button"
+            className="nr-kb__key nr-kb__key--wide nr-kb__key--row"
+            aria-pressed={layer === 'symbols2'}
+            onClick={() => {
+              setLayer(layer === 'symbols' ? 'symbols2' : 'symbols')
+            }}
+            data-testid="pk-symbols-more"
+          >
+            {layer === 'symbols' ? '=\\{}' : '!@#$'}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="nr-kb__key nr-kb__key--wide nr-kb__key--row"
+            aria-pressed={layer === 'upper'}
+            onClick={() => {
+              setLayer(layer === 'upper' ? 'lower' : 'upper')
+            }}
+            data-testid="pk-shift"
+          >
+            Shift
+          </button>
+        )}
         <button
           type="button"
           className="nr-kb__key nr-kb__key--wide"
-          aria-pressed={layer === 'upper'}
+          aria-pressed={onSymbols}
           onClick={() => {
-            setLayer(layer === 'upper' ? 'lower' : 'upper')
-          }}
-          data-testid="pk-shift"
-        >
-          Shift
-        </button>
-        <button
-          type="button"
-          className="nr-kb__key nr-kb__key--wide"
-          aria-pressed={layer === 'symbols'}
-          onClick={() => {
-            setLayer(layer === 'symbols' ? 'lower' : 'symbols')
+            setLayer(onSymbols ? 'lower' : 'symbols')
           }}
           data-testid="pk-symbols"
         >
-          {layer === 'symbols' ? 'abc' : '?123'}
+          {onSymbols ? 'abc' : '?123'}
         </button>
         <button
           type="button"

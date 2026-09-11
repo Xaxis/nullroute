@@ -131,6 +131,30 @@ describe('FleetScreen', () => {
  * or one for a wallet somebody stopped using, sat there deciding which outputs
  * this device calls change.
  */
+/**
+ * Type on the device's own keyboard, the way somebody holding it has to.
+ *
+ * NOT `fireEvent.change`, which is what these tests did. This screen has no
+ * field any more: the keyboard's own readout is the field, because a labelled
+ * input above the keys showed the same eight characters twice and cost 82px on
+ * a panel with 70 to spend. Setting an input's value was also a route the
+ * hardware does not have, which is how five fields on another screen came to be
+ * fillable in a browser and nowhere else.
+ */
+function tapOut(text: string): void {
+  for (const character of text) {
+    if (character === ' ') {
+      fireEvent.click(screen.getByTestId('pk-space'))
+      continue
+    }
+    const letter = /[a-zA-Z]/.test(character)
+    const onSymbols = screen.getByTestId('pk-symbols').textContent === 'abc'
+    if (letter === onSymbols) fireEvent.click(screen.getByTestId('pk-symbols'))
+    if (/[A-Z]/.test(character)) fireEvent.click(screen.getByTestId('pk-shift'))
+    fireEvent.click(screen.getByTestId(`pk-key-${character}`))
+  }
+}
+
 describe('FleetScreen forgetting', () => {
   function reachConfirm() {
     const onForget = vi.fn().mockResolvedValue(undefined)
@@ -147,10 +171,12 @@ describe('FleetScreen forgetting', () => {
     const onForget = reachConfirm()
 
     expect(screen.getByTestId<HTMLButtonElement>('fleet-forget-submit').disabled).toBe(true)
-    fireEvent.change(screen.getByTestId('fleet-forget-confirm'), { target: { value: 'q35wkfm' } })
+    // Seven of the eight is still a miss, and it is tapped out on the keys,
+    // which is the only way in on this hardware.
+    tapOut('q35wkfm')
     expect(screen.getByTestId<HTMLButtonElement>('fleet-forget-submit').disabled).toBe(true)
 
-    fireEvent.change(screen.getByTestId('fleet-forget-confirm'), { target: { value: 'q35wkfm7' } })
+    tapOut('7')
     expect(screen.getByTestId<HTMLButtonElement>('fleet-forget-submit').disabled).toBe(false)
     fireEvent.click(screen.getByTestId('fleet-forget-submit'))
     await waitFor(() => {
@@ -171,13 +197,35 @@ describe('FleetScreen forgetting', () => {
     expect(said).toContain('read as a payment to a stranger')
     // And how to undo it.
     expect(said).toContain('register the descriptor again')
+    // What to do about it is advice rather than warning, so it sits below the
+    // keys. The warning above them is a heading and two lines because the
+    // panel holds a keyboard and the budget above it is 70px.
+    expect(screen.getByTestId('fleet-forget-keep').textContent).toContain('Keep the descriptor')
+  })
+
+  /**
+   * INV-UI-84. The checksum stays on the panel while it is being copied.
+   *
+   * IT USED TO BE A PLACEHOLDER AND NOTHING ELSE, on the field and on the
+   * keyboard, so the eight characters somebody was asked to reproduce vanished
+   * the moment they typed the first one. The header does not scroll.
+   */
+  it('keeps-the-checksum-on-screen-while-it-is-being-typed', () => {
+    reachConfirm()
+    expect(screen.getByTestId('fleet-forget').textContent).toContain('q35wkfm7')
+    tapOut('q35')
+    // Still there, with three characters typed against it.
+    expect(screen.getByTestId('fleet-forget').textContent).toContain('q35wkfm7')
+    // And what was typed is readable rather than masked, because comparing it
+    // against the header is the whole gesture and dots compare to nothing.
+    expect(screen.getByTestId('pk-plain').textContent).toBe('q35')
   })
 
   it('reports-a-refusal-rather-than-claiming-it-went', async () => {
     const onForget = vi.fn().mockRejectedValue(new Error('This device has no registration.'))
     render(<FleetScreen quorums={[quorum()]} onForget={onForget} onBack={vi.fn()} />)
     fireEvent.click(screen.getByTestId('fleet-forget-start'))
-    fireEvent.change(screen.getByTestId('fleet-forget-confirm'), { target: { value: 'q35wkfm7' } })
+    tapOut('q35wkfm7')
     fireEvent.click(screen.getByTestId('fleet-forget-submit'))
 
     await waitFor(() => {

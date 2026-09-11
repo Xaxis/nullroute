@@ -681,12 +681,19 @@ about, and it cannot tell paper from a photograph.
 Under **Name or erase this wallet**. It needs the passphrase it has now, and
 the new one typed twice.
 
+All three sit on one row, and the on-screen keyboard fills whichever one you
+tapped last. The field being filled is outlined, because there is no cursor on
+this device to tell you. One keyboard rather than three, because the panel is
+480px tall and the keyboard is most of what is left after the header and the
+button row.
+
 **This changes what unlocks the file, not what derives your addresses.** The
 seed inside is untouched, so every address, every xpub and every descriptor
 stays exactly what it was, and your mnemonic still recovers them. A BIP-39
 passphrase is a different thing: that one feeds the seed itself, and nothing on
 this device can change it. Confusing the two is the one way to leave this screen
-badly wrong, so the screen says it above the fields.
+badly wrong, so the screen's subtitle says it and the full version is below the
+keyboard.
 
 Write the new one down before you tap. Nothing on this device can recover it,
 and a passphrase nobody remembers makes a wallet exactly as unreachable as one
@@ -699,9 +706,14 @@ at a locked device, and you have already opened this one.
 
 ### Erasing a wallet
 
-Requires typing the wallet's name. A confirmation that is a second tap is not a
-confirmation on a panel this size: the button lands where the previous screen's
-button was, and muscle memory does the rest.
+Requires typing the wallet's name on the on-screen keyboard. A confirmation
+that is a second tap is not a confirmation on a panel this size: the button
+lands where the previous screen's button was, and muscle memory does the rest.
+
+What you type appears in place of the keyboard's usual row of dots, so you can
+compare it against the name in the header. Capitals and extra spaces are
+ignored: what the device is asking is whether you know which wallet this is, and
+the shift key on a touchscreen is not part of that question.
 
 Renaming requires the passphrase, because the name is sealed inside the
 ciphertext. **A wrong passphrase there costs nothing** and does not count

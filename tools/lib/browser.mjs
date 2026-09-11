@@ -142,6 +142,103 @@ export function reachStep(step) {
       return 'clicked'
     })()`
   }
+  /*
+   * `keys:<text>` types on the device's own keyboard, key by key.
+   *
+   * WHY THIS EXISTS RATHER THAN `type:`. That one finds an input and sets its
+   * value through the React setter, which is what a workstation with a real
+   * keyboard does and is not available on this hardware: no virtual keyboard is
+   * installed in the image and cage provides none. Four screens shipped with
+   * fields that could be filled perfectly under `make dev` and not at all on
+   * the panel, and `type:` reported every one of them as reachable.
+   *
+   * This taps the keys. So it fails when a string cannot be produced on the
+   * keyboard the device actually has, which is the claim worth checking on a
+   * screen that will not erase a wallet until its name has been typed out.
+   *
+   * The layers are handled the way a finger handles them: shift is one-shot and
+   * resets itself, the symbol layer is sticky and has to be tapped off again.
+   *
+   * VERIFIED RATHER THAN ASSUMED. Each tap is a separate discrete event, and
+   * this loop depends on React having flushed the previous one before the next
+   * key is looked up: on the symbol layer the key being reached for does not
+   * exist until the tap before it has rendered. So the count in the readout is
+   * compared against the text at the end, and a step that typed sixteen of
+   * twenty seven characters says so instead of leaving the caller measuring a
+   * half-filled screen and calling it the screen after.
+   */
+  if (step.startsWith('keys:')) {
+    const text = step.slice('keys:'.length)
+    /*
+     * ASYNC, AND THAT IS THE WHOLE DIFFICULTY. React 18 schedules a discrete
+     * update at sync priority and flushes it in a microtask, not inside the
+     * click, so a synchronous loop of `.click()` calls runs entirely against
+     * the DOM as it was before the first key: every tap reads the same stale
+     * `value` prop, so "abc" comes out as "c", and the shift key produces no
+     * upper-case layer to find `pk-key-C` on.
+     *
+     * That is not a hypothetical. The first version of this was synchronous,
+     * and it failed on the third character of a wallet name with `no-key-C`,
+     * which is the shape of the bug being reported honestly by accident.
+     *
+     * A macrotask rather than a microtask between taps, because React may
+     * schedule the flush as a microtask itself and a macrotask is guaranteed to
+     * run after the queue drains.
+     *
+     * Callers pass awaitPromise, which is harmless for every other step: CDP
+     * returns a non-promise result unchanged.
+     */
+    return `(async () => {
+      // JSON.stringify rather than concatenating quotes, because two of the
+      // keys on the symbol layer are a double quote and a backslash, and both
+      // of those end or escape their way out of an attribute selector written
+      // by hand. CSS string escaping and JSON string escaping agree on the two
+      // characters that matter here.
+      const find = (id) => document.querySelector('[data-testid=' + JSON.stringify(id) + ']')
+      const settle = () => new Promise((resolve) => { setTimeout(resolve, 0) })
+      const tap = async (id) => {
+        const el = find(id)
+        if (el === null || el.disabled === true) return false
+        el.click()
+        await settle()
+        return true
+      }
+      const onSymbols = () => {
+        const el = find('pk-symbols')
+        return el !== null && el.textContent.trim() === 'abc'
+      }
+      if (find('pk-space') === null) return 'missing'
+      const wanted = ${JSON.stringify(text)}
+      for (const character of wanted) {
+        if (character === ' ') {
+          if (!(await tap('pk-space'))) return 'no-space-key'
+          continue
+        }
+        const letter = /[a-zA-Z]/.test(character)
+        // The letter layers and the symbol layer are exclusive, so reaching a
+        // letter from the symbol layer means tapping it off first, and reaching
+        // a symbol from either letter layer means tapping it on.
+        if (letter === onSymbols() && !(await tap('pk-symbols'))) return 'no-layer-key'
+        // Shift is one-shot: it returns to lower case on the next key, which is
+        // why this is inside the loop rather than latched once.
+        if (/[A-Z]/.test(character) && !(await tap('pk-shift'))) return 'no-shift-key'
+        // The symbols are two pages, so a symbol missing from the one showing
+        // is on the other rather than absent. Checked by looking rather than by
+        // holding a copy of the split here, which would go stale the first time
+        // a character moved page and would then report it as unreachable.
+        if (!letter && find('pk-key-' + character) === null) {
+          if (!(await tap('pk-symbols-more'))) return 'no-page-key'
+        }
+        if (!(await tap('pk-key-' + character))) return 'no-key-' + character
+      }
+      const length = find('pk-length')
+      if (length === null) return 'no-readout'
+      if (length.textContent.trim() !== String(wanted.length)) {
+        return 'typed-' + length.textContent.trim() + '-of-' + wanted.length
+      }
+      return 'clicked'
+    })()`
+  }
   if (step.startsWith('type:')) {
     const cut = step.indexOf(':', 'type:'.length)
     const testId = step.slice('type:'.length, cut)
@@ -185,6 +282,8 @@ export function reachTarget(step) {
   // rendered, which the caller's own settle handles.
   if (step === 'scroll') return '.nr-screen__body'
   if (step.startsWith('wait:')) return `[data-testid="${step.slice('wait:'.length)}"]`
+  // A keyboard rather than a field: the space key, which every layer renders.
+  if (step.startsWith('keys:')) return '[data-testid="pk-space"]'
   if (!step.startsWith('type:')) return `[data-testid="${step}"]`
   const cut = step.indexOf(':', 'type:'.length)
   return `[data-testid="${step.slice('type:'.length, cut)}"]`
