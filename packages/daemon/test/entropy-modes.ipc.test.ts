@@ -147,9 +147,36 @@ describe('entropy.health', () => {
     }
 
     expect(report.checks.length).toBeGreaterThan(0)
-    // Off a real device, so nothing can be confirmed, and that is not healthy.
-    expect(report.unknown).toBe(true)
-    expect(report.healthy).toBe(false)
-    expect(report.checks.some((c) => c.verdict === 'unknown')).toBe(true)
+
+    /*
+     * THE AGGREGATES AGREE WITH THE CHECKS, WHICH IS A FACT ABOUT THE CODE.
+     *
+     * This asserted `unknown` was true, on the reasoning that nothing can be
+     * confirmed off a real device. That is a fact about the HOST, and it is
+     * false on the host that matters: the device runs Linux, so does CI, and
+     * there /proc/sys/kernel/random/entropy_avail and the uptime are both
+     * readable. The kernel pool comes back `ok` and the absent hardware RNG
+     * comes back `failed` rather than `unknown`, so the test passed on the
+     * macOS workstation it was written on and failed everywhere else. It was
+     * the only red test in the suite when CI ran for the first time in days.
+     *
+     * What this test is for is the boundary: the report crosses IPC as a set of
+     * named checks a screen can show, rather than being flattened into a
+     * verdict. So it asserts the shape survived and that the two summary flags
+     * still derive from the checks beside them, which holds on any machine.
+     *
+     * The invariant itself, that a source which could not be observed reports
+     * unknown and is never counted healthy, is INV-ENTHEALTH-1 and is tested in
+     * entropy-health.test.ts against injected sources, where "cannot look" is
+     * arranged rather than hoped for.
+     */
+    expect(report.healthy).toBe(report.checks.every((c) => c.verdict === 'ok'))
+    expect(report.unknown).toBe(report.checks.some((c) => c.verdict === 'unknown'))
+    for (const check of report.checks) {
+      expect(check.name).toBeTruthy()
+      expect(['ok', 'failed', 'unknown']).toContain(check.verdict)
+      // The reason, not just the rating: the screen shows what was looked at.
+      expect(check.detail).toBeTruthy()
+    }
   })
 })

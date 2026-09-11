@@ -561,7 +561,18 @@ header-rule: ## The header offers one exit or none, never one and a half
 	# withhold it are the seed words and the transaction review.
 	@node tools/checks/check-header-rule.mjs
 
-screens: ## Build the screen gallery, a layout harness that never ships to the device
+screens: build ## Build the screen gallery, a layout harness that never ships to the device
+	# BUILT FIRST, DECLARED RATHER THAN LUCKY, which is the same correction
+	# `journeys` carries one target below. The gallery imports the screens, the
+	# screens import @nullroute/core, and the typecheck below resolves that
+	# through packages/core/dist. On a workstation that directory is already
+	# there from an earlier build and this passes; on a clean checkout it is not,
+	# and tsc reports seven files that cannot find the module.
+	#
+	# CI IS THE ONLY PLACE THAT EVER SEES A CLEAN CHECKOUT, and CI had not run a
+	# job in three days, so nothing saw it. The first green run after the
+	# workflow was fixed failed here.
+	#
 	# TYPECHECKED FIRST. vite builds this with esbuild, which strips types
 	# without reading them, and the gallery is not in tsconfig.build.json
 	# because it never ships. So a fixture could pass a component anything and
