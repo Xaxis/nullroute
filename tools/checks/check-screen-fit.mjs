@@ -1145,14 +1145,19 @@ async function main() {
      * whichever of a 13px placeholder, a 15px value or a row of dots was in it,
      * so every keyboard on the device moved down 3px on the first character.
      *
-     * THAT ONE DID NOT PUT ANY KEYS UNDER THE BAR. It landed the bottom row at
-     * 407 with the bar at 407 on two panels, which is flush, and passes on the
-     * single pixel of tolerance below. So this rule was written for a defect
-     * that had not happened yet, which is worth saying plainly: what it catches
-     * is the next thing above a keyboard that grows on a keystroke, on a screen
-     * that has no pixels left to absorb it. The reason to have it is that the
-     * measurement the rest of this check makes is of a state nobody types in,
-     * and typing is the one thing the user is certain to do next.
+     * ANY DOWNWARD MOVEMENT AT ALL, rather than only enough to go under the
+     * bar. That is the rule the stylesheet states in three places and it is
+     * the honest one: a keyboard that drops 3px moves the keys under a finger
+     * already on them, and whether the bottom row happens to clear the action
+     * bar afterwards is luck rather than design. Measured across every state
+     * that carries a keyboard, nothing on the device moves down on a keystroke
+     * now, so this is a floor the product already meets rather than an
+     * aspiration.
+     *
+     * UPWARD IS FINE AND USUALLY THE POINT. Eleven states move up by about
+     * 54px, which is a refusal being cleared by the first keystroke: those
+     * screens promise the banner goes when typing starts, and this is where
+     * that promise is kept rather than merely stated.
      *
      * One key: enough to change the value, and the smallest thing a person
      * could do.
@@ -1310,7 +1315,7 @@ async function main() {
       afterTyping !== null &&
       arrived.problems.length === 0 &&
       afterTyping.keyboard !== null &&
-      afterTyping.keyboard > afterTyping.limit + 1
+      afterTyping.keyboard > arrived.keyboard
         ? [
             {
               kind: 'keyboard-moved-by-typing',
@@ -1321,8 +1326,9 @@ async function main() {
                 String(afterTyping.keyboard) +
                 ' after one character, with the action bar at ' +
                 String(afterTyping.limit) +
-                '. Something above the keyboard changes size on a keystroke, which ' +
-                'moves the keys under the finger already on them.',
+                '. Something above the keyboard grows on a keystroke, which moves ' +
+                'the keys under the finger already on them. Moving up is fine and ' +
+                'is what a cleared refusal does; moving down is this.',
             },
           ]
         : []

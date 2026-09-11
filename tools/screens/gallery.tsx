@@ -1650,6 +1650,27 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   import: [
     ['import-typed-toggle'],
     ['import-typed-toggle', `type:import-mnemonic:${MNEMONIC}`, 'import-submit'],
+    /*
+     * A FULL WORD LIST, ON THE KEYBOARD THAT ENTERS ONE.
+     *
+     * `.nr-kb__entered` is the box holding the words so far, and the stylesheet
+     * calls it the only thing on the screen that grows. Its cap is 6rem,
+     * chosen because at 7rem a full twenty four words pushed the bottom row of
+     * keys under the action bar.
+     *
+     * That was somebody measuring once. No reach list here contained a single
+     * tap on this keyboard, so nothing in the suite had ever drawn that box
+     * with a word in it: every state measured it empty and reported the screen
+     * as fitting. It is the shape MUST_SEE exists to catch, one component over.
+     *
+     * Twenty four taps of `aba`, which commits `abandon` on its own because no
+     * other word is reachable from that prefix. The checksum is wrong, which is
+     * the point of the second one: a refusal on top of a full box is the
+     * tallest this screen gets, and it is exactly the state of somebody who has
+     * typed twenty three words and mistyped one.
+     */
+    Array.from({ length: 24 }, () => 'word:aba'),
+    [...Array.from({ length: 24 }, () => 'word:aba'), 'import-submit'],
   ],
   /*
    * Forgetting a quorum, confirmed by typing its checksum back.

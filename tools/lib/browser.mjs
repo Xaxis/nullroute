@@ -239,6 +239,59 @@ export function reachStep(step) {
       return 'clicked'
     })()`
   }
+  /*
+   * `word:<letters>` enters one word on the WORD keyboard, by tapping letters.
+   *
+   * A DIFFERENT KEYBOARD FROM `keys:`, with a different job. That one accepts
+   * any string; this one narrows a finger down to one of 2048 known words and
+   * commits as soon as only one is reachable, so "aba" is the whole of
+   * `abandon` and there is nothing to tap afterwards.
+   *
+   * WHY IT EXISTS. `.nr-kb__entered` is the box holding the words already
+   * entered, and the stylesheet calls it the only thing on the screen that
+   * grows. Its cap is 6rem, chosen because at 7rem a full twenty four words
+   * pushed the bottom row of keys under the action bar. That was a hand
+   * measurement, and no reach list in the gallery contained a single tap on
+   * this keyboard, so nothing had ever drawn that box with a word in it. The
+   * suite measured the empty case and called the screen fitting.
+   *
+   * Letters only. A prefix that reaches several words does not commit and the
+   * suggestion strip is the way forward, which is a different step; every
+   * caller here uses a prefix that resolves.
+   */
+  if (step.startsWith('word:')) {
+    const letters = step.slice('word:'.length)
+    return `(async () => {
+      const find = (id) => document.querySelector('[data-testid=' + JSON.stringify(id) + ']')
+      const settle = () => new Promise((resolve) => { setTimeout(resolve, 0) })
+      // The counter, because the component says so: its own comment calls
+      // kb-count the only authority on how many words exist, after a half
+      // typed chip was rendered as an entered one and contradicted it.
+      const counted = () => {
+        const el = find('kb-count')
+        if (el === null) return null
+        const n = /^\\s*(\\d+)/.exec(el.textContent || '')
+        return n === null ? null : Number(n[1])
+      }
+      const before = counted()
+      if (before === null) return 'no-counter'
+      for (const letter of ${JSON.stringify(letters)}) {
+        const key = find('kb-key-' + letter)
+        if (key === null) return 'no-key-' + letter
+        if (key.disabled === true) return 'dead-key-' + letter
+        key.click()
+        await settle()
+      }
+      // Committed, rather than left half typed in the prefix. A word that did
+      // not commit is a reach list describing something that did not happen.
+      const after = counted()
+      if (after !== before + 1) {
+        const prefix = find('kb-prefix')
+        return 'uncommitted-' + (prefix === null ? '?' : prefix.textContent.trim())
+      }
+      return 'clicked'
+    })()`
+  }
   if (step.startsWith('type:')) {
     const cut = step.indexOf(':', 'type:'.length)
     const testId = step.slice('type:'.length, cut)
@@ -284,6 +337,9 @@ export function reachTarget(step) {
   if (step.startsWith('wait:')) return `[data-testid="${step.slice('wait:'.length)}"]`
   // A keyboard rather than a field: the space key, which every layer renders.
   if (step.startsWith('keys:')) return '[data-testid="pk-space"]'
+  // The counter, which only the word keyboard renders and which is present
+  // whatever has been typed.
+  if (step.startsWith('word:')) return '[data-testid="kb-count"]'
   if (!step.startsWith('type:')) return `[data-testid="${step}"]`
   const cut = step.indexOf(':', 'type:'.length)
   return `[data-testid="${step.slice('type:'.length, cut)}"]`

@@ -1148,7 +1148,13 @@ body {
    space key would disappear at the exact moment it started being needed. */
 .nr-field__labelrow {
   display: flex;
-  align-items: baseline;
+  /* CENTRED, NOT BASELINE, for the reason `.nr-kb__word` is: the label is 12px
+     and the readout beside it 13px, and baseline alignment stacks the larger
+     ascent onto the larger descent, which defeats the pinned line box below by
+     a pixel. That pixel is the unlock gate's keyboard moving from 405 to 406
+     against an action bar at 407 on the first character somebody types, which
+     is the first thing anybody does on a provisioned device. */
+  align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
 }
@@ -1914,8 +1920,21 @@ body {
   flex-wrap: wrap;
   gap: 0.375rem;
   /* Same argument as .nr-pk__value: the words already entered are read, not
-     tapped. Backspace is a key on the keyboard below. */
-  min-height: 2.25rem;
+     tapped. Backspace is a key on the keyboard below.
+
+     44px, AND THE POINT IS THAT IT DOES NOT CHANGE. At 2.25rem this box was
+     38px holding its "Tap letters to begin" hint and 45px the moment the first
+     chip landed in it, so the keyboard below dropped 7px on the first letter
+     somebody tapped. On the seed backup check that put the bottom row of keys
+     at 406 against an action bar at 407: one pixel, on the screen that decides
+     whether a written mnemonic is real, and passing only on the fit check's
+     own tolerance.
+
+     The chip is pinned to the same line box just below, so a box holding one
+     row of words is exactly as tall as an empty one. Nothing above a keyboard
+     changes size while somebody is typing on it, which is `.nr-field__labelrow`
+     and `.nr-pk__value > *` saying it for the third time. */
+  min-height: 2.75rem;
   align-content: flex-start;
   padding: 0.5rem;
   border: 1px solid var(--color-line);
@@ -1934,8 +1953,16 @@ body {
 
 .nr-kb__word {
   display: inline-flex;
-  align-items: baseline;
+  /* CENTRED, NOT BASELINE, and it is a height decision rather than a visual
+     one. The index is 11px against the word's 14px, and baseline alignment
+     stacks the larger ascent onto the larger descent across two different font
+     sizes, so the chip came out 28px inside a 20px line box. That is the 2px
+     that made this box taller with a word in it than without one. */
+  align-items: center;
   gap: 0.3125rem;
+  /* 20px, so the chip is 26px and the box holding it is 44: the same height it
+     has empty. See the min-height above. */
+  line-height: 1.25rem;
   padding: 0.1875rem 0.5rem;
   border-radius: 0.25rem;
   background-color: var(--color-surface-3);
