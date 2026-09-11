@@ -33,7 +33,7 @@
 import { createServer } from 'node:http'
 import { spawn } from 'node:child_process'
 import { readFileSync, existsSync, statSync } from 'node:fs'
-import { chromeProfile, finish, reachStep, reap } from '../lib/browser.mjs'
+import { chromeBinary, chromeProfile, finish, reachStep, reap } from '../lib/browser.mjs'
 import { join, extname, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -132,7 +132,7 @@ async function main() {
   }
   await new Promise((r) => server.listen(PORT, r))
   chrome = spawn(
-    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    chromeBinary('check-contrast'),
     [
       '--headless=new',
       '--disable-gpu',

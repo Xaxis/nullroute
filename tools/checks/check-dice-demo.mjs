@@ -30,7 +30,7 @@ import { createServer } from 'node:http'
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { chromeProfile, finish, reap } from '../lib/browser.mjs'
+import { chromeBinary, chromeProfile, finish, reap } from '../lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const OUT = join(ROOT, 'apps/web/out')
@@ -38,19 +38,6 @@ const ENTROPY = join(ROOT, 'docs/ENTROPY.md')
 const PORT = 8913
 const DEBUG = 9226
 
-const CHROME_CANDIDATES = [
-  process.env.CHROME_PATH,
-  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  '/usr/bin/google-chrome',
-  '/usr/bin/chromium',
-  '/usr/bin/chromium-browser',
-].filter(Boolean)
-
-const chromePath = CHROME_CANDIDATES.find((p) => existsSync(p))
-if (chromePath === undefined) {
-  console.error('check-dice-demo: no Chrome found. Set CHROME_PATH.')
-  process.exit(1)
-}
 if (!existsSync(OUT)) {
   console.error('check-dice-demo: no build output at apps/web/out. Run "make web-build" first.')
   process.exit(1)
@@ -119,7 +106,7 @@ async function main() {
   await new Promise((resolve) => server.listen(PORT, resolve))
 
   const chrome = spawn(
-    chromePath,
+    chromeBinary('check-dice-demo'),
     [
       '--headless',
       '--disable-gpu',

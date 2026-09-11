@@ -38,7 +38,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
-import { chromeProfile, finish, reap } from '../lib/browser.mjs'
+import { chromeBinary, chromeProfile, finish, reap } from '../lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const ORIGIN = process.argv[2] ?? process.env['NULLROUTE_SITE'] ?? 'https://nullroute.diy'
@@ -80,20 +80,6 @@ const sha256 = (text) => createHash('sha256').update(text).digest('hex')
 /** A doc page that renders its shell but not its body would still "load". */
 const MIN_CHARS = 5000
 
-const CHROME_CANDIDATES = [
-  process.env['CHROME_PATH'],
-  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  '/usr/bin/google-chrome',
-  '/usr/bin/chromium',
-  '/usr/bin/chromium-browser',
-].filter(Boolean)
-
-const chromePath = CHROME_CANDIDATES.find((p) => existsSync(p))
-if (chromePath === undefined) {
-  console.error('check-web-live: no Chrome found. Set CHROME_PATH.')
-  process.exit(1)
-}
-
 const PORT = 9227
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
@@ -114,7 +100,7 @@ function send(ws, state, method, params = {}) {
 
 async function main() {
   const chrome = spawn(
-    chromePath,
+    chromeBinary('check-web-live'),
     [
       '--headless',
       '--disable-gpu',

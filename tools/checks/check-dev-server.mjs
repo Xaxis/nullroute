@@ -28,9 +28,8 @@
  */
 
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { chromeProfile, finish, reap } from '../lib/browser.mjs'
+import { chromeBinary, chromeProfile, finish, reap } from '../lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 
@@ -38,20 +37,6 @@ const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 // case, and a check that refuses to run because of it would get switched off.
 const UI_PORT = 5187
 const DEBUG_PORT = 9414
-
-const CHROME_CANDIDATES = [
-  process.env['CHROME_PATH'],
-  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  '/usr/bin/google-chrome',
-  '/usr/bin/chromium',
-  '/usr/bin/chromium-browser',
-].filter(Boolean)
-
-const chromePath = CHROME_CANDIDATES.find((path) => existsSync(path))
-if (chromePath === undefined) {
-  console.error('check-dev-server: no Chrome found. Set CHROME_PATH.')
-  process.exit(1)
-}
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -130,7 +115,7 @@ async function main() {
   if (!up) throw new Error(`the dev server never answered on port ${String(UI_PORT)}`)
 
   chrome = spawn(
-    chromePath,
+    chromeBinary('check-dev-server'),
     [
       '--headless=new',
       '--disable-gpu',

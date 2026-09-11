@@ -41,7 +41,14 @@ import { createServer } from 'node:http'
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { chromeProfile, finish, reachStep, reachTarget, reap } from '../lib/browser.mjs'
+import {
+  chromeBinary,
+  chromeProfile,
+  finish,
+  reachStep,
+  reachTarget,
+  reap,
+} from '../lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const DIST = join(ROOT, 'tools/screens/dist')
@@ -219,19 +226,6 @@ function markedInSource() {
   return found
 }
 
-const CHROME_CANDIDATES = [
-  process.env['CHROME_PATH'],
-  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  '/usr/bin/google-chrome',
-  '/usr/bin/chromium',
-  '/usr/bin/chromium-browser',
-].filter(Boolean)
-
-const chromePath = CHROME_CANDIDATES.find((path) => existsSync(path))
-if (chromePath === undefined) {
-  console.error('check-screen-fit: no Chrome found. Set CHROME_PATH.')
-  process.exit(1)
-}
 if (!existsSync(join(DIST, 'index.html'))) {
   console.error('check-screen-fit: the screen gallery is not built. Run "make screens" first.')
   process.exit(1)
@@ -948,7 +942,7 @@ async function main() {
   })
 
   const chrome = spawn(
-    chromePath,
+    chromeBinary('check-screen-fit'),
     [
       '--headless=new',
       '--disable-gpu',

@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -44,6 +45,37 @@ import { join } from 'node:path'
  * The directory goes under the system temp dir with the check's name in it, so
  * a leftover is obvious. Chrome creates it; nothing here has to.
  */
+/**
+ * The Chrome this machine has, or a refusal naming what to set.
+ *
+ * WHY IT LIVES HERE. Ten harnesses in this repository drive a browser and each
+ * one found its own binary. Eight walked a candidate list beginning with
+ * CHROME_PATH; two had the macOS path written into the spawn call. Those two
+ * cannot run anywhere else, and the place they cannot run is CI, which is the
+ * only machine that ever sees this project on Linux. They failed with `spawn
+ * /Applications/Google Chrome.app/... ENOENT` the first time the workflow was
+ * valid enough to start them.
+ *
+ * One implementation, so a path cannot be right in eight files and wrong in
+ * two. check-make-targets fails a harness that spawns a browser without asking
+ * here.
+ */
+export function chromeBinary(who) {
+  const candidates = [
+    process.env['CHROME_PATH'],
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+  ].filter(Boolean)
+  const found = candidates.find((path) => existsSync(path))
+  if (found === undefined) {
+    console.error(`${who}: no Chrome found. Set CHROME_PATH.`)
+    process.exit(1)
+  }
+  return found
+}
+
 export function chromeProfile(name) {
   return `--user-data-dir=${join(tmpdir(), `nullroute-${name}-${String(process.pid)}`)}`
 }

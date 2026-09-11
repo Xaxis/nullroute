@@ -29,7 +29,7 @@ import { createServer } from 'node:http'
 import { spawn } from 'node:child_process'
 import { readFileSync, existsSync, statSync } from 'node:fs'
 import { join, extname, normalize } from 'node:path'
-import { chromeProfile, finish, reachStep, reap } from '../lib/browser.mjs'
+import { chromeBinary, chromeProfile, finish, reachStep, reap } from '../lib/browser.mjs'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
@@ -81,7 +81,7 @@ const PROBE = `(() => {
 async function main() {
   await new Promise((r) => server.listen(PORT, r))
   chrome = spawn(
-    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    chromeBinary('check-ui-roles'),
     [
       '--headless=new',
       '--disable-gpu',

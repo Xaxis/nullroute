@@ -60,6 +60,7 @@ jobs:
       # or a `node:net` import anywhere under packages/ fails the build here.
       - name: Lint, including the no-network rule
         run: make lint
+          make shell
 
       # Formatting is a check rather than a suggestion here: .prettierrc had
       # been in the repository from the start and nothing ran it, so 142 files

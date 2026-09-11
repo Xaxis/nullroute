@@ -23,7 +23,7 @@ import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
-import { chromeProfile, finish, reap } from '../lib/browser.mjs'
+import { chromeBinary, chromeProfile, finish, reap } from '../lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const OUT = join(ROOT, 'apps/web/out')
@@ -53,19 +53,6 @@ const VIEWPORTS = [
 ]
 const PORT = 8911
 
-const CHROME_CANDIDATES = [
-  process.env.CHROME_PATH,
-  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  '/usr/bin/google-chrome',
-  '/usr/bin/chromium',
-  '/usr/bin/chromium-browser',
-].filter(Boolean)
-
-const chromePath = CHROME_CANDIDATES.find((p) => existsSync(p))
-if (chromePath === undefined) {
-  console.error('check-responsive: no Chrome found. Set CHROME_PATH.')
-  process.exit(1)
-}
 if (!existsSync(OUT)) {
   console.error('check-responsive: no build output at apps/web/out. Run "make web-build" first.')
   process.exit(1)
@@ -188,7 +175,7 @@ async function main() {
   const pages = htmlPages(OUT).filter((p) => !p.includes('_not-found'))
 
   const chrome = spawn(
-    chromePath,
+    chromeBinary('check-responsive'),
     [
       '--headless',
       '--disable-gpu',

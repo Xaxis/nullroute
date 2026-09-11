@@ -100,15 +100,20 @@ echo "  SOURCE_DATE_EPOCH $SOURCE_DATE_EPOCH"
 # --no-install-recommends is not optional here. Recommends would pull
 # systemd-timesyncd, which INV-PROV-16 forbids by name, and this image is the
 # thing that decides what a signer contains.
+# fonts-dejavu-core AND fonts-dejavu-mono ARE ASKED FOR RATHER THAN INHERITED.
+# They were already here, as a dependency of chromium that nobody chose, and
+# they are the only fonts on this device: everything the stylesheet names ahead
+# of them fell through to a generic and landed on DejaVu. That makes the typeface
+# the panel is laid out in, and every 800x480 measurement taken against it, a
+# property of chromium's dependency list. Named here so it is a decision, and so
+# a future chromium that stops recommending them fails the build rather than
+# silently reflowing every screen on the device.
+#
+# THE COMMENT GOES ABOVE THE COMMAND AND NOT INSIDE IT. Put between a line
+# ending in a backslash and the line it continues onto, it ends the command:
+# mmdebstrap ran with no suite and no target and said so, in a job nobody had
+# been able to run for three days.
 mmdebstrap --variant="$VARIANT" --mode=root --format=directory \
-  # fonts-dejavu-core AND fonts-dejavu-mono ARE ASKED FOR RATHER THAN INHERITED.
-  # They were already here, as a dependency of chromium that nobody chose, and
-  # they are the only fonts on this device: everything the stylesheet names ahead
-  # of them fell through to a generic and landed on DejaVu. That makes the
-  # typeface the panel is laid out in, and every 800x480 measurement taken
-  # against it, a property of chromium's dependency list. Named here so it is a
-  # decision, and so a future chromium that stops recommending them fails the
-  # build rather than silently reflowing every screen on the device.
   --include=systemd,systemd-sysv,dbus,chromium,chromium-sandbox,cage,cryptsetup-bin,e2fsprogs,kmod,iproute2,fonts-dejavu-core,fonts-dejavu-mono \
   --aptopt='APT::Install-Recommends "false"' \
   "$SUITE" "$ROOTFS" "$MIRROR" >/dev/null 2>&1

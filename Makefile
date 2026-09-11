@@ -561,6 +561,29 @@ header-rule: ## The header offers one exit or none, never one and a half
 	# withhold it are the seed words and the transaction review.
 	@node tools/checks/check-header-rule.mjs
 
+shell: ## Every shell script this device is built by, checked
+	# THE BUG THIS EXISTS FOR, which I wrote today. A comment was put between a
+	# line ending in a backslash and the line it continued onto, inside the
+	# mmdebstrap invocation that builds the root filesystem. Shell ends the
+	# command there, so mmdebstrap ran with no suite and no target, and the
+	# image job failed with "No SUITE specified" on a build that had been green
+	# an hour earlier.
+	#
+	# `bash -n` passes on it: the file is valid shell, and what it means is
+	# wrong. shellcheck says SC2215, "this flag is used as a command name, bad
+	# line break", and points at the exact line. It was installed on this
+	# workstation and on the runner, and nothing ran it.
+	#
+	# Shebang rather than extension: the helpers in provisioning/units have no
+	# .sh and the .service files beside them are not shell at all, and feeding
+	# those to shellcheck produces pages about unbalanced brackets in a systemd
+	# unit. severity=warning, so SC2012's preference for find over ls does not
+	# gate a build while SC2215 does.
+	@files=$$(grep -rl '^#!.*\(ba\)\?sh' provisioning tools 2>/dev/null | grep -v node_modules); \
+		test -n "$$files" || { echo "make shell: found no shell scripts, so this check is blind"; exit 1; }; \
+		shellcheck --severity=warning $$files && \
+		echo "shell: $$(echo "$$files" | wc -l | tr -d ' ') script(s) clean at warning and above"
+
 screens: build ## Build the screen gallery, a layout harness that never ships to the device
 	# BUILT FIRST, DECLARED RATHER THAN LUCKY, which is the same correction
 	# `journeys` carries one target below. The gallery imports the screens, the
@@ -742,6 +765,6 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 
 # --- aggregates --------------------------------------------------------------
 
-check-fast: lint format-check ci-parity ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims make-targets ipc-reachable slow-feedback typeable device-csp qr-readback test manifest-check manifest-recipe ## Everything except the slow suites
+check-fast: lint shell format-check ci-parity ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims make-targets ipc-reachable slow-feedback typeable device-csp qr-readback test manifest-check manifest-recipe ## Everything except the slow suites
 
 check: check-fast build verify test-vectors test-differential repro-check sbom device-ui screen-fit contrast ui-roles journeys dev-check device-shots-check web-check ## Everything CI runs

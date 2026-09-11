@@ -55,7 +55,7 @@ import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import * as btc from '@scure/btc-signer'
 import { base64, hex } from '@scure/base'
-import { finish, reap } from '../lib/browser.mjs'
+import { chromeBinary, finish, reap } from '../lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const DIST = join(ROOT, 'packages/ui/dist-app')
@@ -95,19 +95,6 @@ const DEBUG_PORT = 9424
 const WIDTH = 800
 const HEIGHT = 480
 
-const CHROME_CANDIDATES = [
-  process.env['CHROME_PATH'],
-  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  '/usr/bin/google-chrome',
-  '/usr/bin/chromium',
-  '/usr/bin/chromium-browser',
-].filter(Boolean)
-
-const chromePath = CHROME_CANDIDATES.find((path) => existsSync(path))
-if (chromePath === undefined) {
-  console.error('check-journeys: no Chrome found. Set CHROME_PATH.')
-  process.exit(1)
-}
 for (const [what, path] of [
   ['the frontend', join(DIST, 'index.html')],
   ['the daemon', DAEMON],
@@ -385,7 +372,7 @@ async function main() {
     await new Promise((resolve) => server.listen(PORT, '127.0.0.1', resolve))
 
     const chrome = spawn(
-      chromePath,
+      chromeBinary('check-journeys'),
       [
         '--headless=new',
         '--disable-gpu',

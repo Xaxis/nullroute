@@ -29,25 +29,11 @@ import { createServer } from 'node:http'
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { chromeProfile, finish, reap } from '../lib/browser.mjs'
+import { chromeBinary, chromeProfile, finish, reap } from '../lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const DIST = join(ROOT, 'packages/ui/dist-app')
 const PORT = 9327
-
-const CHROME_CANDIDATES = [
-  process.env.CHROME_PATH,
-  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  '/usr/bin/google-chrome',
-  '/usr/bin/chromium',
-  '/usr/bin/chromium-browser',
-].filter(Boolean)
-
-const chromePath = CHROME_CANDIDATES.find((path) => existsSync(path))
-if (chromePath === undefined) {
-  console.error('check-device-ui: no Chrome found. Set CHROME_PATH.')
-  process.exit(1)
-}
 
 if (!existsSync(join(DIST, 'index.html'))) {
   console.error('check-device-ui: packages/ui/dist-app/index.html is missing.')
@@ -93,7 +79,7 @@ async function main() {
   })
 
   const chrome = spawn(
-    chromePath,
+    chromeBinary('check-device-ui'),
     [
       // `--headless=new` rather than `--headless`. The old headless is a
       // separate implementation with its own renderer and does not composite
