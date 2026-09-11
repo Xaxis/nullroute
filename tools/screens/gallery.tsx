@@ -100,6 +100,33 @@ const DEVICE = (
   />
 )
 
+/**
+ * THE LONGEST NAME THE DAEMON WILL SEAL, which is a different fixture from a
+ * realistic one and has to exist alongside it.
+ *
+ * Every fixture here used a name of 27 characters, and MAX_LABEL is 32. Those
+ * five characters are the difference between a header that is one of two
+ * heights and a header that is not: the identity chip is capped, so past that
+ * cap the title column loses the width instead, and the subtitle wrapped. At 32
+ * characters ELEVEN SCREENS failed, three of them badly enough to put a
+ * keyboard under the action bar.
+ *
+ * Realistic values are what the screenshots on the website want. Boundary
+ * values are what the panel has to survive. This is the second kind, and it is
+ * why one state carries it rather than all of them.
+ */
+const LONGEST_NAME = 'Twelve of fifteen, the big one!!'
+
+const DEVICE_LONGEST = (
+  <Identity
+    device="The one in the attic"
+    wallet={{ label: LONGEST_NAME, colour: 'violet' }}
+    networkLabel="Mainnet"
+    isMainnet
+    onSwitch={noop}
+  />
+)
+
 /** With nothing open: what the lock screen and the picker show. */
 const NO_WALLET = <Identity device="The one in the attic" onSwitch={noop} />
 
@@ -1447,6 +1474,22 @@ const SCREENS: Record<string, () => React.ReactElement> = {
    * that reason rather than assumed to fit.
    */
   'manage-passphrase-working': () => variant('manage', { onChangePassphrase: pending }),
+  /*
+   * The longest wallet name the daemon will seal, in the header.
+   *
+   * ONE STATE CARRIES THE BOUNDARY and it is this screen because this screen's
+   * subtitle is the wallet's own name, so it is the one place the long name
+   * lands twice. What the header does with it is a property of every screen,
+   * which is what the multisig state below covers: that one has the longest
+   * SUBTITLE on the device, so between them they measure both halves of the
+   * title column at once.
+   */
+  'manage-longest-name': () =>
+    variant('manage', {
+      identity: DEVICE_LONGEST,
+      wallet: { label: LONGEST_NAME, colour: 'violet' },
+    }),
+  'multisig-longest-name': () => variant('multisig', { identity: DEVICE_LONGEST }),
   /*
    * Forgetting a quorum, which reseals and so takes as long as renaming,
    * despite being the word on this device that sounds most instant.

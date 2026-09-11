@@ -385,10 +385,17 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
     )
   }
 
+  /*
+   * "your key" rather than "this device's key", which is the same fact in nine
+   * fewer characters. At fifty this subtitle needed 300px of a title column
+   * that has 288 when the open wallet carries the longest name the daemon will
+   * seal, so its last words were cut. The header names the device two inches
+   * away, so whose key it is was never in doubt.
+   */
   return (
     <Screen
       title="Multisig"
-      subtitle="Share this device's key, then register the quorum."
+      subtitle="Share your key, then register the quorum."
       banner={banner}
       nav={nav}
       identity={identity}

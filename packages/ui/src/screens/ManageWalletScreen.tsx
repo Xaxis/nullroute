@@ -224,7 +224,7 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
     return (
       <Screen
         title="Change the passphrase"
-        subtitle="What unlocks the file, not what derives addresses."
+        subtitle="What unlocks the file, not your addresses."
         banner={banner}
         nav={nav}
         identity={identity}

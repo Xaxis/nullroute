@@ -224,3 +224,57 @@ if (wrongFamily.length > 0) {
   )
   process.exit(1)
 }
+
+/**
+ * Every :hover rule in the device stylesheet is guarded by a hover query.
+ *
+ * THIS DEVICE HAS NO POINTER. It is a 7 inch touchscreen and docs/USING.md
+ * opens by saying there is no cursor, which is the same fact that gives every
+ * target a 44px floor and every field an on-screen keyboard.
+ *
+ * A :hover rule here cannot fire the way it was written to, and on a touchscreen
+ * it does something worse than nothing: the browser applies it on tap and leaves
+ * it applied until something else is tapped, so the last control somebody
+ * touched keeps a highlight it was never meant to hold. Five of these shipped.
+ * The one on the dice pad painted `--color-accent`, which every other screen
+ * uses to mean chosen, onto a die that has no chosen state.
+ *
+ * `@media (hover: hover)` is the whole fix: `hover: none` on the device, so they
+ * never apply there, and they still work under `make dev` where a pointer
+ * exists. This exists so the next one arrives guarded rather than in a year.
+ */
+{
+  // Comments stripped first, and not only to stop this check reading its own
+  // explanation as a rule. A brace inside a comment would throw off the depth
+  // counter below and silently mark a guarded rule unguarded, or the reverse.
+  const source = readFileSync(STYLES, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+  const unguarded = []
+  // Depth of @media (hover: hover) nesting, tracked by counting braces, which
+  // is enough for a stylesheet with no nested rules of its own.
+  let guarded = 0
+  let depth = 0
+  for (const line of source.split('\n')) {
+    const opensHover = /@media[^{]*\(\s*hover\s*:\s*hover\s*\)/.test(line)
+    if (opensHover) guarded = depth + 1
+    if (/:hover\b/.test(line) && !opensHover && guarded === 0) {
+      unguarded.push(line.trim())
+    }
+    depth += (line.match(/{/g) ?? []).length
+    depth -= (line.match(/}/g) ?? []).length
+    if (guarded > 0 && depth < guarded) guarded = 0
+  }
+
+  if (unguarded.length > 0) {
+    console.error('\ncheck-ui-classes: a hover rule on a device with no pointer\n')
+    for (const selector of unguarded) console.error(`  ${selector}`)
+    console.error(
+      '\n  This panel is a touchscreen with no cursor, so a :hover rule cannot fire\n' +
+        '  the way it was written to. What it does instead is stick: the browser\n' +
+        '  applies it on tap and leaves it there until something else is tapped, so\n' +
+        '  the last thing somebody touched keeps a highlight nobody designed.\n\n' +
+        '  Wrap it in @media (hover: hover). It then does nothing on the device and\n' +
+        '  still works under `make dev`, where there is a pointer.\n'
+    )
+    process.exit(1)
+  }
+}

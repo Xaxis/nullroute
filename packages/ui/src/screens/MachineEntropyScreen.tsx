@@ -82,7 +82,7 @@ export function MachineEntropyScreen(props: MachineEntropyScreenProps): ReactEle
   return (
     <Screen
       title="Let the device choose"
-      subtitle="No dice. Nothing here can be checked by hand."
+      subtitle="No dice, and nothing to check by hand."
       banner={banner}
       steps={steps}
       nav={nav}

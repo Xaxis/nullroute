@@ -277,6 +277,59 @@ const MEASURE = `(() => {
     })
   }
 
+  /*
+   * A subtitle whose end has been cut off.
+   *
+   * The stylesheet stops it wrapping, so the header is one of two heights
+   * whatever the open wallet is called. What that trades away is the end of the
+   * sentence, and a sentence quietly losing its last three words on the screens
+   * where somebody has a long wallet name is not something to discover on the
+   * hardware. The structure guarantees the height; this guarantees the words.
+   *
+   * scrollWidth against clientWidth, which is how an element says it is showing
+   * less than it holds.
+   */
+  const subtitle = document.querySelector('.nr-screen__subtitle')
+  if (subtitle !== null) {
+    /*
+     * THE WIDTH IT WOULD HAVE IF THE WALLET NAME WERE AS LONG AS ALLOWED,
+     * rather than the width this fixture happens to leave it.
+     *
+     * Checking the fixture only tests the name the fixture carries, and every
+     * one of them used 27 characters where the daemon allows 32. Those five
+     * characters wrapped the header on eleven screens. Adding a long-name
+     * variant of each would be eleven more states measuring one property, so
+     * the property is computed instead: the identity chip is capped by the
+     * stylesheet, the spacer beside it absorbs slack first, and past that the
+     * title column is what pays.
+     */
+    const titles = document.querySelector('.nr-screen__titles')
+    const identity = document.querySelector('.nr-identity')
+    const spacer = document.querySelector('.nr-screen__head > .nr-spacer')
+    let room = subtitle.clientWidth
+    if (titles !== null && identity !== null) {
+      const now = identity.getBoundingClientRect().width
+      const capText = getComputedStyle(identity).maxWidth
+      const cap = capText.endsWith('px') ? parseFloat(capText) : now
+      const slack = spacer === null ? 0 : spacer.getBoundingClientRect().width
+      // What the identity can still take, after the spacer has given up its own.
+      const squeeze = Math.max(0, cap - now - slack)
+      room = Math.round(subtitle.clientWidth - squeeze)
+    }
+    if (subtitle.scrollWidth > room + 1) {
+      problems.push({
+        kind: 'subtitle-too-long',
+        detail:
+          'it needs ' + subtitle.scrollWidth + 'px and has ' + room +
+          ' once the identity chip beside it is as wide as it is allowed to get, ' +
+          'so on a device whose wallet has a long name it ends in an ellipsis: "' +
+          (subtitle.textContent || '').trim() + '". The width a subtitle gets is ' +
+          'whatever the open wallet leaves it, and the person using the device ' +
+          'chose that name. Shorten the sentence rather than assuming the room.',
+      })
+    }
+  }
+
   const head = document.querySelector('.nr-screen__head')
   if (head !== null) {
     const hr = head.getBoundingClientRect()

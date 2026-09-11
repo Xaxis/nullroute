@@ -221,7 +221,7 @@ export function WalletsScreen(props: WalletsScreenProps): ReactElement {
     return (
       <Screen
         title={selected.label}
-        subtitle="This name is not confirmed until the wallet opens."
+        subtitle="The name is not confirmed until it opens."
         banner={banner}
         steps={steps}
         nav={nav}

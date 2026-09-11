@@ -527,10 +527,34 @@ body {
   letter-spacing: -0.01em;
 }
 
+/* ONE LINE, BY CONSTRUCTION RATHER THAN BY ASKING.
+
+   MAX_HEADER in check-screen-fit says a header is one of two heights and never
+   a third, and that what breaks it is "a subtitle four characters too long for
+   the title column, which wrapped to a second line and took the whole header
+   with them". Its advice was to shorten the subtitle.
+
+   THAT IS NOT A PROPERTY OF THE SUBTITLE. The width a subtitle gets is whatever
+   the identity chip beside it leaves, and that chip holds the open wallet's
+   name, which the person using the device chose and the daemon allows to be 32
+   characters. Measured with a name at that limit, ELEVEN SCREENS wrapped their
+   header and nineteen states failed, including three whose keyboard then went
+   under the action bar. No amount of editing these sentences fixes that, since
+   the sentence is not what changed.
+
+   So the header cannot grow now, whatever the name is. What gives instead is
+   the end of the subtitle, which is explanatory text that repeats what the
+   title already says, rather than the wallet name, which is identity and is the
+   thing somebody checks before signing. check-screen-fit fails a subtitle that
+   is actually clipped, so this backstop is not a place for one to go unnoticed:
+   it guarantees the height, and the check guarantees the words. */
 .nr-screen__subtitle {
   font-size: 0.8125rem;
   color: var(--color-text-faint);
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* The one paragraph on a screen that is not an aside.
@@ -656,8 +680,23 @@ body {
   color: var(--color-on-accent);
   font-weight: 600;
 }
-.nr-button--primary:hover:not(:disabled) {
-  background-color: var(--color-accent-bright);
+/* HOVER IS GUARDED, ON EVERY RULE THAT USES IT.
+
+   This device is a 7 inch touchscreen with no pointer, and `docs/USING.md`
+   opens by saying so. A `:hover` rule here cannot be triggered the way it was
+   written to be, and on a touchscreen it is worse than dead: the browser
+   applies it on tap and leaves it applied until something else is tapped, so
+   the last control somebody touched keeps a highlight it was never meant to
+   hold. On the dice pad that highlight is `--color-accent`, which every other
+   screen uses to mean chosen, on a die that has no chosen state at all.
+
+   `hover: none` on the device, so none of these apply there. They still work
+   under `make dev` in a browser, which is where a pointer exists. Held by
+   check-ui-classes, so a new one cannot arrive unguarded. */
+@media (hover: hover) {
+  .nr-button--primary:hover:not(:disabled) {
+    background-color: var(--color-accent-bright);
+  }
 }
 
 .nr-button--ghost {
@@ -665,9 +704,12 @@ body {
   border-color: var(--color-border);
   color: var(--color-text-strong);
 }
-.nr-button--ghost:hover:not(:disabled) {
-  border-color: var(--color-border-strong);
-  color: var(--color-text);
+/* See the hover note above. */
+@media (hover: hover) {
+  .nr-button--ghost:hover:not(:disabled) {
+    border-color: var(--color-border-strong);
+    color: var(--color-text);
+  }
 }
 
 /* Irreversible. Never the default focus, and visually distinct from primary. */
@@ -676,8 +718,11 @@ body {
   border-color: var(--color-danger-fill);
   color: var(--color-danger-text);
 }
-.nr-button--danger:hover:not(:disabled) {
-  background-color: color-mix(in srgb, var(--color-danger-fill) 20%, transparent);
+/* See the hover note above. */
+@media (hover: hover) {
+  .nr-button--danger:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-danger-fill) 20%, transparent);
+  }
 }
 
 .nr-button:disabled {
@@ -989,9 +1034,12 @@ body {
   color: var(--color-text);
   cursor: pointer;
 }
-.nr-die:hover {
-  border-color: var(--color-accent);
-  background-color: var(--color-surface-3);
+/* See the hover note above. */
+@media (hover: hover) {
+  .nr-die:hover {
+    border-color: var(--color-accent);
+    background-color: var(--color-surface-3);
+  }
 }
 .nr-die:active {
   background-color: var(--color-accent-strong);
@@ -1194,8 +1242,11 @@ body {
   gap: 0.5rem;
 }
 
-.nr-choice:hover {
-  border-color: var(--color-border-strong);
+/* See the hover note above. */
+@media (hover: hover) {
+  .nr-choice:hover {
+    border-color: var(--color-border-strong);
+  }
 }
 .nr-choice[aria-pressed='true'] {
   border-color: var(--color-accent);
