@@ -233,7 +233,7 @@ export function AssembleQuorumScreen(props: AssembleQuorumScreenProps): ReactEle
   return (
     <Screen
       title="Build a quorum"
-      subtitle="Every device’s key, here, with no coordinator."
+      subtitle="Every device’s key, with no coordinator."
       banner={banner}
       nav={nav}
       identity={identity}

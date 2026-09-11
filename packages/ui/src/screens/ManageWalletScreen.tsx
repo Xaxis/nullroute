@@ -706,8 +706,8 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
         <div className="nr-banner nr-banner--danger" data-testid="manage-destroy-warning">
           <strong>This removes the seed from this device</strong>
           <span>
-            If you wrote the mnemonic down, that paper is now the only copy and it still works. If
-            you did not, the money in this wallet is gone.
+            If you wrote the mnemonic down, that paper still works. If you did not, the money here
+            is gone.
           </span>
         </div>
 

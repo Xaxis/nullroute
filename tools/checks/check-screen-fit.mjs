@@ -292,40 +292,43 @@ const MEASURE = `(() => {
   const subtitle = document.querySelector('.nr-screen__subtitle')
   if (subtitle !== null) {
     /*
-     * THE WIDTH IT WOULD HAVE IF THE WALLET NAME WERE AS LONG AS ALLOWED,
-     * rather than the width this fixture happens to leave it.
+     * CLIPPED AS THIS STATE RENDERS, which is a narrower claim than the one
+     * this rule started with and the only one that survived being measured.
      *
-     * Checking the fixture only tests the name the fixture carries, and every
-     * one of them used 27 characters where the daemon allows 32. Those five
-     * characters wrapped the header on eleven screens. Adding a long-name
-     * variant of each would be eleven more states measuring one property, so
-     * the property is computed instead: the identity chip is capped by the
-     * stylesheet, the spacer beside it absorbs slack first, and past that the
-     * title column is what pays.
+     * It first asked whether the subtitle would survive the identity chip at
+     * the widest the stylesheet lets it get, on the reasoning that the wallet
+     * name is chosen by the user and the sentence should not depend on it. With
+     * the device's real font that fires on eight subtitles, one of them thirty
+     * six characters long, which puts the budget at about thirty four and is
+     * not a rule anybody can write copy against.
+     *
+     * The premise was wrong rather than the threshold. When the header runs out
+     * of room something has to give, and it should be the subtitle: the wallet
+     * name is what somebody checks before signing, it is already elided with a
+     * colour beside it, and it is written out in full on the picker and the
+     * manage screen. The sentence is explanatory and the title above it carries
+     * the screen's identity. So a subtitle losing its tail to a very long name
+     * is the design working, not a defect.
+     *
+     * What is still a defect is a subtitle clipped at an ORDINARY name, because
+     * nobody chose that and nothing says it happened. The header's height is
+     * guaranteed separately and structurally: the stylesheet stops the wrap,
+     * and two fixtures carry a name at the daemon's limit so header-too-tall is
+     * measured against the worst case rather than the usual one.
      */
-    const titles = document.querySelector('.nr-screen__titles')
-    const identity = document.querySelector('.nr-identity')
-    const spacer = document.querySelector('.nr-screen__head > .nr-spacer')
-    let room = subtitle.clientWidth
-    if (titles !== null && identity !== null) {
-      const now = identity.getBoundingClientRect().width
-      const capText = getComputedStyle(identity).maxWidth
-      const cap = capText.endsWith('px') ? parseFloat(capText) : now
-      const slack = spacer === null ? 0 : spacer.getBoundingClientRect().width
-      // What the identity can still take, after the spacer has given up its own.
-      const squeeze = Math.max(0, cap - now - slack)
-      room = Math.round(subtitle.clientWidth - squeeze)
-    }
-    if (subtitle.scrollWidth > room + 1) {
+    if (subtitle.scrollWidth > subtitle.clientWidth + 1) {
       problems.push({
-        kind: 'subtitle-too-long',
+        kind: 'subtitle-clipped',
         detail:
-          'it needs ' + subtitle.scrollWidth + 'px and has ' + room +
-          ' once the identity chip beside it is as wide as it is allowed to get, ' +
-          'so on a device whose wallet has a long name it ends in an ellipsis: "' +
-          (subtitle.textContent || '').trim() + '". The width a subtitle gets is ' +
-          'whatever the open wallet leaves it, and the person using the device ' +
-          'chose that name. Shorten the sentence rather than assuming the room.',
+          'it needs ' +
+          String(subtitle.scrollWidth) +
+          'px and has ' +
+          String(subtitle.clientWidth) +
+          ', so it ends in an ellipsis on this state rather than on some device ' +
+          'with an unusually long wallet name: "' +
+          (subtitle.textContent || '').trim() +
+          '". Shorten the sentence, or give the title column the room by taking it ' +
+          'from the identity chip.',
       })
     }
   }

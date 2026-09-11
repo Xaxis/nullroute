@@ -96,10 +96,16 @@ export function UnlockedScreen(props: UnlockedScreenProps): ReactElement {
         <span className="nr-dot" data-colour={colour} />
       </div>
 
+      {/* TIGHTENED TO KEEP THE WARNING BELOW IT ON THE PANEL. In the font the
+          device actually renders in, this screen was 7px too tall and what fell
+          off the bottom was the passphrase warning, which is marked must-see
+          and is the whole reason this screen exists. A line came out of here
+          rather than out of that, because this block explains a check and that
+          one explains how the check can be silently wrong. */}
       <Info label="Check the fingerprint" testId="unlocked-compare">
         Compare this with what you wrote down when you made this wallet: it is computed from the
-        keys that just loaded, so it cannot be faked by editing a file. If you never recorded one,
-        this screen cannot help you.
+        keys that just loaded, so it cannot be faked. If you never recorded one, this screen cannot
+        help you.
       </Info>
 
       {usedPassphrase && (
@@ -111,9 +117,8 @@ export function UnlockedScreen(props: UnlockedScreenProps): ReactElement {
           <strong>This wallet uses a passphrase</strong>
           <span>
             A wrong passphrase does not produce an error. It opens a different, valid, empty wallet,
-            and every screen after this one will look normal. If the fingerprint above is not the
-            one you recorded, lock now and try again. The mnemonic alone will not recover this
-            wallet.
+            and every screen after looks normal. If the fingerprint above is not the one you
+            recorded, lock now and try again. The mnemonic alone will not recover this wallet.
           </span>
         </div>
       )}

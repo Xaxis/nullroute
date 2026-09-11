@@ -173,7 +173,7 @@ export const JOURNEYS: readonly Journey[] = [
   },
   {
     id: 'multisig',
-    goal: 'Set up a wallet across several devices',
+    goal: 'Set up a wallet across devices',
     summary:
       'Two or three of these, or this one beside hardware from other vendors, sharing one wallet that needs several of them to spend.',
     needs: [

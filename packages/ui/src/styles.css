@@ -112,9 +112,28 @@
   --color-danger-500: #d9534f;
   --color-danger-300: #f0918e;
 
-  --font-mono:
-    'JetBrains Mono', 'IBM Plex Mono', 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* THE FONT THE DEVICE ACTUALLY HAS, NAMED FIRST.
+
+     WHAT THIS STACK USED TO SAY, and what it got. 'JetBrains Mono', 'IBM Plex
+     Mono', 'SF Mono', Menlo, Consolas: not one of them is installed on the
+     device. The rootfs carries fonts-dejavu-core and fonts-dejavu-mono and
+     nothing else, eight files, pulled in as a dependency of chromium rather
+     than asked for by anybody. So every name here fell through to the generic
+     at the end, and the panel rendered DejaVu.
+
+     A WORKSTATION FELL THROUGH SOMEWHERE ELSE. On macOS the same stack lands on
+     SF Pro and SF Mono, which are narrower, so check-screen-fit measured one
+     typeface for three days and certified a panel that renders in another. CI
+     runs Linux, has DejaVu, and disagreed with it the first time it was allowed
+     to run: thirty six subtitles over, a header at 80px against a 78px limit,
+     and keys 6px under the action bar. Those numbers are the true ones.
+
+     Named rather than inherited, so the device, CI and a workstation with the
+     font installed all measure the same thing, and so the typeface this panel
+     is laid out in is a decision somebody made rather than a side effect of an
+     apt dependency that could change under it. */
+  --font-mono: 'DejaVu Sans Mono', ui-monospace, Menlo, Consolas, monospace;
+  --font-sans: 'DejaVu Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
 :root {
@@ -201,9 +220,9 @@
 
   --radius-md: 8px;
 
-  --font-mono:
-    'JetBrains Mono', 'IBM Plex Mono', 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* THE FONT THE DEVICE ACTUALLY HAS, NAMED FIRST. See the note in :root. */
+  --font-mono: 'DejaVu Sans Mono', ui-monospace, Menlo, Consolas, monospace;
+  --font-sans: 'DejaVu Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
 /* ============================================================================
@@ -2756,8 +2775,17 @@ body {
   flex: 0 1 auto;
   min-width: 0;
   /* Room for a real wallet name beside a real device name. Below this the
-     label truncated on every screen rather than on the long ones. */
-  max-width: 17.5rem;
+     label truncated on every screen rather than on the long ones.
+
+     16.25rem RATHER THAN 17.5, and the twenty pixels went to the title column
+     beside it. Measured in the font the device actually has: eight subtitles
+     were two to nine pixels too long for the room this left them, at an
+     ordinary wallet name rather than a long one, so they ended in an ellipsis
+     on the panel while reading fine on a workstation. Twenty pixels here is
+     about two characters of a wallet name, which still elides with a colour
+     beside it and is written out in full on the picker and the manage screen. A
+     clipped sentence is repeated nowhere. */
+  max-width: 16.25rem;
   padding: 0.25rem 0.5rem;
   border-radius: 0.375rem;
   border: 1px solid var(--color-line);
