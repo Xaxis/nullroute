@@ -154,7 +154,83 @@ if (missing.length > 0) {
   process.exit(1)
 }
 
+/**
+ * AND THE WORKFLOW IS A FILE GITHUB WILL ACCEPT.
+ *
+ * THE THREE DAYS THIS COST. `.github/workflows/ci.yml` carried an `env:` key
+ * twice in one step, a copy and paste with the same two lines under it. YAML
+ * parsers take the last one and say nothing; GitHub validates against its own
+ * schema and rejects the file, so every run since ended in zero seconds with
+ * "This run likely failed because of a workflow file issue" and no jobs at all.
+ * Eight pushes, three of them mine, one of them dependabot's, every one of them
+ * reported green locally and red in a mailbox nobody was reading.
+ *
+ * The check above this one reads the workflow as text, asking only whether a
+ * `make <target>` line appears in it. Text is the right tool for that question
+ * and it cannot answer this one: a file can contain every line it should and
+ * still be one GitHub will not run. So the parity check was passing about a
+ * workflow that had not executed since the eighth.
+ *
+ * DUPLICATE KEYS, WITHOUT A YAML PARSER, because adding a dependency to this
+ * repository is a decision with its own rule and this does not need one. Keys
+ * are tracked by indent: a `- ` starts a fresh sibling, a dedent forgets
+ * everything deeper, and a block scalar is skipped whole so a colon inside a
+ * `run: |` is not read as a key. Crude on purpose, in the same way the target
+ * scan above it is.
+ */
+{
+  const lines = workflow.split('\n')
+  const seen = new Map()
+  const duplicates = []
+  let blockIndent = null
+
+  for (const [index, line] of lines.entries()) {
+    if (blockIndent !== null) {
+      const indent = line.length - line.trimStart().length
+      if (line.trim() === '' || indent > blockIndent) continue
+      blockIndent = null
+    }
+    if (line.trim() === '' || line.trimStart().startsWith('#')) continue
+
+    const match = /^(\s*)(- )?([A-Za-z0-9_.-]+):(.*)$/.exec(line)
+    if (match === null) continue
+    const [, spaces, dash, key, rest] = match
+    const indent = spaces.length + (dash === undefined ? 0 : dash.length)
+
+    // A dedent ends every block deeper than this one, and a list marker starts
+    // a new sibling, so neither keeps the keys it used to hold.
+    for (const level of [...seen.keys()]) {
+      if (level > indent || (dash !== undefined && level >= indent)) seen.delete(level)
+    }
+
+    const here = seen.get(indent) ?? new Set()
+    if (here.has(key)) {
+      duplicates.push({ key, line: index + 1 })
+    }
+    here.add(key)
+    seen.set(indent, here)
+
+    // `run: |` and friends: everything more indented is a string, not a map.
+    if (/^\s*[|>][-+]?\s*$/.test(rest)) blockIndent = indent
+  }
+
+  if (duplicates.length > 0) {
+    console.error('\ncheck-ci-parity: the workflow has a key GitHub will reject\n')
+    for (const { key, line } of duplicates) {
+      console.error(`    ${key}: appears twice in the same block, at line ${String(line)}`)
+    }
+    console.error(
+      '\n  A YAML parser keeps the last one and says nothing. GitHub validates\n' +
+        '  against its own schema and refuses the file, so the run ends in zero\n' +
+        '  seconds having executed no jobs, and every check in this repository goes\n' +
+        '  on passing locally while nothing at all runs on a push.\n'
+    )
+    process.exit(1)
+  }
+}
+
 const noted = LOCAL_ONLY.size === 0 ? '' : `, ${String(LOCAL_ONLY.size)} deliberately local`
 console.log(
-  `check-ci-parity: ${String(targets.length)} targets reached by make check, all run by CI${noted}`
+  `check-ci-parity: ${String(targets.length)} targets reached by make check, all run by CI${noted}, ` +
+    `and the workflow has no duplicate key`
 )

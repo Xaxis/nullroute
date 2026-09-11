@@ -165,8 +165,6 @@ jobs:
         run: make device-shots-check
         env:
           CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
-        env:
-          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
 
       - name: The frontend mounts under its own CSP
         run: make device-ui
