@@ -261,6 +261,30 @@ describe('provisioning.systemd-exposure', () => {
   const stub = (stdout: string) => () => ({ ok: true as const, stdout })
 
   /**
+   * What `systemd-analyze security --offline=true --root=... <unit>` prints.
+   *
+   * THESE STUBS USED TO BE JSON, of the shape `[{"exposure":0.4}]`, and the
+   * verifier parsed exactly that, so the two agreed with each other and with
+   * nothing else. systemd-analyze emits that shape only when it is run over
+   * every unit; asked about one, `--json=short` gives a row per SETTING, eighty
+   * one of them, with no overall score anywhere in it. The number the profile
+   * sets a limit on exists only on the line below.
+   *
+   * A workstation has no systemd, so the verifier returned unavailable here and
+   * was never counted, and CI had not run a job in three days. Between them,
+   * INV-PROV-18 and INV-PROV-19 had never been checked once.
+   */
+  const analyzed = (unit: string, score: string, verdict = 'OK') =>
+    [
+      '  NAME                        DESCRIPTION                                 EXPOSURE',
+      '✓ PrivateNetwork=             Service has no access to the host network          ',
+      '✗ SystemCallFilter=~@swap     System call allow list defined, and @swap is not  0.2',
+      '',
+      `→ Overall exposure level for ${unit}: ${score} ${verdict} 🙂`,
+      '',
+    ].join('\n')
+
+  /**
    * INV-PROV-18. A unit within its allowance passes, and the verdict carries
    * what the number does not mean.
    *
@@ -275,7 +299,7 @@ describe('provisioning.systemd-exposure', () => {
     const result = systemdExposure(
       root,
       { unit: 'nullrouted.service', max_exposure: 0.5 },
-      stub('[{"exposure":0.4,"unit":"nullrouted.service"}]')
+      stub(analyzed('nullrouted.service', '0.4', 'SAFE'))
     )
 
     expect(result.ok).toBe(true)
@@ -286,11 +310,40 @@ describe('provisioning.systemd-exposure', () => {
     expect(result.limits.join(' ')).toContain('systemd version')
   })
 
+  /**
+   * INV-PROV-18. The shape CI actually produced, which the old parser read as a
+   * score and this one refuses.
+   *
+   * `--json=short` on one unit returns a row per setting. The first row's
+   * `exposure` is that SETTING's, and on the runner's systemd it has none at
+   * all, so the verifier got NaN and said "no exposure score in the output"
+   * while systemd-analyze had answered on a line it never looked at. A verifier
+   * that cannot find the answer must say so rather than read a different
+   * number, which is the whole three-state design here.
+   */
+  it('refuses-per-setting-json-rather-than-reading-the-first-row-as-a-score', () => {
+    const perSetting = JSON.stringify([
+      { set: true, name: 'SystemCallFilter=~@swap', json_field: 'SystemCallFilter_swap' },
+      { set: false, name: 'PrivateNetwork=', json_field: 'PrivateNetwork' },
+    ])
+    const result = systemdExposure(
+      root,
+      { unit: 'nullrouted.service', max_exposure: 0.5 },
+      stub(perSetting)
+    )
+
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('Overall exposure level')
+    // And it quotes what it did get, because the last time this failed the
+    // message named the symptom and ruled nothing out.
+    expect(result.detail).toContain('SystemCallFilter')
+  })
+
   it('fails-a-unit-over-its-allowance', () => {
     const result = systemdExposure(
       root,
       { unit: 'nullroute-kiosk.service', max_exposure: 3.0 },
-      stub('[{"exposure":6.2}]')
+      stub(analyzed('nullroute-kiosk.service', '6.2', 'MEDIUM'))
     )
 
     expect(result.ok).toBe(false)

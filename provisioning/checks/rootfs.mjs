@@ -510,47 +510,35 @@ export function systemdExposure(root, params, run = defaultRun) {
       : verdict('systemd-exposure', false, outcome.detail, limits)
   }
 
-  let exposure
-  let parsedRaw = null
-  try {
-    const parsed = JSON.parse(outcome.stdout)
-    parsedRaw = parsed
-    const row = Array.isArray(parsed) ? parsed[0] : parsed
-    exposure = Number(row?.exposure ?? row?.Exposure)
-  } catch {
-    return verdict(
-      'systemd-exposure',
-      false,
-      `systemd-analyze produced output this verifier could not parse as JSON`,
-      limits
-    )
-  }
+  /*
+   * THE LINE systemd-analyze CALLS ITS ANSWER, rather than the JSON.
+   *
+   * `--json=short` returns one row PER SETTING: eighty one of them for this
+   * unit, each with set, name, json_field, description and its own exposure.
+   * The overall score, which is the number the profile sets a limit on, is not
+   * in there at all. It is in the human output, on a line reading "Overall
+   * exposure level for <unit>: <n> <verdict>".
+   *
+   * So this read parsed[0].exposure, which is the first SETTING's, got NaN, and
+   * reported "no exposure score in the output" while systemd-analyze had
+   * answered perfectly well.
+   *
+   * NOBODY SAW IT, because a workstation has no systemd: INV-PROV-18 and
+   * INV-PROV-19 came back unavailable here, which this tool is careful never to
+   * count as a pass, and which means neither had been checked once. CI has
+   * systemd and runs them, and this is the first answer either has produced.
+   */
+  const overall = /Overall exposure level[^:]*:\s*([0-9]+(?:\.[0-9]+)?)/.exec(outcome.stdout)
+  const exposure = overall === null ? Number.NaN : Number(overall[1])
 
   if (!Number.isFinite(exposure)) {
-    /*
-     * WHAT IT PRODUCED, not merely that it was not what we wanted.
-     *
-     * This said "no exposure score in the output" and stopped, which names the
-     * symptom and rules nothing out: a systemd whose JSON uses another key, a
-     * unit the --root scan did not find, an empty array, a version whose
-     * `security` subcommand reports per setting rather than per unit. On a
-     * workstation without systemd at all the verifier never reaches here, so
-     * the one machine that can answer is CI and the message it sent back said
-     * nothing.
-     */
-    const shape = Array.isArray(parsedRaw)
-      ? `an array of ${String(parsedRaw.length)}`
-      : `an object with keys ${
-          Object.keys(parsedRaw ?? {})
-            .slice(0, 8)
-            .join(', ') || '(none)'
-        }`
-    const sample = outcome.stdout.trim().slice(0, 220)
+    const sample = outcome.stdout.trim().slice(-220)
     return verdict(
       'systemd-exposure',
       false,
-      `no exposure score in the output: systemd-analyze returned ${shape}, ` +
-        `beginning ${sample === '' ? '(nothing)' : JSON.stringify(sample)}`,
+      'no "Overall exposure level" line in the output, which is where ' +
+        'systemd-analyze states its answer. It ended with ' +
+        (sample === '' ? '(nothing)' : JSON.stringify(sample)),
       limits
     )
   }
@@ -574,7 +562,7 @@ export function systemdExposure(root, params, run = defaultRun) {
 function defaultRun(root, unit) {
   const result = spawnSync(
     'systemd-analyze',
-    ['security', '--offline=true', `--root=${root}`, '--json=short', unit],
+    ['security', '--offline=true', `--root=${root}`, unit],
     { encoding: 'utf8' }
   )
   if (result.error !== undefined || result.status === null) {

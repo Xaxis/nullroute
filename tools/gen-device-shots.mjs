@@ -24,7 +24,7 @@
 import { spawn } from 'node:child_process'
 import { createServer } from 'node:http'
 import { createHash } from 'node:crypto'
-import { existsSync, readFileSync, statSync, writeFileSync, mkdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, mkdirSync } from 'node:fs'
 import { extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromeProfile, finish, reap, reachStep } from './lib/browser.mjs'
@@ -149,6 +149,40 @@ async function main() {
     mobile: false,
   })
 
+  /*
+   * WHAT THESE IMAGES WERE RENDERED FROM, AND WHERE.
+   *
+   * THE PROBLEM WITH COMPARING PIXELS. This check exists so the site cannot go
+   * on showing a device that has been redesigned since, and it answered that by
+   * hashing the PNG. Chrome rasterises through CoreText on macOS and FreeType
+   * on Linux, so the same markup in the same font comes out different: all six
+   * images failed the first time CI ran this, and none of them was stale.
+   *
+   * The staleness question does not need the pixels. It needs to know whether
+   * the frontend changed after the images were made, and that is a hash of what
+   * they were made from: the gallery bundle these screens are rendered out of.
+   * That answer is the same on every machine.
+   *
+   * So the stamp is the gate everywhere, and the pixels are compared as well on
+   * the platform that produced them. Where they cannot be compared this says so
+   * rather than passing quietly, which is the same three-state rule the image
+   * verifiers use: could-not-check is not a pass.
+   */
+  const bundle = createHash('sha256')
+  for (const name of readdirSync(join(GALLERY, 'assets')).sort()) {
+    bundle.update(name).update(readFileSync(join(GALLERY, 'assets', name)))
+  }
+  const stamp = {
+    bundle: bundle.digest('hex'),
+    platform: `${process.platform}-${process.arch}`,
+    screens: SCREENS.map((s) => s.as).join(','),
+  }
+  const stampFile = join(OUT, 'rendered-from.json')
+  const previous = existsSync(stampFile)
+    ? JSON.parse(readFileSync(stampFile, 'utf8'))
+    : { bundle: '', platform: '', screens: '' }
+  const comparable = previous.platform === stamp.platform
+
   const stale = []
   for (const screen of SCREENS) {
     await cdp(page, 'Page.navigate', {
@@ -178,11 +212,20 @@ async function main() {
       // Compared by content, not by presence. A committed screenshot of a
       // screen that has since been redesigned is a picture of a device that no
       // longer exists, which is worse than no picture.
-      const current = existsSync(file) ? readFileSync(file) : Buffer.alloc(0)
-      const same =
-        createHash('sha256').update(current).digest('hex') ===
-        createHash('sha256').update(bytes).digest('hex')
-      if (!same) stale.push(screen.as)
+      //
+      // ONLY WHERE THE PIXELS CAN BE COMPARED AT ALL. See `platform` below:
+      // Chrome rasterises through CoreText on macOS and FreeType on Linux, so
+      // the same font and the same markup produce different bytes, and all six
+      // of these differed by every byte that matters when CI first ran this.
+      if (!existsSync(file)) {
+        stale.push(`${screen.as} (no committed image)`)
+      } else if (comparable) {
+        const current = readFileSync(file)
+        const same =
+          createHash('sha256').update(current).digest('hex') ===
+          createHash('sha256').update(bytes).digest('hex')
+        if (!same) stale.push(screen.as)
+      }
     } else {
       writeFileSync(file, bytes)
     }
@@ -193,7 +236,23 @@ async function main() {
   reap(chrome)
   server.close()
 
+  if (!check) writeFileSync(stampFile, `${JSON.stringify(stamp, null, 2)}\n`)
+
   if (check) {
+    // THE GATE THAT WORKS EVERYWHERE. The bundle these screens are rendered out
+    // of, hashed. If it moved and the images did not, the site is showing a
+    // device that has been redesigned since, and that is true whatever machine
+    // is asking.
+    if (previous.bundle !== stamp.bundle || previous.screens !== stamp.screens) {
+      console.error(
+        'gen-device-shots: the frontend has changed since these screenshots were made.\n'
+      )
+      console.error(`  rendered from  ${previous.bundle.slice(0, 16) || '(no stamp)'}`)
+      console.error(`  built now      ${stamp.bundle.slice(0, 16)}`)
+      console.error('\n  Regenerate with "make device-shots" and look at what changed.\n')
+      finish(1)
+    }
+
     if (stale.length > 0) {
       console.error(
         `gen-device-shots: ${String(stale.length)} committed screenshot(s) no longer match the ` +
@@ -203,7 +262,13 @@ async function main() {
       console.error('  Regenerate with "make device-shots" and look at what changed.\n')
       process.exit(1)
     }
-    console.log(`gen-device-shots: ${String(SCREENS.length)} screenshots match the frontend`)
+    console.log(
+      comparable
+        ? `gen-device-shots: ${String(SCREENS.length)} screenshots match the frontend, pixel for pixel`
+        : `gen-device-shots: ${String(SCREENS.length)} screenshots were rendered from this exact ` +
+            `frontend. They were made on ${previous.platform} and this is ${stamp.platform}, and ` +
+            `Chrome rasterises differently on each, so the pixels are not compared here.`
+    )
   } else {
     console.log(
       `gen-device-shots: ${String(SCREENS.length)} screens rendered at 800x480 into apps/web/public/device`

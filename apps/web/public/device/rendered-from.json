@@ -1,0 +1,5 @@
+{
+  "bundle": "accb581b68f7ce52d847511f7dc00f19f79e60d0a01b1eb74a911d8d31a9828f",
+  "platform": "darwin-arm64",
+  "screens": "lock,dice,seed,review,receive,verify"
+}
