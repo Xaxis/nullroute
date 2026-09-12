@@ -608,7 +608,17 @@ screens: build ## Build the screen gallery, a layout harness that never ships to
 	@npx tsc -p tools/screens/tsconfig.json --noEmit
 	@npx vite build --config tools/screens/vite.config.ts
 
-journeys: build-app ## Every guided journey completes, in the real app against a real daemon
+journeys: build-app verify ## Every guided journey completes, in the real app against a real daemon
+	# VERIFY TOO, AND THE DAEMON IS THE ONE THAT SAID SO. It refuses to start
+	# without a passing verification report describing this exact build, which
+	# is the premise of the whole repository, and verification-report.json is
+	# written by `make verify`. On a workstation it is there from an earlier run
+	# and this dependency is invisible; on a clean checkout the daemon exits 1
+	# saying "No verification report was found" and the journeys never begin.
+	#
+	# CI said that in as many words the first time this harness kept the
+	# daemon's output instead of discarding it. Before that it had twelve
+	# seconds of silence and "the daemon never created its socket".
 	# BUILD FIRST, DECLARED RATHER THAN LUCKY. This serves packages/ui/dist-app,
 	# so without the dependency it walks whatever was built last. In a full `make
 	# check` that happened to be fresh, because device-ui builds the app inline

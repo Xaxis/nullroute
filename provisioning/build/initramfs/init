@@ -1,4 +1,11 @@
 #!/bin/busybox sh
+# shellcheck shell=dash
+#
+# BUSYBOX ASH, AND DASH IS THE CLOSEST THING SHELLCHECK SPEAKS. Without this it
+# guesses, and newer versions say so (SC2187) while older ones do not, so the
+# same file passed `make shell` on a workstation and failed it on the runner.
+# Declaring the dialect is what the warning asks for and is worth saying anyway:
+# this script runs before there is a /bin/sh to be POSIX about.
 # The first userspace this device runs, and the whole of tier 1's boot half.
 #
 # WHAT IT HAS TO DO, and why each step is not optional. The system partition is
