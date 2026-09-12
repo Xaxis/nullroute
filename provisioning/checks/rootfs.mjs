@@ -373,16 +373,50 @@ function units(root) {
 }
 
 /**
- * INV-PROV-17. Nothing orders itself before the signer.
+ * INV-PROV-17. No unit is ordered after a target this device does not have.
  *
- * A unit that runs first on a device with no network has no business existing,
- * and one that inserts itself ahead of the daemon is either a mistake or an
- * attempt to observe the device in the window before the thing holding keys
- * starts. Ordering is a declaration, so reading the declaration IS the check,
- * with no runtime property being inferred.
+ * THE BUG THIS DOCBLOCK USED TO DESCRIBE. It read "nothing orders itself before
+ * the signer" and the code took its target from `params.unit ?? 'nullrouted.
+ * service'`. The profile passes `{ after: time-sync.target }`. `params.unit` is
+ * undefined there, so the default took over and the verifier answered a
+ * question the assertion never asked: it checked that nothing declares
+ * Before=nullrouted.service, while INV-PROV-17 says no unit is ordered after
+ * time-sync.target.
+ *
+ * Both halves of that are bad. The assertion was unverified, and the rule
+ * actually being enforced was not written down anywhere and is FALSE by design:
+ * nullroute-attest and nullroute-harden-run both order themselves before the
+ * daemon deliberately, because attesting the system and remounting /run have to
+ * happen before the thing holding keys starts. So the check failed, correctly,
+ * about a rule nobody had made.
+ *
+ * The tests did not catch it because they called this with `{}` and exercised
+ * the same default, so the code and its tests agreed with each other and with
+ * nothing in the profile.
+ *
+ * NO DEFAULT NOW. A verifier that answers a question it was not asked is the
+ * false pass this whole design exists to prevent, and silently substituting a
+ * target is how one gets written. A missing or unknown parameter is refused.
+ *
+ * WHY THE RULE ITSELF. The board has no battery-backed clock, so wall time
+ * after a power cut is arbitrary. A unit ordered after time-sync.target is a
+ * unit waiting for a synchronisation that can never arrive on a device with no
+ * network, which is either a hang at boot or a declaration that something here
+ * trusts the clock. Ordering is a declaration, so reading the declaration IS
+ * the check, with no runtime property inferred.
  */
 export function noUnitOrdering(root, params) {
-  const target = params.unit ?? 'nullrouted.service'
+  const target = params.after
+  if (typeof target !== 'string' || target === '') {
+    return verdict(
+      'no-unit-ordering',
+      false,
+      'the assertion gave no `after` target, and this verifier will not choose one: ' +
+        'answering about a target nobody named is how a check comes to pass for the ' +
+        'wrong reason'
+    )
+  }
+
   const all = units(root)
   if (all.length === 0) {
     return unavailable('no-unit-ordering', 'no systemd units found in the rootfs')
@@ -390,18 +424,10 @@ export function noUnitOrdering(root, params) {
 
   const offenders = []
   for (const unit of all) {
-    const name = unit.path.split('/').pop() ?? unit.path
-    if (name === target) continue
     for (const line of unit.text.split('\n')) {
-      const before = /^\s*Before\s*=\s*(.+)$/.exec(line)?.[1]
-      if (before !== undefined && before.split(/\s+/).includes(target)) {
-        offenders.push(`${unit.path} declares Before=${target}`)
-      }
       const after = /^\s*After\s*=\s*(.+)$/.exec(line)?.[1]
       if (after !== undefined && after.split(/\s+/).includes(target)) {
-        // Ordering AFTER the signer is fine and common. Named only so the
-        // verdict can say how many units were actually read.
-        continue
+        offenders.push(`${unit.path} declares After=${target}`)
       }
     }
   }
@@ -410,7 +436,7 @@ export function noUnitOrdering(root, params) {
     ? verdict(
         'no-unit-ordering',
         true,
-        `${String(all.length)} unit(s) read, none orders itself before ${target}`
+        `no unit among the ${String(all.length)} in the image is ordered after ${target}`
       )
     : verdict('no-unit-ordering', false, offenders.join('; '))
 }

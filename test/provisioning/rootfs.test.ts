@@ -158,34 +158,62 @@ describe('provisioning.absent-packages', () => {
 
 describe('provisioning.no-unit-ordering', () => {
   /**
-   * INV-PROV-17. A unit inserting itself ahead of the signer fails.
+   * INV-PROV-17. A unit ordered after a target this device cannot reach.
+   *
+   * THE TESTS THAT USED TO BE HERE called this with `{}` and asserted that a
+   * unit declaring Before=nullrouted.service was reported. The profile passes
+   * `{ after: time-sync.target }` and the verifier read `params.unit ??
+   * 'nullrouted.service'`, so the default answered a question the assertion
+   * never asked, and these tests exercised the default rather than the
+   * parameter. Code and tests agreed with each other and with nothing in the
+   * profile, and INV-PROV-17 was unverified while an unwritten rule was
+   * enforced in its place. That rule is also false by design: attesting the
+   * system and remounting /run both order themselves before the daemon on
+   * purpose.
    *
    * Ordering is a declaration, so reading the declaration is the whole check
    * with nothing inferred about runtime.
    */
-  it('finds-a-unit-that-orders-itself-before-the-signer', () => {
+  it('finds-a-unit-ordered-after-the-named-target', () => {
     put('usr/lib/systemd/system/nullrouted.service', '[Unit]\nDescription=nullroute daemon\n')
     put(
       'etc/systemd/system/telemetry.service',
-      '[Unit]\nDescription=telemetry\nBefore=nullrouted.service\n'
+      '[Unit]\nDescription=telemetry\nAfter=time-sync.target\n'
     )
-    const result = noUnitOrdering(root, {})
+    const result = noUnitOrdering(root, { after: 'time-sync.target' })
     expect(result.ok).toBe(false)
     expect(result.detail).toContain('telemetry.service')
-    expect(result.detail).toContain('Before=nullrouted.service')
+    expect(result.detail).toContain('After=time-sync.target')
   })
 
-  /** Ordering AFTER the signer is ordinary and must not be reported. */
-  it('allows-a-unit-that-orders-itself-after-the-signer', () => {
+  /**
+   * The board has no battery-backed clock and no network, so a unit waiting on
+   * time-sync.target waits for something that cannot arrive. Ordering after
+   * anything else is ordinary and must not be reported.
+   */
+  it('allows-a-unit-ordered-after-something-else', () => {
     put('usr/lib/systemd/system/nullrouted.service', '[Unit]\nDescription=nullroute daemon\n')
     put('usr/lib/systemd/system/kiosk.service', '[Unit]\nAfter=nullrouted.service\n')
-    const result = noUnitOrdering(root, {})
+    const result = noUnitOrdering(root, { after: 'time-sync.target' })
     expect(result.ok).toBe(true)
-    expect(result.detail).toContain('2 unit(s) read')
+    expect(result.detail).toContain('time-sync.target')
+  })
+
+  /**
+   * INV-PROV-17. NO DEFAULT. A verifier that picks its own target when the
+   * assertion names none is how this check came to answer the wrong question
+   * for as long as it has existed, so it refuses instead.
+   */
+  it('refuses-to-choose-a-target-the-assertion-did-not-name', () => {
+    put('usr/lib/systemd/system/nullrouted.service', '[Unit]\nDescription=nullroute daemon\n')
+    const result = noUnitOrdering(root, {})
+    expect(result.ok).toBe(false)
+    expect(result.unavailable).toBeUndefined()
+    expect(result.detail).toContain('no `after` target')
   })
 
   it('fails-rather-than-passing-a-rootfs-with-no-units-at-all', () => {
-    const result = noUnitOrdering(root, {})
+    const result = noUnitOrdering(root, { after: 'time-sync.target' })
     expect(result.ok).toBe(false)
     expect(result.unavailable).toBe(true)
   })
