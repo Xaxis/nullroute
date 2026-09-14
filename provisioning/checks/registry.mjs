@@ -137,6 +137,11 @@ export const VERIFIERS = {
     describes:
       'the boot partition holds exactly the named files, which matters because it is the one partition the hash tree does not cover',
   },
+  'boot-overlays-present': {
+    status: 'implemented',
+    describes:
+      'every overlay config.txt tells the firmware to load is on the card and is a device tree blob, because a missing one is ignored in silence and the panel simply stays dark',
+  },
   'verity-salt-pinned': {
     status: 'implemented',
     describes: 'the dm-verity salt is pinned, not generated per build',
@@ -194,6 +199,7 @@ export function implemented() {
  */
 export const NEEDS_IMAGE = new Set([
   'boot-files-exact',
+  'boot-overlays-present',
   'partition-present',
   'verity-salt-pinned',
   'identifiers-pinned',
@@ -214,9 +220,19 @@ export const NEEDS_IMAGE = new Set([
  * this whole directory exists to prevent. They are not unchecked; they are
  * checked somewhere else.
  */
-export const NEEDS_NOTHING = new Set(['profile-self-check', 'verifier-ignores-backends'])
+export const NEEDS_NOTHING = new Set([
+  // Inspects the profiles themselves, like the two below it, and was in no set
+  // for the same reason boot-config-display was not.
+  'documented-weakness',
+  'profile-self-check',
+  'verifier-ignores-backends',
+])
 
 export const NEEDS_ROOTFS = new Set([
+  // Reads boot/firmware/config.txt out of the root filesystem. It was in no
+  // set at all, and the summary counts by subtraction, so it was reported as
+  // running on every commit while it actually needs --root to do anything.
+  'boot-config-display',
   'absent-packages',
   'unit-executables',
   'file-modes',

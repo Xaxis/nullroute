@@ -166,7 +166,7 @@ refused. The lock screen shows two numbers now: the manifest root, which attests
 the application, and the dm-verity root hash the running kernel is checking every
 block of the root filesystem against, read from the live device-mapper table
 rather than from the card. The image is judged against a profile of assertions
-rather than a recipe, and nineteen of the nineteen verifiers are written. The last
+rather than a recipe, and twenty of the twenty verifiers are written. The last
 three answer questions no artifact at rest can: mount flags in force, swap in
 use, sockets listening. Reading those from an unbooted image is a confident
 false pass, so instead the booted guest prints the kernel's own files to its

@@ -462,7 +462,34 @@ const needImage = built.filter((name) => NEEDS_IMAGE.has(name))
 // every commit" where the answer is 3. Two sets that mean different things,
 // and only one of them is the authority on this question.
 const needConsole = built.filter((name) => RUNTIME_ONLY.has(name))
-const runNow = built.length - needRootfs.length - needImage.length - needConsole.length
+
+// COUNTED, NOT SUBTRACTED. This line used to be
+//   built.length - needRootfs.length - needImage.length - needConsole.length
+// which silently absorbed any verifier that was in no set into "runs on every
+// commit". Two were: documented-weakness, which does, and boot-config-display,
+// which needs a root filesystem and was being reported as running on every
+// commit for months. The arithmetic always summed to the right total, so the
+// only symptom was the two numbers either side of it being wrong.
+//
+// Adding a verifier and forgetting to place it produces exactly that, and this
+// file has just had one added, so the omission is refused rather than counted.
+const needNothing = built.filter((name) => NEEDS_NOTHING.has(name))
+const unplaced = built.filter(
+  (name) =>
+    !NEEDS_NOTHING.has(name) &&
+    !NEEDS_ROOTFS.has(name) &&
+    !NEEDS_IMAGE.has(name) &&
+    !RUNTIME_ONLY.has(name)
+)
+for (const name of unplaced) {
+  fail(
+    'provisioning/checks/registry.mjs',
+    `the verifier "${name}" is implemented and is in none of NEEDS_NOTHING, NEEDS_ROOTFS, ` +
+      `NEEDS_IMAGE or RUNTIME_ONLY. The status line would report it as running on every ` +
+      `commit, which is a claim about coverage, and it is the claim most people read.`
+  )
+}
+const runNow = needNothing.length
 console.log(
   `check-profiles: ${files.length} profile(s) valid, ` +
     `${invariantOwner.size} provisioning invariants declared, ` +

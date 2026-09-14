@@ -321,6 +321,169 @@ export function readFatVolumeId(path, offset) {
  * would report `BCM271~1.DTB` for a device tree blob, which is a name nobody
  * writes in a profile and would make the assertion unwritable.
  */
+/**
+ * The geometry of one FAT partition, and the two operations that need it.
+ *
+ * Split out from readFatRootEntries so that reading a file's contents and
+ * listing a directory walk the same cluster chains. They had better: a check
+ * that reads config.txt off the card to see which overlay the firmware is told
+ * to load is only worth anything if it can also see whether that overlay is
+ * there, and doing that with a second, subtly different FAT reader would be a
+ * way to have the two disagree.
+ *
+ * Returns null for anything this cannot read, rather than a partial mount.
+ */
+function mountFat(fd, offset) {
+  const boot = readAt(fd, offset, 512)
+  if (boot === null || boot.readUInt16LE(510) !== 0xaa55) return null
+
+  const bytesPerSector = boot.readUInt16LE(0x0b)
+  const sectorsPerCluster = boot.readUInt8(0x0d)
+  const reserved = boot.readUInt16LE(0x0e)
+  const numFats = boot.readUInt8(0x10)
+  const rootEntryCount = boot.readUInt16LE(0x11)
+  const fatSize16 = boot.readUInt16LE(0x16)
+  const fatSize32 = boot.readUInt32LE(0x24)
+  const rootCluster = boot.readUInt32LE(0x2c)
+
+  // A sector size that is not a power of two in the usual range, or no FATs
+  // at all, means this is not FAT however convincing the 0xAA55 was.
+  if (![512, 1024, 2048, 4096].includes(bytesPerSector)) return null
+  if (numFats === 0 || sectorsPerCluster === 0) return null
+
+  const fatSize = fatSize16 === 0 ? fatSize32 : fatSize16
+  const fat32 = fatSize16 === 0
+  const clusterBytes = sectorsPerCluster * bytesPerSector
+  const dataStart =
+    reserved + numFats * fatSize + (fat32 ? 0 : Math.ceil((rootEntryCount * 32) / bytesPerSector))
+
+  /** Every byte of the root directory, however it is laid out. */
+  let directory
+  if (!fat32) {
+    const start = offset + (reserved + numFats * fatSize) * bytesPerSector
+    directory = readAt(fd, start, rootEntryCount * 32)
+    if (directory === null) return null
+  } else {
+    const chunks = []
+    let cluster = rootCluster
+    // Bounded: a corrupt or hostile FAT can describe a cycle, and following
+    // one would read until memory ran out.
+    for (let hops = 0; hops < 65536 && cluster >= 2 && cluster < 0x0ffffff8; hops += 1) {
+      const at = offset + (dataStart + (cluster - 2) * sectorsPerCluster) * bytesPerSector
+      const chunk = readAt(fd, at, clusterBytes)
+      if (chunk === null) break
+      chunks.push(chunk)
+      const entryAt = offset + reserved * bytesPerSector + cluster * 4
+      const next = readAt(fd, entryAt, 4)
+      if (next === null) break
+      cluster = next.readUInt32LE(0) & 0x0fffffff
+    }
+    if (chunks.length === 0) return null
+    directory = Buffer.concat(chunks)
+  }
+
+  // The FAT width decides how the next link in a chain is read. FAT32 is the
+  // 28-bit case the root above already follows. FAT16 is a flat two bytes.
+  // FAT12 packs 12 bits per entry across byte boundaries and is deliberately
+  // NOT decoded: a boot partition this size is never FAT12, and guessing at a
+  // packed nibble would invent file names, which is worse than saying so.
+  const totalSectors16 = boot.readUInt16LE(0x13)
+  const totalSectors = totalSectors16 === 0 ? boot.readUInt32LE(0x20) : totalSectors16
+  const clusterCount = Math.floor(Math.max(0, totalSectors - dataStart) / sectorsPerCluster)
+  const fatKind = fat32 ? 32 : clusterCount < 4085 ? 12 : 16
+
+  /** Every byte of a cluster chain, or null if it cannot be followed. */
+  const chain = (first) => {
+    if (fatKind === 12) return null
+    const eoc = fatKind === 32 ? 0x0ffffff8 : 0xfff8
+    const width = fatKind === 32 ? 4 : 2
+    const chunks = []
+    // Bounded for the same reason the root walk is: a hostile FAT can
+    // describe a cycle, and following one reads until memory runs out.
+    let cluster = first
+    for (let hops = 0; hops < 65536 && cluster >= 2 && cluster < eoc; hops += 1) {
+      const at = offset + (dataStart + (cluster - 2) * sectorsPerCluster) * bytesPerSector
+      const chunk = readAt(fd, at, clusterBytes)
+      if (chunk === null) break
+      chunks.push(chunk)
+      const next = readAt(fd, offset + reserved * bytesPerSector + cluster * width, width)
+      if (next === null) break
+      cluster = fatKind === 32 ? next.readUInt32LE(0) & 0x0fffffff : next.readUInt16LE(0)
+    }
+    return chunks.length === 0 ? null : Buffer.concat(chunks)
+  }
+
+  /** The entries of one directory, given every byte of it. */
+  const decode = (directory) => {
+    const entries = []
+    let longName = []
+    for (let at = 0; at + 32 <= directory.length; at += 32) {
+      const entry = directory.subarray(at, at + 32)
+      const first = entry.readUInt8(0)
+      if (first === 0x00) break
+      if (first === 0xe5) {
+        longName = []
+        continue
+      }
+      const attr = entry.readUInt8(11)
+
+      if ((attr & 0x0f) === 0x0f) {
+        // An LFN entry. They are stored in reverse, so the sequence number in
+        // the low five bits says where this fragment belongs.
+        const sequence = (first & 0x1f) - 1
+        const text = Buffer.concat([
+          entry.subarray(1, 11),
+          entry.subarray(14, 26),
+          entry.subarray(28, 32),
+        ]).toString('utf16le')
+        longName[sequence] = text
+        continue
+      }
+
+      // The volume label is a directory entry and is not a file.
+      if ((attr & 0x08) !== 0) {
+        longName = []
+        continue
+      }
+
+      let name
+      if (longName.length > 0) {
+        /* eslint-disable no-control-regex -- matching NUL is the point: an LFN
+           fragment is padded with U+0000 and then U+FFFF, so the first of
+           either ends the name. A rule that forbids naming it would leave the
+           padding in the file name. */
+        name = longName.join('').replace(/[\u0000\uffff].*$/u, '')
+        /* eslint-enable no-control-regex */
+      } else {
+        const base = entry.subarray(0, 8).toString('latin1').trimEnd()
+        const ext = entry.subarray(8, 11).toString('latin1').trimEnd()
+        // The NT reserved byte records that a purely 8.3 name was written in
+        // lower case, which is how mtools stores `cmdline.txt` without spending
+        // an LFN entry on it. Ignoring it reports CMDLINE.TXT for a file the
+        // firmware and the profile both call cmdline.txt.
+        const flags = entry.readUInt8(12)
+        const cased = (part, bit) => ((flags & bit) !== 0 ? part.toLowerCase() : part)
+        name = ext === '' ? cased(base, 0x08) : `${cased(base, 0x08)}.${cased(ext, 0x10)}`
+      }
+      longName = []
+
+      if (name === '.' || name === '..') continue
+      entries.push({
+        name,
+        size: entry.readUInt32LE(28),
+        directory: (attr & 0x10) !== 0,
+        // Multiplied, not shifted. `high << 16` is a 32-bit signed operation in
+        // JavaScript, so a high word above 0x7fff yields a negative cluster and
+        // the chain walk below rejects it as out of range.
+        cluster: entry.readUInt16LE(20) * 0x10000 + entry.readUInt16LE(26),
+      })
+    }
+    return entries
+  }
+
+  return { decode, chain, directory }
+}
+
 export function readFatRootEntries(path, offset) {
   let fd
   try {
@@ -329,153 +492,9 @@ export function readFatRootEntries(path, offset) {
     return null
   }
   try {
-    const boot = readAt(fd, offset, 512)
-    if (boot === null || boot.readUInt16LE(510) !== 0xaa55) return null
-
-    const bytesPerSector = boot.readUInt16LE(0x0b)
-    const sectorsPerCluster = boot.readUInt8(0x0d)
-    const reserved = boot.readUInt16LE(0x0e)
-    const numFats = boot.readUInt8(0x10)
-    const rootEntryCount = boot.readUInt16LE(0x11)
-    const fatSize16 = boot.readUInt16LE(0x16)
-    const fatSize32 = boot.readUInt32LE(0x24)
-    const rootCluster = boot.readUInt32LE(0x2c)
-
-    // A sector size that is not a power of two in the usual range, or no FATs
-    // at all, means this is not FAT however convincing the 0xAA55 was.
-    if (![512, 1024, 2048, 4096].includes(bytesPerSector)) return null
-    if (numFats === 0 || sectorsPerCluster === 0) return null
-
-    const fatSize = fatSize16 === 0 ? fatSize32 : fatSize16
-    const fat32 = fatSize16 === 0
-    const clusterBytes = sectorsPerCluster * bytesPerSector
-    const dataStart =
-      reserved + numFats * fatSize + (fat32 ? 0 : Math.ceil((rootEntryCount * 32) / bytesPerSector))
-
-    /** Every byte of the root directory, however it is laid out. */
-    let directory
-    if (!fat32) {
-      const start = offset + (reserved + numFats * fatSize) * bytesPerSector
-      directory = readAt(fd, start, rootEntryCount * 32)
-      if (directory === null) return null
-    } else {
-      const chunks = []
-      let cluster = rootCluster
-      // Bounded: a corrupt or hostile FAT can describe a cycle, and following
-      // one would read until memory ran out.
-      for (let hops = 0; hops < 65536 && cluster >= 2 && cluster < 0x0ffffff8; hops += 1) {
-        const at = offset + (dataStart + (cluster - 2) * sectorsPerCluster) * bytesPerSector
-        const chunk = readAt(fd, at, clusterBytes)
-        if (chunk === null) break
-        chunks.push(chunk)
-        const entryAt = offset + reserved * bytesPerSector + cluster * 4
-        const next = readAt(fd, entryAt, 4)
-        if (next === null) break
-        cluster = next.readUInt32LE(0) & 0x0fffffff
-      }
-      if (chunks.length === 0) return null
-      directory = Buffer.concat(chunks)
-    }
-
-    // The FAT width decides how the next link in a chain is read. FAT32 is the
-    // 28-bit case the root above already follows. FAT16 is a flat two bytes.
-    // FAT12 packs 12 bits per entry across byte boundaries and is deliberately
-    // NOT decoded: a boot partition this size is never FAT12, and guessing at a
-    // packed nibble would invent file names, which is worse than saying so.
-    const totalSectors16 = boot.readUInt16LE(0x13)
-    const totalSectors = totalSectors16 === 0 ? boot.readUInt32LE(0x20) : totalSectors16
-    const clusterCount = Math.floor(Math.max(0, totalSectors - dataStart) / sectorsPerCluster)
-    const fatKind = fat32 ? 32 : clusterCount < 4085 ? 12 : 16
-
-    /** Every byte of a cluster chain, or null if it cannot be followed. */
-    const chain = (first) => {
-      if (fatKind === 12) return null
-      const eoc = fatKind === 32 ? 0x0ffffff8 : 0xfff8
-      const width = fatKind === 32 ? 4 : 2
-      const chunks = []
-      // Bounded for the same reason the root walk is: a hostile FAT can
-      // describe a cycle, and following one reads until memory runs out.
-      let cluster = first
-      for (let hops = 0; hops < 65536 && cluster >= 2 && cluster < eoc; hops += 1) {
-        const at = offset + (dataStart + (cluster - 2) * sectorsPerCluster) * bytesPerSector
-        const chunk = readAt(fd, at, clusterBytes)
-        if (chunk === null) break
-        chunks.push(chunk)
-        const next = readAt(fd, offset + reserved * bytesPerSector + cluster * width, width)
-        if (next === null) break
-        cluster = fatKind === 32 ? next.readUInt32LE(0) & 0x0fffffff : next.readUInt16LE(0)
-      }
-      return chunks.length === 0 ? null : Buffer.concat(chunks)
-    }
-
-    /** The entries of one directory, given every byte of it. */
-    const decode = (directory) => {
-      const entries = []
-      let longName = []
-      for (let at = 0; at + 32 <= directory.length; at += 32) {
-        const entry = directory.subarray(at, at + 32)
-        const first = entry.readUInt8(0)
-        if (first === 0x00) break
-        if (first === 0xe5) {
-          longName = []
-          continue
-        }
-        const attr = entry.readUInt8(11)
-
-        if ((attr & 0x0f) === 0x0f) {
-          // An LFN entry. They are stored in reverse, so the sequence number in
-          // the low five bits says where this fragment belongs.
-          const sequence = (first & 0x1f) - 1
-          const text = Buffer.concat([
-            entry.subarray(1, 11),
-            entry.subarray(14, 26),
-            entry.subarray(28, 32),
-          ]).toString('utf16le')
-          longName[sequence] = text
-          continue
-        }
-
-        // The volume label is a directory entry and is not a file.
-        if ((attr & 0x08) !== 0) {
-          longName = []
-          continue
-        }
-
-        let name
-        if (longName.length > 0) {
-          /* eslint-disable no-control-regex -- matching NUL is the point: an LFN
-             fragment is padded with U+0000 and then U+FFFF, so the first of
-             either ends the name. A rule that forbids naming it would leave the
-             padding in the file name. */
-          name = longName.join('').replace(/[\u0000\uffff].*$/u, '')
-          /* eslint-enable no-control-regex */
-        } else {
-          const base = entry.subarray(0, 8).toString('latin1').trimEnd()
-          const ext = entry.subarray(8, 11).toString('latin1').trimEnd()
-          // The NT reserved byte records that a purely 8.3 name was written in
-          // lower case, which is how mtools stores `cmdline.txt` without spending
-          // an LFN entry on it. Ignoring it reports CMDLINE.TXT for a file the
-          // firmware and the profile both call cmdline.txt.
-          const flags = entry.readUInt8(12)
-          const cased = (part, bit) => ((flags & bit) !== 0 ? part.toLowerCase() : part)
-          name = ext === '' ? cased(base, 0x08) : `${cased(base, 0x08)}.${cased(ext, 0x10)}`
-        }
-        longName = []
-
-        if (name === '.' || name === '..') continue
-        entries.push({
-          name,
-          size: entry.readUInt32LE(28),
-          directory: (attr & 0x10) !== 0,
-          // Multiplied, not shifted. `high << 16` is a 32-bit signed operation in
-          // JavaScript, so a high word above 0x7fff yields a negative cluster and
-          // the chain walk below rejects it as out of range.
-          cluster: entry.readUInt16LE(20) * 0x10000 + entry.readUInt16LE(26),
-        })
-      }
-      return entries
-    }
-
+    const mounted = mountFat(fd, offset)
+    if (mounted === null) return null
+    const { decode, chain, directory } = mounted
     const root = decode(directory)
 
     // ONE LEVEL DOWN, WHICH IS WHERE THE OVERLAY LIVES. Reading only the root
@@ -490,6 +509,48 @@ export function readFatRootEntries(path, offset) {
       entry.children = bytes === null ? null : decode(bytes).map((child) => child.name)
     }
     return root
+  } finally {
+    closeSync(fd)
+  }
+}
+
+/**
+ * The bytes of one file on a FAT partition, by path, or null.
+ *
+ * Case-insensitive, because FAT is, and one level of directory is enough to
+ * reach `overlays/`. This exists so a check can read what the firmware reads
+ * off the card itself, rather than reading the copy of config.txt left in the
+ * root filesystem and assuming the two are the same file.
+ */
+export function readFatFile(path, offset, filePath) {
+  let fd
+  try {
+    fd = openSync(path, 'r')
+  } catch {
+    return null
+  }
+  try {
+    const mounted = mountFat(fd, offset)
+    if (mounted === null) return null
+    const { decode, chain, directory } = mounted
+
+    const segments = filePath.split('/')
+    let entries = decode(directory)
+    for (const [index, segment] of segments.entries()) {
+      const entry = entries.find((one) => one.name.toLowerCase() === segment.toLowerCase())
+      if (entry === undefined) return null
+      const last = index === segments.length - 1
+      if (last === entry.directory) return null
+
+      // An empty file has no first cluster to follow, so the chain walk would
+      // report it as unreadable rather than as empty.
+      if (last && entry.size === 0) return Buffer.alloc(0)
+      const bytes = chain(entry.cluster)
+      if (bytes === null) return null
+      if (last) return bytes.subarray(0, entry.size)
+      entries = decode(bytes)
+    }
+    return null
   } finally {
     closeSync(fd)
   }
@@ -889,9 +950,97 @@ function bootFilesExact(context, params) {
   )
 }
 
+/**
+ * Every overlay config.txt tells the firmware to load is on the card.
+ *
+ * THE FAILURE THIS CATCHES IS A BLANK SCREEN ON A TOUCHSCREEN PRODUCT. The
+ * firmware reads `dtoverlay=` out of config.txt, looks for `overlays/<name>.dtbo`
+ * and, if it is not there, carries on booting without a word. There is no error
+ * anywhere: the device comes up, the daemon runs, and the panel stays dark.
+ *
+ * INV-PROV-25 pins the text of config.txt and INV-PROV-22 pins the file list,
+ * which between them catch a change to either one alone. They do not catch a
+ * consistent edit that removes the overlay and its line from the profile
+ * together, which is what tidying up an overlay somebody thought was unused
+ * looks like. This asserts the relation itself, from the card, so neither pin
+ * has to be maintained for it to hold.
+ *
+ * It reads config.txt off the boot partition rather than the copy in the root
+ * filesystem. Those are written from the same source by build-system.sh and
+ * this is the one the firmware actually reads.
+ */
+function bootOverlaysPresent(context, params) {
+  const gpt = readGpt(context.image)
+  if (gpt === null) {
+    return cannotRun('boot-overlays-present', 'that file has no GPT, so there is nothing to read')
+  }
+
+  const name = params?.partition
+  if (typeof name !== 'string') {
+    return cannotRun('boot-overlays-present', 'the assertion names no partition to read')
+  }
+  const partition = gpt.partitions.find((entry) => entry.name === name)
+  if (partition === undefined) {
+    return cannotRun('boot-overlays-present', `no partition named ${name} in this image`)
+  }
+
+  const offset = partition.firstLba * SECTOR
+  const config = readFatFile(context.image, offset, 'config.txt')
+  if (config === null) {
+    return cannotRun(
+      'boot-overlays-present',
+      `no readable config.txt on the ${name} partition, so what the firmware is told to load is not known`
+    )
+  }
+
+  const wanted = config
+    .toString('utf8')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => !line.startsWith('#'))
+    .map((line) => /^dtoverlay=([^,\s]+)/u.exec(line)?.[1])
+    .filter((overlay) => overlay !== undefined)
+
+  if (wanted.length === 0) {
+    // Not a pass. A config.txt naming no overlay is either a device with no
+    // overlay, which this product is not, or a config.txt this failed to parse.
+    return cannotRun(
+      'boot-overlays-present',
+      `config.txt on ${name} names no dtoverlay at all, so this has nothing to check and will not report that as agreement`
+    )
+  }
+
+  const problems = []
+  for (const overlay of wanted) {
+    const blob = readFatFile(context.image, offset, `overlays/${overlay}.dtbo`)
+    if (blob === null) {
+      problems.push(`config.txt loads ${overlay} and overlays/${overlay}.dtbo is not on the card`)
+      continue
+    }
+    // 0xd00dfeed is the flattened device tree magic. A .dtbo that is not one is
+    // ignored by the firmware exactly as a missing file is.
+    if (blob.length < 4 || blob.readUInt32BE(0) !== 0xd00dfeed) {
+      problems.push(`overlays/${overlay}.dtbo is not a flattened device tree blob`)
+    }
+  }
+
+  return verdict(
+    'boot-overlays-present',
+    problems.length === 0,
+    problems.length === 0
+      ? `${String(wanted.length)} overlay(s) named by config.txt, each present on ${name} and a device tree blob: ${wanted.join(', ')}`
+      : problems.join('; '),
+    [
+      "says the file is there and is a device tree blob. It does not say the overlay applies cleanly to this board's base tree, which fdtoverlay at build time answers, and it does not say the panel lights up, which only the hardware answers.",
+      'reads the partition an attacker rewrites. It says this card is internally consistent, not that it is the card anybody intended.',
+    ]
+  )
+}
+
 /** Keyed by the `check` name a profile assertion uses. */
 export const IMAGE_VERIFIERS = {
   'boot-files-exact': bootFilesExact,
+  'boot-overlays-present': bootOverlaysPresent,
   'partition-present': partitionPresent,
   'verity-salt-pinned': veritySaltPinned,
   'identifiers-pinned': identifiersPinned,

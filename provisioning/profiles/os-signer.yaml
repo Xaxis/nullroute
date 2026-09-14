@@ -479,13 +479,46 @@ assertions:
       about the display. An assertion nobody writes cannot fail.
     does_not_cover: >
       Whether the panel actually lights up. This reads config.txt and says the
-      overlay is named; it does not say the .dtbo is on the card, that the
-      overlay describes the right I2C routing for this board, or that the
-      firmware applied it. Debian ships mainline device trees, which lack the
+      overlay is named; it does not say that the overlay describes the right
+      I2C routing for this board, or that the firmware applied it. Whether the
+      .dtbo is on the card is INV-PROV-26. Debian ships mainline device trees, which lack the
       labels the Raspberry Pi overlays are written against, so the overlay this
       names still has to come from somewhere and be proven on the hardware. Only
       a boot with the panel attached answers that, and nothing in this
       repository can.
+
+  - id: INV-PROV-26
+    statement: >
+      Every overlay config.txt tells the firmware to load is present on the boot
+      partition and is a device tree blob.
+    stage: image
+    verify:
+      - check: boot-overlays-present
+        params:
+          partition: boot
+    rationale: >
+      The firmware reads dtoverlay= out of config.txt, looks for the matching
+      file under overlays/, and if it is not there carries on booting without
+      saying anything. Nothing reports an error. The device comes up, the daemon
+      runs, and the panel stays dark, which on a product that is a screen with a
+      signer behind it is the whole device failing quietly.
+
+      INV-PROV-25 pins the text of config.txt and INV-PROV-22 pins the file
+      list, so changing either one alone is caught. Neither catches the edit
+      that removes the overlay and its line from the profile together, which is
+      what tidying up an overlay somebody believed was unused looks like. This
+      asserts the relation between the two directly, read off the card, so it
+      holds without either pin being maintained.
+
+      It reads config.txt from the boot partition rather than the copy left in
+      the root filesystem, because that is the file the firmware reads.
+    does_not_cover: >
+      That the overlay applies. A .dtbo present and well formed can still target
+      labels the base device tree does not have, which is a real risk here
+      because Debian ships mainline trees and the Raspberry Pi overlays are
+      written against theirs. fdtoverlay at build time answers that. Whether the
+      panel lights up is answered only by a boot with the panel attached, and
+      nothing in this repository can do it.
 
   - id: INV-PROV-22
     statement: >
