@@ -508,11 +508,12 @@ const UNTESTED_VERIFIERS = new Set([
   'profile-self-check',
   'verifier-ignores-backends',
   'documented-weakness',
-  // Image verifiers. The fixture builder in test/provisioning/image.test.ts now
-  // makes these reachable, which is what took boot-files-exact off this list.
-  'rebuild-identical',
+  // Image verifiers. The fixture builder in test/provisioning/image.test.ts
+  // makes these reachable, which is what has been taking them off this list.
+  // identifiers-pinned needs the fixture to carry pinned GUIDs and a FAT volume
+  // id; verity-salt-pinned needs a synthesised verity superblock. Both are
+  // buildable there, neither is built yet.
   'identifiers-pinned',
-  'partition-present',
   'verity-salt-pinned',
   // Rootfs verifiers, straightforwardly testable beside the eight already there.
   'file-modes',
