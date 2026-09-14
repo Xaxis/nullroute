@@ -441,6 +441,40 @@ assertions:
       design response is to keep trust out of it rather than to harden it
       further.
 
+  - id: INV-PROV-25
+    statement: >
+      The display this device is built around is enabled by its boot
+      configuration: config.txt names the KMS driver overlay and the overlay for
+      the official Raspberry Pi 7 inch DSI touchscreen.
+    stage: image
+    verify:
+      - check: boot-config-display
+        params:
+          overlays:
+            - vc4-kms-v3d
+            - vc4-kms-dsi-7inch
+    rationale: >
+      This product is a screen with a signer behind it, and the screen is always
+      the official 7 inch panel. Decompiling the device tree the image ships
+      says dsi@7e700000 is disabled, no node describes the panel, and no node
+      describes its touch controller, while the GPU node is enabled. So cage
+      starts, finds a card, and draws onto nothing: the panel is dark and touch
+      is dead. The drivers are all in the rootfs, which is exactly what made
+      this look provisioned for three months.
+
+      It went unnoticed because the profile asserted the boot files, the kernel
+      command line, the units, the sockets and the mount flags, and said nothing
+      about the display. An assertion nobody writes cannot fail.
+    does_not_cover: >
+      Whether the panel actually lights up. This reads config.txt and says the
+      overlay is named; it does not say the .dtbo is on the card, that the
+      overlay describes the right I2C routing for this board, or that the
+      firmware applied it. Debian ships mainline device trees, which lack the
+      labels the Raspberry Pi overlays are written against, so the overlay this
+      names still has to come from somewhere and be proven on the hardware. Only
+      a boot with the panel attached answers that, and nothing in this
+      repository can.
+
   - id: INV-PROV-22
     statement: >
       The boot partition holds exactly the pinned set of files and no others.

@@ -127,6 +127,11 @@ export const VERIFIERS = {
     status: 'implemented',
     describes: 'the partition layout matches',
   },
+  'boot-config-display': {
+    status: 'implemented',
+    describes:
+      'the boot configuration enables the panel this device is built around, which nothing asserted until the panel turned out not to be described in any device tree the image carries',
+  },
   'boot-files-exact': {
     status: 'implemented',
     describes:

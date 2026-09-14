@@ -849,7 +849,83 @@ export function fileModes(root, params) {
   )
 }
 
+/**
+ * INV-PROV-25. The display this product is built around is switched on.
+ *
+ * WHAT WAS MEASURED. The device is always the official Raspberry Pi 7 inch
+ * touchscreen, which is a DSI panel with an I2C touch controller. Decompiling
+ * the device tree the image actually ships says:
+ *
+ *     dsi@7e700000   "brcm,bcm2711-dsi1"   status = "disabled"
+ *     panel nodes matching panel|raspberrypi-touchscreen|ft5406|edt-ft5:  none
+ *     gpu            "brcm,bcm2711-vc5"    status = "okay"
+ *
+ * So KMS is on and /dev/dri/card0 exists, which means cage starts and finds a
+ * card. The DSI interface is off, nothing describes the panel for
+ * panel-raspberrypi-touchscreen to bind to, and nothing describes the touch
+ * controller for edt-ft5x06. The screen stays dark and touch does nothing.
+ *
+ * ALL THREE DRIVERS ARE IN THE IMAGE, which is what made this invisible:
+ * drm/vc4, panel-raspberrypi-touchscreen.ko and edt-ft5x06.ko are all present,
+ * so the rootfs looks provisioned for a panel it cannot light. That is the
+ * shape CLAUDE.md already names three times over: a measure that looks applied
+ * and is not.
+ *
+ * WHY THE PROFILE NEVER NOTICED. It pins the boot files, the kernel command
+ * line, the units, the sockets and the mount flags, and said nothing at all
+ * about the display. An assertion nobody wrote cannot fail, and this device is
+ * a screen with a signer behind it.
+ *
+ * WHAT MAKES IT PASS. Debian ships MAINLINE device trees, where the Raspberry
+ * Pi panel node does not exist: it is added downstream by an overlay, and
+ * neither pinned package carries one. raspi-firmware ships hifiberry-dac and
+ * pi4-spidev; the kernel's forty eight overlays are all TI, MediaTek, Renesas
+ * and Rockchip. So config.txt has to name an overlay and the card has to carry
+ * it, and until it does this fails, which is the correct answer.
+ */
+export function bootConfigDisplay(root, params) {
+  const wanted = params.overlays ?? []
+  if (wanted.length === 0) {
+    return verdict('boot-config-display', false, 'the assertion named no overlays to require')
+  }
+
+  const path = join(root, 'boot/firmware/config.txt')
+  if (!existsSync(path)) {
+    return unavailable(
+      'boot-config-display',
+      'no boot/firmware/config.txt in the root filesystem, so what the firmware reads cannot be read here'
+    )
+  }
+
+  const lines = readFileSync(path, 'utf8')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line !== '' && !line.startsWith('#'))
+
+  const named = new Set(
+    lines.map((line) => /^dtoverlay=([^,\s]+)/.exec(line)?.[1]).filter((name) => name !== undefined)
+  )
+  const missing = wanted.filter((name) => !named.has(name))
+
+  const limits = [
+    'reads config.txt only. It says the overlay is NAMED, not that the .dtbo is on the card, and not that the panel lights up. Only the hardware answers the last one.',
+    'the panel is the official 7 inch DSI touchscreen. A different display needs a different overlay and this assertion is about that one.',
+  ]
+
+  return missing.length === 0
+    ? verdict('boot-config-display', true, `config.txt names ${wanted.join(' and ')}`, limits)
+    : verdict(
+        'boot-config-display',
+        false,
+        `config.txt names no ${missing.join(' and no ')}, so the DSI interface stays disabled and ` +
+          `nothing describes the panel or its touch controller: the screen stays dark. ` +
+          `It names ${named.size === 0 ? 'no overlay at all' : [...named].join(', ')}`,
+        limits
+      )
+}
+
 export const ROOTFS_VERIFIERS = {
+  'boot-config-display': bootConfigDisplay,
   'absent-paths': absentPaths,
   'unit-executables': unitExecutables,
   'file-modes': fileModes,

@@ -161,11 +161,16 @@ backend, so that the first backend is written against a contract rather than the
 contract being reverse-engineered from whatever the first backend happened to
 do.
 
-Eighteen of the eighteen verifiers are written. Three inspect the profiles
-themselves and run on every commit. Seven read a root filesystem, five read a
+Nineteen of the nineteen verifiers are written. Three inspect the profiles
+themselves and run on every commit. Eight read a root filesystem, five read a
 whole image (two builds to compare, a partition table, a verity superblock, the
 boot partition's file list), and the remaining three need a booted device: mount
 options, listening sockets and swap.
+
+The nineteenth is the newest and the one that failed first. Nothing in this
+profile said anything about the display until the panel turned out not to be
+described in any device tree the image carries, which is the whole product
+failing quietly in the one place no assertion was looking.
 
 Those last three used to be unwritten on purpose, because reading any of them
 from an unbooted rootfs is the false pass described above. They are written now,

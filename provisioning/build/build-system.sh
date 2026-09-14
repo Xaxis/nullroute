@@ -343,12 +343,20 @@ cp "$WORK/firmware/usr/lib/raspi-firmware/fixup4.dat" "$BOOT/"
 #
 # `followkernel` places the initramfs after the kernel in memory rather than at
 # a fixed address, which is what the Pi firmware expects when it is loading both.
-cat > "$BOOT/config.txt" <<'CONFIG'
-arm_64bit=1
+#
+# WRITTEN TO BOTH PLACES FROM ONE STRING, the way the kernel command line below
+# is, so what the firmware reads and what the verifier reads cannot drift. On a
+# Raspberry Pi /boot/firmware is where this partition is mounted, so the copy in
+# the root filesystem is what the running device sees and is where INV-PROV-25's
+# verifier looks.
+CONFIG_TXT='arm_64bit=1
 kernel=kernel8.img
 initramfs initramfs.img followkernel
-disable_splash=1
-CONFIG
+disable_splash=1'
+
+printf '%s\n' "$CONFIG_TXT" > "$BOOT/config.txt"
+mkdir -p "$ROOTFS/boot/firmware"
+printf '%s\n' "$CONFIG_TXT" > "$ROOTFS/boot/firmware/config.txt"
 
 
 

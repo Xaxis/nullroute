@@ -23,6 +23,7 @@ import {
   absentPaths,
   cmdlineExact,
   matchesGlob,
+  bootConfigDisplay,
   noUnitOrdering,
   systemdExposure,
 } from '../../provisioning/checks/rootfs.mjs'
@@ -153,6 +154,68 @@ describe('provisioning.absent-packages', () => {
   it('refuses-to-pass-when-given-no-package-names', () => {
     dpkg([{ name: 'nodejs', status: 'install ok installed' }])
     expect(absentPackages(root, { packages: [] }).ok).toBe(false)
+  })
+})
+
+describe('provisioning.boot-config-display', () => {
+  const OVERLAYS = ['vc4-kms-v3d', 'vc4-kms-dsi-7inch']
+
+  /**
+   * INV-PROV-25. The state the image was actually in when this was written.
+   *
+   * config.txt held four lines, none of them a dtoverlay, and the device tree
+   * the image ships has dsi@7e700000 disabled with no node describing the panel
+   * or its touch controller. The drivers are all in the rootfs, so it looked
+   * provisioned. The screen is dark.
+   */
+  it('fails-a-config-that-names-no-overlay-at-all', () => {
+    put(
+      'boot/firmware/config.txt',
+      'arm_64bit=1\nkernel=kernel8.img\ninitramfs initramfs.img followkernel\ndisable_splash=1\n'
+    )
+    const result = bootConfigDisplay(root, { overlays: OVERLAYS })
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('vc4-kms-dsi-7inch')
+    expect(result.detail).toContain('no overlay at all')
+    // What it cannot answer is stated every time, because naming an overlay is
+    // not the same as the panel lighting up.
+    expect(result.limits.join(' ')).toContain('not that the panel lights up')
+  })
+
+  it('fails-a-config-that-names-only-some-of-them', () => {
+    put('boot/firmware/config.txt', 'arm_64bit=1\ndtoverlay=vc4-kms-v3d\n')
+    const result = bootConfigDisplay(root, { overlays: OVERLAYS })
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('vc4-kms-dsi-7inch')
+  })
+
+  /** Parameters after a comma are the overlay's own, and do not change its name. */
+  it('passes-a-config-that-names-both-with-parameters', () => {
+    put(
+      'boot/firmware/config.txt',
+      '# a comment\narm_64bit=1\ndtoverlay=vc4-kms-v3d\ndtoverlay=vc4-kms-dsi-7inch,sizex\n'
+    )
+    const result = bootConfigDisplay(root, { overlays: OVERLAYS })
+    expect(result.ok).toBe(true)
+  })
+
+  /**
+   * INV-PROV-25. Unavailable, not passed. An image whose config.txt cannot be
+   * read here has not been shown to enable anything, and this tool never counts
+   * could-not-look as a pass.
+   */
+  it('reports-unavailable-rather-than-passing-when-there-is-no-config', () => {
+    const result = bootConfigDisplay(root, { overlays: OVERLAYS })
+    expect(result.ok).toBe(false)
+    expect(result.unavailable).toBe(true)
+  })
+
+  it('refuses-to-decide-which-overlays-matter', () => {
+    put('boot/firmware/config.txt', 'arm_64bit=1\n')
+    const result = bootConfigDisplay(root, {})
+    expect(result.ok).toBe(false)
+    expect(result.unavailable).toBeUndefined()
+    expect(result.detail).toContain('named no overlays')
   })
 })
 
