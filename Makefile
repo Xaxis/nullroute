@@ -773,7 +773,18 @@ web: verification-report.json ## Run the website locally
 # agreed with. CI could not see it: a fresh checkout has no report and always
 # writes a current one, so only a local `make deploy` could publish it, and a
 # local `make deploy` is how this site is deployed.
-verification-report.json: MANIFEST.lock
+#
+# MANIFEST.lock IS NOT THE WHOLE INPUT, which cost a CI run to learn. The report
+# also carries the suite's own counts, and the home page renders them: "300
+# invariants bound to 811 tests, 1037 tests in the suite". MANIFEST.lock covers
+# packages/, spec/ and provisioning/, so a test added under packages/ moves it.
+# The tests under this test/ directory are not in any of those, so twenty of
+# them were added, the root did not move, make saw nothing to rebuild, and the
+# site was built from a report saying 1037 while the suite held 1057. CI builds
+# from scratch, got 1057, and the committed CSP hashes covered the other number.
+REPORT_INPUTS := MANIFEST.lock vitest.config.ts $(shell git ls-files test 2>/dev/null)
+
+verification-report.json: $(REPORT_INPUTS)
 	@$(MAKE) --no-print-directory verify
 
 web-build: verification-report.json ## Production build of the website
