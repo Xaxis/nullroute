@@ -337,6 +337,32 @@ body {
   box-shadow: 0 0 0 1px var(--color-line);
 }
 
+/* NO SCROLLBAR, SAID OUT LOUD.
+
+   Two comments in this file justify design decisions with "there is no
+   scrollbar", and nothing made that true. It was a platform default. macOS
+   draws overlay scrollbars that fade away, so the claim held on the machine
+   this is developed and screenshotted on, while the device runs Chromium on
+   Linux where the default is a classic scrollbar that takes real width out of a
+   panel with none to give. Every measurement in check-screen-fit is taken
+   against 800px, so a scrollbar appearing only on the device would narrow the
+   content by about fifteen pixels that nothing here ever measured.
+
+   It surfaced because Chrome's newer headless mode draws them too: five
+   committed device screenshots went stale against an unchanged bundle, and the
+   only difference was a scrollbar down the right edge.
+
+   Hidden rather than styled, because .nr-scrolls already provides the scroll
+   affordance and was written for a panel that has no scrollbar. This makes that
+   sentence true instead of lucky. */
+#root * {
+  scrollbar-width: none;
+}
+
+#root *::-webkit-scrollbar {
+  display: none;
+}
+
 body {
   display: flex;
   /* What the device is sitting on. Never visible on the device itself, where
