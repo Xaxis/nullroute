@@ -68,6 +68,27 @@ manifest: ## Regenerate MANIFEST.lock from the tracked sources
 	# the hash a user compares before entering their PIN. Tracked-or-not is the
 	# property that matters, and it is what this target's description has
 	# always claimed to use.
+	# UNTRACKED FILES ARE REFUSED, because `git ls-files` cannot see them and
+	# the hash would be generated as though they did not exist. That is not a
+	# hypothetical: this target was run before `git add` on a new device tree
+	# overlay, the manifest came out with 320 entries for 321 tracked files, and
+	# every check here passed because the lock and the live computation agreed
+	# with each other about a file neither could see. CI caught it on the
+	# recipe, one commit later. The comment above tells the same story about
+	# packages/ui/src/components/Refusal.tsx sitting untracked through a full
+	# green run, which is the sharper version: the file was IMPORTED BY NINETEEN
+	# SCREENS and contributed nothing to the hash a user compares before
+	# entering their PIN.
+	@untracked=$$(git ls-files --others --exclude-standard $(MANIFEST_ROOTS)); \
+		if [ -n "$$untracked" ]; then \
+			echo "make manifest: untracked file(s) under $(MANIFEST_ROOTS):"; \
+			echo "$$untracked" | sed 's/^/    /'; \
+			echo; \
+			echo "  git ls-files does not list these, so the manifest would be written"; \
+			echo "  as though they were not there and every check would agree. Stage them"; \
+			echo "  first, or delete them."; \
+			exit 1; \
+		fi
 	@git ls-files -z $(MANIFEST_ROOTS) \
 	  | LC_ALL=C sort -z | xargs -0 shasum -a 256 > MANIFEST.lock
 	@printf 'root hash: '; shasum -a 256 MANIFEST.lock | cut -d' ' -f1
