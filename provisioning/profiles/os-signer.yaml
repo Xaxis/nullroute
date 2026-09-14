@@ -516,9 +516,13 @@ assertions:
       That the overlay applies. A .dtbo present and well formed can still target
       labels the base device tree does not have, which is a real risk here
       because Debian ships mainline trees and the Raspberry Pi overlays are
-      written against theirs. fdtoverlay at build time answers that. Whether the
-      panel lights up is answered only by a boot with the panel attached, and
-      nothing in this repository can do it.
+      written against theirs. That is answered at build time rather than here:
+      build-system.sh merges this overlay into the bcm2711-rpi-4-b.dtb the image
+      ships with fdtoverlay, then reads the result back and refuses to build
+      unless dsi@7e700000 came out okay and the merged tree carries both the
+      panel and its touch controller. Whether the panel then lights up is
+      answered only by a boot with the panel attached, and nothing in this
+      repository can do it.
 
   - id: INV-PROV-22
     statement: >

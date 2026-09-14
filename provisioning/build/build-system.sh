@@ -343,6 +343,44 @@ test -s "$BOOT/overlays/nullroute-7inch-dsi.dtbo" || {
   exit 1
 }
 
+# IT COMPILED IS NOT IT APPLIES, and the difference is the whole panel. dtc
+# checks this overlay's own syntax and knows nothing about the tree it will be
+# merged into. Debian ships mainline device trees and the Raspberry Pi overlays
+# are written against Raspberry Pi's, so a label targeted here can simply not
+# exist in the base tree: the overlay compiles, reaches the card, satisfies
+# INV-PROV-26, and the firmware then declines to apply it and boots to a dark
+# panel with nothing logged anywhere to say why.
+#
+# fdtoverlay resolves &dsi1 and &i2c0_1 against the real bcm2711-rpi-4-b.dtb
+# this image ships. Its exit status is necessary and not sufficient, so the
+# merged tree is read back: applying cleanly and actually turning the display on
+# are different claims, and only the second one is the product.
+fdtoverlay -i "$BOOT/bcm2711-rpi-4-b.dtb" -o "$WORK/merged-check.dtb" \
+  "$BOOT/overlays/nullroute-7inch-dsi.dtbo" || {
+  echo "the panel overlay does not apply to bcm2711-rpi-4-b.dtb" >&2
+  exit 1
+}
+
+# dsi@7e700000 ships disabled in the mainline tree. If it is still disabled
+# after the merge, cage starts, finds a card, and draws onto nothing.
+dsi_status=$(fdtget -t s "$WORK/merged-check.dtb" /soc/dsi@7e700000 status 2>/dev/null || true)
+test "$dsi_status" = "okay" || {
+  echo "overlay applied and dsi@7e700000 is \"$dsi_status\", not \"okay\"" >&2
+  exit 1
+}
+
+dtc -I dtb -O dts "$WORK/merged-check.dtb" > "$WORK/merged-check.dts" 2>/dev/null
+grep -q 'raspberrypi,7inch-touchscreen-panel' "$WORK/merged-check.dts" || {
+  echo "overlay applied and the merged tree describes no 7 inch panel" >&2
+  exit 1
+}
+grep -q 'edt,edt-ft5406' "$WORK/merged-check.dts" || {
+  echo "overlay applied and the merged tree describes no touch controller" >&2
+  exit 1
+}
+rm -f "$WORK/merged-check.dtb" "$WORK/merged-check.dts"
+echo "panel overlay: applies to bcm2711-rpi-4-b.dtb, dsi1 okay, panel and touch present"
+
 # The initramfs that opens the dm-verity mapping. Built from the same kernel
 # tree the card carries, so its modules and the kernel cannot be a version
 # apart, which is a boot failure with no console to read it on.
