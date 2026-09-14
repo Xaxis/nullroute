@@ -831,6 +831,13 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 	# renders and hydration dies with React #412. Deploying prebuilt means what
 	# was hashed is what is served.
 	@node tools/build-vercel-output.mjs
+	# `vercel deploy` prints a warning on every run that package.json declares
+	# node 24.x and asks for 22.x. IGNORE IT, and do not resolve it by editing
+	# engines. That field is what .npmrc's engine-strict enforces for the build
+	# toolchain, and the version it names is the one CI pins in .nvmrc. Vercel
+	# reads it to choose a runtime for serverless functions, and this output has
+	# none: .vercel/output holds config.json and static, no functions directory.
+	# Nothing here runs on their Node at all.
 	@npx vercel deploy --prebuilt --prod
 	@$(MAKE) --no-print-directory web-live-check
 
