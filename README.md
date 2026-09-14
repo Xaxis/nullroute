@@ -103,8 +103,8 @@ Roughly $100 to $120.
 
 | Part | What to get | Notes |
 | --- | --- | --- |
-| Board | Raspberry Pi 5, or Pi 4 (4GB) | The Pi 5 can do a signed boot chain later. The Pi 4 cannot. |
-| Screen | 7 inch 800x480 touchscreen | Any small HDMI display works. |
+| Board | Raspberry Pi 4 (4GB) | The only board this image supports, and the only device tree on the card. |
+| Screen | Official Raspberry Pi 7 inch touchscreen | The DSI panel. Every screen is measured at exactly 800x480 and no other size. |
 | Storage | 16GB+ A2 SD card | The image is about 1.6GB. |
 | Dice | One d6 | Casino grade if you care. Any die works. |
 | Camera | Pi Camera Module 3 | Optional. Skip it and use an SD card to move data. |

@@ -16,9 +16,15 @@ purpose: >
   (tier 2) closes it.
 
 boards:
-  - raspberrypi-5
+  # RASPBERRYPI-5 AND CM5 WERE HERE. Neither can start this artifact. Debian
+  # trixie's 6.12 kernel ships no bcm2712-rpi-cm5 device tree at all, which the
+  # signer profile already said when it dropped the CM5, and the Pi 5's tree is
+  # a bring-up skeleton with no display pipeline, so it is no longer put on the
+  # card. A board named in a profile that the artifact cannot start is the same
+  # class of claim as a hardening rule nobody applies, and this profile carried
+  # two of them while arguing in its own purpose that a profile asserting
+  # properties of a device that was not built is the thing to avoid.
   - raspberrypi-4
-  - raspberrypi-cm5
 
 backends:
   - name: rpi-image-gen

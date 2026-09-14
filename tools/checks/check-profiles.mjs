@@ -237,6 +237,70 @@ const built = implemented()
  * Only this total is checked. Pinning every sentence would make the documents
  * unwritable, and this is the one that carries the claim.
  */
+/**
+ * A board a document tells somebody to buy is a board the profile claims.
+ *
+ * THE DRIFT THIS EXISTS FOR. `boards:` said raspberrypi-4 and nothing else,
+ * because Debian's bcm2712-rpi-5-b.dtb has fifteen device nodes to the Pi 4's
+ * seventy four and describes no DSI at all, so the panel this device is built
+ * around has nothing to attach to on a Pi 5. Meanwhile README.md's shopping
+ * table led with "Raspberry Pi 5, or Pi 4" and docs/VERIFICATION.md said "Pi 5
+ * is preferred", and both threw in a Pi Zero 2 W that has never appeared in any
+ * profile. The reason given was a signed boot chain that is phase 7 and does
+ * not exist.
+ *
+ * That is not a stale sentence, it is a purchasing instruction: somebody reads
+ * it, buys the wrong board, flashes the image and gets a device with no screen.
+ * CLAUDE.md calls overclaiming in the docs a security bug, and a table telling
+ * a stranger what hardware to buy is the sharpest end of it.
+ *
+ * Model names rather than profile ids, because a shopping table says "Raspberry
+ * Pi 4" and the profile says "raspberrypi-4". The mapping is written out here
+ * so a new board has to be added deliberately in both places.
+ */
+// Every board any loaded profile claims. The signer profile is the one that
+// ships, but a second profile claiming a board is still a board this repository
+// says it supports.
+const BOARDS = [...new Set(loaded.flatMap(({ profile }) => profile.boards ?? []))]
+
+const BOARD_PROSE = {
+  'raspberrypi-4': /Raspberry Pi 4\b/,
+  'raspberrypi-5': /Raspberry Pi 5\b/,
+  'raspberrypi-cm5': /Compute Module 5\b/,
+  'raspberrypi-zero-2-w': /Pi Zero 2 W\b/,
+}
+
+for (const where of ['README.md', 'docs/VERIFICATION.md']) {
+  const text = readFileSync(join(ROOT, where), 'utf8')
+  // The hardware table only. Prose elsewhere may discuss a board it does not
+  // tell anybody to buy, which is what the phase 7 paragraphs legitimately do.
+  const table = text
+    .split('\n')
+    .filter((line) => /^\|\s*(Board|Screen|Display)\s*\|/.test(line))
+    .join('\n')
+  if (table === '') continue
+
+  for (const [id, pattern] of Object.entries(BOARD_PROSE)) {
+    const named = pattern.test(table)
+    const claimed = BOARDS.includes(id)
+    if (named && !claimed) {
+      fail(
+        where,
+        `its hardware table names ${id} and the profile does not claim it. A table ` +
+          `telling somebody what to buy is a purchasing instruction, and this one would ` +
+          `send them to a board the image does not support.`
+      )
+    }
+    if (claimed && !named) {
+      fail(
+        where,
+        `the profile claims ${id} and its hardware table does not name it, so the one ` +
+          `board this image supports is not the one the document tells anybody to get.`
+      )
+    }
+  }
+}
+
 for (const where of ['provisioning/README.md', 'README.md']) {
   const readme = readFileSync(join(ROOT, where), 'utf8')
   const WORDS = [

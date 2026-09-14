@@ -65,14 +65,14 @@ Compute the root hash:
 
 ```console
 $ sha256sum MANIFEST.lock
-487a119f0c47b42118c2c9762697ceb005f3cf533b9637e57b4ebbc9b8d76999  MANIFEST.lock
+122afedb7e80e963063b5827b8db8fdcbf17fade3f3947fac1e2f06673fdb4d7  MANIFEST.lock
 ```
 
 Regenerate the manifest from scratch and confirm it matches what is committed:
 
 ```console
 $ git ls-files -z packages spec provisioning | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum
-487a119f0c47b42118c2c9762697ceb005f3cf533b9637e57b4ebbc9b8d76999  -
+122afedb7e80e963063b5827b8db8fdcbf17fade3f3947fac1e2f06673fdb4d7  -
 ```
 
 On macOS use `shasum -a 256` in place of `sha256sum`. The values are identical.
@@ -348,8 +348,8 @@ Target build is under $120.
 
 | Part | Choice | Notes |
 | --- | --- | --- |
-| Board | Raspberry Pi 4 (4GB) or Pi 5 | Pi 5 is preferred: its BCM2712 supports a signed boot chain the Pi 4 does not. Pi Zero 2 W works but has no secure boot path and a slower Argon2id. |
-| Display | 7 inch 800x480 touchscreen | Any small HDMI display works. The UI is designed for 800x480 and scales up. |
+| Board | Raspberry Pi 4 (4GB) | The only board this image supports, and the only device tree on the card. |
+| Display | Official Raspberry Pi 7 inch touchscreen | The DSI panel, described by `provisioning/build/overlays/nullroute-7inch-dsi.dts` and asserted by INV-PROV-25. Every screen is measured at exactly 800x480 and no other size. |
 | Camera | Pi Camera Module 3 | Optional. Without it, use SD card transport and build in camera-less mode. |
 | Storage | 16GB+ SD card, A2 class | The image is small; the class rating matters for Argon2id-adjacent I/O, not capacity. |
 | Case | Any | Consider one that makes tampering visible rather than one that looks nice. |
