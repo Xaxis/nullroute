@@ -96,6 +96,34 @@ manifest: ## Regenerate MANIFEST.lock from the tracked sources
 	# reproduce. Updating it here means it is never a thing someone remembered
 	# to do, which is how it came to be four commits out of date.
 	@node tools/checks/check-manifest-recipe.mjs --write
+	# vercel.json IS DOWNSTREAM OF THIS NUMBER TOO, by a longer route that is
+	# easy to miss. The home page renders the verify transcript, whose last
+	# line is this root, so moving it rewrites an inline script block, so two
+	# of the eight hashes in the site's Content-Security-Policy change. A
+	# device commit that never touches apps/web invalidates the published
+	# policy. That is not hypothetical either: it is why CI run 34868626168
+	# failed on "CSP hashes match the build" with no website change in the
+	# commit, and the person reading that failure had no reason to connect it
+	# to an overlay they added to provisioning/.
+	#
+	# Regenerating it needs a full website build, which does not belong in a
+	# target that is run while working on the device, so this reports rather
+	# than fixes. It reports in three states, because a check that cannot run
+	# must not read as a pass: the build output either disagrees with the new
+	# root, agrees with it, or is not there to ask.
+	@root=$$(shasum -a 256 MANIFEST.lock | cut -d' ' -f1); \
+		if [ ! -f apps/web/out/index.html ]; then \
+			echo "  site CSP: UNCHECKED, no build at apps/web/out."; \
+			echo "            \"make web-check\" settles it before any deploy can."; \
+		elif grep -q "$$root" apps/web/out/index.html; then \
+			echo "  site CSP: the build at apps/web/out already quotes this root."; \
+		else \
+			echo "  site CSP: STALE. apps/web/out quotes an older root, so the eight"; \
+			echo "            hashes in vercel.json no longer cover the scripts this"; \
+			echo "            commit builds. CI fails this as \"CSP hashes match the"; \
+			echo "            build\". Fix before pushing:"; \
+			echo "                make web-build && node tools/gen-csp.mjs"; \
+		fi
 
 manifest-recipe: ## The commands docs/VERIFICATION.md tells you to run print what it says
 	# A document is not executable, so the page teaching a stranger how to
