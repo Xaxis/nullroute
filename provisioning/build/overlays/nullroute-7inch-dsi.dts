@@ -1,0 +1,97 @@
+/dts-v1/;
+/plugin/;
+
+/*
+ * The official Raspberry Pi 7 inch DSI touchscreen, described for a MAINLINE
+ * device tree.
+ *
+ * WHY THIS FILE EXISTS. The panel is the display this product is built around
+ * and it was not switched on. Decompiling the device tree the image ships says
+ * dsi@7e700000 is disabled, no node describes the panel, and no node describes
+ * its touch controller, while the GPU node is already enabled. So cage starts,
+ * finds a card, and draws onto nothing.
+ *
+ * WHY IT IS WRITTEN HERE RATHER THAN TAKEN FROM RASPBERRY PI. Debian ships
+ * mainline device trees. Raspberry Pi's own overlay is written against their
+ * downstream tree and its labels, and neither pinned package carries any Pi
+ * overlay at all: raspi-firmware has hifiberry-dac and pi4-spidev, and the
+ * kernel's forty eight are TI, MediaTek, Renesas and Rockchip. Taking their
+ * archive would mean swapping the kernel this image is built and verified
+ * against, which invalidates the module pruning, the verity chain, the
+ * initramfs and the boot test, to fix a screen. This is one file we can read.
+ *
+ * EVERY NAME BELOW WAS READ OUT OF THE ARTIFACT, not remembered:
+ *
+ *   dsi1        __symbols__ says /soc/dsi@7e700000, and the tree carries
+ *               __symbols__, so an overlay can target it by label at all.
+ *   i2c0_1      /i2c-mux0/i2c@1. The mux is i2c-mux-pinctrl with branches named
+ *               i2c0 and i2c0-vc; branch 0 takes pinctrl-0 = i2c0-gpio0
+ *               (phandle 0x2b, the HAT bus) and branch 1 takes pinctrl-1 =
+ *               i2c0-gpio44 (phandle 0x2c). GPIO 44/45 is the CSI/DSI
+ *               connector, so this branch is mainline's i2c_csi_dsi.
+ *   the two compatible strings come from modules.alias in the image:
+ *               panel_raspberrypi_touchscreen binds
+ *               raspberrypi,7inch-touchscreen-panel, and edt_ft5x06 binds
+ *               edt,edt-ft5406. rpi_ft5406 is not in this image, so the
+ *               mainline i2c path is the only one there is.
+ *
+ * WHAT IS STILL UNPROVEN. That the panel lights up. Nothing in this repository
+ * can boot a DSI panel: QEMU -M virt has no such connector. INV-PROV-25 checks
+ * that the overlay is named and shipped; the hardware is what checks the rest.
+ *
+ * PI 4 ONLY, and not by choice. Debian's bcm2712-rpi-5-b.dtb has fifteen device
+ * nodes to the Pi 4's seventy four and contains no DSI anything, so there is
+ * nothing on a Pi 5 for this to attach to. See `boards:` in the profile.
+ */
+
+/ {
+	compatible = "brcm,bcm2711";
+
+	/* The DSI host the panel hangs off, which ships disabled. */
+	fragment@0 {
+		target = <&dsi1>;
+		__overlay__ {
+			/* No #address-cells here: the panel is not a DSI child node. It
+			   hangs off the connector's I2C and is joined to this host by the
+			   endpoint below, so declaring them made dtc warn about cells
+			   with nothing to address. */
+			status = "okay";
+
+			port {
+				dsi_out_port: endpoint {
+					remote-endpoint = <&panel_dsi_port>;
+				};
+			};
+		};
+	};
+
+	/*
+	 * The panel's bridge and its touch controller, both on the connector's
+	 * I2C. The bridge at 0x45 is the ATTINY that powers the panel; the touch
+	 * controller at 0x38 is an FT5406.
+	 */
+	fragment@1 {
+		target = <&i2c0_1>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+
+			bridge@45 {
+				compatible = "raspberrypi,7inch-touchscreen-panel";
+				reg = <0x45>;
+
+				port {
+					panel_dsi_port: endpoint {
+						remote-endpoint = <&dsi_out_port>;
+					};
+				};
+			};
+
+			touch@38 {
+				compatible = "edt,edt-ft5406";
+				reg = <0x38>;
+			};
+		};
+	};
+};

@@ -53,6 +53,7 @@ RUN apt-get update \
       zstd=1.5.4+dfsg2-5 \
       erofs-utils=1.5-1 \
       mtools=4.0.33-1+really4.0.32-1 \
+      device-tree-compiler=1.6.1-4+b1 \
       e2fsprogs \
       dosfstools=4.2-1 \
       uuid-runtime \

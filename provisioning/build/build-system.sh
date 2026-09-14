@@ -324,13 +324,24 @@ cp "$WORK/kernel/boot/vmlinuz-$KERNEL_VERSION" "$BOOT/kernel8.img"
 # one of them. A board named in a profile that the artifact cannot start is the
 # same class of claim as a hardening rule nobody applies.
 cp "$WORK/kernel/$KERNEL_DIR/bcm2711-rpi-4-b.dtb" "$BOOT/"
-cp "$WORK/kernel/$KERNEL_DIR/bcm2712-rpi-5-b.dtb" "$BOOT/"
 
 # Pi 4 loads its GPU firmware from the card. Pi 5 does not: its bootloader lives
 # in SPI EEPROM and reads config.txt directly, so these two files are there for
 # the 4 and are inert on the 5.
 cp "$WORK/firmware/usr/lib/raspi-firmware/start4.elf" "$BOOT/"
 cp "$WORK/firmware/usr/lib/raspi-firmware/fixup4.dat" "$BOOT/"
+
+# THE PANEL, COMPILED FROM SOURCE IN THIS REPOSITORY rather than taken as a blob.
+# `-@` keeps the symbol table the firmware needs to resolve &dsi1 and &i2c0_1
+# against the base tree. dtc warns rather than fails on a bad overlay, so the
+# exit status is not enough on its own: the file has to exist afterwards.
+mkdir -p "$BOOT/overlays"
+dtc -@ -I dts -O dtb -o "$BOOT/overlays/nullroute-7inch-dsi.dtbo" \
+  /work/provisioning/build/overlays/nullroute-7inch-dsi.dts
+test -s "$BOOT/overlays/nullroute-7inch-dsi.dtbo" || {
+  echo "the panel overlay did not compile, and a device with no screen is not a device" >&2
+  exit 1
+}
 
 # The initramfs that opens the dm-verity mapping. Built from the same kernel
 # tree the card carries, so its modules and the kernel cannot be a version
@@ -349,10 +360,20 @@ cp "$WORK/firmware/usr/lib/raspi-firmware/fixup4.dat" "$BOOT/"
 # Raspberry Pi /boot/firmware is where this partition is mounted, so the copy in
 # the root filesystem is what the running device sees and is where INV-PROV-25's
 # verifier looks.
+# dtoverlay: THE SCREEN. Without it dsi@7e700000 ships disabled and nothing
+# describes the panel or its touch controller, so cage starts, finds a card and
+# draws onto nothing. See provisioning/build/overlays/nullroute-7inch-dsi.dts
+# for why the overlay is written here rather than taken from Raspberry Pi, and
+# INV-PROV-25 for the assertion that this line exists at all.
+#
+# No vc4-kms-v3d line, deliberately: the mainline tree this kernel ships already
+# has the GPU node at status okay, so KMS is on and /dev/dri/card0 exists. That
+# overlay is a Raspberry Pi OS habit and there is nothing here for it to enable.
 CONFIG_TXT='arm_64bit=1
 kernel=kernel8.img
 initramfs initramfs.img followkernel
-disable_splash=1'
+disable_splash=1
+dtoverlay=nullroute-7inch-dsi'
 
 printf '%s\n' "$CONFIG_TXT" > "$BOOT/config.txt"
 mkdir -p "$ROOTFS/boot/firmware"
@@ -620,7 +641,11 @@ mkdir -p "$GEN/input" "$GEN/images" "$GEN/root"
 # The pinned command line, from provisioning/profiles/os-signer.yaml. Passed in
 # rather than written here, for the same reason the identifiers are.
 printf '%s\n' "${NULLROUTE_CMDLINE:?run through the Makefile}" > "$GEN/input/cmdline.txt"
-cp "$BOOT"/* "$GEN/input/"
+# -a, because the boot partition has a subdirectory now: overlays/ holds the
+# device tree overlay that switches the panel on. A plain cp skips it with
+# "omitting directory" and carries on, which would build a card whose config.txt
+# names an overlay that is not on it.
+cp -a "$BOOT"/* "$GEN/input/"
 cp "$WORK/system.erofs" "$GEN/input/system.img"
 
 # PADDED TO 8 MiB. The hash tree for a 150MiB system partition is about 1.2MiB,
@@ -661,11 +686,13 @@ image boot.vfat {
     file "config.txt" { image = "config.txt" }
     file "kernel8.img" { image = "kernel8.img" }
     file "bcm2711-rpi-4-b.dtb" { image = "bcm2711-rpi-4-b.dtb" }
-    file "bcm2712-rpi-5-b.dtb" { image = "bcm2712-rpi-5-b.dtb" }
     file "start4.elf" { image = "start4.elf" }
     file "fixup4.dat" { image = "fixup4.dat" }
     file "system.roothash" { image = "system.roothash" }
     file "initramfs.img" { image = "initramfs.img" }
+    # The panel. The firmware looks for dtoverlay= names under overlays/, so
+    # this one file is the difference between a screen and a dark rectangle.
+    file "overlays/nullroute-7inch-dsi.dtbo" { image = "overlays/nullroute-7inch-dsi.dtbo" }
   }
   size = 64M
 }

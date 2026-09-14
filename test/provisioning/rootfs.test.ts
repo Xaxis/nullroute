@@ -158,7 +158,7 @@ describe('provisioning.absent-packages', () => {
 })
 
 describe('provisioning.boot-config-display', () => {
-  const OVERLAYS = ['vc4-kms-v3d', 'vc4-kms-dsi-7inch']
+  const OVERLAYS = ['nullroute-7inch-dsi']
 
   /**
    * INV-PROV-25. The state the image was actually in when this was written.
@@ -175,25 +175,25 @@ describe('provisioning.boot-config-display', () => {
     )
     const result = bootConfigDisplay(root, { overlays: OVERLAYS })
     expect(result.ok).toBe(false)
-    expect(result.detail).toContain('vc4-kms-dsi-7inch')
+    expect(result.detail).toContain('nullroute-7inch-dsi')
     expect(result.detail).toContain('no overlay at all')
     // What it cannot answer is stated every time, because naming an overlay is
     // not the same as the panel lighting up.
     expect(result.limits.join(' ')).toContain('not that the panel lights up')
   })
 
-  it('fails-a-config-that-names-only-some-of-them', () => {
+  it('fails-a-config-that-names-a-different-overlay', () => {
     put('boot/firmware/config.txt', 'arm_64bit=1\ndtoverlay=vc4-kms-v3d\n')
     const result = bootConfigDisplay(root, { overlays: OVERLAYS })
     expect(result.ok).toBe(false)
-    expect(result.detail).toContain('vc4-kms-dsi-7inch')
+    expect(result.detail).toContain('nullroute-7inch-dsi')
   })
 
   /** Parameters after a comma are the overlay's own, and do not change its name. */
   it('passes-a-config-that-names-both-with-parameters', () => {
     put(
       'boot/firmware/config.txt',
-      '# a comment\narm_64bit=1\ndtoverlay=vc4-kms-v3d\ndtoverlay=vc4-kms-dsi-7inch,sizex\n'
+      '# a comment\narm_64bit=1\ndtoverlay=nullroute-7inch-dsi,sizex\n'
     )
     const result = bootConfigDisplay(root, { overlays: OVERLAYS })
     expect(result.ok).toBe(true)

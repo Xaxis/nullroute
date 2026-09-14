@@ -15,7 +15,13 @@ boards:
   # named here that the artifact cannot start is the same class of claim as a
   # hardening rule nobody applies. It comes back when a kernel that has the
   # device tree does.
-  - raspberrypi-5
+  # raspberrypi-5 was here and is not any more, for the same reason cm5 is not:
+  # a board named here that cannot run the product is a claim nobody checked.
+  # Debian's bcm2712-rpi-5-b.dtb has FIFTEEN device nodes to the Pi 4's seventy
+  # four and contains no DSI anything at all, so the panel this device is built
+  # around has nothing to attach to there. The mainline Pi 5 tree in this kernel
+  # is a bring-up skeleton. It comes back when a kernel that describes the Pi 5's
+  # display pipeline does.
   - raspberrypi-4
 
 backends:
@@ -444,15 +450,21 @@ assertions:
   - id: INV-PROV-25
     statement: >
       The display this device is built around is enabled by its boot
-      configuration: config.txt names the KMS driver overlay and the overlay for
-      the official Raspberry Pi 7 inch DSI touchscreen.
+      configuration: config.txt names the overlay that describes the official
+      Raspberry Pi 7 inch DSI touchscreen.
     stage: image
     verify:
       - check: boot-config-display
         params:
+          # ONE OVERLAY, NOT TWO. This asked for vc4-kms-v3d as well, which is a
+          # Raspberry Pi OS habit: their base tree needs it to turn KMS on.
+          # Debian ships mainline, where the GPU node is already at status okay,
+          # so /dev/dri/card0 exists without it and there is no such overlay in
+          # this image to name. Requiring it would have been requiring something
+          # unnecessary and unobtainable, which is a check nobody can satisfy
+          # rather than a check that holds.
           overlays:
-            - vc4-kms-v3d
-            - vc4-kms-dsi-7inch
+            - nullroute-7inch-dsi
     rationale: >
       This product is a screen with a signer behind it, and the screen is always
       the official 7 inch panel. Decompiling the device tree the image ships
@@ -499,9 +511,7 @@ assertions:
             # exactly four Pi device trees and no bcm2712-rpi-cm5, which is why
             # raspberrypi-cm5 is no longer in that list.
             - bcm2711-rpi-4-b.dtb
-            - bcm2712-rpi-5-b.dtb
-            # Pi 4 loads these from the card. Pi 5's bootloader is in EEPROM and
-            # reads config.txt directly, so they are inert there.
+            # Pi 4 loads these from the card.
             - start4.elf
             - fixup4.dat
             # The dm-verity root hash the initramfs opens the system partition
@@ -513,6 +523,14 @@ assertions:
             # boots this under QEMU and requires that a card with one byte
             # changed inside the system partition fails.
             - initramfs.img
+            # The directory holding the panel overlay. NAMED, NOT DESCENDED:
+            # this verifier reads the root directory, so it says overlays/ is
+            # here and expected, and says nothing about what is inside it. The
+            # .dtbo within is covered by INV-PROV-25 only to the extent that
+            # config.txt names it. A file added inside this directory is not
+            # seen by anything, which is the sharpest remaining edge on the one
+            # partition dm-verity does not cover.
+            - overlays
     rationale: >
       Every other region of the card is under the dm-verity hash tree. This one
       cannot be, because it is where the firmware reads the root hash from. An
