@@ -349,7 +349,7 @@ Target build is under $120.
 | Part | Choice | Notes |
 | --- | --- | --- |
 | Board | Raspberry Pi 4 (4GB) | The only board this image supports, and the only device tree on the card. |
-| Display | Official Raspberry Pi 7 inch touchscreen | The DSI panel, described by `provisioning/build/overlays/nullroute-7inch-dsi.dts` and asserted by INV-PROV-25. Every screen is measured at exactly 800x480 and no other size. |
+| Display | Official Raspberry Pi 7 inch touchscreen | The DSI panel, described by `provisioning/build/overlays/nullroute-7inch-dsi.dts`. INV-PROV-25 says config.txt names the overlay, INV-PROV-26 says the overlay is on the card and is a device tree blob, and the build refuses to finish unless merging it into this image's `bcm2711-rpi-4-b.dtb` leaves `dsi@7e700000` enabled with the panel and its touch controller present. Whether the panel lights up is answered only by a boot with it attached. Every screen is measured at exactly 800x480 and no other size. |
 | Camera | Pi Camera Module 3 | Optional. Without it, use SD card transport and build in camera-less mode. |
 | Storage | 16GB+ SD card, A2 class | The image is small; the class rating matters for Argon2id-adjacent I/O, not capacity. |
 | Case | Any | Consider one that makes tampering visible rather than one that looks nice. |
