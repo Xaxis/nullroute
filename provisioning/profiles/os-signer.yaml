@@ -97,7 +97,11 @@ assertions:
     does_not_cover: >
       That the verifiers are correct, or that they check what their assertion
       says. A verifier that always returns true satisfies this assertion.
-      Verifier correctness is covered by the verifier suite's own tests.
+      Verifier correctness belongs to test/provisioning, and that suite does not
+      cover all of them. The ones it does not are named in UNTESTED_VERIFIERS in
+      tools/checks/check-profiles.mjs, which refuses a verifier arriving with
+      neither a test nor a line there, and refuses a line there for one the suite
+      does test. So the gap is written down, it cannot grow, and it cannot rot.
 
   - id: INV-PROV-2
     statement: >

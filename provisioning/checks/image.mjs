@@ -578,7 +578,7 @@ export async function hashFile(path) {
  * by position, because a layout that gained a partition would otherwise shift
  * every assertion silently by one.
  */
-function partitionPresent(context, params) {
+export function partitionPresent(context, params) {
   const gpt = readGpt(context.image)
   if (gpt === null) {
     return cannotRun('partition-present', 'that file has no GPT, so there is nothing to read')
@@ -634,7 +634,7 @@ function partitionPresent(context, params) {
  * Params: `partition`, the GPT name of the hash partition, and `salt`, the
  * pinned value in hex.
  */
-function veritySaltPinned(context, params) {
+export function veritySaltPinned(context, params) {
   const gpt = readGpt(context.image)
   if (gpt === null) {
     return cannotRun(
@@ -702,7 +702,7 @@ function veritySaltPinned(context, params) {
  * A partition whose identifiers are deliberately not pinned, such as the state
  * partition created on first boot, is simply not listed.
  */
-function identifiersPinned(context, params) {
+export function identifiersPinned(context, params) {
   const gpt = readGpt(context.image)
   if (gpt === null) {
     return cannotRun('identifiers-pinned', 'that file has no GPT, so there is nothing to read')
@@ -800,7 +800,7 @@ function identifiersPinned(context, params) {
  * "passed" having compared one file against nothing is precisely the vacuous
  * green this whole design exists to prevent.
  */
-async function rebuildIdentical(context) {
+export async function rebuildIdentical(context) {
   if (context.compare === undefined) {
     return cannotRun(
       'rebuild-identical',
@@ -863,7 +863,7 @@ async function rebuildIdentical(context) {
  *
  * Params: `partition`, the GPT name, and `files`, the full expected set.
  */
-function bootFilesExact(context, params) {
+export function bootFilesExact(context, params) {
   const gpt = readGpt(context.image)
   if (gpt === null) {
     return cannotRun('boot-files-exact', 'that file has no GPT, so there is nothing to read')
@@ -969,7 +969,7 @@ function bootFilesExact(context, params) {
  * filesystem. Those are written from the same source by build-system.sh and
  * this is the one the firmware actually reads.
  */
-function bootOverlaysPresent(context, params) {
+export function bootOverlaysPresent(context, params) {
   const gpt = readGpt(context.image)
   if (gpt === null) {
     return cannotRun('boot-overlays-present', 'that file has no GPT, so there is nothing to read')

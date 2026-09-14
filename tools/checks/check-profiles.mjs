@@ -490,6 +490,105 @@ for (const name of unplaced) {
   )
 }
 const runNow = needNothing.length
+
+// INV-PROV-1 SAYS "VERIFIER CORRECTNESS IS COVERED BY THE VERIFIER SUITE'S OWN
+// TESTS" IN ITS does_not_cover, and for half of them that was not true. The
+// rootfs verifiers were tested against a fixture tree; the image verifiers were
+// tested by whatever `make image` happened to produce, so their edge cases ran
+// never. An assertion that hands its uncovered half to a suite which does not
+// cover it is the same shape of claim as a hardening rule nobody applies.
+//
+// The exemptions below are the ones still uncovered. The list may shrink and
+// must not grow: a new verifier arrives with a test, or it arrives with a line
+// here and a reason. A name that IS tested and still listed fails too, so the
+// list cannot rot into a permanent excuse.
+const UNTESTED_VERIFIERS = new Set([
+  // Take parsed profiles rather than an artifact. Testable with fixture
+  // profile objects, which is a different shape from the two suites that exist.
+  'profile-self-check',
+  'verifier-ignores-backends',
+  'documented-weakness',
+  // Image verifiers. The fixture builder in test/provisioning/image.test.ts now
+  // makes these reachable, which is what took boot-files-exact off this list.
+  'rebuild-identical',
+  'identifiers-pinned',
+  'partition-present',
+  'verity-salt-pinned',
+  // Rootfs verifiers, straightforwardly testable beside the eight already there.
+  'file-modes',
+  'unit-executables',
+  // Reads a boot console log, like the two runtime verifiers that are tested.
+  'mount-options',
+])
+
+// THE HAND-WRITTEN DECLARATIONS AND THE MODULE THEY DESCRIBE HAVE TO AGREE.
+// provisioning/checks/*.d.mts exist so a typed test can import these modules,
+// and TypeScript reads them INSTEAD OF the .mjs, so an export missing from one
+// is an export that does not exist as far as any test is concerned. image.d.mts
+// had drifted: it declared neither readFatRootEntries nor half the keys of
+// IMAGE_VERIFIERS, which is not a typing inconvenience, it is the reason those
+// six verifiers had no tests while the rootfs ones had a suite from the start.
+// The failure is silent in both directions, so both are checked.
+for (const declaration of readdirSync(join(ROOT, 'provisioning/checks')).filter((name) =>
+  name.endsWith('.d.mts')
+)) {
+  const where = `provisioning/checks/${declaration}`
+  const module = declaration.replace(/\.d\.mts$/u, '.mjs')
+  const modulePath = join(ROOT, 'provisioning/checks', module)
+  if (!existsSync(modulePath)) {
+    fail(where, `declares types for ${module}, which is not there.`)
+    continue
+  }
+
+  const names = (text, pattern) => new Set([...text.matchAll(pattern)].map((m) => m[1]))
+  const implemented = names(
+    readFileSync(modulePath, 'utf8'),
+    /^export\s+(?:async\s+)?(?:function|const)\s+(\w+)/gmu
+  )
+  const declared = names(
+    readFileSync(join(ROOT, where), 'utf8'),
+    /^export\s+declare\s+(?:async\s+)?(?:function|const)\s+(\w+)/gmu
+  )
+
+  for (const name of implemented) {
+    if (!declared.has(name)) {
+      fail(
+        where,
+        `${module} exports "${name}" and this file does not declare it, so TypeScript ` +
+          `cannot see it and no typed test can import it.`
+      )
+    }
+  }
+  for (const name of declared) {
+    if (!implemented.has(name)) {
+      fail(where, `declares "${name}", which ${module} does not export.`)
+    }
+  }
+}
+
+const suite = readdirSync(join(ROOT, 'test/provisioning'))
+  .filter((name) => name.endsWith('.test.ts'))
+  .map((name) => readFileSync(join(ROOT, 'test/provisioning', name), 'utf8'))
+  .join('\n')
+
+for (const name of built) {
+  const tested = suite.includes(name)
+  if (!tested && !UNTESTED_VERIFIERS.has(name)) {
+    fail(
+      'test/provisioning',
+      `the verifier "${name}" has no test naming it, and INV-PROV-1 hands verifier ` +
+        `correctness to this suite. Write one, or add it to UNTESTED_VERIFIERS in ` +
+        `tools/checks/check-profiles.mjs with the reason it is not covered yet.`
+    )
+  }
+  if (tested && UNTESTED_VERIFIERS.has(name)) {
+    fail(
+      'tools/checks/check-profiles.mjs',
+      `the verifier "${name}" is listed in UNTESTED_VERIFIERS and the suite tests it. ` +
+        `Remove the exemption, so the list keeps meaning what it says.`
+    )
+  }
+}
 console.log(
   `check-profiles: ${files.length} profile(s) valid, ` +
     `${invariantOwner.size} provisioning invariants declared, ` +
