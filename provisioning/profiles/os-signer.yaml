@@ -523,14 +523,18 @@ assertions:
             # boots this under QEMU and requires that a card with one byte
             # changed inside the system partition fails.
             - initramfs.img
-            # The directory holding the panel overlay. NAMED, NOT DESCENDED:
-            # this verifier reads the root directory, so it says overlays/ is
-            # here and expected, and says nothing about what is inside it. The
-            # .dtbo within is covered by INV-PROV-25 only to the extent that
-            # config.txt names it. A file added inside this directory is not
-            # seen by anything, which is the sharpest remaining edge on the one
+            # The directory holding the panel overlay, and what is inside it.
+            # The verifier follows the directory's cluster chain, so both the
+            # directory and each name within it are accounted for here. It read
+            # the root directory only until this landed, which meant a file
+            # added inside overlays/ was seen by nothing at all, on the one
             # partition dm-verity does not cover.
             - overlays
+            # Compiled from provisioning/build/overlays/nullroute-7inch-dsi.dts,
+            # which is in MANIFEST.lock. config.txt names it in a dtoverlay=
+            # line that INV-PROV-25 pins, so the two now have to agree: the
+            # overlay the firmware is told to load is the overlay that is here.
+            - overlays/nullroute-7inch-dsi.dtbo
     rationale: >
       Every other region of the card is under the dm-verity hash tree. This one
       cannot be, because it is where the firmware reads the root hash from. An
@@ -542,8 +546,8 @@ assertions:
     does_not_cover: >
       What is inside those files. The check reads names, so a substituted
       initramfs of the same name passes it, and only tier 2 answers that. It
-      also reads the root directory only, so `overlays/` will need an assertion
-      of its own when a kernel lands.
+      descends one level, which is what covers `overlays/`. A directory nested
+      inside a directory would be reported by name with its contents unread.
 
   - id: INV-PROV-21
     statement: >
