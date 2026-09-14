@@ -26,7 +26,7 @@ MANIFEST_ROOTS := packages spec provisioning
         screens screen-fit ui-constants dev-check verify-image docs-reachable no-dead-ends \
         image-env image-shell image-system image-repro journeys \
         web-isolation web-csp web-responsive web-site-links web-dice-demo device-shots device-shots-check \
-        web-check web-live-check deploy image image-boot-test verify-runtime slow-feedback typeable
+        web-check web-root web-live-check deploy image image-boot-test verify-runtime slow-feedback typeable
 
 help: ## List available targets
 	@grep -hE '^[a-z][a-z-]*:.*?## ' $(MAKEFILE_LIST) \
@@ -764,7 +764,16 @@ web: verification-report.json ## Run the website locally
 # to produce one before the site will build at all. Declaring it as a file
 # prerequisite rather than calling `verify` unconditionally keeps `make web`
 # from re-running the whole suite on every save.
-verification-report.json:
+#
+# IT DEPENDS ON MANIFEST.lock, and that is not decoration. The report carries
+# the manifest root, the home page quotes it, and with no prerequisite at all
+# make rebuilt this only when the file was absent. A workstation that had run
+# `make verify` once kept the same report across every later device commit and
+# built the site around an old root, which `make web-csp` then hashed and
+# agreed with. CI could not see it: a fresh checkout has no report and always
+# writes a current one, so only a local `make deploy` could publish it, and a
+# local `make deploy` is how this site is deployed.
+verification-report.json: MANIFEST.lock
 	@$(MAKE) --no-print-directory verify
 
 web-build: verification-report.json ## Production build of the website
@@ -789,6 +798,9 @@ web-isolation: ## The site loads nothing off-origin and emits no inline styles
 web-csp: ## vercel.json's CSP still matches the built inline script hashes
 	@node tools/gen-csp.mjs --check
 
+web-root: ## The built site quotes this tree's manifest root, not an older one
+	@node tools/checks/check-site-root.mjs
+
 web-responsive: ## No page scrolls sideways, phone to desktop. Drives a real browser.
 	@node tools/checks/check-responsive.mjs
 
@@ -804,7 +816,7 @@ web-site-links: ## Every link in the BUILT site resolves, routes and anchors bot
 web-dice-demo: ## The site's dice demo hashes to the digest docs/ENTROPY.md publishes
 	@node tools/checks/check-dice-demo.mjs
 
-web-check: web-lint web-type-check web-build web-isolation web-csp web-responsive web-site-links web-dice-demo ## Every website check
+web-check: web-lint web-type-check web-build web-isolation web-csp web-root web-responsive web-site-links web-dice-demo ## Every website check
 
 web-live-check: ## Load the DEPLOYED site in a real browser and assert nothing is broken
 	# The one check that caught a broken CSP. Every other check passed while

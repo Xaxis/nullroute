@@ -437,6 +437,13 @@ jobs:
       - name: CSP hashes match the build
         run: make web-csp
 
+      # The home page quotes the manifest root rather than describing it, so a
+      # reader can compare it with their own checkout and with the device. A
+      # stale verification-report.json makes it quote an older one, and because
+      # the CSP is hashed from that same stale build nothing else disagrees.
+      - name: The site publishes this tree's manifest root
+        run: make web-root
+
       # Drives a real browser and measures the real layout. A flex item does not
       # shrink below its content, so one wide element can push every page
       # sideways while the build, the types and the tests all stay green.
