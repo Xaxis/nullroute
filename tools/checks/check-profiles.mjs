@@ -301,6 +301,94 @@ for (const where of ['README.md', 'docs/VERIFICATION.md']) {
   }
 }
 
+// NAMING A BOARD IS NOT THE ONLY WAY A DOCUMENT COMMITS TO HARDWARE. Two other
+// kinds of claim say exactly which board this is, and both were prose.
+//
+// docs/ENTROPY.md sources entropy from the BCM2711's iproc-rng200 block, which
+// is a statement about one SoC. And os-signer.yaml puts bcm2711-rpi-4-b.dtb on
+// the boot partition under a comment reading "Only the boards `boards:` above
+// claims", which is an assertion about the file list that nothing asserted.
+// Trading the Pi 4 for a Pi 5 would leave the entropy document describing
+// silicon that is not in the device and the card carrying a device tree for a
+// board the profile had stopped supporting, with every check still green.
+const SOC = {
+  BCM2711: ['raspberrypi-4', 'raspberrypi-400', 'raspberrypi-cm4'],
+  BCM2712: ['raspberrypi-5', 'raspberrypi-cm5'],
+  BCM2710: ['raspberrypi-zero-2-w'],
+  BCM2837: ['raspberrypi-3'],
+}
+
+const DOCS = [
+  'README.md',
+  ...readdirSync(join(ROOT, 'docs'))
+    .filter((name) => name.endsWith('.md'))
+    .map((name) => `docs/${name}`),
+]
+
+for (const where of DOCS) {
+  const text = readFileSync(join(ROOT, where), 'utf8')
+  for (const [soc, boards] of Object.entries(SOC)) {
+    if (!new RegExp(`\\b${soc}\\b`, 'u').test(text)) continue
+    if (boards.some((id) => BOARDS.includes(id))) continue
+    fail(
+      where,
+      `it names the ${soc} and no board any profile claims uses that silicon. The ` +
+        `profiles claim ${BOARDS.join(', ') || 'no board at all'}, so this describes ` +
+        `hardware the image does not run on.`
+    )
+  }
+}
+
+// Debian trixie's 6.12 kernel ships these four and no more, which is the same
+// fact that took raspberrypi-cm5 out of `boards:`.
+const BOARD_DTB = {
+  'raspberrypi-4': 'bcm2711-rpi-4-b.dtb',
+  'raspberrypi-400': 'bcm2711-rpi-400.dtb',
+  'raspberrypi-cm4': 'bcm2711-rpi-cm4-io.dtb',
+  'raspberrypi-5': 'bcm2712-rpi-5-b.dtb',
+}
+
+for (const { file, profile } of loaded) {
+  const claims = profile.boards ?? []
+  for (const assertion of profile.assertions ?? []) {
+    for (const v of assertion.verify ?? []) {
+      if (v.check !== 'boot-files-exact') continue
+      const files = (v.params?.files ?? []).map(String)
+      const trees = files.filter((name) => /^bcm\d+-rpi-[\w-]+\.dtb$/u.test(name))
+      const where = `${file}  ${assertion.id}`
+
+      for (const [id, dtb] of Object.entries(BOARD_DTB)) {
+        if (trees.includes(dtb) && !claims.includes(id)) {
+          fail(
+            where,
+            `the boot partition carries ${dtb} and the profile does not claim ${id}. ` +
+              `A device tree for a board this image does not support is either dead ` +
+              `weight on the one partition dm-verity cannot cover, or the board list ` +
+              `is wrong.`
+          )
+        }
+        if (claims.includes(id) && !trees.includes(dtb)) {
+          fail(
+            where,
+            `the profile claims ${id} and the boot partition carries no ${dtb}, so the ` +
+              `firmware has no device tree for a board this profile says it supports.`
+          )
+        }
+      }
+
+      for (const tree of trees) {
+        if (Object.values(BOARD_DTB).includes(tree)) continue
+        fail(
+          where,
+          `the boot partition carries ${tree}, which belongs to no board this check ` +
+            `knows. Add it to BOARD_DTB with the board it serves, so the file list and ` +
+            `\`boards:\` keep having to agree.`
+        )
+      }
+    }
+  }
+}
+
 for (const where of ['provisioning/README.md', 'README.md']) {
   const readme = readFileSync(join(ROOT, where), 'utf8')
   const WORDS = [
