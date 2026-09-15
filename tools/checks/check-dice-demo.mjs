@@ -30,7 +30,7 @@ import { createServer } from 'node:http'
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { chromeBinary, chromeProfile, finish, reap } from '../lib/browser.mjs'
+import { chromeBinary, chromeProfile, finish, reap, waitForDebugEndpoint } from '../lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const OUT = join(ROOT, 'apps/web/out')
@@ -119,21 +119,10 @@ async function main() {
       chromeProfile('check-dice-demo'),
       'about:blank',
     ],
-    { stdio: 'ignore' }
+    { stdio: ['ignore', 'pipe', 'pipe'] }
   )
 
-  let wsUrl
-  for (let attempt = 0; attempt < 40; attempt += 1) {
-    await sleep(150)
-    try {
-      wsUrl = (await (await fetch(`http://127.0.0.1:${DEBUG}/json/version`)).json())
-        .webSocketDebuggerUrl
-      if (wsUrl) break
-    } catch {
-      /* still starting */
-    }
-  }
-  if (!wsUrl) throw new Error('Chrome did not expose a debugging endpoint')
+  const wsUrl = await waitForDebugEndpoint(chrome, DEBUG)
 
   const browserWs = new WebSocket(wsUrl)
   await new Promise((resolve) => browserWs.addEventListener('open', resolve, { once: true }))

@@ -29,7 +29,7 @@
 
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { chromeBinary, chromeProfile, finish, reap } from '../lib/browser.mjs'
+import { chromeBinary, chromeProfile, finish, reap, waitForDebugEndpoint } from '../lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 
@@ -128,21 +128,10 @@ async function main() {
       chromeProfile('check-dev-server'),
       'about:blank',
     ],
-    { stdio: 'ignore', detached: true }
+    { stdio: ['ignore', 'pipe', 'pipe'], detached: true }
   )
 
-  let wsUrl
-  for (let attempt = 0; attempt < 40; attempt += 1) {
-    await sleep(150)
-    try {
-      const res = await fetch(`http://127.0.0.1:${String(DEBUG_PORT)}/json/version`)
-      wsUrl = (await res.json()).webSocketDebuggerUrl
-      if (wsUrl) break
-    } catch {
-      /* still starting */
-    }
-  }
-  if (!wsUrl) throw new Error('Chrome did not expose a debugging endpoint')
+  const wsUrl = await waitForDebugEndpoint(chrome, DEBUG_PORT)
 
   const state = { seq: 0 }
   const browser = new WebSocket(wsUrl)

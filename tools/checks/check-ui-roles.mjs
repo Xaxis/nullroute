@@ -29,7 +29,14 @@ import { createServer } from 'node:http'
 import { spawn } from 'node:child_process'
 import { readFileSync, existsSync, statSync } from 'node:fs'
 import { join, extname, normalize } from 'node:path'
-import { chromeBinary, chromeProfile, finish, reachStep, reap } from '../lib/browser.mjs'
+import {
+  chromeBinary,
+  chromeProfile,
+  finish,
+  reachStep,
+  reap,
+  waitForDebugEndpoint,
+} from '../lib/browser.mjs'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
@@ -91,19 +98,9 @@ async function main() {
       chromeProfile('check-ui-roles'),
       'about:blank',
     ],
-    { stdio: 'ignore', detached: true }
+    { stdio: ['ignore', 'pipe', 'pipe'], detached: true }
   )
-  let ws
-  for (let i = 0; i < 100; i++) {
-    await sleep(150)
-    try {
-      ws = (await (await fetch(`http://127.0.0.1:${DEBUG}/json/version`)).json())
-        .webSocketDebuggerUrl
-      break
-    } catch {
-      /* not up yet */
-    }
-  }
+  const ws = await waitForDebugEndpoint(chrome, DEBUG)
   const st = { seq: 0 }
   const b = new WebSocket(ws)
   await new Promise((r) => b.addEventListener('open', r, { once: true }))

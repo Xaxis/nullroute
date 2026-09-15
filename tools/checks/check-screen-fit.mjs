@@ -46,6 +46,7 @@ import {
   chromeProfile,
   finish,
   reachStep,
+  waitForDebugEndpoint,
   reachTarget,
   reap,
 } from '../lib/browser.mjs'
@@ -955,49 +956,12 @@ async function main() {
       chromeProfile('check-screen-fit'),
       'about:blank',
     ],
-    // KEPT, because "did not expose a debugging endpoint" is the symptom. It
-    // does not separate a browser still starting from one that exited, and
-    // those want opposite responses. check-journeys said the same thing on a CI
-    // run with nothing wrong in it, and the pipes are what turned that into an
-    // answer. This harness runs in the same job and could only have said the
-    // same thing.
+    // Piped, because waitForDebugEndpoint reads them to say why a browser that
+    // never answered did not answer.
     { stdio: ['ignore', 'pipe', 'pipe'] }
   )
 
-  let said = ''
-  let ended = null
-  chrome.stdout.on('data', (chunk) => {
-    said += String(chunk)
-  })
-  chrome.stderr.on('data', (chunk) => {
-    said += String(chunk)
-  })
-  chrome.on('exit', (code, signal) => {
-    ended = signal === null ? `exit ${String(code)}` : `signal ${signal}`
-  })
-
-  // Thirty seconds, not six. A cold runner under the load of a full check is
-  // slower than the workstation the old number was chosen on, and it stops the
-  // moment the browser is up or the moment it dies.
-  let wsUrl
-  for (let attempt = 0; attempt < 200; attempt += 1) {
-    if (ended !== null) break
-    await sleep(150)
-    try {
-      const res = await fetch(`http://127.0.0.1:${String(DEBUG_PORT)}/json/version`)
-      wsUrl = (await res.json()).webSocketDebuggerUrl
-      if (wsUrl) break
-    } catch {
-      /* still starting */
-    }
-  }
-  if (!wsUrl) {
-    const why = ended === null ? 'it is still running' : `it ended with ${ended}`
-    const tail = said.trim() === '' ? 'and printed nothing' : `and said:\n${said.trim()}`
-    throw new Error(
-      `Chrome did not expose a debugging endpoint on ${String(DEBUG_PORT)}: ${why} ${tail}`
-    )
-  }
+  const wsUrl = await waitForDebugEndpoint(chrome, DEBUG_PORT)
 
   const state = { seq: 0 }
   const browser = new WebSocket(wsUrl)

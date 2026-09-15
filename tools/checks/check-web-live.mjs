@@ -38,7 +38,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
-import { chromeBinary, chromeProfile, finish, reap } from '../lib/browser.mjs'
+import { chromeBinary, chromeProfile, finish, reap, waitForDebugEndpoint } from '../lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const ORIGIN = process.argv[2] ?? process.env['NULLROUTE_SITE'] ?? 'https://nullroute.diy'
@@ -113,23 +113,13 @@ async function main() {
       chromeProfile('check-web-live'),
       'about:blank',
     ],
-    { stdio: 'ignore' }
+    { stdio: ['ignore', 'pipe', 'pipe'] }
   )
 
-  let version
-  for (let attempt = 0; attempt < 40; attempt += 1) {
-    await sleep(150)
-    try {
-      version = await (await fetch(`http://127.0.0.1:${PORT}/json/version`)).json()
-      if (version.webSocketDebuggerUrl) break
-    } catch {
-      /* still starting */
-    }
-  }
-  if (!version?.webSocketDebuggerUrl) throw new Error('Chrome did not start')
+  const browserWsUrl = await waitForDebugEndpoint(chrome, PORT)
 
   const state = { seq: 0 }
-  const browser = new WebSocket(version.webSocketDebuggerUrl)
+  const browser = new WebSocket(browserWsUrl)
   await new Promise((r) => browser.addEventListener('open', r, { once: true }))
 
   const { targetId } = await send(browser, state, 'Target.createTarget', { url: 'about:blank' })

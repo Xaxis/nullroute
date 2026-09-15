@@ -97,4 +97,42 @@ if (problems.length > 0) {
   }
 }
 
+/*
+ * AND THEY ALL WAIT FOR IT THE SAME WAY.
+ *
+ * The same argument as the paragraph above, one step later in the same
+ * sequence. Eight harnesses spawned a browser and eight wrote their own loop
+ * polling the debugging port, all with stdio: 'ignore', so every one of them
+ * could report only that the port never opened. That sentence does not
+ * separate a browser still starting from one that exited on the spot, and
+ * those want opposite responses: wait longer, or read what it printed.
+ *
+ * CI spent a run on it, and the answer was in Chrome's stderr, which nothing
+ * was reading. One of the eight had no guard at all and went on to
+ * `new WebSocket(undefined)`.
+ *
+ * chromeBinary stopped a path from being right in eight files and wrong in
+ * two. This stops the wait from being.
+ */
+{
+  const offenders = []
+  for (const name of readdirSync(CHECKS).filter((f) => f.endsWith('.mjs'))) {
+    const source = readFileSync(join(CHECKS, name), 'utf8')
+    if (!source.includes('chromeBinary(')) continue
+    if (source.includes('waitForDebugEndpoint(')) continue
+    offenders.push(name)
+  }
+  if (offenders.length > 0) {
+    console.error('\ncheck-make-targets: a harness waits for its browser its own way\n')
+    for (const name of offenders) console.error(`    tools/checks/${name}`)
+    console.error(
+      '\n  Use waitForDebugEndpoint() from tools/lib/browser.mjs, and spawn with\n' +
+        "  stdio: ['ignore', 'pipe', 'pipe'] so it has something to quote. A hand\n" +
+        '  written poll reports that the port never opened, which is the symptom,\n' +
+        '  and throws away the reason the browser is going to give you.\n'
+    )
+    process.exit(1)
+  }
+}
+
 console.log(`check-make-targets: ${String(checked)} script invocations, all present`)

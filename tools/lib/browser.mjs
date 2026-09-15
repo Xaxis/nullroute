@@ -76,6 +76,60 @@ export function chromeBinary(who) {
   return found
 }
 
+/**
+ * Wait for a spawned Chrome to answer on its debugging port, or say why not.
+ *
+ * ONE IMPLEMENTATION, for the reason chromeBinary gives one line up: a wait
+ * cannot be right in two harnesses and wrong in four. Every one of them had
+ * written its own, all of them spawned with stdio: 'ignore', and all of them
+ * could only report "Chrome did not expose a debugging endpoint". That sentence
+ * is the symptom: it cannot separate a browser still starting from one that
+ * exited on the spot, and those want opposite responses. CI spent a run on it.
+ *
+ * So the pipes are read, the exit is recorded, and the failure quotes both. The
+ * poll stops the moment the process dies rather than spending the rest of the
+ * budget on a port nothing is listening to.
+ *
+ * Thirty seconds, where the harnesses had six or twelve. Those were guesses
+ * made on a workstation; the machine that fails is a cold runner under the load
+ * of a full check. Waiting longer costs nothing when the common case answers in
+ * well under a second, and a rerun of the suite costs minutes.
+ *
+ * Pass the child from `spawn(..., { stdio: ['ignore', 'pipe', 'pipe'] })`.
+ */
+export async function waitForDebugEndpoint(chrome, port, attempts = 200) {
+  let said = ''
+  let ended = null
+  chrome.stdout?.on('data', (chunk) => {
+    said += String(chunk)
+  })
+  chrome.stderr?.on('data', (chunk) => {
+    said += String(chunk)
+  })
+  chrome.on('exit', (code, signal) => {
+    ended = signal === null ? `exit ${String(code)}` : `signal ${signal}`
+  })
+
+  const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    if (ended !== null) break
+    await pause(150)
+    try {
+      const res = await fetch(`http://127.0.0.1:${String(port)}/json/version`)
+      const url = (await res.json()).webSocketDebuggerUrl
+      if (url) return url
+    } catch {
+      /* still starting */
+    }
+  }
+
+  const why = ended === null ? 'it is still running' : `it ended with ${ended}`
+  const tail = said.trim() === '' ? 'and printed nothing' : `and said:\n${said.trim()}`
+  // No harness name in here: every caller prints one already, and the two
+  // together read as a stutter.
+  throw new Error(`Chrome never exposed a debugging endpoint on ${String(port)}: ${why} ${tail}`)
+}
+
 export function chromeProfile(name) {
   return `--user-data-dir=${join(tmpdir(), `nullroute-${name}-${String(process.pid)}`)}`
 }
