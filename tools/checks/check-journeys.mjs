@@ -719,6 +719,28 @@ async function main() {
            * "ente" is already "enter", so the fifth keystroke would start a
            * new word rather than finish this one.
            */
+          /*
+           * HOW MANY WORDS ARE ENTERED, which is not what the text says.
+           * kb-prefix, the chip holding a half typed word, is rendered INSIDE
+           * kb-words, so the textContent test below reports "committed" the
+           * moment the prefix spells the target. For a word that commits by
+           * itself that is the same answer; for one that does not, it is the
+           * wrong one, and it is the case this whole branch exists for.
+           * WordKeyboard's own comment calls kb-count the only authority on how
+           * many words exist, after a half typed chip contradicted the counter
+           * on screen. It is the authority here too.
+           */
+          const counted = async () =>
+            Number(
+              await evaluate(`(() => {
+                const el = document.querySelector('[data-testid="kb-count"]')
+                if (el === null) return -1
+                const m = /^\\s*(\\d+)/.exec(el.textContent || '')
+                return m === null ? -1 : Number(m[1])
+              })()`)
+            )
+          const entered = await counted()
+
           const state = async () =>
             String(
               await evaluate(`(() => {
@@ -760,6 +782,44 @@ async function main() {
             }
           }
           if (broke !== null) break
+
+          /*
+           * THE STRIP IS CHECKED AFTER THE LAST LETTER, NOT ONLY BEFORE ONE.
+           * The loop above reads the state at the top of each iteration, so it
+           * can only act on a suggestion while letters remain to type. A word
+           * whose strip appears on its FINAL letter never reaches that branch:
+           * the loop ends, nothing taps, and the answer sits in the prefix with
+           * the submit button correctly disabled behind it.
+           *
+           * That is 49 of the 2048 words, the ones that are a prefix of a
+           * longer word, and the seed check asks for whichever words it likes
+           * out of a mnemonic generated per run. So this failed about one run
+           * in fourteen and passed on the rerun. CI failed on "fat", which is
+           * "fatal", "father" and "fatigue" waiting behind it.
+           *
+           * The mnemonic step twenty lines down has always done this. Only this
+           * one was missing it.
+           */
+          if ((await counted()) !== entered + 1) {
+            const rescued = await tap(`kb-suggest-${want}`)
+            if (rescued !== 'ok') {
+              broke = `word: "${want}" is not committed and the suggestion strip ${rescued}`
+              break
+            }
+            let landed = false
+            for (let wait = 0; wait < 60; wait += 1) {
+              if ((await counted()) === entered + 1) {
+                landed = true
+                break
+              }
+              await sleep(50)
+            }
+            if (!landed) {
+              broke = `word: "${want}" was tapped on the suggestion strip and did not commit`
+              break
+            }
+          }
+
           // Same again for the button: enabled when the answer is complete,
           // rather than after a delay somebody guessed at.
           for (let wait = 0; wait < 60; wait += 1) {

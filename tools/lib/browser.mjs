@@ -287,9 +287,14 @@ export function reachStep(step) {
    * this keyboard, so nothing had ever drawn that box with a word in it. The
    * suite measured the empty case and called the screen fitting.
    *
-   * Letters only. A prefix that reaches several words does not commit and the
-   * suggestion strip is the way forward, which is a different step; every
-   * caller here uses a prefix that resolves.
+   * A PREFIX THAT DOES NOT RESOLVE IS TAPPED, not refused. This used to type
+   * letters and nothing else, on the reasoning that every caller passed a
+   * prefix which resolves. That was true of the hand written reach lists and
+   * false of the journeys, which enter whichever word the device asks them to
+   * check, out of a mnemonic generated fresh on every run. 49 of the 2048
+   * words are a prefix of another one, so roughly one run in fourteen asked
+   * for a word this could not enter, and CI failed on "fat" with the device
+   * behaving perfectly and the suggestion strip sitting there unclicked.
    */
   if (step.startsWith('word:')) {
     const letters = step.slice('word:'.length)
@@ -316,10 +321,21 @@ export function reachStep(step) {
       }
       // Committed, rather than left half typed in the prefix. A word that did
       // not commit is a reach list describing something that did not happen.
-      const after = counted()
-      if (after !== before + 1) {
-        const prefix = find('kb-prefix')
-        return 'uncommitted-' + (prefix === null ? '?' : prefix.textContent.trim())
+      if (counted() !== before + 1) {
+        // A WORD THAT IS A PREFIX OF ANOTHER WORD. 49 of the 2048 are: act,
+        // add, car, fat, top. The keyboard cannot commit those on the last
+        // letter, because longer words are still reachable, so it shows the
+        // suggestion strip and the user taps their word. Doing the same here
+        // is not a workaround, it is the step a person performs, and it is the
+        // only way this harness reaches those 49 at all.
+        const pick = find('kb-suggest-' + ${JSON.stringify(letters)})
+        if (pick === null) {
+          const prefix = find('kb-prefix')
+          return 'uncommitted-' + (prefix === null ? '?' : prefix.textContent.trim())
+        }
+        pick.click()
+        await settle()
+        if (counted() !== before + 1) return 'suggestion-did-not-commit'
       }
       return 'clicked'
     })()`

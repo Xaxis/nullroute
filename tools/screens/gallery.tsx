@@ -1714,6 +1714,20 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
      */
     Array.from({ length: 24 }, () => 'word:aba'),
     [...Array.from({ length: 24 }, () => 'word:aba'), 'import-submit'],
+    /*
+     * A WORD THAT IS A PREFIX OF ANOTHER WORD, which `aba` above is not. 49 of
+     * the 2048 are: act, add, car, fat, top. The keyboard will not commit one
+     * on its last letter, because the longer words are still reachable, so the
+     * suggestion strip is the only way forward and tapping it is what a user
+     * does. Every reach list here used a prefix that resolves, so the strip had
+     * never been drawn with anything in it, and nothing measured the screen in
+     * the state 7% of wallet creations reach.
+     *
+     * check-journeys hit it first, on a mnemonic generated per run: the answer
+     * for "fat" sat in the prefix and the submit button was correctly disabled
+     * behind it.
+     */
+    ['word:fat'],
   ],
   /*
    * Forgetting a quorum, confirmed by typing its checksum back.
