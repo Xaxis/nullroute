@@ -43,8 +43,8 @@ jobs:
     name: signer holds together
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -118,7 +118,7 @@ jobs:
 
       - name: Upload verification report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: verification-report
           path: verification-report.json
@@ -133,14 +133,14 @@ jobs:
     name: every screen fits the panel it ships on
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
 
-      - uses: browser-actions/setup-chrome@v1
+      - uses: browser-actions/setup-chrome@v2
         id: chrome
 
       # Each of these builds what it measures, declared in the Makefile rather
@@ -191,8 +191,8 @@ jobs:
     name: official BIP vectors and differential agreement
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -221,8 +221,8 @@ jobs:
     name: build is reproducible and the manifest is honest
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -247,7 +247,7 @@ jobs:
         run: make sbom
 
       - name: Upload SBOM
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sbom
           path: sbom.cdx.json
@@ -261,8 +261,8 @@ jobs:
     name: every wallet recovers in Bitcoin Core alone
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -331,8 +331,8 @@ jobs:
     name: documentation style holds
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -372,8 +372,8 @@ jobs:
     # trips on a slow mirror teaches people to re-run jobs without reading them.
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -415,8 +415,8 @@ jobs:
     name: website builds
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -447,7 +447,7 @@ jobs:
       # Drives a real browser and measures the real layout. A flex item does not
       # shrink below its content, so one wide element can push every page
       # sideways while the build, the types and the tests all stay green.
-      - uses: browser-actions/setup-chrome@v1
+      - uses: browser-actions/setup-chrome@v2
         id: chrome
       - name: No page scrolls sideways, phone to desktop
         run: make web-responsive
