@@ -174,8 +174,16 @@ describe('refusing to answer', () => {
 
   it('never reports could-not-run as a pass', () => {
     const facts = parseFacts('')
-    expect(noSwap(facts).ok).toBe(false)
-    expect(noListeningSockets(facts, { allow: BRIDGE }).ok).toBe(false)
+    for (const result of [noSwap(facts), noListeningSockets(facts, { allow: BRIDGE })]) {
+      // BOTH HALVES, because this test is named for the distinction between
+      // them. It asserted only ok:false, which a verifier reporting a plain
+      // failure also satisfies, so the one test in this file named for
+      // could-not-run was the one not checking for it. Changing `usable` to
+      // return a failure instead left it green while its two siblings above
+      // caught the change.
+      expect(result.ok).toBe(false)
+      expect(result.unavailable).toBe(true)
+    }
   })
 })
 
