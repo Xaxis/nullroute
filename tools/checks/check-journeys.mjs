@@ -416,11 +416,44 @@ async function main() {
         `--window-size=${String(WIDTH)},${String(HEIGHT)}`,
         'about:blank',
       ],
-      { stdio: 'ignore' }
+      /*
+       * CHROME'S OUTPUT IS KEPT, for the reason written out above the daemon
+       * forty lines up, which was not applied here at the time.
+       *
+       * This said "Chrome never opened a debugging port" and nothing else, on a
+       * CI run where the journeys themselves were fine. That sentence is the
+       * symptom. It does not distinguish a browser that was still starting from
+       * one that exited immediately, and those want opposite responses: wait
+       * longer, or read what it printed.
+       */
+      { stdio: ['ignore', 'pipe', 'pipe'] }
     )
 
+    let chromeSaid = ''
+    let chromeEnded = null
+    chrome.stdout.on('data', (chunk) => {
+      chromeSaid += String(chunk)
+    })
+    chrome.stderr.on('data', (chunk) => {
+      chromeSaid += String(chunk)
+    })
+    chrome.on('exit', (code, signal) => {
+      chromeEnded = signal === null ? `exit ${String(code)}` : `signal ${signal}`
+    })
+
+    /*
+     * Thirty seconds rather than twelve, and it stops early either way.
+     *
+     * A cold runner starting a browser under the load of a full check is slower
+     * than a workstation, and twelve seconds was a guess made on the faster of
+     * the two. Waiting is cheap when the common case returns in well under a
+     * second; a rerun of the whole suite is not.
+     */
     let wsUrl
-    for (let attempt = 0; attempt < 80 && wsUrl === undefined; attempt += 1) {
+    for (let attempt = 0; attempt < 200 && wsUrl === undefined; attempt += 1) {
+      // Nothing is coming. Fail now with what it said rather than spending the
+      // rest of the budget polling a port on a process that has exited.
+      if (chromeEnded !== null) break
       await sleep(150)
       try {
         const listed = await (
@@ -431,7 +464,14 @@ async function main() {
         /* not up yet */
       }
     }
-    if (wsUrl === undefined) throw new Error('Chrome never opened a debugging port')
+    if (wsUrl === undefined) {
+      const why = chromeEnded === null ? 'it is still running' : `it ended with ${chromeEnded}`
+      const tail =
+        chromeSaid.trim() === '' ? 'and printed nothing' : `and said:\n${chromeSaid.trim()}`
+      throw new Error(
+        `Chrome never opened a debugging port on ${String(DEBUG_PORT)}: ${why} ${tail}`
+      )
+    }
 
     const page = new WebSocket(wsUrl)
     await new Promise((resolve) => {
