@@ -79,6 +79,18 @@ export function verifierIgnoresBackends(checksDir) {
       .join('\n')
       // Regex literals, then the three string forms.
       .replace(/\/(?![/*])(?:[^/\\\n]|\\.)+\/[gimsuy]*/g, 'REGEX')
+      // MARKED BEFORE THE STRINGS ARE BLANKED, because the subscript form is
+      // written with a string literal and blanking it first destroys the only
+      // evidence of it. That is not hypothetical tidying: p['backends'] became
+      // p[''] here, so the subscript half of the test below could never match
+      // and the rule was enforced against the dot form alone. A verifier could
+      // consult the backend by writing a bracket, which is the whole thing
+      // INV-PROV-2 exists to prevent. Found by writing a test for it.
+      //
+      // Only a literal in subscript position is marked, so a message that
+      // merely quotes the syntax keeps its marker inside the string and loses
+      // it to the blanking on the next line, as it should.
+      .replace(/(\[\s*)(['"])backends\2(\s*\])/g, '$1BACKENDS_KEY$3')
       .replace(/'(?:[^'\\]|\\.)*'/g, "''")
       .replace(/"(?:[^"\\]|\\.)*"/g, '""')
       .replace(/`(?:[^`\\]|\\.)*`/g, '``')
@@ -87,7 +99,7 @@ export function verifierIgnoresBackends(checksDir) {
     // matched the bare identifier and so flagged this file, whose own function
     // name and detector both contain it. What is forbidden is reading the key
     // off a profile, which always looks like one of these three forms.
-    if (/\.backends\b|\[\s*['"]backends['"]\s*\]/.test(code)) {
+    if (/\.backends\b|\[\s*BACKENDS_KEY\s*\]/.test(code)) {
       problems.push(
         `provisioning/checks/${entry} reads "backends" in code. A verifier that consults the ` +
           `backend lets a backend excuse itself from a rule it did not implement.`

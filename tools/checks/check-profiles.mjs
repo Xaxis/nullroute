@@ -502,18 +502,12 @@ const runNow = needNothing.length
 // must not grow: a new verifier arrives with a test, or it arrives with a line
 // here and a reason. A name that IS tested and still listed fails too, so the
 // list cannot rot into a permanent excuse.
-const UNTESTED_VERIFIERS = new Set([
-  // Take parsed profiles rather than an artifact. Testable with fixture
-  // profile objects, which is a different shape from the two suites that exist.
-  'profile-self-check',
-  'verifier-ignores-backends',
-  'documented-weakness',
-  // Rootfs verifiers, straightforwardly testable beside the eight already there.
-  'file-modes',
-  'unit-executables',
-  // Reads a boot console log, like the two runtime verifiers that are tested.
-  'mount-options',
-])
+// EMPTY, AND THE POINT IS THAT IT CAN BE. Every verifier the registry declares
+// has a test naming it. The list stays because the rule it carries is what
+// matters: a verifier arrives with a test, or it arrives with a line here and a
+// reason. Adding a name is a deliberate, reviewable act; forgetting a test is
+// not, and the difference is the whole value of keeping this here at zero.
+const UNTESTED_VERIFIERS = new Set([])
 
 // THE HAND-WRITTEN DECLARATIONS AND THE MODULE THEY DESCRIBE HAVE TO AGREE.
 // provisioning/checks/*.d.mts exist so a typed test can import these modules,
@@ -565,8 +559,16 @@ const suite = readdirSync(join(ROOT, 'test/provisioning'))
   .map((name) => readFileSync(join(ROOT, 'test/provisioning', name), 'utf8'))
   .join('\n')
 
+// BY EITHER NAME IT GOES BY. The registry keys are kebab-case and the modules
+// export camelCase, so a suite that imports mountOptions and never writes the
+// string "mount-options" read as untested, and mount-options sat on the
+// exemption list below while runtime.test.ts had been exercising it all along.
+// A detector that only recognises one of the two spellings reports a gap that
+// is not there, which is the same defect as missing one that is.
+const camel = (name) => name.replace(/-([a-z])/gu, (_, letter) => letter.toUpperCase())
+
 for (const name of built) {
-  const tested = suite.includes(name)
+  const tested = suite.includes(name) || new RegExp(`\\b${camel(name)}\\s*\\(`, 'u').test(suite)
   if (!tested && !UNTESTED_VERIFIERS.has(name)) {
     fail(
       'test/provisioning',

@@ -15,7 +15,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import {
@@ -24,8 +24,10 @@ import {
   cmdlineExact,
   matchesGlob,
   bootConfigDisplay,
+  fileModes,
   noUnitOrdering,
   systemdExposure,
+  unitExecutables,
 } from '../../provisioning/checks/rootfs.mjs'
 
 let root: string
@@ -494,5 +496,158 @@ describe('provisioning.systemd-exposure', () => {
     expect(call({}).ok).toBe(false)
     expect(call({ unit: 'nullrouted.service' }).ok).toBe(false)
     expect(call({ max_exposure: 0.5 }).ok).toBe(false)
+  })
+})
+
+describe('provisioning.file-modes', () => {
+  it('passes-when-the-mode-and-owner-are-what-the-profile-pins', () => {
+    put('usr/bin/thing', 'x')
+    chmodSync(join(root, 'usr/bin/thing'), 0o0755)
+    const result = fileModes(root, { files: [{ path: '/usr/bin/thing', mode: '0755' }] })
+    expect(result.ok).toBe(true)
+  })
+
+  it('fails-on-a-mode-that-is-not-the-pinned-one', () => {
+    put('usr/bin/thing', 'x')
+    chmodSync(join(root, 'usr/bin/thing'), 0o0777)
+    const result = fileModes(root, { files: [{ path: '/usr/bin/thing', mode: '0755' }] })
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('is mode 0777, not 0755')
+  })
+
+  it('fails-when-the-file-is-not-in-the-image', () => {
+    put('usr/bin/other', 'x')
+    const result = fileModes(root, { files: [{ path: '/usr/bin/thing', mode: '0755' }] })
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('not in the image')
+  })
+
+  /**
+   * THE EXPORT IS NOT THE IMAGE. A macOS bind mount drops setuid on the way
+   * out of the container, so a tree with no setuid bit anywhere cannot
+   * represent one, and reporting "mode 0755, not 4755" would describe the
+   * export and send somebody to fix a file that was already correct.
+   */
+  it('reports-unavailable-when-the-tree-cannot-hold-a-setuid-bit', () => {
+    put('usr/bin/helper', 'x')
+    chmodSync(join(root, 'usr/bin/helper'), 0o0755)
+    const result = fileModes(root, { files: [{ path: '/usr/bin/helper', mode: '4755' }] })
+    expect(result.ok).toBe(false)
+    expect(result.unavailable).toBe(true)
+  })
+
+  it('fails-with-no-files-to-check-rather-than-passing', () => {
+    const result = fileModes(root, { files: [] })
+    expect(result.ok).toBe(false)
+  })
+})
+
+describe('provisioning.unit-executables', () => {
+  /** A unit plus the enabling symlink `systemctl enable` would have created. */
+  function unit(name: string, text: string, enable?: string): void {
+    put(`usr/lib/systemd/system/${name}`, text)
+    if (enable !== undefined) put(`etc/systemd/system/${enable}.wants/${name}`, '')
+  }
+
+  beforeEach(() => {
+    put('etc/passwd', 'root:x:0:0::/root:/bin/sh\nnullroute:x:1000:1000::/home/n:/bin/sh\n')
+    put('etc/group', 'root:x:0:\nnullroute:x:1000:\n')
+  })
+
+  it('passes-a-unit-whose-program-exists-and-which-something-enables', () => {
+    put('usr/bin/nullrouted', 'x')
+    unit(
+      'nullroute.service',
+      '[Service]\nExecStart=/usr/bin/nullrouted\nUser=nullroute\n\n[Install]\nWantedBy=multi-user.target\n',
+      'multi-user.target'
+    )
+    const result = unitExecutables(root, { units: ['nullroute.service'] })
+    expect(result.ok).toBe(true)
+  })
+
+  it('fails-when-the-program-a-unit-runs-is-not-in-the-image', () => {
+    unit(
+      'nullroute.service',
+      '[Service]\nExecStart=/usr/bin/nullrouted\n\n[Install]\nWantedBy=multi-user.target\n',
+      'multi-user.target'
+    )
+    const result = unitExecutables(root, { units: ['nullroute.service'] })
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('/usr/bin/nullrouted')
+  })
+
+  /**
+   * ENABLED, NOT MERELY PRESENT. Both units shipped this way once: the card
+   * booted to a systemd that started neither the signing daemon nor the
+   * frontend, because a unit nothing wants is a unit that never runs.
+   */
+  it('fails-a-unit-that-declares-wantedby-and-nothing-enables', () => {
+    put('usr/bin/nullrouted', 'x')
+    unit(
+      'nullroute.service',
+      '[Service]\nExecStart=/usr/bin/nullrouted\n\n[Install]\nWantedBy=multi-user.target\n'
+    )
+    const result = unitExecutables(root, { units: ['nullroute.service'] })
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('never starts')
+  })
+
+  /**
+   * A backslash-newline is one directive, and this is the shape where that
+   * matters. The program sits on the continued line, so without the join the
+   * directive reads as `ExecStart=\`, which does not start with a slash, so it
+   * is skipped and a missing program is never noticed.
+   *
+   * The obvious test does not test this. A unit written
+   * `ExecStart=/usr/bin/cage \` with its arguments continued underneath passes
+   * either way: joined, the first token is the program; unjoined, the argument
+   * lines do not match the Exec regex at all and are simply ignored. Written
+   * that way first, and a mutation removing the join left it green.
+   */
+  it('reads-a-continued-execstart-as-one-directive', () => {
+    unit(
+      'kiosk.service',
+      '[Service]\nExecStart=\\\n  /usr/bin/cage --kiosk\n\n[Install]\nWantedBy=graphical.target\n',
+      'graphical.target'
+    )
+    const result = unitExecutables(root, { units: ['kiosk.service'] })
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('/usr/bin/cage')
+  })
+
+  it('passes-that-same-unit-once-the-program-is-in-the-image', () => {
+    put('usr/bin/cage', 'x')
+    unit(
+      'kiosk.service',
+      '[Service]\nExecStart=\\\n  /usr/bin/cage --kiosk\n\n[Install]\nWantedBy=graphical.target\n',
+      'graphical.target'
+    )
+    const result = unitExecutables(root, { units: ['kiosk.service'] })
+    expect(result.ok).toBe(true)
+  })
+
+  it('fails-a-unit-that-runs-as-a-user-the-image-does-not-have', () => {
+    put('usr/bin/nullrouted', 'x')
+    unit(
+      'nullroute.service',
+      '[Service]\nExecStart=/usr/bin/nullrouted\nUser=nobodyhere\n\n[Install]\nWantedBy=multi-user.target\n',
+      'multi-user.target'
+    )
+    const result = unitExecutables(root, { units: ['nullroute.service'] })
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('nobodyhere')
+  })
+
+  it('fails-when-the-unit-is-not-in-the-image-at-all', () => {
+    put('usr/lib/systemd/system/other.service', '[Service]\nExecStart=/bin/true\n')
+    const result = unitExecutables(root, { units: ['nullroute.service'] })
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('not in the image at all')
+  })
+
+  it('reports-unavailable-when-there-is-no-unit-directory', () => {
+    const result = unitExecutables(root, { units: ['nullroute.service'] })
+    expect(result.ok).toBe(false)
+    expect(result.unavailable).toBe(true)
   })
 })
