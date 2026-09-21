@@ -33,6 +33,7 @@ import { rootFromSeed } from '../src/derive/hd.js'
 import { normalizePath } from '../src/derive/path.js'
 import { reviewTransaction } from '../src/psbt/review.js'
 import { signTransaction } from '../src/psbt/sign.js'
+import { alreadySignedBy } from '../src/psbt/quorum.js'
 
 const MNEMONIC =
   'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
@@ -94,6 +95,60 @@ describe('core.psbt.sign taproot', () => {
 
     expect(result.inputsSigned).toBe(1)
     expect(result.signedWith).toEqual([PATH])
+  })
+
+  /**
+   * INV-QUORUM-3. A device recognises a transaction it has already signed, and
+   * that has to hold for the wallet type this device recommends.
+   *
+   * The signature says so: a taproot key-path spend carries `tapKeySig` and no
+   * public key beside it, because the key IS the output. signaturesOn records
+   * that as the opaque string "taproot-key-path" rather than naming a signer,
+   * which is the right answer for attribution and the wrong one for this
+   * question, because alreadySignedBy compares it against a set of hex public
+   * keys it can never match.
+   *
+   * The test bound to INV-QUORUM-3 is a 2-of-3 witness script using partialSig,
+   * so the invariant held for every wallet type except the BIP-86 one, and a
+   * taproot user scanning a QR sequence back was told nothing every time.
+   *
+   * The input names the signer in `tapInternalKey`, which is the field the
+   * signer itself read to produce the spend.
+   */
+  it('knows-it-has-already-signed-a-taproot-key-path-input', () => {
+    using seed = mnemonicToSeed(MNEMONIC, '')
+    const { tx } = fundedTaproot()
+    const review = reviewTransaction(tx, { network: MAINNET, isChange: () => undefined })
+
+    const first = signTransaction(tx, seed, {
+      network: MAINNET,
+      paths: [PATH],
+      review,
+      overrideBlockingWarnings: true,
+    })
+    expect(first.wasAlreadySigned).toBe(false)
+
+    // The same transaction back again, which is what a scanned-back QR sequence
+    // or a card read twice looks like.
+    const returned = btc.Transaction.fromPSBT(first.psbt)
+    const againReview = reviewTransaction(returned, {
+      network: MAINNET,
+      isChange: () => undefined,
+    })
+    const again = signTransaction(returned, seed, {
+      network: MAINNET,
+      paths: [PATH],
+      review: againReview,
+      overrideBlockingWarnings: true,
+    })
+    expect(again.wasAlreadySigned).toBe(true)
+
+    // Somebody else's key has not signed it, so this is recognition rather than
+    // a function that started answering yes to everything.
+    const theirs = btc.Transaction.fromPSBT(first.psbt)
+    const stranger = hexToBytes('02'.repeat(33))
+    expect(alreadySignedBy(theirs, [stranger])).toBe(false)
+    expect(alreadySignedBy(btc.Transaction.fromPSBT(first.psbt), [])).toBe(false)
   })
 
   /**

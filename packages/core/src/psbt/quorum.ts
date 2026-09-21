@@ -188,11 +188,56 @@ export function signatureProgress(tx: btc.Transaction): SignatureProgress {
 export function alreadySignedBy(tx: btc.Transaction, pubkeys: readonly Uint8Array[]): boolean {
   if (pubkeys.length === 0) return false
   const ours = new Set(pubkeys.map((key) => bytesToHex(key)))
+  /*
+   * The same keys x-only, for the taproot case below.
+   *
+   * A compressed public key is a parity byte and 32 bytes of x. Taproot drops
+   * the parity byte, so the two encodings of one key never compare equal and a
+   * set built from the compressed form cannot recognise the x-only form.
+   */
+  const oursXOnly = new Set(
+    pubkeys.filter((key) => key.length === 33).map((key) => bytesToHex(key.slice(1)))
+  )
 
   let signedSomething = false
   for (let index = 0; index < tx.inputsLength; index += 1) {
-    for (const signer of signaturesOn(tx.getInput(index))) {
+    const input = tx.getInput(index)
+    for (const signer of signaturesOn(input)) {
       if (ours.has(signer)) signedSomething = true
+    }
+
+    /*
+     * THE KEY-PATH CASE, WHICH THE LOOP ABOVE CANNOT SEE.
+     *
+     * A taproot key-path spend carries `tapKeySig` and no public key beside
+     * it, because the key is the output. signaturesOn records that as the
+     * literal "taproot-key-path" rather than naming a signer, deliberately:
+     * for the progress report, which is about who has signed, inventing an
+     * attribution would be worse than admitting there is none.
+     *
+     * That answer is right there and wrong here. This function is not asking
+     * who signed, it is asking whether WE did, and it holds our keys. So
+     * "taproot-key-path" is compared against a set of hex public keys it can
+     * never equal, and this returned false for every BIP-86 wallet this device
+     * makes. The invariant it serves says a device recognises a transaction it
+     * has already signed, and its test is a 2-of-3 witness script using
+     * partialSig, so the property held for every wallet type except the one
+     * the taproot path produces. A user scanning a QR sequence back was told
+     * nothing, every time.
+     *
+     * The input names the signer in `tapInternalKey`, which is the field the
+     * signer read to build the spend in the first place. Matching against it is
+     * reading what the PSBT says rather than inferring: no attribution is
+     * invented and signaturesOn is left as conservative as it was.
+     */
+    const tapKeySig: unknown = input.tapKeySig
+    const internal: unknown = input.tapInternalKey
+    if (
+      tapKeySig instanceof Uint8Array &&
+      internal instanceof Uint8Array &&
+      oursXOnly.has(bytesToHex(internal))
+    ) {
+      signedSomething = true
     }
   }
   return signedSomething

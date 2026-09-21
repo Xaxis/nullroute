@@ -57,10 +57,12 @@ invariants:
 
   - id: INV-QUORUM-3
     statement: >
-      A device recognises a transaction it has already signed, and signing it
-      again produces byte-identical output.
+      A device recognises a transaction it has already signed, for a taproot
+      key-path spend as well as for a script it can read the signers out of, and
+      signing it again produces byte-identical output.
     tests:
       - packages/core/test/psbt.quorum.test.ts::knows-when-it-has-already-signed
+      - packages/core/test/psbt.sign.taproot.test.ts::knows-it-has-already-signed-a-taproot-key-path-input
 
   - id: INV-QUORUM-4
     statement: >

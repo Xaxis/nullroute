@@ -53,8 +53,8 @@ f4517f2446bab96d0a16e82d88cf38cb3af31675f4bf58c60ae46340929382a8  packages/core/
 125af2a9dfc4a6fb782e5a9678cb6343b144c1b897461a1c6bd2b30915ed8bef  packages/core/src/psbt/index.ts
 f5726b17a0001d72b88c7053ff5ee5b4ba43854c2cdb622ea5683824cdb03b20  packages/core/src/psbt/parse.spec.yaml
 df8c96b5b9975ac8769805bfe581e045ad792368621949210da713593d26e7fe  packages/core/src/psbt/parse.ts
-1a87249131760211119af89450ebe621ebab4cf31463b61cd28aeda4be5c0b44  packages/core/src/psbt/quorum.spec.yaml
-e2bcfbc32afd4c91ed16d3e0f08342bf9709aaaed4aba4e0c73c219062160fb0  packages/core/src/psbt/quorum.ts
+9525403325d938e1b4514cff73db9423709240efeca7ec7490dfcc6cd45bba31  packages/core/src/psbt/quorum.spec.yaml
+494769ae8e051a958b9835e7ceb40857d92cfd0c6f48447460aeadff9b85faab  packages/core/src/psbt/quorum.ts
 1dfe03762f67b4913b93f29458c5a15d5d648edae12dc9e88f40984991f4a348  packages/core/src/psbt/review.spec.yaml
 ad2e99942dd52f9d4ad09113cc351ef2aa2cdb2134b6fa1d4edbf8ba9d237108  packages/core/src/psbt/review.ts
 537b7dd217529c08a724d47114cb6a0be2491e8ce6f8d9a4c498a359b24fa747  packages/core/src/psbt/sign.spec.yaml
@@ -92,7 +92,7 @@ aa105011250a0b8f4265d947a7c137172110a9af2bc1dfda0ddc3d4176c29590  packages/core/
 f63f7cda29521b624d3bd9e87e5e6f6f9982d8e74776f67bdabd49dbf32085af  packages/core/test/psbt.parse.test.ts
 4e10cefa91161fd5352a0324d1b7c5eb5f10523e9440e2fffd9b9ba2bd53e3bf  packages/core/test/psbt.quorum.test.ts
 fdd73c9ca5dbd1518f635c4ffdadfb2814fb963f7006d9f9b0379e01d98db9b7  packages/core/test/psbt.review.test.ts
-d61fcf2d545468f4ce8952ece62dfba29becc3bb2f8597044a2721a18e46b820  packages/core/test/psbt.sign.taproot.test.ts
+60d4ba23afe28151ed62571532e93e5b8683893dece8006048c8b5248ec1115c  packages/core/test/psbt.sign.taproot.test.ts
 71aaf47296e0711cd7c5923311afd27171bfcc3d4960f0d3854323639b0ff4a5  packages/core/test/psbt.sign.test.ts
 996c909f409b8842ed070a3b7620578191fb5489f181d8866d5ba7ae0e6f15d8  packages/core/test/qr.bbqr.test.ts
 d7ef7090704a3d18c674c5ef695de2c980b1324a031ffced0b5a0f6b0f677de0  packages/core/test/qr.encode.test.ts
