@@ -212,8 +212,30 @@ export function requirePassingVerification(repoRoot: string, version: string): B
     )
   }
 
-  // The staleness check. This is the condition most likely to catch a real
-  // problem in practice: verify, edit a file, restart.
+  // The staleness check, and it is narrower than the old comment here claimed.
+  // That comment said this was "the condition most likely to catch a real
+  // problem in practice: verify, edit a file, restart". It is not, and the
+  // difference is worth stating in the module whose job is attestation.
+  //
+  // WHAT IT COMPARES is the root the report recorded against SHA-256 of the
+  // MANIFEST.lock on disk now. Nothing here opens a single source file. Edit a
+  // source and call this function directly and it returns an attestation, which
+  // was measured rather than reasoned about. What it catches is the manifest
+  // being regenerated without the report being rewritten, so the report
+  // describes a tree that is no longer the one on disk.
+  //
+  // WHAT ACTUALLY COVERS FILE CONTENTS is `sha256sum -c MANIFEST.lock`, check 5
+  // in packages/verify, which is what wrote the report this trusts, and
+  // dm-verity on the device, which checks every block of the root filesystem as
+  // the kernel reads it. Every supported way of starting this daemon runs the
+  // first: `make dev` and `make dev-daemon` both depend on `manifest verify`.
+  // Editing a source and running one of them regenerates the manifest, so the
+  // integrity check re-hashes the file and the root hash on the lock screen
+  // moves, which is the signal a reader is told to compare.
+  //
+  // So this is the last of three gates rather than the only one, and it is the
+  // cheap one. Re-hashing the tree here as well would duplicate check 5 at
+  // every boot, on a filesystem dm-verity is already checking block by block.
   const actual = manifestRootHash(repoRoot)
   if (report.rootHash !== actual) {
     throw new AttestationError(
