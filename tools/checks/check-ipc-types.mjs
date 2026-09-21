@@ -93,7 +93,22 @@ function returnedFields(method) {
       if (char === '}') depth -= 1
       index += 1
     }
-    const body = block.slice(at, index - 1)
+    /*
+     * COMMENTS GO BEFORE THE SPLIT, NOT AFTER IT.
+     *
+     * The entries are separated on depth-zero commas, and the comments in these
+     * return objects are prose, so they contain commas of their own. "fixing
+     * it, because the picker just got caught being wrong." splits there, which
+     * leaves the NEXT entry beginning with "because the picker just got caught
+     * being wrong." and the `//` that made it a comment attached to the entry
+     * before. No comment stripper applied afterwards can recognise that, and
+     * the field below it was recorded as one the daemon does not return.
+     *
+     * Whole-line comments only, optionally indented, so a `//` inside a string
+     * is untouched. Removing them here also removes their commas, which is the
+     * half that matters.
+     */
+    const body = block.slice(at, index - 1).replace(/^[ \t]*\/\/.*$/gmu, '')
 
     // Split at depth-zero commas, then take the key from each entry. Reading
     // line by line was the first attempt and it missed a single-line
@@ -118,10 +133,8 @@ function returnedFields(method) {
     entries.push(entry)
 
     for (const text of entries) {
-      const trimmed = text
-        .trim()
-        .replace(/^\/\/.*$/gm, '')
-        .trim()
+      // Comments are already gone, removed from the body before the split.
+      const trimmed = text.trim()
       if (trimmed.length === 0) continue
 
       // `name: value`
@@ -145,16 +158,71 @@ function returnedFields(method) {
   return fields.size === 0 ? null : fields
 }
 
-/** Every inline `call<{...}>(transport, 'method'` in App.tsx. */
+/**
+ * Every inline `call<{...}>(transport, 'method'` in App.tsx.
+ *
+ * BRACE MATCHING, NOT A CHARACTER CLASS. The pattern was
+ * `call<(\{[^}]*\})>`, and `[^}]*` cannot cross a nested object, so any call
+ * site whose response type contains an inner `{ }` never entered the loop.
+ * Eight of the twenty-six did, among them wallets.unlock, wallets.create,
+ * wallets.rename and multisig.addresses, which are the shapes that matter
+ * most. They were not checked and not counted, so the summary reported full
+ * coverage of a smaller set.
+ *
+ * This file already refuses to be silent in the other direction: a method whose
+ * HANDLER it cannot read exits 1, on the stated grounds that "a method whose
+ * handler this cannot read is a method nobody is checking, and silence there is
+ * how a check becomes decorative". A call site it could not read was silent.
+ * Same failure, opposite end.
+ *
+ * A `call<SomeNamedType>(...)` is deliberately still out of scope: the shape is
+ * declared somewhere else and this reads App.tsx.
+ */
 function inlineCalls() {
   const found = []
-  const pattern = /call<(\{[^}]*\})>\(\s*(?:transport,\s*)?'([a-z][a-zA-Z.]*)'/g
-  for (const match of app.matchAll(pattern)) {
-    const line = app.slice(0, match.index).split('\n').length
-    const fields = new Set(
-      [...match[1].matchAll(/([A-Za-z_][A-Za-z0-9_]*)\s*[?]?\s*:/g)].map((m) => m[1])
-    )
-    found.push({ line, method: match[2], fields })
+  for (const opening of app.matchAll(/\bcall<\{/g)) {
+    const start = (opening.index ?? 0) + opening[0].length - 1
+    let depth = 0
+    let end = -1
+    for (let i = start; i < app.length; i += 1) {
+      const char = app[i]
+      if (char === '{') depth += 1
+      else if (char === '}') {
+        depth -= 1
+        if (depth === 0) {
+          end = i
+          break
+        }
+      }
+    }
+    if (end === -1) continue
+
+    // The call has to name a method right after the type, or it is something
+    // else entirely and not this tool's business.
+    const call = /^>\(\s*(?:transport,\s*)?'([a-z][a-zA-Z.]*)'/.exec(app.slice(end + 1))
+    if (call === null) continue
+
+    const literal = app.slice(start, end + 1)
+    const line = app.slice(0, opening.index).split('\n').length
+    /*
+     * TOP-LEVEL FIELD NAMES ONLY. A nested `{ address: string }` names fields
+     * of a nested object, and the daemon's return shape is compared one level
+     * deep, so counting them would invent promises the call never made.
+     */
+    const fields = new Set()
+    let nesting = 0
+    for (const token of literal.matchAll(/[{}]|([A-Za-z_][A-Za-z0-9_]*)\s*[?]?\s*:/g)) {
+      if (token[0] === '{') {
+        nesting += 1
+        continue
+      }
+      if (token[0] === '}') {
+        nesting -= 1
+        continue
+      }
+      if (nesting === 1 && token[1] !== undefined) fields.add(token[1])
+    }
+    found.push({ line, method: call[1], fields })
   }
   return found
 }
