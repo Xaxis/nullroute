@@ -126,12 +126,14 @@ invariants:
     statement: >
       A name given to another key in a quorum is the user's own, is stripped the
       same way a wallet name is, is never verified, and replacing or clearing it
-      does not accumulate entries.
+      does not accumulate entries. A name whose write failed is not left live
+      for a later write to seal.
     tests:
       - packages/daemon/test/cosigner-labels.ipc.test.ts::names-a-key-and-says-the-name-proves-nothing
       - packages/daemon/test/cosigner-labels.ipc.test.ts::replaces-a-name-rather-than-accumulating-them
       - packages/daemon/test/cosigner-labels.ipc.test.ts::clears-a-name-when-given-an-empty-one
       - packages/daemon/test/cosigner-labels.ipc.test.ts::strips-a-name-that-could-render-as-something-else
+      - packages/daemon/test/cosigner-labels.ipc.test.ts::does-not-keep-a-name-whose-passphrase-was-wrong
 
   - id: INV-COSIGN-2
     statement: >

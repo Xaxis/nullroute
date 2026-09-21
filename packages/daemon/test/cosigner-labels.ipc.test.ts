@@ -163,6 +163,47 @@ describe('multisig.labelCosigner', () => {
     expect(written.persisted).toBe(true)
   })
 
+  /**
+   * INV-COSIGN-1. A name the user was told was not saved must not be live.
+   *
+   * This method named the cosigner in the session and then called rename, which
+   * verifies the passphrase and throws on a wrong one. So a typo threw, the
+   * caller was told nothing was written, and the name stayed in the live
+   * session. The next write that succeeded for any unrelated reason carried
+   * session.cosigners into the ciphertext and sealed it, so a name nobody ever
+   * successfully saved became permanent by way of an unrelated rename.
+   *
+   * multisig.register a hundred lines above says the rule in as many words, and
+   * multisig.forget needed the same correction. This is the third method in the
+   * file to need it.
+   */
+  it('does-not-keep-a-name-whose-passphrase-was-wrong', async () => {
+    const id = await openWallet()
+
+    await expect(
+      call('multisig.labelCosigner', { xpub: XPUB, label: 'The attic Pi', passphrase: 'wrong' })
+    ).rejects.toThrow()
+
+    // Not live, so nothing else can seal it later. The response of a
+    // no-passphrase call reports what the session holds.
+    const held = (await call('multisig.labelCosigner', { xpub: 'x'.repeat(4), label: '' })) as {
+      cosigners: readonly { xpub: string; label: string }[]
+    }
+    expect(held.cosigners).toHaveLength(0)
+
+    // And an unrelated successful write does not resurrect it: this is the
+    // path that used to seal a name nobody ever saved on purpose.
+    await call('wallets.rename', {
+      label: 'Family Vault 2',
+      colour: 'rose',
+      passphrase: 'correct horse',
+    })
+    session.lock()
+    const opened = registry.unlock(id, 'correct horse')
+    expect(opened.cosigners).toEqual([])
+    opened.seed.dispose()
+  })
+
   it('refuses-to-name-a-cosigner-with-no-wallet-open', async () => {
     session.lock()
     await expect(call('multisig.labelCosigner', { xpub: XPUB, label: 'Attic' })).rejects.toThrow(

@@ -180,7 +180,35 @@ export function multisigMethods(ctx: HandlerContext): MethodTable {
       // is rendered beside a key on the screen that agrees to a quorum. An
       // empty label clears the name rather than storing a blank one.
       const cleaned = label.trim().length === 0 ? '' : stripUndisplayable(label)
-      session.labelCosigner(xpub, cleaned)
+      // Kept explicit. session.labelCosigner threw this, and building the list
+      // by hand below reads through a getter that answers [] with no wallet,
+      // so the refusal has to be stated rather than fall out of a mutator.
+      if (!session.hasWallet) {
+        throw new Error('No wallet is loaded.')
+      }
+
+      /*
+       * THE LIST THAT WOULD BE SEALED, BUILT WITHOUT TOUCHING THE SESSION.
+       *
+       * The third method in this file to need saying so. multisig.register says
+       * it a hundred lines above, in these words: persisting must be able to
+       * fail without leaving a change live that the user was told had not been
+       * saved. This one named the cosigner in the session first and then called
+       * rename, which verifies the passphrase and throws on a wrong one.
+       *
+       * So a typo threw, the user was told nothing was saved, and the name
+       * stayed in the live session. The next write that DID succeed, for any
+       * unrelated reason, carried session.cosigners into the ciphertext and
+       * sealed it. Measured: label a cosigner with a wrong passphrase, watch it
+       * throw, then rename the wallet correctly, and the name is in the
+       * ciphertext having never been saved on purpose.
+       *
+       * Clearing a name has the same shape in the other direction: a failed
+       * clear stays cleared in the session and the next successful write makes
+       * the clearing permanent.
+       */
+      const without = session.cosigners.filter((entry) => entry.xpub !== xpub)
+      const next = cleaned.length === 0 ? without : [...without, { xpub, label: cleaned }]
 
       const passphrase = optionalString(request, 'passphrase')
       const active = session.active
@@ -198,10 +226,14 @@ export function multisigMethods(ctx: HandlerContext): MethodTable {
           label: active.label,
           colour: active.colour as WalletColour,
           registrations: session.registrations,
-          cosigners: session.cosigners,
+          cosigners: next,
         })
         persisted = true
       }
+
+      // Only now. A name reported as not saved must not be live for the next
+      // write to pick up.
+      session.setCosigners(next)
 
       return {
         cosigners: session.cosigners,
