@@ -105,8 +105,40 @@ for (const file of readdirSync(SCREENS).filter((name) => name.endsWith('.tsx')))
     if (/readOnly/.test(attrs)) continue
     const type = /type="(\w+)"/.exec(attrs)?.[1] ?? 'text'
     if (type === 'checkbox' || type === 'radio') continue
+    /*
+     * A FIELD THIS CANNOT READ IS A FAILURE, NOT A SKIP.
+     *
+     * `attrs` is only the text BETWEEN the tag and its data-testid, so this
+     * pattern finds a value binding written before the testid and nothing
+     * else. That was a silent `continue`: a field whose attributes happened to
+     * be in the other order, or whose value is an expression rather than a
+     * bare name, left the loop without being checked AND without being
+     * counted, so the summary reported full coverage of a smaller set.
+     *
+     * Nothing is in that state today, which is the only reason this can be
+     * made loud rather than listed. It is made loud because the alternative is
+     * a check whose coverage depends on JSX attribute order, which the
+     * formatter is entitled to change.
+     */
     const value = /value=\{(\w+)\}/.exec(attrs)?.[1]
-    if (value === undefined) continue
+    if (value === undefined) {
+      const after = text.slice(match.index ?? 0, (match.index ?? 0) + 900)
+      if (/value=\{/.test(after)) {
+        fail(
+          `${file} has ${id}, which looks like a field somebody fills, and its value ` +
+            `binding is not written before its data-testid, so this check cannot see ` +
+            `what a keyboard would have to be bound to. Put value={name} before ` +
+            `data-testid, or mark the field readOnly if it is a readout.`
+        )
+      } else {
+        fail(
+          `${file} has ${id} on an ${match[1]} with no value binding this check can ` +
+            `read. An uncontrolled field on a panel with no keyboard cannot be filled ` +
+            `at all. Give it value={name} and a keyboard, or readOnly if it is a readout.`
+        )
+      }
+      continue
+    }
 
     fields += 1
     found.add(id)
