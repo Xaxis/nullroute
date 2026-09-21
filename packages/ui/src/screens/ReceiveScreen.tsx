@@ -59,6 +59,24 @@ export interface ReceiveScreenProps {
    * single-signature address has to say so.
    */
   readonly quorums?: readonly ReceiveSource[]
+  /**
+   * True when the quorum list could not be read, which is not the same as there
+   * being none.
+   *
+   * THE BUG ABOVE CAME BACK THROUGH AN ERROR PATH. App.tsx asks the daemon for
+   * the registrations and, on failure, sets the list to empty. That is
+   * deliberate on the wallet screen, where a multisig query failing must not
+   * stop the screen rendering, and it is written down there. The same empty
+   * list arrives here, where "no quorums" is not a degraded state but a
+   * different device: the tabs disappear, the single-signature address becomes
+   * the only answer, and the screen shows exactly what it showed before the
+   * prop above was added.
+   *
+   * An empty list means this device is in no quorum. This means the device
+   * could not find out. They must not look the same, for the same reason the
+   * verifier refuses to fold not-applicable into passed.
+   */
+  readonly quorumsUnread?: boolean
   /** Derive from one quorum, when a quorum is chosen. */
   readonly onQuorumAddress?:
     ((descriptor: string, index: number) => Promise<ReceiveAddress>) | undefined
@@ -101,6 +119,7 @@ export function chunkAddress(address: string): string {
 export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
   const {
     quorums = [],
+    quorumsUnread = false,
     onQuorumAddress,
     onAddress,
     onVerify,
@@ -246,6 +265,17 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
       {error !== null && (
         <Refusal title="Not derived" testId="receive-error">
           {error}
+        </Refusal>
+      )}
+
+      {/* THE QUORUM LIST COULD NOT BE READ, which is not the same as there
+          being none, and the difference decides what this address is worth.
+          Said before the address rather than beside it, because the thing a
+          reader has to decide is whether to use the address at all. */}
+      {quorumsUnread && (
+        <Refusal title="Could not read this wallet's quorums" testId="receive-quorums-unread">
+          The address below is this device alone. In a quorum wallet that means one key holds the
+          money, not the number you chose.
         </Refusal>
       )}
 

@@ -1033,12 +1033,15 @@ invariants:
       quorum's by default, choosing this device alone is deliberate and states
       that the money would be protected by one key instead of the quorum, the
       address is verified against whatever produced it, and a build that cannot
-      derive a quorum address refuses rather than showing the weaker one.
+      derive a quorum address refuses rather than showing the weaker one. A
+      device that could not read its quorum list says so, rather than looking
+      like a device that is in none.
     tests:
       - packages/ui/test/receive-quorum.test.tsx::derives-the-quorum-address-rather-than-this-device-s-own
       - packages/ui/test/receive-quorum.test.tsx::says-what-the-single-signature-choice-costs
       - packages/ui/test/receive-quorum.test.tsx::checks-a-quorum-address-against-the-descriptor-not-against-this-device
       - packages/ui/test/receive-quorum.test.tsx::offers-no-choice-on-a-device-that-is-in-no-quorum
+      - packages/ui/test/receive-quorum.test.tsx::says-so-when-the-quorum-list-could-not-be-read
       - packages/ui/test/receive-quorum.test.tsx::refuses-rather-than-quietly-showing-the-weaker-address
       - packages/ui/test/receive-quorum.test.tsx::says-these-are-not-the-quorum-s-addresses
       - packages/ui/test/receive-quorum.test.tsx::says-nothing-on-a-device-that-is-in-no-quorum

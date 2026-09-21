@@ -406,6 +406,16 @@ export function App() {
    * wrong thing to show on a device that holds several.
    */
   const [quorums, setQuorums] = useState<readonly QuorumView[]>([])
+  /**
+   * Whether the list above is "none" or "could not ask".
+   *
+   * The catch below turns a failed query into an empty list, which is right for
+   * the wallet screen and wrong for Receive: there, an empty list is a device in
+   * no quorum, and it shows the single-signature address as the only answer.
+   * That is the state ReceiveScreen's `quorums` prop was added to stop, so the
+   * error path was quietly restoring the bug the prop exists for.
+   */
+  const [quorumsUnread, setQuorumsUnread] = useState(false)
   /** Why the wallet list may be wrong or incomplete. Never rendered as empty. */
   const [listFailure, setListFailure] = useState<string | null>(null)
   const [maxWallets, setMaxWallets] = useState(8)
@@ -698,6 +708,10 @@ export function App() {
       // so it must not survive the wallet it names.
       setActiveWallet(null)
       setQuorums([])
+      // Cleared with them. A locked session has not failed to read a quorum
+      // list, it has no wallet to read one for, and carrying the flag across
+      // would put a refusal on the next wallet's Receive screen.
+      setQuorumsUnread(false)
       await refresh()
       setStage({ at: 'lock' })
     }
@@ -804,9 +818,20 @@ export function App() {
           'multisig.registrations',
           {}
         )
-        if (!cancelled) setQuorums(listed.quorums)
+        if (!cancelled) {
+          setQuorums(listed.quorums)
+          setQuorumsUnread(false)
+        }
       } catch {
-        if (!cancelled) setQuorums([])
+        // Still swallowed, for the reason above: a wallet screen that refused to
+        // render because a multisig query failed would be worse than one showing
+        // no cosigner number. What changes is that the failure is now
+        // distinguishable from an answer, so a screen where the difference
+        // matters can say so.
+        if (!cancelled) {
+          setQuorums([])
+          setQuorumsUnread(true)
+        }
       }
     }
     void run()
@@ -1249,6 +1274,7 @@ export function App() {
             await call(transport, 'session.lock')
             setActiveWallet(null)
             setQuorums([])
+            setQuorumsUnread(false)
             await refresh()
             setStage({ at: 'wallets' })
           }
@@ -1498,6 +1524,7 @@ export function App() {
             'multisig.registrations'
           )
           setQuorums(listed.quorums)
+          setQuorumsUnread(false)
         }}
         onBack={() => {
           setStage({ at: 'wallet' })
@@ -1754,6 +1781,9 @@ export function App() {
         // with a blank one. The checksum is what every device in the fleet
         // compares, and a tab labelled with nothing is a choice nobody can
         // make deliberately.
+        /* Not the same as an empty list, and this screen is where the
+           difference decides what the address is worth. See the prop. */
+        quorumsUnread={quorumsUnread}
         quorums={quorums
           .filter((quorum) => quorum.checksum !== undefined)
           .map((quorum) => ({

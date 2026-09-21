@@ -116,6 +116,38 @@ describe('ReceiveScreen on a device holding a quorum', () => {
   })
 
   /**
+   * INV-UI-88. "No quorums" and "could not ask" are different devices.
+   *
+   * THE BUG AT THE TOP OF THIS FILE CAME BACK THROUGH AN ERROR PATH. App.tsx
+   * asks the daemon for the registrations and, on failure, sets the list to
+   * empty. That is deliberate on the wallet screen and written down there: a
+   * multisig query failing must not stop the screen rendering. The same empty
+   * list arrived here, where an empty list means a device in no quorum, so the
+   * tabs vanished and the single-signature address became the only answer.
+   * Which is exactly the screen this file was written about.
+   *
+   * The two states must not look the same, for the reason the verifier refuses
+   * to fold not-applicable into passed: not knowing is not an answer.
+   */
+  it('says-so-when-the-quorum-list-could-not-be-read', async () => {
+    open({ quorums: [], quorumsUnread: true })
+    await waitFor(() => screen.getByTestId('receive-address'))
+
+    const said = screen.getByTestId('receive-quorums-unread').textContent
+    // It names the thing it could not do, rather than going quiet.
+    expect(said).toContain('Could not read')
+    // And the consequence, in the words that decide whether to use the address.
+    expect(said).toContain('one key')
+
+    // And it is absent on a device that genuinely holds no quorum, or this
+    // would be a permanent banner rather than a report of a failure.
+    cleanup()
+    open({ quorums: [] })
+    await waitFor(() => screen.getByTestId('receive-address'))
+    expect(screen.queryByTestId('receive-quorums-unread')).toBeNull()
+  })
+
+  /**
    * INV-UI-88. A build that cannot derive a quorum address REFUSES rather than
    * falling back. Handing somebody the weaker address at the moment they were
    * told they were getting the stronger one is the failure that matters here.

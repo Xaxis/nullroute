@@ -1445,6 +1445,27 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       onBack={noop}
     />
   ),
+  /*
+   * The quorum list could not be read, which is not a device in no quorum.
+   *
+   * App.tsx turns a failed `multisig.registrations` into an empty list, which
+   * is right on the wallet screen and, here, silently restored the bug the
+   * quorums prop was added to stop: no tabs, and the single-signature address
+   * as the only answer. The refusal has to be measured on the panel like every
+   * other must-see statement, so it needs a state.
+   */
+  'receive-quorums-unread': () => (
+    <ReceiveScreen
+      identity={DEVICE}
+      nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
+      quorumsUnread
+      onAddress={async (index: number) =>
+        Promise.resolve({ address: ADDRESS, path: `m/84'/0'/0'/0/${String(index)}`, index })
+      }
+      onVerify={async () => Promise.resolve({ found: true, path: "m/84'/0'/0'/0/0" })}
+      onBack={noop}
+    />
+  ),
   // The multisig journey, because it has the most left over and is therefore
   // the tallest this screen ever gets.
   finish: () => {
