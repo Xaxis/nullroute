@@ -168,6 +168,83 @@ describe('ui.screens.psbt', () => {
     }
   })
 
+  /**
+   * INV-UI-12. The read gate survives the panel the transaction was pasted
+   * into.
+   *
+   * Screen reports "at end" once on mount and again whenever its children
+   * change, with the stated reason that a body too short to scroll must count
+   * as read rather than leaving the caller waiting for an event that cannot
+   * arrive. The paste panel is such a body.
+   *
+   * doReview clears `read` and then awaits. The await is the hole: setBusy(true)
+   * re-renders the paste panel, which is still the panel on screen because the
+   * review has not arrived, its children change, the effect reports at-end for
+   * a short body, and `read` latches true again. The review then renders 888px
+   * of transaction into a 480px panel with Sign already live.
+   *
+   * The gate is the screen's only claim, printed in its own subtitle: nothing
+   * is signed until you have read it.
+   */
+  it('does-not-count-the-paste-panel-as-having-read-the-transaction', async () => {
+    // Short while the textarea is on screen, tall once the review arrives.
+    const body = { scrollTop: 0, clientHeight: 300, scrollHeight: 300 }
+    const spies = (['scrollTop', 'clientHeight', 'scrollHeight'] as const).map((name) =>
+      vi.spyOn(HTMLElement.prototype, name, 'get').mockImplementation(function (this: HTMLElement) {
+        return this.className === 'nr-screen__body' ? body[name] : 0
+      })
+    )
+    try {
+      const onReview = vi.fn().mockImplementation(async () => {
+        // The transaction is what makes the body tall, so the growth happens
+        // as the review resolves, exactly as it does in the browser.
+        body.scrollHeight = 1300
+        return Promise.resolve(review({ warnings: [], signable: true }))
+      })
+      const onSign = vi.fn()
+      render(<PsbtScreen onReview={onReview} onSign={onSign} onBack={vi.fn()} />)
+
+      type(screen.getByTestId('psbt-input'), 'cHNidP8B')
+      fireEvent.click(screen.getByTestId('psbt-review'))
+      await waitFor(() => {
+        expect(screen.getByTestId('psbt-outputs')).toBeTruthy()
+      })
+
+      // 300 of 1300 pixels have been on the panel. Nothing has been read.
+      expect(screen.getByTestId<HTMLButtonElement>('psbt-sign').disabled).toBe(true)
+      expect(screen.getByTestId('psbt-refusal').textContent).toContain('Scroll to the end')
+      fireEvent.click(screen.getByTestId('psbt-sign'))
+      expect(onSign).not.toHaveBeenCalled()
+
+      // AND THE SAME WITH A SCROLL ON THE PASTE PANEL FIRST. The body is one
+      // DOM node across every panel this screen returns and deliberately keeps
+      // its offset, so reaching the end of the short one must not carry into
+      // the tall one that replaces it.
+      cleanup()
+      body.scrollTop = 0
+      body.scrollHeight = 400
+      const second = vi.fn().mockImplementation(async () => {
+        body.scrollHeight = 1300
+        return Promise.resolve(review({ warnings: [], signable: true }))
+      })
+      const secondSign = vi.fn()
+      render(<PsbtScreen onReview={second} onSign={secondSign} onBack={vi.fn()} />)
+
+      const scroller = screen.getByTestId('psbt-screen').querySelector('.nr-screen__body')
+      body.scrollTop = 100
+      if (scroller !== null) fireEvent.scroll(scroller)
+
+      type(screen.getByTestId('psbt-input'), 'cHNidP8B')
+      fireEvent.click(screen.getByTestId('psbt-review'))
+      await waitFor(() => {
+        expect(screen.getByTestId('psbt-outputs')).toBeTruthy()
+      })
+      expect(screen.getByTestId<HTMLButtonElement>('psbt-sign').disabled).toBe(true)
+    } finally {
+      for (const spy of spies) spy.mockRestore()
+    }
+  })
+
   it('says-when-a-quorum-could-not-be-read', async () => {
     setup({ unreadableRegistrations: 2 })
     await reachReview()

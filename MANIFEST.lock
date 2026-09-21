@@ -227,7 +227,7 @@ c3a28c1de6a6ee3ba18e4f4f2d633c9c8d4723eddaa796cd121941f3adec55bc  packages/ui/sr
 2435f117ff52f775491ef387d21f90679a8babcb4b197d412aba29757bd7cee6  packages/ui/src/screens/WalletScreen.tsx
 465efc652305e44dbe7f8b14dd1fdee4c00b23fab2fb0c5ad83e3738a880cae6  packages/ui/src/screens/WalletsScreen.tsx
 eb6cd298dcdf0a9784d2c41a5e9baa76398388b62bd251909edb2b4cfbe175e8  packages/ui/src/styles.css
-d96d12e376344c0c3949b27b5f7f2244ae7c9234fa9ce2db8d9290dde65dfe54  packages/ui/src/ui.spec.yaml
+bd08f3977831497e4fc8df0a8249db95ac9ed7842773da7d238a75a307fc9c2e  packages/ui/src/ui.spec.yaml
 97ae49d649fe5993e69685f6f0d7f7449a0a999a61d6597f9a7ab46971932cdc  packages/ui/src/vite-env.d.ts
 490e3fe32c9eed453b87d8d57d55db4ebf100e45164fb5e089182b12c7ace88d  packages/ui/test/app.test.tsx
 3a7640a863e26a7feb248b5dce2748a074ee9ece2fa6a74a53face89b67f7056  packages/ui/test/assemble-quorum-screen.test.tsx
@@ -252,7 +252,7 @@ a682c886d978f77c0cb059ba38ce636950c73190c016ea63f5ff0c9ee5995c7b  packages/ui/te
 61226fa20e0af91e41705ce7aaa1158eed52c1ec5602d22aa3206361dd1f6363  packages/ui/test/multisig-screen.test.tsx
 412b43f5853c9d382d66dfeb046427dcf3e3eea72d4b00944b8caf38e8b02301  packages/ui/test/nav-menu.test.tsx
 4da4564c074f23d39de80795616c2e065b4533da270e6e99c6e5fa834287f14b  packages/ui/test/passphrase-screen.test.tsx
-cfc7774584a691aed1c0729400c7fcc3846ecbfa90bd32c600b7532a072f4ef8  packages/ui/test/psbt-screen.test.tsx
+298311ca6e84c6c0217d9f8de6bdad50f2a2327d484bed5426db4fd590de31b8  packages/ui/test/psbt-screen.test.tsx
 037afdf504a469a8d2159afb06e1b160202cf59a9b1b8f53fd7393b6e55aaeba  packages/ui/test/qr-display.test.tsx
 2ae17ccf12e9ed36fcee043004e53c635abe75f5dedae12becb7f3bf5b73752e  packages/ui/test/quorum-addresses-screen.test.tsx
 98119b7d15e81c1c9ae6968922d9ca0dc80fb08743cf270e764ed91626361256  packages/ui/test/receive-quorum.test.tsx

@@ -171,6 +171,16 @@ invariants:
       - packages/ui/test/psbt-screen.test.tsx::does-not-sign-when-reviewing
       - packages/ui/test/psbt-screen.test.tsx::will-not-review-an-empty-field
 
+  - id: INV-UI-103
+    statement: >
+      Signing is refused until the review has been read to its end, and the
+      panel the transaction was pasted into does not count as having read it.
+      Reading latches, so going back up to look at the amounts again does not
+      withdraw it.
+    tests:
+      - packages/ui/test/psbt-screen.test.tsx::refuses-to-sign-until-the-review-has-been-read
+      - packages/ui/test/psbt-screen.test.tsx::does-not-count-the-paste-panel-as-having-read-the-transaction
+
   - id: INV-UI-12
     statement: >
       An output is presented as change only together with the derivation path
