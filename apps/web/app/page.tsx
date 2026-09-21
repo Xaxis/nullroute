@@ -4,6 +4,7 @@ import { readFacts } from '../lib/facts'
 import { Hero } from '../components/hero/Hero'
 import { Section } from '../components/Section'
 import { Terminal } from '../components/Terminal'
+import { DiceDemo } from '../components/DiceDemo'
 import { Device } from '../components/Device'
 import { REPO_URL } from '../lib/site'
 
@@ -81,6 +82,25 @@ const WORKING: readonly { term: string; specs: readonly string[] }[] = [
  * because burying them would be the failure this project is about, and they are
  * now short enough to actually be read.
  */
+/**
+ * Spelled, and counted rather than typed.
+ *
+ * The sentence under this heading said "Four specific reasons" while the list
+ * below it held four, and then five, which is a number nobody would think to
+ * change and nothing would notice. Deriving it costs one lookup and removes a
+ * claim from the set of things that can quietly stop being true.
+ */
+const COUNT_WORD: Record<number, string> = {
+  1: 'One',
+  2: 'Two',
+  3: 'Three',
+  4: 'Four',
+  5: 'Five',
+  6: 'Six',
+  7: 'Seven',
+  8: 'Eight',
+}
+
 const REFUSALS: readonly (readonly [string, string])[] = [
   [
     'It is not audited',
@@ -93,6 +113,10 @@ const REFUSALS: readonly (readonly [string, string])[] = [
   [
     'The boot partition is not covered',
     'dm-verity detects modification of the system partition and does not prevent it. The boot partition holds the root hash and cannot be under the tree that hash describes, so an attacker who rewrites it supplies their own number. Only a signed boot chain closes that, and it burns one-time fuses.',
+  ],
+  [
+    'The browser is the weakest part',
+    'The screens are a Chromium kiosk, and provisioning/HARDENING.md says in as many words that it is the weakest component on the device: its own sandbox needs unprivileged user namespaces, which the directives that make the daemon safe take away. The design response is to keep trust out of it rather than to harden it, so the daemon holds the keys and the frontend receives only xpubs, addresses, descriptors and transactions. It has also never had a display: the boot test runs without a virtual terminal, so it reports that component rather than judging it.',
   ],
   [
     'It will not save you from a person',
@@ -134,6 +158,32 @@ export default function HomePage() {
             <Terminal command="make verify" facts={facts} />
           </div>
 
+          {/* THE DEMO LIVES HERE NOW, and this is where it was always about.
+              It sat in the hero, beside the headline, where the first
+              interactive thing a stranger met was a grid of dice buttons: that
+              reads as a web page where you roll dice, and the product is a
+              Raspberry Pi with no network. Under "how you check it", next to
+              the command that does the checking, it is the same proof making
+              the same point to someone who has been told what they are
+              looking at. */}
+          <div className="mt-12 grid gap-8 lg:grid-cols-[minmax(0,1fr)_26rem] lg:gap-12 lg:items-start">
+            <div className="min-w-0">
+              <p className="font-mono text-[0.7rem] uppercase tracking-[0.18em] text-ink-500">
+                Check the smallest claim yourself
+              </p>
+              <p className="mt-4 text-base text-ink-400 leading-relaxed">
+                Dice become a seed by one rule, and it is a rule you can repeat without any of this
+                code: SHA-256 of the digits you rolled, as ASCII, with no trailing newline. Roll
+                some here, then run the command it hands you and check that your own terminal
+                agrees. If it does, you have verified the first step of the chain by yourself. If it
+                does not, one of us is wrong and it is worth finding out which.
+              </p>
+            </div>
+            <div className="min-w-0">
+              <DiceDemo />
+            </div>
+          </div>
+
           <p className="mt-8 text-base text-ink-400 max-w-2xl leading-relaxed">
             The last line is the manifest root: every source file hashed, sorted under{' '}
             <code className="font-mono text-ink-300">LC_ALL=C</code>, in a format coreutils produced
@@ -171,7 +221,8 @@ export default function HomePage() {
         {/* --- 03 Reasons not to ------------------------------------------ */}
         <Section index="03" label="Do not use this">
           <p className="text-lg text-ink-200 max-w-2xl leading-relaxed">
-            Not modesty. Four specific reasons, and any one of them is enough.
+            Not modesty. {COUNT_WORD[REFUSALS.length] ?? String(REFUSALS.length)} specific reasons,
+            and any one of them is enough.
           </p>
 
           <dl className="mt-8 divide-y divide-ink-850 border-y border-ink-850">
