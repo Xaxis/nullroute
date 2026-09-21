@@ -149,10 +149,27 @@ const sbom = JSON.parse(raw)
 // Non-deterministic per run and carrying no information about the tree.
 delete sbom.serialNumber
 if (sbom.metadata) delete sbom.metadata.timestamp
-// npm records its own invocation, which embeds the absolute path of the runner.
-if (sbom.metadata?.tools?.components) {
-  for (const tool of sbom.metadata.tools.components) delete tool.version
-}
+/*
+ * npm records its own invocation, and the version it records is a property of
+ * the machine rather than of the tree.
+ *
+ * BOTH SHAPES, AND ONLY THE SECOND ONE WAS HANDLED. CycloneDX 1.5 allows
+ * `metadata.tools` as an object with a `components` array, and still allows the
+ * legacy form, which is a bare array of {vendor, name, version}. npm emits the
+ * legacy array. So `sbom.metadata?.tools?.components` was undefined on every
+ * run this has ever made, the loop never executed, and the committed SBOM
+ * carries "version": "11.4.2" for the npm CLI.
+ *
+ * The consequence is the one this file exists to prevent. The header argues
+ * that two SBOMs of an identical tree must not differ in ways that mean
+ * nothing, so that a published diff is signal. Upgrading npm changes this
+ * field, `make sbom-check` fails, and the failure says the dependency tree
+ * changed when it did not.
+ */
+const toolEntries = Array.isArray(sbom.metadata?.tools)
+  ? sbom.metadata.tools
+  : (sbom.metadata?.tools?.components ?? [])
+for (const tool of toolEntries) delete tool.version
 
 const dropped = excludeUnlocked(sbom, lockfileNames())
 
