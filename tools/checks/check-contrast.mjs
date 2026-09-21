@@ -245,6 +245,8 @@ async function main() {
   const worst = new Map()
   /** Themes whose caution and danger palettes are the same colour. */
   const collapsed = []
+  /** Screen states this harness could not get to, which is a failure not a skip. */
+  const unreached = []
   let runs = 0
   for (const theme of ['dark', 'light']) {
     for (const { name, reach } of screens) {
@@ -257,11 +259,21 @@ async function main() {
         st
       )
       await sleep(200)
+      let unreachable = null
       for (const step of reach) {
         // Retried, because some of these states arrive on their own clock: the
         // scan screen's refusal is two seconds of camera and decoder after the
         // screen itself. Walking past a step that found nothing measures the
         // screen before it and calls it the screen after.
+        //
+        // AND THEN IT WALKED PAST IT ANYWAY. The comment above names the harm
+        // exactly and the loop below used to fall out after forty attempts and
+        // carry on, so the sentence described what this did rather than what it
+        // refused to do. reachStep's own contract is that "the callers poll for
+        // the element and give up loudly, so a state that stops arriving fails
+        // rather than being quietly skipped". check-screen-fit is the one that
+        // did; this one and check-ui-roles did not.
+        let landed = false
         for (let attempt = 0; attempt < 40; attempt += 1) {
           const acted = await cdp(
             page,
@@ -269,10 +281,21 @@ async function main() {
             { expression: reachStep(step), returnByValue: true, awaitPromise: true },
             st
           )
-          if (acted.result.value === 'clicked') break
+          if (acted.result.value === 'clicked') {
+            landed = true
+            break
+          }
           await sleep(80)
         }
+        if (!landed) {
+          unreachable = step
+          break
+        }
         await sleep(260)
+      }
+      if (unreachable !== null) {
+        unreached.push({ name, step: unreachable })
+        continue
       }
       const rows = JSON.parse(
         (await cdp(page, 'Runtime.evaluate', { expression: PROBE, returnByValue: true }, st)).result
@@ -311,6 +334,21 @@ async function main() {
 
   reap(chrome)
   server.close()
+
+  if (unreached.length > 0) {
+    console.error(
+      `\ncheck-contrast: ${unreached.length} screen state(s) were never reached, so their\n` +
+        `text was never measured:\n`
+    )
+    for (const { name, step } of unreached)
+      console.error(`    ${name.padEnd(24)} stopped at: ${step}`)
+    console.error(
+      `\n  A reach step that never lands leaves the harness on the screen BEFORE it, so\n` +
+        `  every colour it then samples belongs to that one. Either the step is wrong,\n` +
+        `  or the state it waits for stopped arriving.\n`
+    )
+    finish(1)
+  }
 
   if (collapsed.length > 0) {
     console.error(`\ncheck-contrast: two meanings are drawn in the same colour:\n`)

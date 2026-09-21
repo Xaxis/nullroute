@@ -127,13 +127,41 @@ async function main() {
       )
     ).result.value
   )
+  /*
+   * A GALLERY WITH NO SCREENS IS A BLIND CHECK, and this was the only one of
+   * the three browser harnesses without this guard. check-screen-fit and
+   * check-contrast both refuse in these words. Here the loop below simply did
+   * not run, every screen passed by not existing, and the summary said so in a
+   * sentence that reads like a result.
+   */
+  if (screens.length === 0) {
+    throw new Error('the gallery listed no screens, so this check is blind')
+  }
+
   const seen = new Map()
+  /** Screens this harness could not get to, which is a failure and not a skip. */
+  const unreached = []
   for (const { name, reach } of screens) {
     await cdp(page, 'Page.navigate', { url: `http://127.0.0.1:${PORT}/?screen=${name}` }, st)
     await sleep(500)
     // Retried for the same reason check-contrast retries: a step that found
     // nothing yet is not a step to walk past.
+    /*
+     * A STEP THAT NEVER LANDS FAILS, rather than being walked past.
+     *
+     * reachStep's own contract says so: "the callers poll for the element and
+     * give up loudly, so a state that stops arriving fails rather than being
+     * quietly skipped, which is the failure mode a fixed delay has". This
+     * caller polled and then gave up quietly, which measures the screen BEFORE
+     * the step and reports it under the name of the screen after. Every role
+     * assertion for that screen was then made against the wrong one, and it
+     * passed, because the screen before it is also a screen with correct roles.
+     *
+     * check-screen-fit does this correctly and is where the shape comes from.
+     */
+    let unreachable = null
     for (const step of reach) {
+      let landed = false
       for (let a = 0; a < 40; a += 1) {
         const r = await cdp(
           page,
@@ -141,10 +169,21 @@ async function main() {
           { expression: reachStep(step), returnByValue: true, awaitPromise: true },
           st
         )
-        if (r.result.value === 'clicked') break
+        if (r.result.value === 'clicked') {
+          landed = true
+          break
+        }
         await sleep(80)
       }
+      if (!landed) {
+        unreachable = step
+        break
+      }
       await sleep(300)
+    }
+    if (unreachable !== null) {
+      unreached.push({ name, step: unreachable })
+      continue
     }
     for (const r of JSON.parse(
       (await cdp(page, 'Runtime.evaluate', { expression: PROBE, returnByValue: true }, st)).result
@@ -153,6 +192,23 @@ async function main() {
       const k = name + '|' + r.text
       if (!seen.has(k)) seen.set(k, { name, ...r })
     }
+  }
+  if (unreached.length > 0) {
+    console.error(
+      `\ncheck-ui-roles: ${unreached.length} screen state(s) were never reached, so they were\n` +
+        `never measured:\n`
+    )
+    for (const { name, step } of unreached)
+      console.error(`    ${name.padEnd(24)} stopped at: ${step}`)
+    console.error(
+      `\n  A reach step that never lands leaves the harness on the screen BEFORE it,\n` +
+        `  and every role it then reads is read off that one. Walking past it is how a\n` +
+        `  screen passes without existing. Either the step is wrong, or the state it\n` +
+        `  waits for stopped arriving.\n`
+    )
+    reap(chrome)
+    server.close()
+    finish(1)
   }
   if (seen.size > 0) {
     console.error(
