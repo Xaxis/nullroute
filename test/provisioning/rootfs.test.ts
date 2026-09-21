@@ -316,17 +316,27 @@ describe('provisioning.cmdline-exact', () => {
   })
 
   /**
-   * INV-PROV-21. The limit is stated in the verdict, because this reads what
-   * the bootloader is CONFIGURED to pass and not what the kernel received. An
-   * attacker who rewrote the boot partition supplies this file, and dm-verity
-   * without a signed boot chain does not close that.
+   * INV-PROV-21. The limit is stated in the verdict, and it used to be stated
+   * wrongly in the direction that matters.
+   *
+   * It said "an attacker who rewrote the boot partition supplies this file".
+   * It does not: this reads the copy inside the system partition, which is
+   * under the hash tree, and on a running device that path is where the FAT
+   * boot partition is mounted, so the firmware reads a different file with the
+   * same name. Nothing verifies that one's contents. The verdict has to say so,
+   * because the verdict is what a reader of the report sees.
    */
   it('says-that-it-read-a-configuration-and-not-a-running-kernel', () => {
     put('boot/firmware/cmdline.txt', PINNED)
     const result = cmdlineExact(root, { cmdline: PINNED })
     expect(result.ok).toBe(true)
-    expect(result.limits.join(' ')).toContain('/proc/cmdline')
-    expect(result.limits.join(' ')).toContain('rewrote the boot partition')
+    const limits = result.limits.join(' ')
+    expect(limits).toContain('/proc/cmdline')
+    // The copy it really read, and the one it did not.
+    expect(limits).toContain('inside the system partition')
+    expect(limits).toContain('boot-files-exact')
+    // And it must NOT claim to be reading the attacker's file.
+    expect(limits).not.toContain('supplies this file')
   })
 
   it('fails-rather-than-passing-when-there-is-no-cmdline-at-all', () => {

@@ -447,11 +447,25 @@ export function noUnitOrdering(root, params) {
  * Exactly, not "contains": a parameter appended by a build step is a parameter
  * nobody reviewed, and the whole point of pinning is that the set is closed.
  *
- * THE LIMIT MATTERS HERE and is stated in the verdict. This reads the file the
- * bootloader is configured to pass. It is not the line the kernel received,
- * which lives in /proc/cmdline on a running device and is the only place the
- * difference shows. An attacker who rewrote the boot partition supplies their
- * own file, and this check reads theirs.
+ * THE LIMIT MATTERS HERE and is stated in the verdict. It also used to be
+ * stated wrongly, in the one direction that matters, so it is spelled out.
+ *
+ * This reads `boot/firmware/cmdline.txt` UNDER THE ROOTFS. On a Pi that path
+ * is where the FAT boot partition gets mounted, so on a running device the
+ * file the firmware reads is a different file with the same name, and the copy
+ * read here is shadowed by the mount and never opened by anything.
+ *
+ * The old wording said "an attacker who rewrote the boot partition supplies
+ * their own file, and this check reads theirs". It does not. The copy this
+ * reads is inside the system partition, under the hash tree, so that attacker
+ * cannot change it without dm-verity noticing. What they can change is the one
+ * the firmware actually reads, and nothing checks that: boot-files-exact reads
+ * the FAT directory entries, which is a list of names and not their contents.
+ *
+ * So this establishes that the build wrote the command line it pinned. It
+ * establishes nothing about the line the kernel will receive, and the file that
+ * decides that is covered by no verifier here until the boot chain is signed.
+ * /proc/cmdline on a running device is the only place the difference shows.
  */
 export function cmdlineExact(root, params) {
   const expected = (params.cmdline ?? '').trim()
@@ -466,7 +480,7 @@ export function cmdlineExact(root, params) {
   }
 
   const limits = [
-    'Reads what the bootloader is configured to pass, not what the kernel received. Only /proc/cmdline on a running device shows that, and an attacker who rewrote the boot partition supplies this file.',
+    'Reads the copy carried inside the system partition. On the device that path is where the FAT boot partition is mounted, so the firmware reads a different file with the same name, and nothing verifies its contents: boot-files-exact reads FAT directory names only. This establishes that the build wrote what it pinned, not what the kernel will receive. An attacker who rewrote the boot partition changes the file the firmware reads, not this one, and only /proc/cmdline on a running device shows the difference.',
   ]
 
   // Whitespace-insensitive between parameters, order-sensitive within them: the
