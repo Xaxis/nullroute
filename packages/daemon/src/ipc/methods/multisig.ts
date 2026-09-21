@@ -232,8 +232,31 @@ export function multisigMethods(ctx: HandlerContext): MethodTable {
      */
     'multisig.forget': (request) => {
       const descriptor = requireString(request, 'descriptor')
-      const removed = session.forgetRegistration(descriptor)
-      if (!removed) {
+      if (!session.hasWallet) {
+        throw new Error('No wallet is loaded.')
+      }
+
+      /*
+       * THE LIST THAT WOULD BE SEALED, BUILT WITHOUT TOUCHING THE SESSION, for
+       * the reason multisig.register gives in the same words a hundred lines
+       * above: persisting must be able to fail without leaving the session
+       * disagreeing with the ciphertext.
+       *
+       * This method did the opposite. It removed the registration from the
+       * session first and then called rename, which verifies the passphrase and
+       * throws on a wrong one. So one mistyped passphrase took the quorum out of
+       * the live session, left it in the sealed wallet, and made the removal
+       * unretryable: the next attempt finds nothing to forget and says so. The
+       * user has to lock and unlock to get back to a state where they can try
+       * again, and until they do, the device does not recognise that quorum's
+       * change as its own while the wallet on disk says it should.
+       *
+       * The register side is careful about exactly this and says "only now, a
+       * registration reported as not saved must not be live". The same sentence
+       * applies here with the words swapped.
+       */
+      const next = session.registrations.filter((entry) => entry !== descriptor)
+      if (next.length === session.registrations.length) {
         throw new Error(
           'This device has no registration matching that descriptor, so there is nothing to ' +
             'forget. A descriptor differing by one character is a different quorum.'
@@ -255,11 +278,14 @@ export function multisigMethods(ctx: HandlerContext): MethodTable {
           passphrase,
           label: active.label,
           colour: active.colour as WalletColour,
-          registrations: session.registrations,
+          registrations: next,
           cosigners: session.cosigners,
         })
         persisted = true
       }
+
+      // Only now. A removal that failed to persist must not have happened.
+      session.setRegistrations(next)
 
       return {
         forgotten: true,

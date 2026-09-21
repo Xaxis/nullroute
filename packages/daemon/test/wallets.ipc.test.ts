@@ -348,6 +348,54 @@ describe('daemon wallets IPC', () => {
     expect(registrations.descriptors).toHaveLength(0)
   })
 
+  /**
+   * The mirror of the test above, on the other side of the same argument.
+   *
+   * multisig.forget removed the registration from the session first and then
+   * called rename, which verifies the passphrase and throws on a wrong one. So
+   * a mistyped passphrase took the quorum out of the live session, left it in
+   * the sealed wallet, and made the removal unretryable: the next attempt finds
+   * nothing to forget and says so. Until the user locks and unlocks, the device
+   * does not recognise that quorum's change as its own while the wallet on disk
+   * says it should, which is the review screen calling their own change a
+   * payment to a stranger.
+   */
+  it('does-not-forget-a-quorum-when-the-passphrase-was-wrong', async () => {
+    await makeWallet(MNEMONIC_A, 'Cold storage', 'one')
+
+    const ourKey = (await call('multisig.ourKey', { account: 0 })) as { xpub: string }
+    using cosigner = mnemonicToSeed(MNEMONIC_B, '')
+    const { deriveAccountXpub, withChecksum } = await import('@nullroute/core')
+    const { multisigAccountPath } = await import('../src/multisig.js')
+    const other = deriveAccountXpub(cosigner, MAINNET, multisigAccountPath(MAINNET)).xpub
+    const descriptor = withChecksum(`wsh(sortedmulti(2,${ourKey.xpub}/<0;1>/*,${other}/<0;1>/*))`)
+
+    await call('multisig.register', { descriptor, passphrase: 'one' })
+
+    await expect(
+      call('multisig.forget', { descriptor, passphrase: 'the wrong passphrase' })
+    ).rejects.toThrow()
+
+    // Still live for signing, because it is still in the sealed wallet.
+    const after = (await call('multisig.registrations')) as { descriptors: readonly string[] }
+    expect(after.descriptors).toHaveLength(1)
+
+    // And the removal can be retried, which is the half that was lost: the
+    // second attempt used to report there was nothing to forget.
+    const forgotten = (await call('multisig.forget', {
+      descriptor,
+      passphrase: 'one',
+    })) as { forgotten: boolean; persisted: boolean; remaining: number }
+    expect(forgotten).toMatchObject({ forgotten: true, persisted: true, remaining: 0 })
+
+    session.lock()
+    const reopened = (await call('wallets.unlock', {
+      id: (await call('wallets.list')).wallets[0].id,
+      passphrase: 'one',
+    })) as { registrations: number }
+    expect(reopened.registrations).toBe(0)
+  })
+
   it('refuses-an-id-that-is-not-an-id', async () => {
     for (const id of ['../escape', 'wallet.store', '', 'ZZZZ', 123, null]) {
       await expect(call('wallets.unlock', { id, passphrase: 'x' })).rejects.toThrow(

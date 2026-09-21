@@ -177,11 +177,13 @@ invariants:
   - id: INV-MW-14
     statement: >
       Registering a quorum writes to the wallet that is open, carrying its
-      sealed identity through, and a registration that failed to persist is
-      never left live for signing.
+      sealed identity through. Neither adding nor removing one touches the
+      session until it has been persisted, so a change that failed is neither
+      left live for signing nor lost from the session that still holds it.
     tests:
       - packages/daemon/test/wallets.ipc.test.ts::registers-against-the-open-wallet-and-keeps-its-sealed-name
       - packages/daemon/test/wallets.ipc.test.ts::does-not-leave-a-failed-registration-live-for-signing
+      - packages/daemon/test/wallets.ipc.test.ts::does-not-forget-a-quorum-when-the-passphrase-was-wrong
 
 threats:
   - INV-KEY-1
