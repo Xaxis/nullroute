@@ -191,5 +191,41 @@ if echo "$tampered" | grep -q "SELFTEST OK"; then
   exit 1
 fi
 
+# POSITIVE EVIDENCE, NOT AN ABSENCE. The line above is necessary and was the
+# whole verdict, so this step passed whenever the second boot failed to say
+# "SELFTEST OK" for any reason at all: qemu not starting, the 300 second budget
+# running out, a kernel panic with nothing to do with verity, a wrong path, the
+# guest never reaching the selftest. Every one of those printed "dm-verity
+# rejected the modified partition, which is the claim" and exited 0, and the
+# louder the failure the more convincing the claim looked.
+#
+# A real rejection says so twice, and both are on the tampered console this
+# harness has been producing all along:
+#   device-manager: verity: <dev>: data block N is corrupted   from the kernel
+#   SELFTEST verified_whole_partition=NO                       from the guest
+# The first is the kernel refusing a block. The second is the guest having read
+# the whole partition and noticed, which is the part that distinguishes a
+# rejection from a mapping that was opened and never exercised.
+if ! echo "$tampered" | grep -qE "device-mapper: verity: .* is corrupted"; then
+  echo ""
+  echo "  INCONCLUSIVE. The tampered card did not report success, and the kernel"
+  echo "  never said it rejected a block either, so this proves nothing about"
+  echo "  dm-verity. Read out/system/console-tampered.log: the usual causes are"
+  echo "  a boot that did not get as far as mounting, or one that ran out of"
+  echo "  the 300 seconds the call above gives it."
+  exit 1
+fi
+
+if ! echo "$tampered" | grep -q "SELFTEST verified_whole_partition=NO"; then
+  echo ""
+  echo "  INCONCLUSIVE. The kernel rejected a block, and the guest never reported"
+  echo "  on reading the whole partition, so the harness cannot say the read that"
+  echo "  makes this meaningful actually happened. dm-verity checks a block when"
+  echo "  it is READ, so a mapping that opens is not a statement about the card."
+  exit 1
+fi
+
 echo ""
 echo "  dm-verity rejected the modified partition, which is the claim."
+echo "  the kernel refused the block and the guest read the whole partition and"
+echo "  reported it, so this is a rejection rather than a boot that failed."
