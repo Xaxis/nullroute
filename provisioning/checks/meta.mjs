@@ -111,7 +111,7 @@ export function verifierIgnoresBackends(checksDir) {
 }
 
 /**
- * INV-PROV-13. An assertion that concedes a weakness states what it does not
+ * INV-PROV-34. An assertion that concedes a weakness states what it does not
  * cover.
  *
  * The rule the whole project runs on, applied to provisioning: a defence that
@@ -137,6 +137,81 @@ export function documentedWeakness(profiles) {
           `${file}: ${assertion.id} does not say what it fails to cover. Every control here is ` +
             `partial in some direction and the direction has to be written down.`
         )
+      }
+    }
+  }
+
+  return problems
+}
+
+/**
+ * An assertion that says a document states something has that document say it.
+ *
+ * THE BUG THIS EXISTS FOR. INV-PROV-19 asserts two things: that the kiosk unit
+ * scores at most 3.0, and that "the documentation states that it is the weakest
+ * component on the device". It named two verifiers, and the second was
+ * `documented-weakness` with `params: { document: docs/VERIFICATION.md, claim:
+ * weakest-component }`.
+ *
+ * `documented-weakness` is the function above. It takes profiles, walks every
+ * assertion's `does_not_cover`, and has never taken a parameter in its life.
+ * Both params were read by nothing, anywhere: `document` and `claim` appeared
+ * at that one line in the repository and at no other. So the documentation half
+ * of a security assertion was verified by a function that cannot open a
+ * document, could not fail for that reason, and reported a pass every time.
+ *
+ * And the parameter was wrong on top of being dead. The sentence is in
+ * provisioning/HARDENING.md, beside the exposure scores it explains.
+ * docs/VERIFICATION.md does not contain the word "weakest" at all, so the one
+ * thing the params did say was false and there was nothing to notice it.
+ *
+ * WHY A SENTENCE AND NOT A MARKER. `claim: weakest-component` implies a marker
+ * convention, an anchor or an HTML comment the verifier looks for. There is no
+ * such convention here and inventing one would make the check weaker: a marker
+ * survives an edit that reverses the sentence it sits beside, and a reader
+ * cannot see it. Naming the words means the assertion and the document say the
+ * same thing in the same language, and softening the document fails this.
+ */
+export function documentedClaim(profiles, root) {
+  const problems = []
+
+  for (const { file, profile } of profiles) {
+    for (const assertion of profile.assertions ?? []) {
+      for (const entry of assertion.verify ?? []) {
+        if (entry.check !== 'documented-claim') continue
+
+        const document = entry.params?.document
+        const contains = entry.params?.contains
+        if (typeof document !== 'string' || typeof contains !== 'string') {
+          problems.push(
+            `${file}: ${assertion.id} uses documented-claim without both a \`document\` and a ` +
+              `\`contains\`. Unnamed, there is no claim to look for and this would pass on ` +
+              `every document ever written.`
+          )
+          continue
+        }
+
+        let text
+        try {
+          text = readFileSync(join(root, document), 'utf8')
+        } catch {
+          problems.push(
+            `${file}: ${assertion.id} says ${document} states something, and ${document} cannot ` +
+              `be read. A document that is not there has not made the statement.`
+          )
+          continue
+        }
+
+        // Whitespace is collapsed because markdown wraps, and the sentence this
+        // was written for spans a line break in the middle of a bolded phrase.
+        // Nothing else is normalised: the words have to be the words.
+        const flat = text.replace(/\s+/gu, ' ')
+        if (!flat.includes(contains.replace(/\s+/gu, ' '))) {
+          problems.push(
+            `${file}: ${assertion.id} says ${document} states "${contains}", and it does not. ` +
+              `Either the document was softened or the assertion overstates what it says.`
+          )
+        }
       }
     }
   }

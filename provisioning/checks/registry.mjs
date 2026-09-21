@@ -67,6 +67,10 @@ export const VERIFIERS = {
     status: 'implemented',
     describes: 'an assertion that concedes a weakness says what it does not cover',
   },
+  'documented-claim': {
+    status: 'implemented',
+    describes: 'a document an assertion cites really contains the sentence the assertion quotes',
+  },
 
   // --- Read a built image file. Implemented, and waiting for an image. -----
   //
@@ -221,6 +225,9 @@ export const NEEDS_IMAGE = new Set([
  * checked somewhere else.
  */
 export const NEEDS_NOTHING = new Set([
+  // Reads a document out of this repository rather than an artifact, so no
+  // --root and no --image can make it say more than it says here.
+  'documented-claim',
   // Inspects the profiles themselves, like the two below it, and was in no set
   // for the same reason boot-config-display was not.
   'documented-weakness',

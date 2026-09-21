@@ -38,9 +38,8 @@ const { VERIFIERS, implemented, NEEDS_ROOTFS } = await import(
 const { NEEDS_IMAGE, NEEDS_NOTHING, RUNTIME_ONLY } = await import(
   join(ROOT, 'provisioning/checks/registry.mjs')
 )
-const { profileSelfCheck, verifierIgnoresBackends, documentedWeakness } = await import(
-  join(ROOT, 'provisioning/checks/meta.mjs')
-)
+const { profileSelfCheck, verifierIgnoresBackends, documentedWeakness, documentedClaim } =
+  await import(join(ROOT, 'provisioning/checks/meta.mjs'))
 const { load: loadYaml, JSON_SCHEMA } = require('js-yaml')
 const { Ajv2020 } = require('ajv/dist/2020.js')
 
@@ -74,7 +73,7 @@ let problems = 0
  * time: the unplaced-verifier check, the two halves of the .d.mts drift check,
  * and the two halves of the untested-verifier check. Every one of them called
  * fail(), printed its complaint, and then fell through to the summary line,
- * which printed "20 of 20 verifiers written" and exited 0.
+ * which printed "21 of 21 verifiers written" and exited 0.
  *
  * That is the worst shape a check in this repository can take. It is not a
  * missing check, which is visibly missing. It is a check that finds the problem,
@@ -247,6 +246,7 @@ for (const name of Object.keys(VERIFIERS)) {
 for (const problem of profileSelfCheck(loaded)) fail('provisioning/checks', problem)
 for (const problem of verifierIgnoresBackends(CHECKS_DIR)) fail('provisioning/checks', problem)
 for (const problem of documentedWeakness(loaded)) fail('provisioning/checks', problem)
+for (const problem of documentedClaim(loaded, ROOT)) fail('provisioning/checks', problem)
 
 const built = implemented()
 
@@ -419,7 +419,12 @@ for (const { file, profile } of loaded) {
 
 for (const where of ['provisioning/README.md', 'README.md']) {
   const readme = readFileSync(join(ROOT, where), 'utf8')
-  const WORDS = [
+  // SPELLED OUT, BECAUSE THAT IS HOW THESE PARAGRAPHS ARE WRITTEN. The table
+  // used to stop at twenty with `?? String(n)` behind it, so the moment a
+  // twenty-first verifier was written this check began demanding the digits
+  // "21 of the 21" in a sentence whose every other number is a word. The
+  // fallback made that read as a decision rather than as the end of a list.
+  const ONES = [
     'zero',
     'one',
     'two',
@@ -440,9 +445,18 @@ for (const where of ['provisioning/README.md', 'README.md']) {
     'seventeen',
     'eighteen',
     'nineteen',
-    'twenty',
   ]
-  const spell = (n) => WORDS[n] ?? String(n)
+  const TENS = ['twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety']
+  const spell = (n) => {
+    if (n < ONES.length) return ONES[n]
+    if (n < 100) {
+      const tens = TENS[Math.floor(n / 10) - 2]
+      return n % 10 === 0 ? tens : `${tens}-${ONES[n % 10]}`
+    }
+    // Three digits of verifiers is not a thing that will happen quietly, and a
+    // number is better than a wrong word.
+    return String(n)
+  }
   // Whitespace-tolerant, because prose wraps. With literal spaces this failed
   // on a README that said exactly the right thing with a line break inside it,
   // and the message read "does not say X" about a document that says X. A check

@@ -20,6 +20,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
+  documentedClaim,
   documentedWeakness,
   profileSelfCheck,
   verifierIgnoresBackends,
@@ -138,5 +139,89 @@ describe('provisioning.verifier-ignores-backends', () => {
 
   it('ignores-files-that-are-not-modules', () => {
     expect(check('notes.txt', 'profile.backends\n')).toEqual([])
+  })
+})
+
+describe('provisioning.documented-claim', () => {
+  let dir: string
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'nullroute-claim-'))
+  })
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  const citing = (params: unknown) =>
+    loaded([{ ...sound, verify: [{ check: 'documented-claim', params }] }])
+
+  it('passes-when-the-document-really-contains-the-sentence', () => {
+    writeFileSync(join(dir, 'HARDENING.md'), 'Some prose.\n\nThe browser is the weakest.\n')
+    expect(
+      documentedClaim(
+        citing({ document: 'HARDENING.md', contains: 'The browser is the weakest.' }),
+        dir
+      )
+    ).toEqual([])
+  })
+
+  /**
+   * THE CASE THIS VERIFIER EXISTS FOR. INV-PROV-19 cited docs/VERIFICATION.md,
+   * which does not contain the word "weakest" anywhere. The sentence is in
+   * provisioning/HARDENING.md. Nothing read either parameter, so a wrong path
+   * and a real one were indistinguishable for as long as the assertion existed.
+   */
+  it('catches-a-document-that-does-not-say-what-the-assertion-says-it-says', () => {
+    writeFileSync(join(dir, 'VERIFICATION.md'), 'How to check a root hash.\n')
+    const problems = documentedClaim(
+      citing({ document: 'VERIFICATION.md', contains: 'The browser is the weakest.' }),
+      dir
+    )
+    expect(problems).toHaveLength(1)
+    expect(problems[0]).toContain('and it does not')
+  })
+
+  /** A document that is not there has not made the statement. */
+  it('fails-rather-than-passing-when-the-document-is-not-there', () => {
+    const problems = documentedClaim(
+      citing({ document: 'gone.md', contains: 'anything at all' }),
+      dir
+    )
+    expect(problems).toHaveLength(1)
+    expect(problems[0]).toContain('cannot be read')
+  })
+
+  /**
+   * Markdown wraps, and the sentence this was written for has a line break
+   * inside a bolded phrase. Matching the raw bytes would fail on the real
+   * document while passing on every fixture written as one line.
+   */
+  it('matches-a-sentence-that-markdown-wrapped-across-two-lines', () => {
+    writeFileSync(
+      join(dir, 'HARDENING.md'),
+      'a slightly higher score. **The browser is the\nweakest component on the device.** The design response\n'
+    )
+    expect(
+      documentedClaim(
+        citing({
+          document: 'HARDENING.md',
+          contains: 'The browser is the weakest component on the device.',
+        }),
+        dir
+      )
+    ).toEqual([])
+  })
+
+  /** Unnamed, there is no claim to look for, so it would pass on any document. */
+  it('refuses-a-citation-with-no-sentence-to-look-for', () => {
+    writeFileSync(join(dir, 'HARDENING.md'), 'anything\n')
+    const problems = documentedClaim(citing({ document: 'HARDENING.md' }), dir)
+    expect(problems).toHaveLength(1)
+    expect(problems[0]).toContain('would pass on')
+  })
+
+  it('ignores-assertions-that-cite-no-document', () => {
+    expect(documentedClaim(loaded([sound]), dir)).toEqual([])
   })
 })

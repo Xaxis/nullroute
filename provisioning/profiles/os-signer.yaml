@@ -120,6 +120,34 @@ assertions:
       Backends influencing the verdict indirectly by producing an artifact that
       happens to satisfy a weakly written verifier.
 
+  - id: INV-PROV-34
+    statement: >
+      Every assertion in every profile says what it does not cover, in words
+      rather than in whitespace.
+    stage: image
+    verify:
+      - check: documented-weakness
+    rationale: >
+      A defence that is partial gets described as partial. That rule is the
+      reason anyone should believe the rest of this file, and it is the one
+      rule with nothing to inspect but the file itself. The schema requires the
+      key and ten characters; ten characters of spaces satisfy a schema and
+      concede nothing, which is what a required field invites when the field
+      feels like a chore.
+
+      DECLARED HERE BECAUSE IT WAS NOT DECLARED ANYWHERE. The rule was enforced
+      from the start and had no id, so provisioning/schema.json and
+      tools/checks/check-profiles.mjs each called it INV-PROV-34, which named
+      nothing, while provisioning/checks/meta.mjs called it INV-PROV-13, which
+      names the assertion below that no wireless or Bluetooth is present in the
+      image. Someone checking whether the no-wireless invariant was verified was
+      sent to the verifier for this one.
+    does_not_cover: >
+      Whether the concession is true, or complete, or describes the same gap the
+      assertion actually has. It reads the shape of the sentence and not its
+      meaning. An assertion conceding something irrelevant while hiding the real
+      limit passes here, and only a reader catches that.
+
   # --- Determinism and identity -------------------------------------------
   - id: INV-PROV-3
     statement: >
@@ -441,8 +469,15 @@ assertions:
       - check: systemd-exposure
         tool: systemd-analyze
         params: { unit: nullroute-kiosk.service, max_exposure: 3.0 }
-      - check: documented-weakness
-        params: { document: docs/VERIFICATION.md, claim: weakest-component }
+      # NOT documented-weakness, which is the meta rule about `does_not_cover`
+      # and takes no parameters. It was named here with a `document` and a
+      # `claim` that nothing in the repository read, so this half of the
+      # assertion reported a pass without opening anything, and the document it
+      # named is not the one the sentence is in.
+      - check: documented-claim
+        params:
+          document: provisioning/HARDENING.md
+          contains: 'The browser is the weakest component on the device.'
     rationale: >
       Chromium's own sandbox needs unprivileged user namespaces, so the
       directives that make the daemon safe force --no-sandbox, which is a net
