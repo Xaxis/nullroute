@@ -116,6 +116,12 @@ jobs:
       - name: Specs, invariants and integrity
         run: make verify
 
+      # After verify, because it reads the report verify writes. The two numbers
+      # on the README badges were the only published figures nothing checked,
+      # and one of them had been wrong since the day it was added.
+      - name: The README badges quote this tree
+        run: make badges
+
       - name: Upload verification report
         if: always()
         uses: actions/upload-artifact@v4

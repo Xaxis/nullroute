@@ -18,7 +18,7 @@ MANIFEST_ROOTS := packages spec provisioning
 
 .PHONY: help install dev build check check-fast verify manifest manifest-check \
 	contrast ui-roles \
-	qr-readback \
+	qr-readback badges \
 	manifest-recipe print-manifest-roots \
         lint ui-classes type-check test test-report test-vectors test-differential test-repro \
         test-recovery-drill \
@@ -171,6 +171,17 @@ invariant-claims: ## The threat model and the specs agree on which invariants ho
 	# device protects. One with no spec behind it is a promise nothing keeps,
 	# which this project calls a security bug rather than a documentation chore.
 	@node tools/checks/check-invariant-claims.mjs
+
+badges: ## The README's spec and invariant counts are the ones this tree computes
+	# The site reads these two numbers out of verification-report.json at build
+	# time and fails the build without it. The README types them by hand, so the
+	# invariants badge sat at 299 while the verifier counted 300, through every
+	# commit that added an invariant. It is the first claim a reader sees and it
+	# was the only published number nothing checked.
+	#
+	# Needs verification-report.json, so it is a prerequisite of `check` and not
+	# of `check-fast`. Missing report is a failure there, not a skip.
+	@node tools/checks/check-readme-badges.mjs
 
 device-ui: ## The device frontend actually boots under its own CSP. Drives a real browser.
 	# check-device-csp reads the policy and judges it, which cannot catch a
@@ -856,4 +867,4 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 
 check-fast: lint shell format-check ci-parity ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims make-targets ipc-reachable slow-feedback typeable device-csp qr-readback test manifest-check manifest-recipe ## Everything except the slow suites
 
-check: check-fast build verify test-vectors test-differential repro-check sbom device-ui screen-fit contrast ui-roles journeys dev-check device-shots-check web-check ## Everything CI runs
+check: check-fast build verify badges test-vectors test-differential repro-check sbom device-ui screen-fit contrast ui-roles journeys dev-check device-shots-check web-check ## Everything CI runs
