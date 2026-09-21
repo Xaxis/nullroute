@@ -89,15 +89,37 @@ describe('core.entropy.combiner', () => {
     stuck.material.dispose()
   })
 
-  // INV-ENT-5: the length-prefixed encoding is unambiguous. Without prefixes,
-  // ("a","bc") and ("ab","c") both flatten to "abc" and would collide.
+  /**
+   * INV-ENT-5: the length-prefixed encoding is unambiguous.
+   *
+   * THE PAIR HAS TO ACTUALLY COLLIDE, and the pair here did not. The comment
+   * described the right construction, ("a","bc") against ("ab","c"), and the
+   * values underneath it were ("a", "bcbcbcbc...") against ("ab", "cccc...").
+   * Flattened without prefixes those are "abcbcbcbc..." and "abcccc...", which
+   * are different strings, so the assertion held whether the prefixes existed
+   * or not. Deleting the encoding entirely, which the module's own header calls
+   * "load-bearing, not decoration", left all eight tests in this file green.
+   *
+   * A real collision needs id_a ++ material_a to equal id_b ++ material_b as a
+   * flat byte string. Material is 16 to 64 bytes, so moving one byte across the
+   * boundary is legal on both sides: 17 bytes on the left, 16 on the right.
+   */
   it('no-concatenation-collision', () => {
+    const TAIL = 'c'.repeat(16)
     const a: EntropySource[] = [
-      { id: 'a', material: Secret.fromBytes(new TextEncoder().encode('bc'.repeat(8)), 'a') },
+      { id: 'a', material: Secret.fromBytes(new TextEncoder().encode(`b${TAIL}`), 'a') },
     ]
     const b: EntropySource[] = [
-      { id: 'ab', material: Secret.fromBytes(new TextEncoder().encode('c'.repeat(16)), 'ab') },
+      { id: 'ab', material: Secret.fromBytes(new TextEncoder().encode(TAIL), 'ab') },
     ]
+
+    // The premise, asserted rather than assumed, so this cannot quietly stop
+    // being a collision pair the way the last one did.
+    const flat = (source: EntropySource) =>
+      `${source.id}${new TextDecoder().decode(source.material.bytes)}`
+    expect(flat(a[0]!)).toBe(flat(b[0]!))
+
+    // And the encoding tells them apart anyway, which is the invariant.
     expect(combineHex(a)).not.toBe(combineHex(b))
   })
 
