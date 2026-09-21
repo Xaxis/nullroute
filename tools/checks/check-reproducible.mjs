@@ -22,7 +22,30 @@ import { fileURLToPath } from 'node:url'
 import { createHash } from 'node:crypto'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
-const PACKAGES = ['packages/core', 'packages/verify']
+/**
+ * Every package `tsconfig.build.json` emits, which is every package that ships.
+ *
+ * IT USED TO BE core AND verify, and that pair is close to the inverse of the
+ * right answer. packages/verify is the one of the four that does NOT go on the
+ * card: build-system.sh copies packages/daemon/dist, packages/ui/dist-app,
+ * packages/daemon/dist/bridge and packages/core/dist, and never the verifier.
+ * So the process that holds the keys and the entire frontend were outside the
+ * one check standing behind the claim that a third party can rebuild this and
+ * get the same bytes, and the tool that checks the tree was inside it.
+ *
+ * They were being built twice already. `tsc --build tsconfig.build.json` is the
+ * solution file and it references all four, so both clean builds emitted
+ * daemon and ui output on every run and the snapshot walked past it. Comparing
+ * it costs nothing that was not already being spent.
+ *
+ * WHAT IS STILL OUTSIDE IT is packages/ui/dist-app, the Vite bundle that is the
+ * frontend the device actually serves. `dist` here is the tsc output for the
+ * same sources, so a non-determinism in the TypeScript emit is caught and one
+ * introduced by the bundler is not. That needs the app build in the loop and is
+ * a larger change than this one; it is named here so the gap is a known one
+ * rather than an assumed absence.
+ */
+const PACKAGES = ['packages/core', 'packages/daemon', 'packages/ui', 'packages/verify']
 
 function run(cmd, args) {
   execFileSync(cmd, args, { cwd: ROOT, stdio: 'pipe', encoding: 'utf8' })
