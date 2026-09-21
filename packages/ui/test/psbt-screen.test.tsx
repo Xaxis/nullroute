@@ -245,6 +245,45 @@ describe('ui.screens.psbt', () => {
     }
   })
 
+  /**
+   * INV-UI-12. An output the transaction claimed was yours, and which does not
+   * derive from your seed, says so.
+   *
+   * Without the line it is drawn exactly like an ordinary payment to somebody
+   * else, which is the one thing it is not: it is either a coordinator
+   * disagreeing about a gap limit, or the change substitution the review screen
+   * exists to refuse. The field carrying that difference was declared in core,
+   * documented, plumbed across IPC, and assigned by nothing, so it was
+   * structurally always null and this screen did not even name it.
+   */
+  it('says-when-the-transaction-claimed-an-output-was-ours', async () => {
+    setup({
+      outputs: [
+        {
+          index: 0,
+          address: 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4',
+          amountBtc: '0.00120000',
+          amountSats: '120000',
+          kind: 'payment',
+          changePath: null,
+          changeRejectedBecause:
+            'The transaction carried a derivation record for this output, and it does not ' +
+            'derive from this wallet.',
+        },
+      ],
+    })
+    await reachReview()
+
+    const said = screen.getByTestId('psbt-out-claimed-0').textContent
+    expect(said).toContain('does not derive from this wallet')
+
+    // An ordinary payment is not decorated with it.
+    cleanup()
+    setup()
+    await reachReview()
+    expect(screen.queryByTestId('psbt-out-claimed-0')).toBeNull()
+  })
+
   it('says-when-a-quorum-could-not-be-read', async () => {
     setup({ unreadableRegistrations: 2 })
     await reachReview()

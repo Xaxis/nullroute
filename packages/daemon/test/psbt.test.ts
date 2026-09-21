@@ -190,6 +190,32 @@ describe('daemon.psbt', () => {
     // And the index it was judged against still says what it always said.
     expect(isChange(STRANGER)).toBeUndefined()
     expect(index.has(STRANGER)).toBe(false)
+
+    /*
+     * THE CLAIM IS REPORTED, NOT JUST REFUSED.
+     *
+     * Refusing it and saying nothing leaves this output looking exactly like an
+     * ordinary payment to somebody else, which is the one thing it is not. The
+     * field carrying that difference was declared, documented, plumbed across
+     * IPC and assigned by nothing, so it was always null.
+     */
+    expect(paid?.changeRejectedBecause).toContain('does not derive from this wallet')
+
+    // An ordinary payment carries no such record and must not be decorated
+    // with a warning about one.
+    const plain = new btc.Transaction({ allowUnknownOutputs: true })
+    plain.addInput({
+      txid: hexToBytes('a'.repeat(64)),
+      index: 0,
+      witnessUtxo: { script: fundingScript, amount: 200_000n },
+    })
+    plain.addOutputAddress(STRANGER, 150_000n, MAINNET)
+    const ordinary = reviewTransaction(btc.Transaction.fromPSBT(plain.toPSBT()), {
+      network: MAINNET,
+      isChange,
+    })
+    expect(ordinary.outputs[0]?.kind).toBe('payment')
+    expect(ordinary.outputs[0]?.changeRejectedBecause).toBeUndefined()
   })
 
   // INV-PSBT-13. A payment to our own receive address is a self-send. Calling

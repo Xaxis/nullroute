@@ -89,6 +89,14 @@ export interface PsbtOutputView {
   readonly amountSats: string
   readonly kind: 'payment' | 'change'
   readonly changePath: string | null
+  /**
+   * Why an output the transaction claimed was yours is shown as leaving.
+   *
+   * The daemon sends null when there was no claim to reject, which is the
+   * ordinary case: a coordinator has no key information for a stranger's
+   * address, so the absence of a derivation record says nothing.
+   */
+  readonly changeRejectedBecause?: string | null
 }
 
 export interface PsbtInputView {
@@ -880,6 +888,20 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
                       ) : (
                         <div className="nr-hint nr-warn">
                           Leaves this wallet. Check this address against where you meant to send.
+                        </div>
+                      )}
+                      {/* THE CLAIM THIS DEVICE REFUSED. An output the
+                          transaction said was yours, which does not derive
+                          from your seed, looks exactly like an ordinary
+                          payment without this line. It is either a coordinator
+                          disagreeing about a gap limit or the substitution
+                          this screen exists to refuse. */}
+                      {o.changeRejectedBecause != null && (
+                        <div
+                          className="nr-hint nr-warn"
+                          data-testid={`psbt-out-claimed-${String(o.index)}`}
+                        >
+                          {o.changeRejectedBecause}
                         </div>
                       )}
                     </td>

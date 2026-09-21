@@ -185,10 +185,12 @@ invariants:
     statement: >
       An output is presented as change only together with the derivation path
       the device re-derived it at. Every other output is presented as money
-      leaving the wallet.
+      leaving the wallet, and one the transaction claimed was ours while
+      failing to re-derive says which of those two it is.
     tests:
       - packages/ui/test/psbt-screen.test.tsx::shows-the-change-path-it-verified
       - packages/ui/test/psbt-screen.test.tsx::shows-the-fee-in-several-units
+      - packages/ui/test/psbt-screen.test.tsx::says-when-the-transaction-claimed-an-output-was-ours
 
   - id: INV-UI-13
     statement: >

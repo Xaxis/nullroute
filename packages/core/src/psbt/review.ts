@@ -312,12 +312,43 @@ export function reviewTransaction(tx: btc.Transaction, options: ReviewOptions): 
     // asserts about the output.
     const changePath = address === undefined ? undefined : isChange(address)
 
+    /*
+     * THE CLAIM THE PSBT MADE AND THIS DEVICE DID NOT ACCEPT.
+     *
+     * `changeRejectedBecause` was declared here, documented as "present when
+     * the PSBT carried derivation data that did not verify", plumbed across IPC
+     * as `?? null`, and assigned by nothing anywhere. It was structurally
+     * always null: a promise of a warning nobody could ever see.
+     *
+     * Filling it does not change any verdict. The rule above already decided,
+     * and an output that fails re-derivation is a payment whatever the PSBT
+     * says. What it adds is the difference between two things that look
+     * identical on the screen: a plain payment to somebody else, and an output
+     * something asserted was yours which this device could not confirm. The
+     * second is either a coordinator disagreeing with the device about a gap
+     * limit, or the change-substitution attack the daemon's own header
+     * describes, and a user who is told nothing cannot tell those from an
+     * ordinary payment.
+     *
+     * The absence of derivation data is not remarkable and says nothing: a
+     * coordinator has no key information for a stranger's address.
+     */
+    const claimed: unknown = (output as { bip32Derivation?: readonly unknown[] }).bip32Derivation
+    const wasClaimedOurs = Array.isArray(claimed) && claimed.length > 0
+    const changeRejectedBecause =
+      changePath === undefined && wasClaimedOurs
+        ? 'The transaction carried a derivation record for this output, and it does not ' +
+          'derive from this wallet. It is being shown as money leaving, because a claim ' +
+          'inside a transaction is not evidence.'
+        : undefined
+
     outputs.push({
       index: i,
       address,
       amountSats: amount,
       kind: changePath === undefined ? 'payment' : 'change',
       ...(changePath === undefined ? {} : { changePath }),
+      ...(changeRejectedBecause === undefined ? {} : { changeRejectedBecause }),
     })
   }
 
