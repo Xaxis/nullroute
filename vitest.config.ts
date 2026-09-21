@@ -75,6 +75,25 @@ export default defineConfig({
         },
       },
       {
+        /*
+         * The verification system itself.
+         *
+         * It had no tests at all, which is the wrong package in this tree to
+         * have none: CLAUDE.md calls it a first-class deliverable and the whole
+         * premise rests on it. It had already cost something. The status
+         * expression in cli.ts asked how many differential blocks were declared
+         * before it asked whether the check passed, so removing every block
+         * reported not-applicable and the report passed with three guard
+         * failures inside it.
+         */
+        test: {
+          name: 'verify',
+          environment: 'node',
+          include: ['test/verify/**/*.test.ts'],
+          testTimeout: TEST_TIMEOUT,
+        },
+      },
+      {
         // The lint rules that enforce the invariants get their own regression
         // suite. A rule that silently stops matching is an invariant that
         // silently stopped being enforced.
