@@ -598,16 +598,46 @@ export class WalletRegistry {
       readonly oldPassphrase: string
       readonly newPassphrase: string
       readonly registrations: readonly string[]
+      /**
+       * The identity to re-seal, which must be the one that came OUT of the
+       * ciphertext at unlock, not the one beside it on disk.
+       *
+       * Required rather than read here, and that is the whole point of the
+       * parameter. This method used to call `#readHint` and seal what it found,
+       * two lines under a comment explaining that the fingerprint is recomputed
+       * rather than copied because "the hint is unauthenticated and the sealed
+       * identity is not, so copying an unauthenticated value into an
+       * authenticated one would launder it". It then copied the label and the
+       * colour out of that same hint.
+       *
+       * That is not a cosmetic slip. Unlock compares the two and rewrites a
+       * hint that disagrees, which is INV-MW-3 and is the mechanism that makes
+       * tampering with the picker visible. Sealing the hint makes the tampered
+       * name authentic, so every future unlock compares it against itself,
+       * finds no disagreement, and reports nothing. The one signal that the
+       * card had been edited is spent making the edit permanent.
+       *
+       * Measured: create a wallet called "Cold storage", edit the hint on disk
+       * to "Spending pocket", unlock (the hint is corrected), edit it again,
+       * change the passphrase, reopen. The ciphertext says "Spending pocket".
+       *
+       * `rename` has always taken these as parameters. The caller for this path
+       * holds the sealed identity in `session.active`, put there by unlock from
+       * inside the ciphertext, so the authenticated value was already in hand.
+       */
+      readonly label: string
+      /**
+       * Narrowed here rather than by the caller, because `isColour` lives here
+       * and `unlock` already applies exactly this fallback to the value it
+       * reads out of the ciphertext. One definition of what a colour is.
+       */
+      readonly colour: string
       readonly cosigners?: readonly { readonly xpub: string; readonly label: string }[]
     }
   ): void {
-    // The label and colour come from the hint, which a passphrase change does
-    // not alter. The FINGERPRINT is recomputed from the seed rather than copied
-    // from the hint, the same way renaming does it: the hint is unauthenticated
-    // and the sealed identity is not, so copying an unauthenticated value into
-    // an authenticated one would launder it.
-    const hint = this.#readHint(id)
-
+    // The fingerprint is recomputed from the seed rather than carried, the same
+    // way renaming does it, so the sealed identity always describes the sealed
+    // seed (INV-MW-7) even if the caller is confused about which wallet it has.
     this.store(id).rekey(
       options.seed,
       options.network,
@@ -615,8 +645,8 @@ export class WalletRegistry {
       options.newPassphrase,
       options.registrations,
       {
-        label: hint.label,
-        colour: hint.colour,
+        label: options.label,
+        colour: isColour(options.colour) ? options.colour : DEFAULT_COLOUR,
         fingerprint: masterFingerprint(options.seed, options.network),
       },
       options.cosigners ?? []

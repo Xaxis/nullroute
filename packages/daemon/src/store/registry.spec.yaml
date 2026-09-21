@@ -69,13 +69,15 @@ invariants:
   - id: INV-MW-3
     statement: >
       A wallet's identity comes from inside its ciphertext. A hint outside that
-      disagrees is overwritten on unlock and the disagreement is reported, and a
-      corrupt hint never makes a good wallet unreachable.
+      disagrees is overwritten on unlock and the disagreement is reported, a
+      corrupt hint never makes a good wallet unreachable, and no operation that
+      re-seals a wallet takes its identity from the hint.
     tests:
       - packages/daemon/test/registry.test.ts::takes-identity-from-inside-the-ciphertext-and-repairs-the-hint
       - packages/daemon/test/registry.test.ts::reads-a-corrupt-hint-as-a-placeholder-rather-than-hiding-the-wallet
       - packages/daemon/test/registry.test.ts::ignores-directories-that-are-not-wallets
       - packages/daemon/test/wallets.ipc.test.ts::reports-when-the-picker-was-showing-the-wrong-name
+      - packages/daemon/test/passphrase-change.ipc.test.ts::seals-the-identity-from-the-ciphertext-and-not-the-hint-beside-it
 
   - id: INV-MW-4
     statement: >

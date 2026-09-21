@@ -14,7 +14,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createHandler } from '../src/handler.js'
@@ -90,6 +90,54 @@ describe('wallets.passphrase', () => {
     session.lock()
     await call('wallets.unlock', { id: before.id, passphrase: NEW })
     expect(session.hasWallet).toBe(true)
+  })
+
+  /**
+   * INV-MW-3. A re-key must seal the identity that came OUT of the ciphertext,
+   * never the one sitting beside it on disk.
+   *
+   * The hint file is editable by anyone holding the card, and unlock compares
+   * it against the sealed identity and rewrites it when they disagree. That
+   * comparison is the mechanism that makes an edited picker visible.
+   *
+   * changePassphrase used to call `#readHint` and seal what it found, two lines
+   * under a comment explaining that the fingerprint is recomputed rather than
+   * copied because "copying an unauthenticated value into an authenticated one
+   * would launder it". Sealing the hint makes a tampered name authentic, so
+   * every later unlock compares it against itself, finds nothing, and reports
+   * nothing: the one signal that the card was edited is spent making the edit
+   * permanent.
+   *
+   * The tamper here happens after unlock has already corrected the hint once,
+   * which is the state the daemon is actually in when this method is called.
+   */
+  it('seals-the-identity-from-the-ciphertext-and-not-the-hint-beside-it', async () => {
+    const before = await makeWallet()
+    const hintPath = join(dir, before.id, 'wallet.hint')
+    const hint = JSON.parse(readFileSync(hintPath, 'utf8')) as Record<string, unknown>
+    expect(hint['label']).toBe('Cold storage')
+
+    // Somebody with the card edits the picker's copy.
+    writeFileSync(hintPath, JSON.stringify({ ...hint, label: 'Spending pocket', colour: 'rose' }))
+
+    await call('wallets.passphrase', { oldPassphrase: OLD, newPassphrase: NEW })
+
+    session.lock()
+    const opened = (await call('wallets.unlock', {
+      id: before.id,
+      passphrase: NEW,
+    })) as {
+      active: { label: string; colour: string }
+      labelVerified?: boolean
+      hintCorrected?: boolean
+    }
+
+    // What the CIPHERTEXT says this wallet is called.
+    expect(opened.active.label).toBe('Cold storage')
+    expect(opened.active.colour).toBe('slate')
+    expect(opened.labelVerified).toBe(true)
+    // And the edit is still reported, rather than having become the truth.
+    expect(opened.hintCorrected).toBe(true)
   })
 
   /**

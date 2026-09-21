@@ -231,6 +231,14 @@ export function walletsMethods(ctx: HandlerContext): MethodTable {
         oldPassphrase: requireString(request, 'oldPassphrase'),
         newPassphrase: requireString(request, 'newPassphrase'),
         registrations: session.registrations,
+        // FROM THE SESSION, WHICH GOT THEM OUT OF THE CIPHERTEXT at unlock,
+        // and not from the hint beside the blob. The registry used to read the
+        // hint itself and seal what it found, which turned an edit to an
+        // unauthenticated file into the wallet's authenticated name and left
+        // nothing for the next unlock to disagree with. See the comment on
+        // changePassphrase.
+        label: active.label,
+        colour: active.colour,
         // Carried through, for the reason renaming carries them: this
         // reseals, and forgetting them would erase every cosigner name as a
         // side effect of changing a passphrase.
