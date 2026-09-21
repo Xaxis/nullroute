@@ -191,7 +191,9 @@ would prove is not yet a choice anybody has.
 - `rootHash`: compare against the lock screen and the published release
 - `tier`: `signer` today, and only `signer`. See above.
 - `coverage.uncovered`: must be empty
-- `invariants[].tests[].status`: every one must be `passed`
+- `invariants[].status`: every one must be `passed`. Each entry is one
+  invariant and the one test selector it binds, in `test`, so there is no
+  `tests` array to index into
 
 This list used to end with `dependencyTreeHash`, which no version of the report
 has ever carried and which nothing in `packages/`, `tools/` or the Makefile
@@ -475,15 +477,27 @@ $ sudo veritysetup verify /dev/<card>p2 /dev/<card>p3 $(cat system.roothash)
 
 #### At boot
 
-The lock screen shows one hash: `sha256sum MANIFEST.lock` for the application.
-Compare it against the release.
+The lock screen shows two hashes.
 
-It does not show a dm-verity root hash for the system partition, and this
-section used to say it showed both. There is nothing behind that number yet:
-dm-verity lands in provisioning tier 1, the README lists it under what is not
-working, and the boot attestation the daemon builds carries a single
-`rootHash`. A reader who found one hash on the panel and had been told to
-expect two would reasonably conclude they had checked the one that mattered.
+The first is `sha256sum MANIFEST.lock`, which attests the application. Compare
+it against the release.
+
+The second is the dm-verity root hash of the system partition, and it appears
+only where there is a mapping. It is read from the live device-mapper table
+through `nullroute-attest.service` rather than from `/boot/system.roothash` on
+the card, because the file on the card is the number an attacker who rewrote
+the boot partition would have chosen, and the table is a statement about what
+the kernel is actually checking. Where there is no mapping, under `make dev` on
+a workstation, no second number is drawn rather than a blank or a zero.
+
+THIS SECTION SAID THE OPPOSITE UNTIL NOW, in three parts that were each true
+when written and are not any more: that the panel showed one hash, that there
+was nothing behind a verity number because dm-verity had not landed, and that
+the attestation the daemon builds carries a single `rootHash`. Tier 1 landed,
+INV-BOOT-1 declares the behaviour, and the paragraph below this one has been
+saying "both numbers" over the top of it. A reader told to expect one hash and
+shown two has the same problem in reverse as the one this warning was written
+for: they cannot tell which one they were supposed to check.
 
 **Both numbers are reported by the software you are looking at.** That is not a
 reason to skip reading them, and it is a reason not to treat them as proof on

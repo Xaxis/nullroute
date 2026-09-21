@@ -176,9 +176,16 @@ they will find a way around.
 
 ### Malicious QR or SD payloads
 
-Parsers are fuzzed, size-limited, and fail closed, and removable media is
-mounted `noexec,nosuid,nodev`. This is real hardening and it raises the bar
-considerably.
+Parsers are fuzzed, size-limited, and fail closed. This is real hardening and it
+raises the bar considerably.
+
+It used to credit removable media being mounted `noexec,nosuid,nodev` as well.
+Nothing in this repository mounts removable media: there is no automount, no
+udev rule and no mount unit, the daemon contains no mount call and is forbidden
+the syscall group, and the only filesystems carrying those options are the
+`/tmp`, `/var/tmp` and `/run` tmpfs mounts, which are not where a payload
+arrives. Claiming a control the tree does not implement is the failure this
+document exists to avoid, so it is struck rather than softened.
 
 It is not a proof. These are hand-written parsers in a memory-safe language
 processing attacker-controlled input, and the honest claim is "defensively
@@ -249,9 +256,11 @@ This is being addressed rather than merely conceded, and
 
 Until tier 2, treat the operating system as trusted-by-assumption. The usual
 answer would be to build the image yourself or verify a signature on a
-published one, and neither is available: `make image` fails on purpose because
-the build script was never written, and nothing has been published. See
-docs/VERIFICATION.md.
+published one. The first is available now and the second is not: `make image`
+builds a flashable card and prints its checksums, `make image-repro` builds it
+twice and compares, and nothing has been published, so there is no signature to
+check. This passage said the build script was never written, which stopped being
+true when it was. See docs/VERIFICATION.md.
 
 **Evil maid attacks, absent secure boot.** See above. Tier 1 makes an
 unsophisticated modification visible to a user who reads the boot screen. It
