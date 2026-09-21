@@ -11,7 +11,7 @@
  * sealed one has to win and the user has to be told.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   existsSync,
   mkdirSync,
@@ -484,7 +484,34 @@ describe('daemon.store.registry', () => {
     mkdirSync(hintPath(id))
     writeFileSync(join(hintPath(id), 'occupied'), 'x')
 
-    expect(() => reg.unlock(id, PASSPHRASE)).toThrow(/could not be written back/)
+    /*
+     * AND THE SEED IS LOOKED AT, which this test did not used to do.
+     *
+     * It asserted the throw and that the blob survived, and the invariant's
+     * whole claim is the word "disposes". Deleting the dispose() call in the
+     * registry's catch left this green, so the one thing INV-MW-10 is about was
+     * the one thing not checked. The argument in its docblock is quoted in two
+     * other places in this daemon that needed the same correction, and both of
+     * those assert disposal.
+     */
+    const made: Secret[] = []
+    const real = Secret.fromBytes.bind(Secret)
+    const spy = vi.spyOn(Secret, 'fromBytes').mockImplementation((bytes, label) => {
+      const secret = real(bytes, label)
+      if (label === 'stored-seed') made.push(secret)
+      return secret
+    })
+
+    try {
+      expect(() => reg.unlock(id, PASSPHRASE)).toThrow(/could not be written back/)
+      // The seed really was decrypted, so this is not passing by never getting
+      // as far as the interesting line.
+      expect(made).toHaveLength(1)
+      expect(made[0]?.disposed).toBe(true)
+    } finally {
+      spy.mockRestore()
+    }
+
     // The blob is still fine, so this is a reportable failure and not a loss.
     expect(reg.store(id).exists()).toBe(true)
   })
