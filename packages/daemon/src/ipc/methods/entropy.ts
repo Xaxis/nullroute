@@ -65,8 +65,24 @@ export function entropyMethods(ctx: HandlerContext): MethodTable {
 
       try {
         const mnemonic = entropyToWords(entropy)
+        const bip39Passphrase = optionalString(request, 'passphrase').length > 0
         const seed = mnemonicToSeed(mnemonic, optionalString(request, 'passphrase'))
-        session.load(seed, mnemonic, 'generated')
+        /*
+         * THE PASSPHRASE IS RECORDED, and on this path it was not.
+         *
+         * wallet.import computes exactly this flag and passes it. Both paths
+         * that GENERATE a seed applied the passphrase to the derivation and
+         * then loaded the session with no options, so the session said false,
+         * wallets.create sealed `bip39Passphrase: session.bip39Passphrase`, and
+         * the wallet recorded that it has none.
+         *
+         * What that flag turns on is the must-see banner on the unlocked
+         * screen: a wrong passphrase does not produce an error, it opens a
+         * different, valid, empty wallet, every screen after looks normal, and
+         * the mnemonic alone will not recover this one. Every wallet made on
+         * this device with dice and a passphrase has been missing it.
+         */
+        session.load(seed, mnemonic, 'generated', { bip39Passphrase })
         return {
           fingerprint: session.fingerprint,
           wordCount: mnemonic.split(' ').length,
@@ -161,7 +177,10 @@ export function entropyMethods(ctx: HandlerContext): MethodTable {
       using entropy = Secret.fromBytes(randomBytes(32), 'urandom')
       const mnemonic = entropyToWords(entropy)
       const seed = mnemonicToSeed(mnemonic, optionalString(request, 'passphrase'))
-      session.load(seed, mnemonic, 'generated')
+      // Recorded, for the reason the dice path above spells out.
+      session.load(seed, mnemonic, 'generated', {
+        bip39Passphrase: optionalString(request, 'passphrase').length > 0,
+      })
       return {
         fingerprint: session.fingerprint,
         wordCount: mnemonic.split(' ').length,

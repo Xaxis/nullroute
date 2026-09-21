@@ -412,6 +412,56 @@ describe('daemon wallets IPC', () => {
     ).rejects.toThrow(/Unknown colour/)
   })
 
+  /**
+   * INV-MW-9. A wallet made on this device with a BIP-39 passphrase records
+   * that it has one.
+   *
+   * wallet.import computes the flag from the passphrase it was given and passes
+   * it to session.load. Both paths that GENERATE a seed applied the passphrase
+   * to the derivation and then loaded the session with no options, so the
+   * session said false, wallets.create sealed that, and the wallet recorded
+   * that it has no passphrase. A wallet made from dice with one and a wallet
+   * made from dice without one were indistinguishable afterwards.
+   *
+   * What the flag turns on is the must-see banner on the unlocked screen: a
+   * wrong passphrase does not produce an error, it opens a different, valid,
+   * empty wallet, every screen after looks normal, and the mnemonic alone will
+   * not recover this one. It has never appeared for a wallet this device made
+   * itself.
+   */
+  it('records-a-passphrase-on-a-wallet-generated-from-dice', async () => {
+    session.lock()
+    await call('entropy.fromDice', { rolls: '1'.repeat(100), mix: false, passphrase: 'my secret' })
+    await call('seed.reveal')
+    await call('seed.confirmBackup')
+    const created = (await call('wallets.create', {
+      passphrase: 'store one',
+      label: 'With a passphrase',
+      colour: 'teal',
+    })) as { id: string }
+
+    // Through wallets.list, which is what the picker actually reads.
+    interface Listed {
+      readonly wallets: readonly { id: string; bip39Passphrase: boolean }[]
+    }
+    const listed = (await call('wallets.list')) as Listed
+    expect(listed.wallets.find((w) => w.id === created.id)?.bip39Passphrase).toBe(true)
+
+    // And a wallet made the same way WITHOUT one does not claim to have it, or
+    // the banner would appear on every wallet and mean nothing.
+    session.lock()
+    await call('entropy.fromDice', { rolls: '2'.repeat(100), mix: false })
+    await call('seed.reveal')
+    await call('seed.confirmBackup')
+    const plain = (await call('wallets.create', {
+      passphrase: 'store two',
+      label: 'Without one',
+      colour: 'rose',
+    })) as { id: string }
+    const again = (await call('wallets.list')) as Listed
+    expect(again.wallets.find((w) => w.id === plain.id)?.bip39Passphrase).toBe(false)
+  })
+
   it('will-not-save-a-wallet-before-the-mnemonic-is-confirmed', async () => {
     session.lock()
     await call('entropy.fromDice', { rolls: '1'.repeat(100), mix: false })
