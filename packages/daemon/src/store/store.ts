@@ -287,7 +287,23 @@ export class WalletStore {
     try {
       using plaintext = open(envelope, passphrase)
       const wallet = this.#decodePayload(plaintext)
-      this.#writeSidecar({ failedAttempts: 0 })
+      // Resetting the counter is housekeeping, and housekeeping must not be
+      // able to throw away a seed that has already been decrypted. `wallet.seed`
+      // is live by this point and no caller has been given it, so letting a
+      // failed write propagate abandons it undisposed: an INV-KEY-2 leak
+      // reachable by a read-only card or a full disk. registry.ts makes exactly
+      // this argument for the hint rewrite it does one layer up, and its care
+      // was being applied to a seed this method had already dropped.
+      try {
+        this.#writeSidecar({ failedAttempts: 0 })
+      } catch (err) {
+        wallet.seed.dispose()
+        throw new StoreError(
+          `The wallet opened and its attempt counter could not be reset (${
+            err instanceof Error ? err.message : String(err)
+          }). The seed has been discarded rather than held. The sealed wallet is untouched.`
+        )
+      }
       return wallet
     } catch (err) {
       if (!(err instanceof BadPassphraseError)) throw err

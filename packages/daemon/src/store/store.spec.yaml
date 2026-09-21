@@ -106,6 +106,15 @@ invariants:
       - packages/daemon/test/passphrase-change.ipc.test.ts::refuses-a-new-passphrase-identical-to-the-old-one
       - packages/daemon/test/passphrase-change.ipc.test.ts::refuses-when-no-stored-wallet-is-open
 
+  - id: INV-STORE-8
+    statement: >
+      A failure after the payload has been decrypted disposes the seed rather
+      than abandoning it. An unreadable payload constructs no seed at all, and a
+      failure to reset the attempt counter disposes the one already built.
+    tests:
+      - packages/daemon/test/store.test.ts::constructs-no-seed-when-the-payload-fails-validation
+      - packages/daemon/test/store.test.ts::disposes-the-seed-when-the-counter-cannot-be-reset
+
   - id: INV-STORE-7
     statement: >
       Unlocking returns the seed that was sealed, byte for byte, and never a

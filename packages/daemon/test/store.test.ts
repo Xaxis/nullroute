@@ -12,7 +12,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { base64 } from '@scure/base'
@@ -327,7 +327,7 @@ describe('daemon.store', () => {
   })
 
   /**
-   * INV-STORE-6. An unreadable payload must not leave a decrypted seed behind.
+   * INV-STORE-8. An unreadable payload must not leave a decrypted seed behind.
    *
    * The store is opened with the correct passphrase, so the plaintext is
    * authentic and the seed is real. It then fails validation, and the question
@@ -366,6 +366,54 @@ describe('daemon.store', () => {
       expect(labels).not.toContain('stored-seed')
     } finally {
       made.mockRestore()
+    }
+  })
+
+  /**
+   * INV-STORE-8. Resetting the attempt counter must not throw away the seed.
+   *
+   * The sibling of the case above, and the one the registry already has a test
+   * for. `unlock` decodes the payload, which constructs the seed, and THEN
+   * writes the attempt counter back to zero. A throw there propagates with a
+   * live Secret in hand that no caller has been given and no caller can
+   * dispose, which is an INV-KEY-2 leak reachable by a read-only card or a
+   * full disk.
+   *
+   * registry.ts carries this argument in these words for the hint rewrite it
+   * does one layer up, and disposes the seed before re-raising. The store it
+   * wraps did not, so the registry's care was applied to a seed the store had
+   * already abandoned on the way out.
+   */
+  it('disposes-the-seed-when-the-counter-cannot-be-reset', () => {
+    const store = new WalletStore(dir, FAST)
+    using seed = seedBytes()
+    store.create(seed, SIGNET, PASSPHRASE)
+
+    // Watch what the decode builds. The seed is constructed inside unlock and
+    // never handed out on this path, so the only way to ask whether it was
+    // disposed is to hold the Secret the decode made.
+    const made: Secret[] = []
+    const real = Secret.fromBytes.bind(Secret)
+    const spy = vi.spyOn(Secret, 'fromBytes').mockImplementation((bytes, label) => {
+      const secret = real(bytes, label)
+      if (label === 'stored-seed') made.push(secret)
+      return secret
+    })
+
+    try {
+      // The counter path occupied by a non-empty directory, so the write fails
+      // the way a read-only card or a full disk would.
+      rmSync(store.sidecarPath, { force: true })
+      mkdirSync(store.sidecarPath)
+      writeFileSync(join(store.sidecarPath, 'occupied'), 'x')
+
+      expect(() => store.unlock(PASSPHRASE)).toThrow()
+      // The seed really was built, so this test is not passing by never
+      // reaching the interesting line.
+      expect(made).toHaveLength(1)
+      expect(made[0]?.disposed).toBe(true)
+    } finally {
+      spy.mockRestore()
     }
   })
 
