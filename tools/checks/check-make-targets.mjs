@@ -24,7 +24,37 @@ import { fileURLToPath } from 'node:url'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const MAKEFILE = join(ROOT, 'Makefile')
-const CHECKS = join(ROOT, 'tools/checks')
+/**
+ * Every .mjs under tools/, not just tools/checks.
+ *
+ * THE TWO RULES BELOW SCANNED ONE DIRECTORY and there are eleven scripts in
+ * this repository that spawn a browser. Ten are in tools/checks and obey both.
+ * The eleventh is tools/gen-device-shots.mjs, which `make check` runs through
+ * device-shots-check, and it broke both: its own four-entry candidate list
+ * starting with the macOS path, and its own poll loop with stdio 'ignore' that
+ * can only ever report that the port never opened.
+ *
+ * Those are the exact two failures the rules were written after, and the
+ * commits that fixed them for the other eight could not see this one because
+ * of where it lives. A rule that inspects a directory rather than a property
+ * is a rule with a doorway next to it.
+ */
+function toolScripts() {
+  const found = []
+  const walk = (dir, prefix) => {
+    for (const name of readdirSync(dir, { withFileTypes: true })) {
+      const rel = prefix === '' ? name.name : `${prefix}/${name.name}`
+      if (name.isDirectory()) {
+        walk(join(dir, name.name), rel)
+        continue
+      }
+      if (name.name.endsWith('.mjs'))
+        found.push({ rel: `tools/${rel}`, path: join(dir, name.name) })
+    }
+  }
+  walk(join(ROOT, 'tools'), '')
+  return found
+}
 
 const text = readFileSync(MAKEFILE, 'utf8')
 const lines = text.split('\n')
@@ -78,16 +108,18 @@ if (problems.length > 0) {
  */
 {
   const offenders = []
-  for (const name of readdirSync(CHECKS).filter((f) => f.endsWith('.mjs'))) {
-    const source = readFileSync(join(CHECKS, name), 'utf8')
+  for (const { rel, path } of toolScripts()) {
+    // The file that DEFINES the resolver is not a harness that should call it.
+    if (rel === 'tools/lib/browser.mjs') continue
+    const source = readFileSync(path, 'utf8')
     if (!source.includes('spawn(')) continue
     if (!/Google Chrome|chromium|chrome/i.test(source)) continue
     if (source.includes('chromeBinary(')) continue
-    offenders.push(name)
+    offenders.push(rel)
   }
   if (offenders.length > 0) {
     console.error('\ncheck-make-targets: a harness picks its own browser\n')
-    for (const name of offenders) console.error(`    tools/checks/${name}`)
+    for (const rel of offenders) console.error(`    ${rel}`)
     console.error(
       '\n  Use chromeBinary() from tools/lib/browser.mjs. A path written into a\n' +
         '  spawn call is a path that is right on one machine, and the machine it is\n' +
@@ -116,15 +148,25 @@ if (problems.length > 0) {
  */
 {
   const offenders = []
-  for (const name of readdirSync(CHECKS).filter((f) => f.endsWith('.mjs'))) {
-    const source = readFileSync(join(CHECKS, name), 'utf8')
-    if (!source.includes('chromeBinary(')) continue
+  for (const { rel, path } of toolScripts()) {
+    if (rel === 'tools/lib/browser.mjs') continue
+    const source = readFileSync(path, 'utf8')
+    /*
+     * KEYED ON SPAWNING A BROWSER, not on already calling chromeBinary.
+     *
+     * This used to skip anything without chromeBinary(), so a harness that
+     * broke the rule above was exempt from this one as well: get the browser
+     * wrong and you were excused from getting the wait wrong too. The two
+     * failures travel together, and gen-device-shots.mjs had both.
+     */
+    if (!source.includes('spawn(')) continue
+    if (!/Google Chrome|chromium|chrome/i.test(source)) continue
     if (source.includes('waitForDebugEndpoint(')) continue
-    offenders.push(name)
+    offenders.push(rel)
   }
   if (offenders.length > 0) {
     console.error('\ncheck-make-targets: a harness waits for its browser its own way\n')
-    for (const name of offenders) console.error(`    tools/checks/${name}`)
+    for (const rel of offenders) console.error(`    ${rel}`)
     console.error(
       '\n  Use waitForDebugEndpoint() from tools/lib/browser.mjs, and spawn with\n' +
         "  stdio: ['ignore', 'pipe', 'pipe'] so it has something to quote. A hand\n" +

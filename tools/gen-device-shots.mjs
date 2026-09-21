@@ -27,7 +27,14 @@ import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, mkdirSync } from 'node:fs'
 import { extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { chromeProfile, finish, reap, reachStep } from './lib/browser.mjs'
+import {
+  chromeBinary,
+  chromeProfile,
+  finish,
+  reachStep,
+  reap,
+  waitForDebugEndpoint,
+} from './lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const GALLERY = join(ROOT, 'tools/screens/dist')
@@ -55,17 +62,16 @@ const SCREENS = [
   { name: 'verify-message', as: 'verify', caption: "Somebody else's proof" },
 ]
 
-const CHROME = [
-  process.env.CHROME_PATH,
-  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  '/usr/bin/google-chrome',
-  '/usr/bin/chromium',
-].filter(Boolean)
-const chromePath = CHROME.find((p) => existsSync(p))
-if (chromePath === undefined) {
-  console.error('gen-device-shots: no Chrome found. Set CHROME_PATH.')
-  process.exit(1)
-}
+/*
+ * THE SHARED RESOLVER, and this used to be a fourth copy of the candidate list.
+ *
+ * check-make-targets has a rule against exactly that, and the rule scanned
+ * tools/checks only, so this file sat next to it for the whole of its life
+ * without being asked. The rule's own comment explains the cost: the right
+ * answer written out several times is how two of them came to be different,
+ * and the machine they are wrong on is the one that runs this on Linux.
+ */
+const chromePath = chromeBinary('gen-device-shots')
 if (!existsSync(GALLERY)) {
   console.error('gen-device-shots: no gallery at tools/screens/dist. Run "make screens" first.')
   process.exit(1)
@@ -118,21 +124,20 @@ async function main() {
       chromeProfile('gen-device-shots'),
       'about:blank',
     ],
-    { stdio: 'ignore' }
+    // Piped, not ignored, so the wait below has something to quote when the
+    // browser exits instead of starting.
+    { stdio: ['ignore', 'pipe', 'pipe'] }
   )
 
-  let wsUrl
-  for (let attempt = 0; attempt < 40; attempt += 1) {
-    await sleep(150)
-    try {
-      wsUrl = (await (await fetch(`http://127.0.0.1:${String(DEBUG)}/json/version`)).json())
-        .webSocketDebuggerUrl
-      if (wsUrl) break
-    } catch {
-      /* still starting */
-    }
-  }
-  if (!wsUrl) throw new Error('Chrome did not expose a debugging endpoint')
+  /*
+   * THE SHARED WAIT, and this used to be its own poll loop.
+   *
+   * It threw "Chrome did not expose a debugging endpoint", which is the symptom
+   * and not the reason, and with stdio 'ignore' the reason had already been
+   * discarded. That sentence cannot separate a browser still starting from one
+   * that died on the spot, and those want opposite responses.
+   */
+  const wsUrl = await waitForDebugEndpoint(chrome, DEBUG)
 
   const browser = new WebSocket(wsUrl)
   await new Promise((r) => browser.addEventListener('open', r, { once: true }))
