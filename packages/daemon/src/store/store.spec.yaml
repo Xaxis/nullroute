@@ -106,6 +106,13 @@ invariants:
       - packages/daemon/test/passphrase-change.ipc.test.ts::refuses-a-new-passphrase-identical-to-the-old-one
       - packages/daemon/test/passphrase-change.ipc.test.ts::refuses-when-no-stored-wallet-is-open
 
+  - id: INV-STORE-7
+    statement: >
+      Unlocking returns the seed that was sealed, byte for byte, and never a
+      buffer some check along the way has already zeroized.
+    tests:
+      - packages/daemon/test/store.test.ts::returns-exactly-the-seed-that-was-sealed
+
   - id: INV-COSIGN-1
     statement: >
       A name given to another key in a quorum is the user's own, is stripped the

@@ -132,7 +132,7 @@ describe('core.bip39.wordlist', () => {
   })
 
   /**
-   * INV-WORDS-4. A short word that is also a prefix must never auto-commit.
+   * INV-WORDS-3. A short word that is also a prefix must never auto-commit.
    *
    * This is the one case where a keyboard could silently enter the wrong word.
    * A user who typed `act` and meant `act` and a user who typed `act` on the

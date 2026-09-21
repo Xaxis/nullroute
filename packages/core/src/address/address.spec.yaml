@@ -52,6 +52,14 @@ invariants:
     tests:
       - packages/core/test/vectors.address.test.ts::script-types-are-distinct
 
+  - id: INV-ADDRV-1
+    statement: >
+      Asked whether an address is its own, the device re-derives the branches
+      and searches them rather than consulting a list it stored earlier, and
+      answers no for an address it did not find.
+    tests:
+      - packages/daemon/test/ipc.test.ts::verifies-an-address-by-re-deriving-it
+
   - id: INV-DIFF-1
     statement: >
       The differential oracle is wired for taproot, so p2tr comparisons cannot

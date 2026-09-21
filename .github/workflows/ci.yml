@@ -103,6 +103,7 @@ jobs:
           make header-rule
           make docs-reachable
           make invariant-claims
+          make invariant-ids
           make make-targets
           make ipc-reachable
           make slow-feedback

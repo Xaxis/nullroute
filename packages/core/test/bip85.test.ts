@@ -221,7 +221,7 @@ describe('core.bip85', () => {
   })
 
   /**
-   * INV-BIP85-4. Bounds are refused rather than clamped.
+   * INV-BIP85-3. Bounds are refused rather than clamped.
    *
    * A clamped length would produce a child at a path the user did not ask for,
    * and they would record the path they typed. The child would then be
@@ -248,7 +248,7 @@ describe('core.bip85', () => {
   })
 
   /**
-   * INV-BIP85-5. Every derivation reports the path that produced it.
+   * INV-BIP85-3. Every derivation reports the path that produced it.
    *
    * The child is unrecoverable without it, and a user who records only the
    * words has recorded the half that the master already implies.

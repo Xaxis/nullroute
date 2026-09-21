@@ -18,7 +18,7 @@ MANIFEST_ROOTS := packages spec provisioning
 
 .PHONY: help install dev build check check-fast verify manifest manifest-check \
 	contrast ui-roles \
-	qr-readback badges \
+	qr-readback badges invariant-ids \
 	manifest-recipe print-manifest-roots \
         lint ui-classes type-check test test-report test-vectors test-differential test-repro \
         test-recovery-drill \
@@ -171,6 +171,14 @@ invariant-claims: ## The threat model and the specs agree on which invariants ho
 	# device protects. One with no spec behind it is a promise nothing keeps,
 	# which this project calls a security bug rather than a documentation chore.
 	@node tools/checks/check-invariant-claims.mjs
+
+invariant-ids: ## Every invariant id the tree names is one the tree declares
+	# check-invariant-claims reads the threat model and asks whether every id it
+	# claims has a spec. Nothing asked the question back, so a comment could name
+	# an invariant that did not exist. Five did, including the label on the
+	# regression test for the bug where every stored wallet unlocked into 32 zero
+	# bytes, and one collided with an unrelated assertion about wireless.
+	@node tools/checks/check-invariant-ids.mjs
 
 badges: ## The README's spec and invariant counts are the ones this tree computes
 	# The site reads these two numbers out of verification-report.json at build
@@ -865,6 +873,6 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 
 # --- aggregates --------------------------------------------------------------
 
-check-fast: lint shell format-check ci-parity ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims make-targets ipc-reachable slow-feedback typeable device-csp qr-readback test manifest-check manifest-recipe ## Everything except the slow suites
+check-fast: lint shell format-check ci-parity ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims invariant-ids make-targets ipc-reachable slow-feedback typeable device-csp qr-readback test manifest-check manifest-recipe ## Everything except the slow suites
 
 check: check-fast build verify badges test-vectors test-differential repro-check sbom device-ui screen-fit contrast ui-roles journeys dev-check device-shots-check web-check ## Everything CI runs
