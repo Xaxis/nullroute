@@ -1,4 +1,5 @@
 import { type ReactElement, type ReactNode, useCallback, useEffect, useState } from 'react'
+import { MAX_MULTISIG_KEYS } from '@nullroute/core'
 import { Screen } from '../components/Screen.js'
 import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
@@ -80,11 +81,17 @@ export interface AssembleQuorumScreenProps {
 /**
  * The most cosigners this screen will collect.
  *
- * Not a consensus limit: a descriptor can name more. It is the point past which
- * a list of keys on a 480px panel stops being something somebody checks, and
- * checking them is the whole reason they are shown.
+ * IMPORTED RATHER THAN RESTATED. This was its own 20, beside a comment saying
+ * it was a panel-legibility choice and not a consensus limit. Both halves of
+ * that were wrong in the same direction: it matched the 20 in the two core
+ * files exactly, so it read as agreement, and 17 through 20 are quorums this
+ * device cannot derive an address for at all. The screen collected twenty keys
+ * and handed them to an assembler that has refused more than sixteen since.
+ *
+ * The panel argument still holds and no longer needs its own number, because
+ * the script writer's limit is the stricter of the two.
  */
-const MAX_COSIGNERS = 20
+const MAX_COSIGNERS = MAX_MULTISIG_KEYS
 
 export function AssembleQuorumScreen(props: AssembleQuorumScreenProps): ReactElement {
   const {

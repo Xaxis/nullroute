@@ -27,7 +27,12 @@ export type {
 export { tapTreeLeaves } from './parse.js'
 export type { TapTree } from './parse.js'
 
-export { deriveMultisigAddresses, multisigShape, findOwnKey } from './multisig.js'
+export {
+  deriveMultisigAddresses,
+  multisigShape,
+  findOwnKey,
+  MAX_MULTISIG_KEYS,
+} from './multisig.js'
 export type {
   MultisigAddress,
   MultisigKind,

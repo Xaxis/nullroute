@@ -61,7 +61,7 @@ import {
   type KeyExpression,
 } from './parse.js'
 import { withChecksum } from './checksum.js'
-import { keyPayload } from './multisig.js'
+import { keyPayload, MAX_MULTISIG_KEYS } from './multisig.js'
 
 export class AssembleError extends Error {
   constructor(message: string) {
@@ -99,8 +99,15 @@ export interface AssembledQuorum {
   readonly keys: readonly string[]
 }
 
-/** The consensus limit on keys in a script. Beyond it the script cannot be spent. */
-const MAX_KEYS = 20
+/*
+ * ONE DEFINITION, and this was the third of three that all said 20.
+ *
+ * It called 20 "the consensus limit", which is true of OP_CHECKMULTISIG and
+ * false of this device: the script writer every address goes through refuses
+ * above 16. So this accepted a 17 to 20 key quorum, wrote the descriptor, and
+ * the failure surfaced later as a library error out of address derivation,
+ * after the descriptor had gone to a coordinator. See MAX_MULTISIG_KEYS.
+ */
 
 function assertExtendedWithOrigin(parsed: KeyExpression, raw: string): ExtendedKey {
   if (parsed.kind !== 'extended') {
@@ -137,10 +144,11 @@ export function assembleQuorum(options: AssembleOptions): AssembledQuorum {
         `already makes without any of this.`
     )
   }
-  if (keys.length > MAX_KEYS) {
+  if (keys.length > MAX_MULTISIG_KEYS) {
     throw new AssembleError(
-      `${String(keys.length)} keys exceeds the ${String(MAX_KEYS)} key consensus limit. A script ` +
-        `with more cannot be spent.`
+      `${String(keys.length)} keys is more than the ${String(MAX_MULTISIG_KEYS)} this device can ` +
+        `build a script for. Bitcoin allows 20; this device's script writer does not, and a ` +
+        `quorum whose addresses it cannot derive is one it cannot check an address against.`
     )
   }
   if (!Number.isInteger(threshold) || threshold < 1) {

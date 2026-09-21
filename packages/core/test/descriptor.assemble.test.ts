@@ -17,7 +17,7 @@
 import { describe, expect, it } from 'vitest'
 import { AssembleError, assembleQuorum } from '../src/descriptor/assemble.js'
 import { parseDescriptor } from '../src/descriptor/parse.js'
-import { multisigShape } from '../src/descriptor/multisig.js'
+import { MAX_MULTISIG_KEYS, multisigShape } from '../src/descriptor/multisig.js'
 import { verifyChecksum } from '../src/descriptor/checksum.js'
 
 const XPUB_A =
@@ -148,12 +148,38 @@ describe('core.descriptor.assemble', () => {
     expect(() => assembleQuorum({ threshold: 1.5, keys: [A, B] })).toThrow(/whole number/)
   })
 
-  it('refuses-fewer-than-two-keys-and-more-than-the-consensus-limit', () => {
+  /*
+   * THE UPPER BOUND IS THIS DEVICE'S, NOT BITCOIN'S, and the old name of this
+   * test said the opposite. It read `and-more-than-the-consensus-limit` and
+   * matched /consensus limit/ against a message that called 20 one.
+   *
+   * OP_CHECKMULTISIG does take 20 keys. The script writer every address on this
+   * device goes through refuses above 16, so 17 to 20 assembled, parsed, and
+   * then threw a library error out of address derivation, by which point the
+   * descriptor has gone to a coordinator. See MAX_MULTISIG_KEYS.
+   *
+   * Tested one past the limit rather than at 21, because the interesting number
+   * is the first one refused and 21 passed under both the old bound and the new
+   * one. A case that cannot tell the two apart is a case that was never
+   * measuring this.
+   *
+   * ONLY FROM ABOVE, HERE. These keys are a real xpub with its last two
+   * characters replaced by an index, which is not valid base58check, and that
+   * is fine for a case the count check refuses before anything parses them. The
+   * limit itself building is INV-MULTI-12's
+   * `assembles-parses-and-derives-at-the-limit`, which uses sixteen real keys
+   * and takes them all the way to an address. Between them the bound is pinned
+   * from both sides; neither one does it alone.
+   */
+  it('refuses-fewer-than-two-keys-and-more-than-this-device-can-build', () => {
     expect(() => assembleQuorum({ threshold: 1, keys: [A] })).toThrow(/at least two keys/)
-    const many = Array.from({ length: 21 }, (_, i) =>
-      key(XPUB_A.slice(0, -2) + String(i).padStart(2, '0'), 'aaaaaaaa')
+    const many = (count: number) =>
+      Array.from({ length: count }, (_, i) =>
+        key(XPUB_A.slice(0, -2) + String(i).padStart(2, '0'), 'aaaaaaaa')
+      )
+    expect(() => assembleQuorum({ threshold: 2, keys: many(MAX_MULTISIG_KEYS + 1) })).toThrow(
+      /more than the 16 this device can build a script for/
     )
-    expect(() => assembleQuorum({ threshold: 2, keys: many })).toThrow(/consensus limit/)
   })
 
   /**

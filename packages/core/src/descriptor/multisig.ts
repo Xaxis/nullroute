@@ -38,6 +38,29 @@ import {
 /** The shapes this device will derive. Anything else is refused. */
 export type MultisigKind = 'wsh' | 'sh-wsh' | 'sh'
 
+/**
+ * The most keys this device can put in a multisig script.
+ *
+ * THE LIMIT IS OURS, NOT BITCOIN'S, and that distinction is the whole reason
+ * this is written down rather than left as a number. OP_CHECKMULTISIG takes up
+ * to 20 public keys, and three places in this repository said 20 and called it
+ * the consensus limit. @scure/btc-signer's script writer refuses above 16,
+ * which is the encoder every address on this device goes through.
+ *
+ * So a 17 to 20 key quorum assembled cleanly, parsed cleanly, and then threw
+ * `Writer(): OutScript/multisig: invalid params` out of deriveMultisigAddresses
+ * the first time anybody asked it for an address. That is a library's internal
+ * text naming nothing the user did, arriving after the descriptor has already
+ * gone to a coordinator, which is the point of assembling one. A quorum whose
+ * addresses this device cannot derive is a quorum it cannot check an address
+ * against, and checking the address is what the device is for.
+ *
+ * Refusing at 17 up front is the honest version of a limit we have. Writing
+ * the script by hand to get past it is not available: CLAUDE.md rules out both
+ * inventing the encoding and taking another dependency for it.
+ */
+export const MAX_MULTISIG_KEYS = 16
+
 export interface MultisigShape {
   readonly kind: MultisigKind
   readonly threshold: number
@@ -107,16 +130,35 @@ export function multisigShape(descriptor: Descriptor): MultisigShape {
       `A ${String(body.threshold)}-of-${String(total)} quorum is not satisfiable.`
     )
   }
-  // Consensus limit for bare and P2SH multisig. Beyond 15 keys the redeem
-  // script exceeds 520 bytes and the output is unspendable, which is a much
-  // worse thing to discover after funding than before.
-  if (kind !== 'wsh' && total > 15) {
+  /*
+   * BARE sh() ONLY, and this said `kind !== 'wsh'`.
+   *
+   * The reasoning in the sentence is right and the condition did not match it.
+   * In a bare sh() the redeem script IS the multisig script, so 16 keys is 547
+   * bytes against a 520 byte push limit and the output cannot be spent.
+   * @scure refuses to build one, which is the check behind this one.
+   *
+   * In sh(wsh(...)) the redeem script is the 34 byte witness program and the
+   * multisig script is the WITNESS script, which is bounded at 3600 bytes by
+   * policy rather than 520. Measured: sh(wsh()) over 16 keys has a 34 byte
+   * redeem script. So this refused a shape that spends perfectly well, and did
+   * it while telling the user to "use wsh() for more than 15" about a
+   * descriptor that was already inside a wsh.
+   *
+   * It also meant the device refused to parse a descriptor it had just built:
+   * assembleQuorum writes sh(wsh(sortedmulti(...))) without this bound.
+   */
+  if (kind === 'sh' && total > 15) {
     throw new DescriptorParseError(
-      `${String(total)} keys will not fit in a P2SH redeem script. Use wsh() for more than 15.`
+      `${String(total)} keys will not fit in a bare P2SH redeem script, which is limited to ` +
+        `520 bytes. Use wsh() or sh(wsh()) for more than 15.`
     )
   }
-  if (total > 20) {
-    throw new DescriptorParseError(`${String(total)} keys exceeds the 20 key consensus limit.`)
+  if (total > MAX_MULTISIG_KEYS) {
+    throw new DescriptorParseError(
+      `${String(total)} keys is more than this device can build a script for. See ` +
+        `MAX_MULTISIG_KEYS: the limit is this device's, not Bitcoin's.`
+    )
   }
 
   return {

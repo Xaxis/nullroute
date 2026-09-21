@@ -14,6 +14,7 @@ covers:
   - packages/core/src/descriptor/multisig.ts::deriveMultisigAddresses
   - packages/core/src/descriptor/multisig.ts::multisigShape
   - packages/core/src/descriptor/multisig.ts::findOwnKey
+  - packages/core/src/descriptor/multisig.ts::MAX_MULTISIG_KEYS
 
 algorithm: >
   The descriptor's outer shape is matched to one of wsh, sh(wsh) or bare sh, and
@@ -33,6 +34,23 @@ algorithm: >
   EVERY INDEX, not once on the parent xpubs. Ordering is not preserved through
   derivation, and with three ordinary cosigners all six permutations occur
   within forty indexes.
+
+  Two separate key bounds apply, and conflating them is what they are written
+  down to prevent. Bare sh() stops at 15 because there the redeem script IS the
+  multisig script and 16 keys is 547 bytes against a 520 byte push limit, so the
+  output cannot be spent; sh(wsh()) is not subject to it, because its redeem
+  script is the 34 byte witness program whatever the key count. The guard used
+  to read `kind !== 'wsh'` under a comment describing bare sh(), so it refused
+  nested segwit quorums that spend perfectly well, including ones this device
+  had just assembled.
+
+  Above that sits MAX_MULTISIG_KEYS, which is 16 and is THIS DEVICE'S limit
+  rather than Bitcoin's. OP_CHECKMULTISIG takes 20 keys and three places here
+  said 20 and called it the consensus limit, while the script writer every
+  address goes through refuses above 16. A 17 to 20 key quorum therefore
+  assembled, parsed, and then failed inside address derivation with a library
+  error, after the descriptor had already gone to a coordinator. A quorum whose
+  addresses this device cannot derive is one it cannot check an address against.
 
   Ownership is decided by comparing the 74 bytes of key material, with the
   version bytes stripped, so a key written as xpub, ypub or Zpub matches itself.
@@ -87,6 +105,19 @@ invariants:
     tests:
       - packages/core/test/descriptor.multisig.test.ts::refuses-shapes-it-does-not-understand
       - packages/core/test/descriptor.multisig.test.ts::refuses-an-absurd-derivation-count
+
+  - id: INV-MULTI-12
+    statement: >
+      Every quorum this device will assemble, it can also parse and derive an
+      address for. The key bound is one number, declared as this device's own
+      limit rather than as a consensus limit, and bare sh() carries a separate
+      and stricter bound because only there is the redeem script the multisig
+      script itself.
+    tests:
+      - packages/core/test/descriptor.multisig.test.ts::assembles-parses-and-derives-at-the-limit
+      - packages/core/test/descriptor.multisig.test.ts::allows-nested-segwit-past-the-bare-p2sh-bound
+      - packages/core/test/descriptor.multisig.test.ts::still-bounds-bare-p2sh-at-fifteen
+      - packages/core/test/descriptor.multisig.test.ts::refuses-a-quorum-it-could-not-derive-an-address-for
 
 threats:
   - INV-PSBT-2

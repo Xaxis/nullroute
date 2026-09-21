@@ -17,7 +17,14 @@ import * as ecc from 'tiny-secp256k1'
 import { createBase58check } from '@scure/base'
 import { sha256 } from '@noble/hashes/sha2.js'
 import { parseDescriptor, DescriptorParseError } from '../src/descriptor/parse.js'
-import { deriveMultisigAddresses, findOwnKey, multisigShape } from '../src/descriptor/multisig.js'
+import {
+  deriveMultisigAddresses,
+  findOwnKey,
+  MAX_MULTISIG_KEYS,
+  multisigShape,
+} from '../src/descriptor/multisig.js'
+import { assembleQuorum } from '../src/descriptor/assemble.js'
+import { withChecksum } from '../src/descriptor/checksum.js'
 import { MAINNET, TESTNET3 } from '../src/network/networks.js'
 
 const bip32 = BIP32Factory(ecc)
@@ -258,5 +265,80 @@ describe('core.descriptor.multisig', () => {
     const body = `wsh(sortedmulti(2,${XPUBS.map((x) => `${x}/0/*`).join(',')}))`
     const shape = multisigShape(parse(body))
     expect(shape).toMatchObject({ kind: 'wsh', threshold: 2, total: 3, sorted: true })
+  })
+})
+
+/**
+ * The key bound, which three files stated as 20 and one enforced at 15.
+ *
+ * THE ROUND TRIP IS THE PROPERTY. Each of assembleQuorum, multisigShape and
+ * deriveMultisigAddresses had a key bound and no two agreed, so the device
+ * wrote descriptors it refused to read and accepted descriptors it could not
+ * derive an address for. Neither failure is visible from inside one of them,
+ * which is why these go through all three rather than asserting a number.
+ */
+describe('core.descriptor.multisig key bound', () => {
+  /** Distinct real extended keys, as many as the largest case needs. */
+  const many = Array.from({ length: 20 }, (_, i) => {
+    const node = bip32.fromSeed(Buffer.from(new Uint8Array(64).fill(i + 1)))
+    const account = node.derivePath("m/48'/0'/0'/2'")
+    const fingerprint = Buffer.from(node.fingerprint).toString('hex')
+    return `[${fingerprint}/48'/0'/0'/2']${account.neutered().toBase58()}/<0;1>/*`
+  })
+
+  it('assembles-parses-and-derives-at-the-limit', () => {
+    for (const script of ['wsh', 'sh-wsh'] as const) {
+      const built = assembleQuorum({
+        threshold: 2,
+        keys: many.slice(0, MAX_MULTISIG_KEYS),
+        script,
+      })
+      const descriptor = parseDescriptor(built.descriptor)
+      const shape = multisigShape(descriptor)
+      expect(shape.total).toBe(MAX_MULTISIG_KEYS)
+      expect(shape.kind).toBe(script)
+      // The step that used to throw a library error. An address, not a count.
+      const [first] = deriveMultisigAddresses(descriptor, { network: MAINNET, count: 1 })
+      expect(first?.address).toMatch(script === 'wsh' ? /^bc1q/ : /^3/)
+    }
+  })
+
+  /*
+   * sh(wsh()) ABOVE 15, which was refused with bare sh()'s reasoning.
+   *
+   * The redeem script of a sh(wsh()) is the 34 byte witness program whatever
+   * the key count, so the 520 byte push limit never applies to it. The device
+   * assembled these and then would not parse them back.
+   */
+  it('allows-nested-segwit-past-the-bare-p2sh-bound', () => {
+    const built = assembleQuorum({ threshold: 2, keys: many.slice(0, 16), script: 'sh-wsh' })
+    expect(multisigShape(parseDescriptor(built.descriptor)).total).toBe(16)
+  })
+
+  /*
+   * And bare sh() still stops at 15, for the reason that is true of it: at 16
+   * keys the redeem script is 547 bytes and @scure refuses to build it, so the
+   * output would be unspendable.
+   */
+  it('still-bounds-bare-p2sh-at-fifteen', () => {
+    const body = (n: number) => withChecksum(`sh(sortedmulti(2,${many.slice(0, n).join(',')}))`)
+    expect(multisigShape(parseDescriptor(body(15))).total).toBe(15)
+    expect(() => multisigShape(parseDescriptor(body(16)))).toThrow(/bare P2SH redeem script/)
+  })
+
+  /*
+   * Above the limit, refused where the user can still do something about it.
+   *
+   * Both doors, because the descriptor does not have to come from this device.
+   */
+  it('refuses-a-quorum-it-could-not-derive-an-address-for', () => {
+    expect(() =>
+      assembleQuorum({ threshold: 2, keys: many.slice(0, MAX_MULTISIG_KEYS + 1), script: 'wsh' })
+    ).toThrow(/more than the 16 this device can build a script for/)
+
+    const oversize = withChecksum(
+      `wsh(sortedmulti(2,${many.slice(0, MAX_MULTISIG_KEYS + 1).join(',')}))`
+    )
+    expect(() => multisigShape(parseDescriptor(oversize))).toThrow(/more than this device can/)
   })
 })

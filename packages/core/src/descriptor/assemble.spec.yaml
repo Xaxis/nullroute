@@ -82,7 +82,7 @@ invariants:
       about.
     tests:
       - packages/core/test/descriptor.assemble.test.ts::refuses-a-threshold-nothing-could-satisfy
-      - packages/core/test/descriptor.assemble.test.ts::refuses-fewer-than-two-keys-and-more-than-the-consensus-limit
+      - packages/core/test/descriptor.assemble.test.ts::refuses-fewer-than-two-keys-and-more-than-this-device-can-build
       - packages/core/test/descriptor.assemble.test.ts::refuses-keys-whose-branches-do-not-match
       - packages/core/test/descriptor.assemble.test.ts::builds-the-degenerate-thresholds-and-leaves-the-warning-to-review
 
