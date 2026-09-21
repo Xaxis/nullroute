@@ -192,6 +192,15 @@ invariants:
     tests:
       - packages/core/test/message.armor.test.ts::returns-nothing-rather-than-throwing-on-anything-else
 
+  - id: INV-MSG-15
+    statement: >
+      A proof is for an address the open wallet holds, on every network. The
+      derivation path is built by the process that knows which network is
+      loaded, from the account path every other derivation on the device uses,
+      rather than restated by a caller.
+    tests:
+      - packages/daemon/test/phase4.ipc.test.ts::signs-for-an-address-this-wallet-holds-on-a-test-network
+
 threats:
   - INV-SIG-1
 

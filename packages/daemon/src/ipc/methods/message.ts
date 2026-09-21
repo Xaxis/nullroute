@@ -7,8 +7,10 @@
  * why they are tables rather than one switch.
  */
 
-import { requireString, requireScriptType } from '../params.js'
+import { requireString, requireNumber, requireScriptType } from '../params.js'
 import {
+  accountPath,
+  branchPath,
   reviewMessage,
   signMessage,
   signLegacyMessage,
@@ -49,7 +51,31 @@ export function messageMethods(ctx: HandlerContext): MethodTable {
     'message.sign': (request) => {
       const message = requireString(request, 'message')
       const scriptType = requireScriptType(request)
-      const path = requireString(request, 'path')
+      /*
+       * THE PATH IS DERIVED HERE, not taken from the caller.
+       *
+       * It used to be a required string, and MessageScreen built it as
+       * `m/<purpose>'/0'/0'/0/<index>` with the coin type written out. On
+       * mainnet that is right. On signet and testnet the coin type is 1, so the
+       * screen signed on the mainnet branch and produced a valid BIP-322 proof
+       * for an address the open wallet does not contain: `wallet.verifyAddress`,
+       * which re-derives this wallet's own branches, answers no for the address
+       * the device had just proved control of. Measured on both networks.
+       *
+       * It is not a display bug. A proof is the one thing on this device whose
+       * whole value is that the address in it is the user's, and signet is what
+       * the README tells a new user to try first.
+       *
+       * This process holds the network, accountPath is the one function that
+       * turns a script type and a network into an account, and everything else
+       * on the device already goes through it. A caller cannot restate a
+       * constant it has no way to know.
+       */
+      const index = requireNumber(request, 'index', 0)
+      if (!Number.isInteger(index) || index < 0 || index > 0x7fffffff) {
+        throw new Error('That is not an address index.')
+      }
+      const path = `${accountPath(scriptType, session.network, 0)}/${branchPath(false, index)}`
 
       // Legacy is a DIFFERENT SCHEME, not a different encoding. It commits
       // to a magic string and the message rather than to a pair of

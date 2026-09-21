@@ -76,7 +76,8 @@ export interface MessageScreenProps {
   readonly onSign: (
     message: string,
     scriptType: string,
-    path: string
+    /** Which address of the open wallet, not a path. See the note in the body. */
+    index: number
   ) => Promise<MessageSignatureView>
   readonly onBack: () => void
   /** Who this device is and which wallet it has open. See `Identity`. */
@@ -95,21 +96,21 @@ export function MessageScreen(props: MessageScreenProps): ReactElement {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  /**
-   * The account purpose each script type derives under.
+  /*
+   * NO PATH IS BUILT HERE ANY MORE, and the table that used to be here is why.
    *
-   * A table rather than a ternary, because there are four now and a chain of
-   * conditionals is where the wrong one gets returned. Signing under the wrong
-   * purpose produces a proof for an address the user does not recognise as
-   * theirs, which reads as the device being broken.
+   * It mapped each script type to its BIP purpose and wrote
+   * `m/<purpose>'/0'/0'/0/<index>`, with the coin type as a literal 0. That is
+   * right on mainnet and wrong everywhere else: signet and testnet derive under
+   * coin type 1, so this screen signed on the mainnet branch and produced a
+   * valid proof for an address the open wallet does not contain. The device's
+   * own "is this mine" check answers no for it.
+   *
+   * The screen has no network and no way to learn one, which is the actual
+   * lesson. It asks for an index, and the daemon, which holds the network,
+   * turns that into a path through the same accountPath every other derivation
+   * on this device uses.
    */
-  const PURPOSE: Record<string, string> = {
-    p2pkh: '44',
-    'p2sh-p2wpkh': '49',
-    p2wpkh: '84',
-    p2tr: '86',
-  }
-  const path = `m/${PURPOSE[scriptType] ?? '84'}'/0'/0'/0/${String(index)}`
 
   const doReview = useCallback(async (): Promise<void> => {
     setBusy(true)
@@ -131,13 +132,13 @@ export function MessageScreen(props: MessageScreenProps): ReactElement {
     setBusy(true)
     setError(null)
     try {
-      setSigned(await onSign(message, scriptType, path))
+      setSigned(await onSign(message, scriptType, index))
     } catch (err) {
       setError((err as Error).message)
     } finally {
       setBusy(false)
     }
-  }, [message, scriptType, path, onSign])
+  }, [message, scriptType, index, onSign])
 
   // --- After signing --------------------------------------------------------
   if (signed !== null) {
@@ -356,9 +357,18 @@ export function MessageScreen(props: MessageScreenProps): ReactElement {
           </div>
 
           <div className="nr-card nr-card--tight">
+            {/* WAS "Signing with m/84'/0'/0'/0/0", WRITTEN OUT HERE, and on
+                signet that sentence was false. The path is the daemon's
+                answer, not this screen's guess, and it is shown beside the
+                signature once there is one rather than promised beforehand by
+                something with no way to know it. Which address is being used
+                is still on screen, on the Address button above. */}
             <div className="nr-row">
               <span className="nr-label">Signing with</span>
-              <span className="nr-value nr-mono">{path}</span>
+              <span className="nr-value">
+                {MESSAGE_SCRIPT_TYPES.find((type) => type.id === scriptType)?.label ?? scriptType},
+                address {String(index)}
+              </span>
             </div>
             <div className="nr-row">
               <span className="nr-label">Commitment</span>

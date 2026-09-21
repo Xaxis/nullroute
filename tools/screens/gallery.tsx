@@ -1097,14 +1097,16 @@ const SCREENS: Record<string, () => React.ReactElement> = {
           warnings: [],
         })
       }
-      onSign={async (message, _scriptType, path) =>
+      onSign={async (message, _scriptType, index) =>
         Promise.resolve({
           address: 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu',
           message,
           signature:
             'AkgwRQIhAOzyynlqt93lOKJr+wmmxIens//zPzl9tqIOua93wO6MAiBi5n5EyAcPScO' +
             '+eknGHbJ4jc1Iw1TnAmoBEcdgYlOTAQ==',
-          path,
+          // The path is the daemon's answer, so the gallery writes what the
+          // daemon would for a mainnet wallet at this index.
+          path: `m/84'/0'/0'/0/${String(index)}`,
         })
       }
       onBack={noop}

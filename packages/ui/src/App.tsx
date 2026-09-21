@@ -1910,8 +1910,8 @@ export function App() {
         onReview={async (message: string) =>
           call<MessageReviewView>(transport, 'message.review', { message })
         }
-        onSign={async (message: string, scriptType: string, path: string) =>
-          call<MessageSignatureView>(transport, 'message.sign', { message, scriptType, path })
+        onSign={async (message: string, scriptType: string, index: number) =>
+          call<MessageSignatureView>(transport, 'message.sign', { message, scriptType, index })
         }
         onBack={() => {
           setStage({ at: 'wallet' })

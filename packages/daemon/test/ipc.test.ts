@@ -114,7 +114,7 @@ const PARAMS: Record<string, Record<string, unknown> | undefined> = {
   'multisig.addresses': { descriptor: DESCRIPTOR, change: false, start: 0, count: 2 },
   'multisig.verifyAddress': { descriptor: DESCRIPTOR, address: 'bc1q' },
   'message.review': { message: 'hello' },
-  'message.sign': { message: 'hello', scriptType: 'p2wpkh', path: "m/84'/0'/0'/0/0" },
+  'message.sign': { message: 'hello', scriptType: 'p2wpkh', index: 0 },
   'message.verify': { address: 'bc1q', message: 'hello', signature: 'AA==' },
   'labels.import': { text: '{"type":"addr","ref":"bc1q","label":"Rent"}' },
   'labels.export': { labels: [] },

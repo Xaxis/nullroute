@@ -300,12 +300,54 @@ describe('labels on the review screen', () => {
  * for one scheme and receives the other.
  */
 describe('message.verify and scheme routing', () => {
+  /**
+   * INV-MSG-15. A proof is for an address this wallet holds, on every network.
+   *
+   * MessageScreen built the path itself, with the coin type written out as a
+   * literal 0. That is mainnet. Signet and testnet derive under coin type 1, so
+   * the screen signed on the mainnet branch and produced a valid BIP-322 proof
+   * for an address the open wallet does not contain. Both addresses start tb1,
+   * so nothing on the screen looked wrong.
+   *
+   * The device's own answer to "is this mine" is the sharp version: it
+   * re-derives this wallet's branches, and it said no for the address the
+   * device had just proved control of.
+   *
+   * Signet is also what the README tells somebody to pick the first time they
+   * run this.
+   */
+  it('signs-for-an-address-this-wallet-holds-on-a-test-network', async () => {
+    await call('network.set', { id: 'signet' })
+    await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
+
+    const signed = (await call('message.sign', {
+      message: 'Hello World',
+      scriptType: 'p2wpkh',
+      index: 0,
+    })) as { address: string; path: string }
+
+    // The wallet's own first receive address, from the other side of the daemon.
+    const listed = (await call('wallet.addresses', { scriptType: 'p2wpkh', count: 1 })) as {
+      addresses: { address: string; path: string }[]
+    }
+    expect(signed.address).toBe(listed.addresses[0]?.address)
+
+    // And the device agrees the address is its own, which is the check that
+    // used to answer no about a proof it had just produced.
+    expect(await call('wallet.verifyAddress', { address: signed.address })).toMatchObject({
+      found: true,
+    })
+
+    // The coin type is the network's, not a constant.
+    expect(signed.path).toContain("/1'/")
+    expect(signed.path).not.toContain("/0'/0'/0/")
+  })
+
   it('signs-taproot-and-checks-its-own-proof', async () => {
     await call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
     const signed = (await call('message.sign', {
       message: 'Hello World',
       scriptType: 'p2tr',
-      path: "m/86'/0'/0'/0/0",
     })) as { address: string; signature: string; scheme: string }
 
     expect(signed.scheme).toBe('bip322')
@@ -330,7 +372,6 @@ describe('message.verify and scheme routing', () => {
     const signed = (await call('message.sign', {
       message: 'Hello World',
       scriptType: 'p2pkh',
-      path: "m/44'/0'/0'/0/0",
     })) as { address: string; signature: string; scheme: string }
 
     expect(signed.scheme).toBe('signmessage')

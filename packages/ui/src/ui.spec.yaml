@@ -483,7 +483,8 @@ invariants:
       - packages/ui/test/message-screen.test.tsx::refuses-to-sign-a-message-the-review-rejected
       - packages/ui/test/message-screen.test.tsx::shows-warnings-without-blocking
       - packages/ui/test/message-screen.test.tsx::hands-over-everything-a-verifier-needs
-      - packages/ui/test/message-screen.test.tsx::signs-with-the-path-the-chosen-script-type-implies
+      - packages/ui/test/message-screen.test.tsx::asks-for-the-script-type-and-address-the-user-chose
+      - packages/ui/test/message-screen.test.tsx::asks-for-the-first-address-by-default
 
   # --- Backup and restore ----------------------------------------------------
   # One decision matters: whether the seed goes in the file. A file that quietly

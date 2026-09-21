@@ -140,15 +140,47 @@ describe('MessageScreen', () => {
     expect(screen.getByTestId('message-qr')).toBeTruthy()
   })
 
-  it('signs-with-the-path-the-chosen-script-type-implies', async () => {
+  /**
+   * INV-UI-39, and it used to assert the defect.
+   *
+   * This required the screen to pass `m/49'/0'/0'/0/0`, which is the path the
+   * screen used to build for itself with the coin type written out as a
+   * literal 0. That is mainnet. On signet and testnet the coin type is 1, so
+   * the screen asked for a signature on the mainnet branch and the device
+   * produced a valid proof for an address the open wallet does not hold.
+   *
+   * The screen has no network and no way to learn one, so the assertion could
+   * only ever have been about a constant it had no business knowing. What it
+   * does know is which script type and which address the user picked, and that
+   * is what it passes now. INV-MSG-15 covers the path the daemon derives from
+   * them.
+   */
+  it('asks-for-the-script-type-and-address-the-user-chose', async () => {
     const { onSign } = setup()
     await reachReview()
 
     fireEvent.click(screen.getByTestId('message-script-p2sh-p2wpkh'))
+    // No derivation path is promised before there is a signature, because this
+    // screen has no network and cannot know one.
+    expect(document.body.textContent).not.toContain("m/49'")
+
+    // The second address, so the index is the user's choice rather than a
+    // constant on the other side of the call.
+    fireEvent.click(screen.getByTestId('message-index'))
     fireEvent.click(screen.getByTestId('message-sign'))
 
     await waitFor(() => {
-      expect(onSign).toHaveBeenCalledWith('hi', 'p2sh-p2wpkh', "m/49'/0'/0'/0/0")
+      expect(onSign).toHaveBeenCalledWith('hi', 'p2sh-p2wpkh', 1)
+    })
+  })
+
+  it('asks-for-the-first-address-by-default', async () => {
+    const { onSign } = setup()
+    await reachReview()
+
+    fireEvent.click(screen.getByTestId('message-sign'))
+    await waitFor(() => {
+      expect(onSign).toHaveBeenCalledWith('hi', 'p2wpkh', 0)
     })
   })
 
