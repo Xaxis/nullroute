@@ -23,9 +23,9 @@ import { verifyChecksum } from '../src/descriptor/checksum.js'
 const XPUB_A =
   'xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL'
 const XPUB_B =
-  'xpub6DwwuunwScQuscvvkT8Q2gRUcvV8DXcnpXhcnVFP6EPq6MTfWSJ9zJdWi1S8mvNMjhGqrCu2gjmYYpAoUCbGZTMFpAKPBFSF4rV3H7Nrbnr'
+  'xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf'
 const XPUB_C =
-  'xpub6DrJ8dVwHt9DDdyKKmSXwiRj9DPigX3B1WhwuBjRzMhbrCgU2n7EY4wCYzngbtCirBTFmXwwUXVR9RTFAGHZDCLcXQ8DivFTLLdESHTLYuF'
+  'xpub6FQya7zGhR92kacYsNnjreouvnHJMpXYsUXnW6NJJAJRCKsa26TzDy4LdnGhEurr3d6y1J8PJ7EEMKQp74XTqYvmGJNogYXSKDszYHtF8mX'
 
 const key = (xpub: string, fingerprint: string): string =>
   `[${fingerprint}/48h/0h/0h/2h]${xpub}/<0;1>/*`

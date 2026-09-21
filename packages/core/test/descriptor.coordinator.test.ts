@@ -21,9 +21,9 @@ import {
 import { parseDescriptor } from '../src/descriptor/parse.js'
 
 const X1 =
-  'xpub6E64WfdQwBGz85XhbZryr9gUGUPBgoSu5WV6tJWpzAvgAmpVpdPHkT3XYmpMEQ8VJdMYvZmxbDPGvzKvXpJcqE6mvHKPqCkxDkCkKzMgKFN'
+  'xpub6DzhyrnFFYQ1HimDiM388xHnDiRPNdZJFBmmxge3Y1WWcHLtMJLfRuhRHqnQCPbTj3fGKTuKFLHzzwpJkp5Dtc3UtLKZKaVZe1yqMBXd6Vk'
 const X2 =
-  'xpub6DwMjZTuHNbxHTLmH1EQrHwEbYq4jkuUKAoNr5xnSCWNBqrCgUCLTcBiJvcnPeGCCLGWq1FDwStGe1EiKQEUCzHsY7HpEEbGyDGvGCbLGxE'
+  'xpub6EGx8sPr9FxPPE1rbZazhqWwpMXA3Hf5DYKtZbL7c4BSddzmQktp96UaTvecEkoCZysuaj79GMCFZYT1KKk7Ph2M3Kf5g8B82KZ8TZ9SKQR'
 const X3 =
   'xpub6CUGRUonZSQ4TWtTMmzXdrXDtypWKiKrhko4egpiMZbpiaQL2jkwSB1icqYh2cfDfVxdx4df189oLKnC5fSwqPfgyP3hooxujYzAu3fDVmz'
 

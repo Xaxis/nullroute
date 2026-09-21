@@ -51,10 +51,13 @@ invariants:
   - id: INV-DPARSE-3
     statement: >
       Malformed origins, unknown key formats, hardened wildcards and malformed
-      multipath are refused rather than interpreted.
+      multipath are refused rather than interpreted, and a key that starts like
+      an extended key is checked against its own base58check rather than being
+      accepted on the strength of its first four characters.
     tests:
       - packages/core/test/descriptor.parse.test.ts::refuses-what-it-does-not-understand
       - packages/core/test/descriptor.parse.test.ts::refuses-malformed-or-unknown-scripts
+      - packages/core/test/descriptor.parse.test.ts::refuses-a-key-that-only-starts-like-an-extended-key
 
   - id: INV-DPARSE-4
     statement: A descriptor containing an extended private key is refused.

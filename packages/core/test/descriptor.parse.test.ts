@@ -88,6 +88,47 @@ describe('core.descriptor.parse key expressions', () => {
     }
   })
 
+  /**
+   * INV-DPARSE-3. A key that starts like an extended key has to be one.
+   *
+   * The prefix list answered "do the first four characters look familiar", and
+   * that was the whole test. `xpub` on its own parsed. So did a real key with
+   * one extra character, which is the case that matters, because the BIP-380
+   * checksum is over the descriptor STRING: every malformed key below has a
+   * perfectly valid descriptor checksum of its own, and the parser's error
+   * offers it.
+   *
+   * It mattered twice over. The failure arrived later and somewhere else, from
+   * the library asked to derive an address, rather than from the thing that
+   * read the descriptor. And `keyPayload`, which makes one key spelled xpub and
+   * Zpub compare equal so a quorum cannot list one device twice, compares the
+   * bytes under the version: appending a character changes all of them, so the
+   * same key with a typo was a second, distinct cosigner and a 2-of-3 that is
+   * really a 2-of-2 was accepted.
+   */
+  it('refuses-a-key-that-only-starts-like-an-extended-key', () => {
+    const bad: [string, RegExp][] = [
+      // The real key with one more character on the end.
+      [`${XPUB}x`, /83 bytes rather than 82/],
+      // The prefix and nothing else.
+      ['xpub', /rather than 82/],
+      // Characters base58 does not contain.
+      ['xpubTHISISNOTAKEYATALL', /not valid base58/],
+      // Right length and shape, wrong check bytes: one character swapped for
+      // another inside the payload, which is what a mistyped key looks like.
+      [
+        `${XPUB.slice(0, 20)}${XPUB[20] === 'a' ? 'b' : 'a'}${XPUB.slice(21)}`,
+        /fails its own checksum/,
+      ],
+    ]
+    for (const [input, pattern] of bad) {
+      expect(() => parseKeyExpression(input), input.slice(0, 30)).toThrow(pattern)
+    }
+
+    // And the real one still parses, so this is validation rather than a ban.
+    expect(parseKeyExpression(`${XPUB}/0/*`).kind).toBe('extended')
+  })
+
   // INV-DPARSE-4: a descriptor is not a place for private key material.
   it('refuses-extended-private-keys', () => {
     const xprv =

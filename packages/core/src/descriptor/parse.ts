@@ -24,6 +24,8 @@
  */
 
 import { hexToBytes } from '@noble/hashes/utils.js'
+import { sha256 } from '@noble/hashes/sha2.js'
+import { base58 } from '@scure/base'
 import { HARDENED_OFFSET, PathError, parsePath } from '../derive/path.js'
 import { verifyChecksum } from './checksum.js'
 
@@ -222,6 +224,67 @@ function parseOrigin(input: string): { origin: KeyOrigin | undefined; rest: stri
  * multipath. Rejects anything else rather than ignoring it: a suffix nobody
  * understood is a descriptor describing scripts nobody enumerated.
  */
+/**
+ * An extended key is refused unless it really is one.
+ *
+ * WHAT THIS CLOSES. The prefix list above answers "does this start with four
+ * letters we recognise", and that was the entire test. `xpub` on its own
+ * parsed. So did `xpubTHISISNOTAKEYATALL`. So did a real key with one extra
+ * character on the end, which is the interesting one, because the descriptor
+ * checksum does not help: BIP-380 checksums the descriptor STRING, so every
+ * one of those malformed keys has a perfectly valid descriptor checksum of its
+ * own, and the error message offers it.
+ *
+ * Two consequences, and the second is the reason this is here rather than left
+ * to fail downstream.
+ *
+ * The failure arrived late and somewhere else. `HDKey.fromExtendedKey` rejects
+ * the key when an address is derived, so a user registering a quorum learned
+ * their cosigner's key was mistyped at the point they tried to receive, with an
+ * error from a library rather than from the thing that read the descriptor. The
+ * rule at the top of this file is "understand it exactly, or refuse it".
+ *
+ * And it made the duplicate-key refusal avoidable. `keyPayload` in multisig.ts
+ * decodes a key and compares the 74 bytes under the version, so that one key
+ * spelled xpub and Zpub is recognised as one cosigner. Appending a character
+ * changes every one of those bytes, so the same key listed twice, once with a
+ * typo, is two distinct cosigners to that check: a 2-of-3 that is really a
+ * 2-of-2, accepted because the second copy is no longer the same string.
+ *
+ * base58check, done here rather than with a library helper, because the four
+ * trailing bytes are what distinguish a mistyped key from a key.
+ */
+function assertExtendedKey(value: string): void {
+  let raw: Uint8Array
+  try {
+    raw = base58.decode(value)
+  } catch {
+    throw new DescriptorParseError(
+      `Key ${JSON.stringify(value.slice(0, 24))} starts like an extended key and is not ` +
+        `valid base58.`
+    )
+  }
+
+  // 4 version + 74 payload + 4 checksum.
+  if (raw.length !== 82) {
+    throw new DescriptorParseError(
+      `Key ${JSON.stringify(value.slice(0, 24))} starts like an extended key and decodes to ` +
+        `${String(raw.length)} bytes rather than 82. A character has been added or lost.`
+    )
+  }
+
+  const body = raw.slice(0, 78)
+  const expected = sha256(sha256(body)).slice(0, 4)
+  const found = raw.slice(78)
+  if (!expected.every((byte, index) => byte === found[index])) {
+    throw new DescriptorParseError(
+      `Key ${JSON.stringify(value.slice(0, 24))} has the right shape for an extended key and ` +
+        `fails its own checksum, so it has been mistyped or altered. The four check bytes at ` +
+        `the end exist to catch exactly this.`
+    )
+  }
+}
+
 function parseDerivation(suffix: string): {
   path: string
   ranged: boolean
@@ -343,6 +406,7 @@ export function parseKeyExpression(input: string): KeyExpression {
     const slash = rest.indexOf('/')
     const xpub = slash === -1 ? rest : rest.slice(0, slash)
     const suffix = slash === -1 ? '' : rest.slice(slash)
+    assertExtendedKey(xpub)
     const { path, ranged, multipath } = parseDerivation(suffix)
 
     return {
