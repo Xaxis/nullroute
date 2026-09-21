@@ -124,13 +124,32 @@ the point where it can actually be observed:
   no network and no booted system, and it emits JSON that binds into the same
   spec system the application code uses.
 - **At build time**, by asserting on the plain text a human can also read:
-  `cmdline.txt`, `config.txt`, `/etc/fstab`, `/etc/sysctl.d/*`, and the absence
-  of `openssh-server`, `chrony`, `auditd` and `cron` from the package list.
-  Greppable and hashable, which preserves hand-verifiability.
+  `cmdline.txt` (`cmdline-exact`), `config.txt` (`boot-config-display`), the
+  absence of `openssh-server`, `chrony`, `auditd` and `cron` from the package
+  list (`absent-packages`), the absence of named paths including `/dev/rtc0`
+  (`absent-paths`), and file modes and ownership (`file-modes`). Greppable and
+  hashable, which preserves hand-verifiability.
 - **At first boot on the device**, for the facts that are provably invisible to
-  offline inspection: actual `/proc/sys` values, actual mount options from
-  `/proc/mounts`, actual unit state, zero listening sockets, `/dev/hwrng`
-  present, `/dev/rtc0` absent.
+  offline inspection: actual mount options from `/proc/mounts`
+  (`mount-options`), zero listening sockets outside `AF_UNIX`
+  (`no-listening-sockets`), and no active swap (`no-swap`).
+
+Each name in brackets is a verifier in `checks/registry.mjs`, which is the list
+`make profiles` counts and `make verify-image` runs.
+
+**WHAT THIS LIST USED TO CLAIM AND DOES NOT CHECK.** It named `/etc/fstab` and
+`/etc/sysctl.d/*` at build time, and actual `/proc/sys` values and actual unit
+state at first boot. No assertion in either profile mentions any of them and no
+verifier reads them: `sysctl-values` and `unit-state` appear as names in
+`RUNTIME_ONLY_CHECKS` in `tools/checks/check-profiles.mjs`, which classifies
+what a check WOULD need if it existed, and neither is in the registry. A
+document claiming four machine-checks that do not exist is the failure this
+directory argues against, in the file that argues it.
+
+It also listed `/dev/hwrng` present. That one is observed, and not by this
+system: the daemon's entropy health refuses a source it cannot read and reports
+unknown rather than healthy (INV-ENTHEALTH-1). It is not a provisioning
+assertion and does not belong on this list.
 
 That last split is not fastidiousness. Offline compliance scanning of a built
 image produces **false passes** on exactly the controls that matter here: a scan
