@@ -192,7 +192,22 @@ describe('core.qr.bbqr', () => {
     expect(() => splitBbqr(payload(200_000), 'psbt', { maxVersion: 10, level: 'H' })).toThrow(
       /BBQr allows/
     )
-    expect(MAX_PARTS).toBe(1296)
+    /*
+     * THE COUNT OF VALUES IS NOT THE LARGEST TOTAL, and this was 1296, which
+     * is the count. The index field runs 0 through 1295; the total field is the
+     * same two base36 characters and counts from one, so the largest total it
+     * can write is 1295. The guard is `total > MAX_PARTS`, so a payload needing
+     * exactly 1296 parts was accepted and wrote 1296 as "100": a nine character
+     * header on a format whose header is eight, emitted as a whole transfer no
+     * reader can parse.
+     *
+     * The line above this one has always said the format has room for 1295.
+     */
+    expect(MAX_PARTS).toBe(1295)
+    // The property that value exists for: the total fits the field, and one
+    // more does not.
+    expect(MAX_PARTS.toString(36)).toHaveLength(2)
+    expect((MAX_PARTS + 1).toString(36)).toHaveLength(3)
 
     // And a density cap with no room for even one base32 group says so, rather
     // than dividing by zero and reporting an impossible number of parts.

@@ -50,8 +50,22 @@ export class BbqrError extends Error {
   }
 }
 
-/** Two base36 characters, so 1296 values and 1295 as the highest index. */
-export const MAX_PARTS = 1296
+/**
+ * The most parts a transfer can have, which is not the number of values two
+ * base36 characters can hold.
+ *
+ * Two characters hold 1296 values, 0 through 1295, and that is the range of the
+ * INDEX field. The TOTAL field is the same two characters and counts from one,
+ * so the largest total it can write is 1295. This was 1296, the count rather
+ * than the largest, and the guard below is `total > MAX_PARTS`, so a payload
+ * needing exactly 1296 parts was accepted and encoded 1296 as "100": a nine
+ * character header on a format whose header is eight, emitted as a full
+ * transfer no reader can parse.
+ *
+ * The test pinning this value already said "the format has room for 1295" in
+ * the line above the assertion.
+ */
+export const MAX_PARTS = 1295
 
 const MAGIC = 'B$'
 const HEADER_LENGTH = 8
