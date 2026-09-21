@@ -112,6 +112,35 @@ describe('daemon.entropy.health', () => {
     expect(rng?.detail).toContain('all zero')
   })
 
+  /**
+   * INV-ENTHEALTH-1. A block the device only partly filled was never observed,
+   * and an unobserved source is not a healthy one.
+   *
+   * readSync returns how many bytes it actually got, and the return value was
+   * discarded into a buffer Buffer.alloc had already zero-filled. A generator
+   * handing over one byte on the second read produced a block of one real byte
+   * and thirty-one zeros, and both checks passed it: the blocks differ, and
+   * neither is all zero. The verdict was ok, with a detail claiming "two reads,
+   * different, neither all zero" about thirty-two bytes when thirty-one of them
+   * came from the allocator.
+   *
+   * A device delivering one byte per read has eight bits where this says it
+   * measured two hundred and fifty six, and the check exists to catch exactly
+   * the generator that is not really there.
+   */
+  it('reports-unknown-when-the-generator-only-partly-filled-a-block', () => {
+    // 33 bytes: the first read fills, the second gets one byte and stops.
+    const short = Buffer.from(Array.from({ length: 33 }, (_, i) => i + 1))
+    const report = checkEntropyHealth(sources({ entropyAvail: '4096', hwrng: short, uptime: 3600 }))
+
+    const rng = report.checks.find((c) => c.name === 'hardware-rng')
+    expect(rng?.verdict).toBe('unknown')
+    expect(rng?.detail).toContain('1 of 32 bytes')
+    // Never healthy, which is the property that matters.
+    expect(report.healthy).toBe(false)
+    expect(report.unknown).toBe(true)
+  })
+
   it('accepts-two-different-non-zero-reads', () => {
     const report = checkEntropyHealth(
       sources({ entropyAvail: '4096', hwrng: twoGoodBlocks(), uptime: 3600 })

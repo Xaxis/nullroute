@@ -21,10 +21,13 @@ invariants:
     statement: >
       A source that could not be observed reports unknown and is never counted
       as healthy, because a gate that passes for want of evidence is worse than
-      no gate.
+      no gate. A block the generator only partly filled counts as unobserved:
+      the rest of it is the allocator's zeros, and judging those would be the
+      same gate passing on evidence it invented.
     tests:
       - packages/daemon/test/entropy-health.test.ts::reports-unknown-rather-than-healthy-when-it-cannot-look
       - packages/daemon/test/entropy-health.test.ts::never-calls-an-unknown-source-healthy
+      - packages/daemon/test/entropy-health.test.ts::reports-unknown-when-the-generator-only-partly-filled-a-block
 
   - id: INV-ENTHEALTH-2
     statement: >

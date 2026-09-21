@@ -119,6 +119,28 @@ function poolInitialised(sources: HealthSources): HealthCheck {
  * and a constant is indistinguishable from a good sample when you only look
  * once. Two reads is the cheapest test that catches it.
  */
+/**
+ * Fill a block from the generator, or say how far it got.
+ *
+ * A character device is allowed to return fewer bytes than asked for, so this
+ * keeps reading until the block is full. The attempt count is bounded because a
+ * device returning one byte at a time forever must not become a hang inside a
+ * health check, and zero bytes back means there is no more to have.
+ *
+ * Returns the number of bytes read when it could not fill the block, which is
+ * what the caller reports rather than judging the allocator's zeros.
+ */
+function readBlock(fd: number, size: number): Buffer | number {
+  const block = Buffer.alloc(size)
+  let filled = 0
+  for (let attempt = 0; attempt < 8 && filled < size; attempt += 1) {
+    const got = readSync(fd, block, filled, size - filled, null)
+    if (got === 0) break
+    filled += got
+  }
+  return filled === size ? block : filled
+}
+
 function hardwareRng(sources: HealthSources): HealthCheck {
   if (!existsSync(sources.hwrng)) {
     return {
@@ -128,15 +150,13 @@ function hardwareRng(sources: HealthSources): HealthCheck {
     }
   }
 
-  let first: Buffer
-  let second: Buffer
+  let first: Buffer | number
+  let second: Buffer | number
   let fd: number | undefined
   try {
     fd = openSync(sources.hwrng, 'r')
-    first = Buffer.alloc(32)
-    second = Buffer.alloc(32)
-    readSync(fd, first, 0, 32, null)
-    readSync(fd, second, 0, 32, null)
+    first = readBlock(fd, 32)
+    second = readBlock(fd, 32)
   } catch (err) {
     return {
       name: 'hardware-rng',
@@ -145,6 +165,42 @@ function hardwareRng(sources: HealthSources): HealthCheck {
     }
   } finally {
     if (fd !== undefined) closeSync(fd)
+  }
+
+  /*
+   * A SHORT READ IS AN UNOBSERVED SOURCE, NOT A HEALTHY ONE.
+   *
+   * readSync returns how many bytes it actually got and the return value was
+   * discarded, into a buffer that Buffer.alloc had already zero-filled. So a
+   * generator handing over one byte on the second read produced a block of one
+   * real byte and thirty-one zeros, and the two tests below both passed it: the
+   * blocks differ, and neither is all zero. The verdict was "ok" with the
+   * detail "two reads, different, neither all zero", which is a statement about
+   * thirty-two bytes when thirty-one of them came from the allocator.
+   *
+   * Measured: a 33 byte fixture reports ok today. So does a 34 byte one.
+   *
+   * INV-ENTHEALTH-1 is the rule this breaks, in its own words: a source that
+   * could not be observed reports unknown and is never counted as healthy,
+   * because a gate that passes for want of evidence is worse than no gate. A
+   * block the device only partly filled is exactly that.
+   */
+  const short = (which: string, block: Buffer | number): HealthCheck | null =>
+    typeof block === 'number'
+      ? {
+          name: 'hardware-rng',
+          verdict: 'unknown',
+          detail:
+            `the ${which} read returned ${String(block)} of 32 bytes, so most of the block ` +
+            `was never read from ${sources.hwrng} and the checks below would be judging zeros`,
+        }
+      : null
+  const shortRead = short('first', first) ?? short('second', second)
+  if (shortRead !== null) return shortRead
+  if (typeof first === 'number' || typeof second === 'number') {
+    // Unreachable: shortRead covers both. Present so the narrowing below is the
+    // compiler's conclusion rather than a cast.
+    return { name: 'hardware-rng', verdict: 'unknown', detail: 'the generator was not read' }
   }
 
   if (first.equals(second)) {
