@@ -73,12 +73,40 @@ export function storeMethods(ctx: HandlerContext): MethodTable {
     'store.unlock': (request) => {
       refuseLegacyStore('wallets.unlock')
       const wallet = requireStore().unlock(requireString(request, 'passphrase'))
-      // Network first. `masterFingerprint` and every later derivation depend
-      // on it, so loading the seed under the session's default and fixing the
-      // network afterwards would produce a fingerprint for the wrong chain.
-      session.setNetwork(wallet.network)
-      session.loadFromStore(wallet.seed)
-      session.setRegistrations(wallet.registrations)
+      /*
+       * EVERYTHING FROM HERE HAPPENS WITH A LIVE SEED IN HAND.
+       *
+       * setNetwork throws whenever a wallet is already loaded, which is a
+       * sequence a caller can reach: unlock twice without locking in between.
+       * The seed is decrypted by then and belongs to nobody, so letting the
+       * throw propagate abandoned it undisposed, which is an INV-KEY-2 leak
+       * reachable with two IPC calls and no error of any other kind.
+       *
+       * Measured: one `stored-seed` Secret built, disposed false.
+       *
+       * registry.ts makes this argument for the hint rewrite it does after
+       * unlocking, and WalletStore.unlock needed the same correction for its
+       * attempt-counter write. This is the third place a seed outlives the call
+       * that made it, and the pattern is always the same: something that can
+       * throw, after the decrypt, with nothing owning the result yet.
+       */
+      let handedOver = false
+      try {
+        // Network first. `masterFingerprint` and every later derivation depend
+        // on it, so loading the seed under the session's default and fixing the
+        // network afterwards would produce a fingerprint for the wrong chain.
+        session.setNetwork(wallet.network)
+        session.loadFromStore(wallet.seed)
+        handedOver = true
+        session.setRegistrations(wallet.registrations)
+      } catch (err) {
+        // Tracked explicitly rather than inferred from the session, because the
+        // throw this exists for happens when a wallet IS loaded: asking the
+        // session whether it holds one answers yes about a different seed.
+        // After loadFromStore the session owns this one and lock() disposes it.
+        if (!handedOver) wallet.seed.dispose()
+        throw err
+      }
       return {
         unlocked: true,
         registrations: wallet.registrations.length,

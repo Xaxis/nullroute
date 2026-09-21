@@ -26,6 +26,9 @@ import {
   seal,
 } from '../src/store/envelope.js'
 import { MAX_ATTEMPTS, WalletStore } from '../src/store/store.js'
+import { createHandler } from '../src/handler.js'
+import { Session } from '../src/session.js'
+import type { BootAttestation } from '../src/boot/attestation.js'
 
 /** Cheap parameters. The plumbing is under test, not the work factor. */
 const FAST = { m: 8192, t: 1, p: 1 } as const
@@ -366,6 +369,67 @@ describe('daemon.store', () => {
       expect(labels).not.toContain('stored-seed')
     } finally {
       made.mockRestore()
+    }
+  })
+
+  /**
+   * INV-STORE-8, one layer up. store.unlock decrypts and then calls something
+   * that throws.
+   *
+   * `session.setNetwork` throws whenever a wallet is already loaded, and
+   * unlocking twice without locking in between is a sequence a caller can
+   * reach with two IPC calls and no other error. The seed is decrypted by
+   * then and belongs to nobody, so letting the throw out abandoned it.
+   *
+   * The third place in this daemon where a seed outlived the call that made
+   * it, and the shape is always the same: something that can throw, after the
+   * decrypt, with nothing owning the result yet. The other two were
+   * WalletStore.unlock's attempt-counter write and the registry's hint
+   * rewrite, and both are covered a few lines from here.
+   *
+   * No registry in this handler on purpose: the legacy store surface is
+   * refused outright once a device holds named wallets (INV-MW-11), so this is
+   * the configuration in which the method is reachable at all.
+   */
+  it('disposes-the-seed-when-loading-it-into-the-session-throws', async () => {
+    const store = new WalletStore(dir, FAST)
+    using seed = seedBytes()
+    store.create(seed, SIGNET, PASSPHRASE)
+
+    const session = new Session()
+    const handler = createHandler({
+      attestation: { passed: true } as unknown as BootAttestation,
+      session,
+      store,
+    })
+    const call = (method: string, params: Record<string, unknown> = {}): Promise<unknown> =>
+      handler({ id: '1', method, params })
+
+    const made: Secret[] = []
+    const real = Secret.fromBytes.bind(Secret)
+    const spy = vi.spyOn(Secret, 'fromBytes').mockImplementation((bytes, label) => {
+      const secret = real(bytes, label)
+      if (label === 'stored-seed') made.push(secret)
+      return secret
+    })
+
+    try {
+      // Opened once, which loads a wallet and fixes the network.
+      await call('store.unlock', { passphrase: PASSPHRASE })
+      const before = made.length
+
+      // And again, without locking. setNetwork throws after the decrypt.
+      await expect(call('store.unlock', { passphrase: PASSPHRASE })).rejects.toThrow(
+        /network is fixed/
+      )
+
+      // The second decrypt really happened, so this is not passing by never
+      // reaching the interesting line.
+      expect(made.length).toBe(before + 1)
+      expect(made[made.length - 1]?.disposed).toBe(true)
+    } finally {
+      spy.mockRestore()
+      session.lock()
     }
   })
 

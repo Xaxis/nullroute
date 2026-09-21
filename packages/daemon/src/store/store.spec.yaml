@@ -114,6 +114,7 @@ invariants:
     tests:
       - packages/daemon/test/store.test.ts::constructs-no-seed-when-the-payload-fails-validation
       - packages/daemon/test/store.test.ts::disposes-the-seed-when-the-counter-cannot-be-reset
+      - packages/daemon/test/store.test.ts::disposes-the-seed-when-loading-it-into-the-session-throws
 
   - id: INV-STORE-7
     statement: >
