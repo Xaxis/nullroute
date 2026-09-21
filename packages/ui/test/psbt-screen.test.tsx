@@ -260,6 +260,52 @@ describe('ui.screens.psbt', () => {
     })
   })
 
+  /**
+   * INV-UI-13, the half of the sentence nothing was checking.
+   *
+   * The invariant reads "an explicit per-signature override that is not
+   * remembered", and the checkbox is labelled "Sign anyway, this once". It was
+   * remembered: the two tests above cover refusing, and lifting, and neither
+   * loads a second transaction. Signing past one blocking warning carried the
+   * consent to the next transaction, which arrived with the box already ticked
+   * and Sign live as soon as the review had been scrolled.
+   */
+  it('forgets-the-override-when-the-next-transaction-arrives', async () => {
+    const { onSign } = setup({
+      signable: false,
+      warnings: [{ kind: 'sighash', message: 'SIGHASH_NONE.', blocking: true }],
+    })
+    await reachReview()
+
+    // First transaction: tick the box, sign past the blocking warning.
+    fireEvent.click(screen.getByTestId('psbt-override'))
+    expect(screen.getByTestId<HTMLInputElement>('psbt-override').checked).toBe(true)
+    fireEvent.click(screen.getByTestId('psbt-sign'))
+    await waitFor(() => {
+      expect(onSign).toHaveBeenCalledWith('cHNidP8B', true)
+    })
+    onSign.mockClear()
+
+    // "Sign another" is the route back to the input, and the only one: Review
+    // and the textarea are not rendered while a review is on screen, so this
+    // is how a second transaction arrives at this component.
+    fireEvent.click(screen.getByTestId('psbt-another'))
+    await reachReview()
+
+    // The tick is not carried over, and neither is the permission behind it.
+    expect(screen.getByTestId<HTMLInputElement>('psbt-override').checked).toBe(false)
+    expect(screen.getByTestId<HTMLButtonElement>('psbt-sign').disabled).toBe(true)
+    fireEvent.click(screen.getByTestId('psbt-sign'))
+    expect(onSign).not.toHaveBeenCalled()
+
+    // Ticking it again works, so this is a reset and not a lockout.
+    fireEvent.click(screen.getByTestId('psbt-override'))
+    fireEvent.click(screen.getByTestId('psbt-sign'))
+    await waitFor(() => {
+      expect(onSign).toHaveBeenCalledWith('cHNidP8B', true)
+    })
+  })
+
   // INV-UI-14: a transaction with nothing of ours in it cannot be signed, and
   // says why rather than failing silently.
   it('will-not-sign-a-transaction-it-does-not-own', async () => {

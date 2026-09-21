@@ -306,6 +306,13 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
     setSigned(null)
     try {
       setRead(false)
+      // AND THE OVERRIDE, for the reason `read` is reset on the line above:
+      // agreeing to sign past one transaction's blocking warning is not
+      // agreeing to sign past the next one's. Every route that loads a review
+      // clears it, here and in "Sign another" below, so no future way back to
+      // the textarea can reintroduce the carry-over. The route that exists
+      // today is the one below, and it is the one the test drives.
+      setOverride(false)
       setReview(await onReview(psbt))
     } catch (err) {
       // Shown, never swallowed. A transaction that failed to load must not
@@ -369,6 +376,12 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
                 setSigned(null)
                 setReview(null)
                 setPsbt('')
+                // Belt and braces with doReview above. This path leads back to
+                // an empty box rather than straight to a review, so clearing
+                // here also means the checkbox is not drawn pre-ticked for a
+                // transaction nobody has pasted yet.
+                setOverride(false)
+                setRead(false)
               }}
               testId="psbt-another"
             >

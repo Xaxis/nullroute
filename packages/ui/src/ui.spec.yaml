@@ -187,6 +187,7 @@ invariants:
     tests:
       - packages/ui/test/psbt-screen.test.tsx::refuses-to-sign-when-a-warning-is-blocking
       - packages/ui/test/psbt-screen.test.tsx::allows-an-explicit-override-of-a-blocking-warning
+      - packages/ui/test/psbt-screen.test.tsx::forgets-the-override-when-the-next-transaction-arrives
 
   - id: INV-UI-14
     statement: >
