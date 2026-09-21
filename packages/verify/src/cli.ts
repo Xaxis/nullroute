@@ -134,11 +134,35 @@ function main(): number {
     })
   }
 
+  /*
+   * A FAILURE DECIDES BEFORE AN EMPTY COUNT DOES, in both of the next two, and
+   * the order was the other way round.
+   *
+   * `not-applicable` is the honest answer to "there was nothing here to check",
+   * and the site is emphatic that it must never be folded into `passed`. It is
+   * also the wrong answer to "everything here disappeared", and the two look
+   * identical from a count of zero.
+   *
+   * checkDifferential has a guard written for exactly that: NEEDS_ORACLE names
+   * the three modules that must declare an oracle, and its comment says a spec
+   * that stops declaring one "simply stopped being inspected, which is
+   * precisely how the assurance leaves without anybody noticing". Removing all
+   * three differential blocks makes that guard produce three failures and `ok`
+   * false, and the old expression read `declared === 0` first and reported
+   * not-applicable. The failures rode along in the outcome and changed nothing:
+   * the report passed, and the boot gate, which looks for checks whose status is
+   * `failed`, saw none. Measured, by stripping the blocks and running it.
+   *
+   * So the guard the file was extended with was defeated by the line that reads
+   * its result. Asking `ok` first costs nothing and makes a count of zero mean
+   * only what it says.
+   */
+
   // --- 3. Vectors ---------------------------------------------------------
   const vectors = checkVectors(REPO_ROOT, specs)
   outcomes.push({
     name: 'vectors',
-    status: vectors.declared === 0 ? 'not-applicable' : vectors.ok ? 'passed' : 'failed',
+    status: !vectors.ok ? 'failed' : vectors.declared === 0 ? 'not-applicable' : 'passed',
     detail:
       vectors.declared === 0
         ? 'no official vectors declared yet'
@@ -150,10 +174,12 @@ function main(): number {
   const differential = checkDifferential(specs)
   outcomes.push({
     name: 'differential',
-    status: differential.declared === 0 ? 'not-applicable' : differential.ok ? 'passed' : 'failed',
+    status: !differential.ok ? 'failed' : differential.declared === 0 ? 'not-applicable' : 'passed',
     detail:
       differential.declared === 0
-        ? 'no differential oracle declared yet (cross-check against bitcoinjs-lib lands with phase 2)'
+        ? // Not "lands with phase 2" any more. Phase 2 landed, three modules are
+          // cross-checked, and a zero here now means they went away.
+          'no module declares a differential oracle'
         : `${String(differential.declared)} modules cross-checked`,
     failures: differential.failures,
   })
