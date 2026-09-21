@@ -66,7 +66,35 @@ const RUNTIME_ONLY_CHECKS = new Set([
 ])
 
 let problems = 0
+/**
+ * Set by the verdict at the bottom of this file.
+ *
+ * THE VERDICT USED TO BE IN THE MIDDLE. `if (problems > 0) process.exit(1)` sat
+ * at what was then the end, and five rule blocks were appended below it over
+ * time: the unplaced-verifier check, the two halves of the .d.mts drift check,
+ * and the two halves of the untested-verifier check. Every one of them called
+ * fail(), printed its complaint, and then fell through to the summary line,
+ * which printed "20 of 20 verifiers written" and exited 0.
+ *
+ * That is the worst shape a check in this repository can take. It is not a
+ * missing check, which is visibly missing. It is a check that finds the problem,
+ * says so on the console, and tells CI everything is fine, and the three rules
+ * it silenced are the ones INV-PROV-1's `does_not_cover` hands verifier
+ * correctness to.
+ *
+ * Moving the verdict to the bottom fixes the five. This flag is what stops a
+ * sixth: a rule block appended below the verdict now throws instead of being
+ * counted into a number nobody reads afterwards.
+ */
+let judged = false
 const fail = (where, message) => {
+  if (judged) {
+    throw new Error(
+      `check-profiles: fail() called after the verdict, for "${where}". A rule block below ` +
+        `the verdict cannot affect the exit code, which is how five of them came to print ` +
+        `their findings and exit 0. Move it above the verdict.`
+    )
+  }
   problems += 1
   console.error(`${where}\n    ${message}\n`)
 }
@@ -434,13 +462,6 @@ for (const where of ['provisioning/README.md', 'README.md']) {
   }
 }
 
-if (problems > 0) {
-  console.error(
-    `check-profiles: ${problems} problem${problems === 1 ? '' : 's'} in ${files.length} profile(s)`
-  )
-  process.exit(1)
-}
-
 // The counts are printed rather than kept, because the gap between what these
 // profiles assert and what can currently be checked IS the status of this work.
 // A run that said only "valid" would be hiding the number that matters.
@@ -585,6 +606,17 @@ for (const name of built) {
     )
   }
 }
+// THE VERDICT, and it is the last thing before the summary on purpose. Every
+// rule block in this file runs above it, so a problem found by any of them
+// reaches the exit code. See the comment on `judged`.
+judged = true
+if (problems > 0) {
+  console.error(
+    `check-profiles: ${problems} problem${problems === 1 ? '' : 's'} in ${files.length} profile(s)`
+  )
+  process.exit(1)
+}
+
 console.log(
   `check-profiles: ${files.length} profile(s) valid, ` +
     `${invariantOwner.size} provisioning invariants declared, ` +
