@@ -54,10 +54,11 @@
  * serving scripts the policy was never reviewed against.
  */
 
-import { createHash } from 'node:crypto'
 import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+// ONE DEFINITION, shared with tools/build-vercel-output.mjs. See that file.
+import { buildPolicy, inlineScriptHashes, securityHeaders } from './lib/site-headers.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const OUT = join(ROOT, 'apps/web/out')
@@ -79,61 +80,7 @@ function htmlFiles(dir, found = []) {
   return found
 }
 
-/** sha256 of every inline script body across every emitted page. */
-function inlineScriptHashes() {
-  const hashes = new Set()
-  for (const file of htmlFiles(OUT)) {
-    const html = readFileSync(file, 'utf8')
-    for (const match of html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/gi)) {
-      const [, attrs = '', body = ''] = match
-      if (/\ssrc\s*=/i.test(attrs)) continue
-      if (body.trim().length === 0) continue
-      hashes.add(`'sha256-${createHash('sha256').update(body, 'utf8').digest('base64')}'`)
-    }
-  }
-  return [...hashes].sort()
-}
-
-function buildPolicy(hashes) {
-  return [
-    // Nothing loads unless a directive below says otherwise.
-    "default-src 'none'",
-    `script-src 'self' ${hashes.join(' ')}`,
-    // No 'unsafe-inline'. The build emits no inline styles and CI enforces it.
-    "style-src 'self'",
-    "img-src 'self' data:",
-    "font-src 'self'",
-    // The site makes no requests, but 'self' keeps Next's client router from
-    // tripping the policy if a future page prefetches a route payload.
-    "connect-src 'self'",
-    "manifest-src 'self'",
-    // No <base> rewriting, no form posts anywhere, no embedding in a frame.
-    "base-uri 'none'",
-    "form-action 'none'",
-    "frame-ancestors 'none'",
-    "object-src 'none'",
-    'upgrade-insecure-requests',
-  ].join('; ')
-}
-
-const SECURITY_HEADERS = (csp) => [
-  { key: 'Content-Security-Policy', value: csp },
-  { key: 'X-Content-Type-Options', value: 'nosniff' },
-  { key: 'Referrer-Policy', value: 'no-referrer' },
-  { key: 'X-Frame-Options', value: 'DENY' },
-  { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
-  // The site uses no device APIs at all. Denying them is free and means a
-  // future dependency cannot quietly start asking.
-  {
-    key: 'Permissions-Policy',
-    value:
-      'accelerometer=(), camera=(), geolocation=(), gyroscope=(), microphone=(), payment=(), usb=()',
-  },
-  { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
-  { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
-]
-
-const hashes = inlineScriptHashes()
+const hashes = inlineScriptHashes(htmlFiles(OUT).map((file) => readFileSync(file, 'utf8')))
 const csp = buildPolicy(hashes)
 
 const config = {
@@ -153,7 +100,7 @@ const config = {
   // extension and we are deliberately not using it.
   cleanUrls: true,
   trailingSlash: false,
-  headers: [{ source: '/(.*)', headers: SECURITY_HEADERS(csp) }],
+  headers: [{ source: '/(.*)', headers: securityHeaders(csp) }],
 }
 
 const serialized = `${JSON.stringify(config, null, 2)}\n`

@@ -41,7 +41,9 @@ import {
 } from 'node:fs'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createHash } from 'node:crypto'
+// ONE DEFINITION, shared with tools/gen-csp.mjs, so the policy this deploy
+// actually serves and the policy `make web-csp` checks cannot disagree.
+import { asObject, buildPolicy, inlineScriptHashes, securityHeaders } from './lib/site-headers.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const SITE = join(ROOT, 'apps/web/out')
@@ -71,43 +73,13 @@ const files = walk(STATIC).map((f) => relative(STATIC, f).replaceAll('\\', '/'))
 const htmlFiles = files.filter((f) => f.endsWith('.html'))
 
 // --- 2. Hash the inline scripts in exactly these bytes ----------------------
-const scriptHashes = new Set()
-for (const file of htmlFiles) {
-  const html = readFileSync(join(STATIC, file), 'utf8')
-  for (const match of html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/gi)) {
-    const [, attrs = '', body = ''] = match
-    if (/\ssrc\s*=/i.test(attrs)) continue
-    if (body.trim().length === 0) continue
-    scriptHashes.add(`'sha256-${createHash('sha256').update(body, 'utf8').digest('base64')}'`)
-  }
-}
+const scriptHashes = inlineScriptHashes(
+  htmlFiles.map((file) => readFileSync(join(STATIC, file), 'utf8'))
+)
 
-const csp = [
-  "default-src 'none'",
-  `script-src 'self' ${[...scriptHashes].sort().join(' ')}`,
-  "style-src 'self'",
-  "img-src 'self' data:",
-  "font-src 'self'",
-  "connect-src 'self'",
-  "manifest-src 'self'",
-  "base-uri 'none'",
-  "form-action 'none'",
-  "frame-ancestors 'none'",
-  "object-src 'none'",
-  'upgrade-insecure-requests',
-].join('; ')
+const csp = buildPolicy(scriptHashes)
 
-const headers = {
-  'Content-Security-Policy': csp,
-  'X-Content-Type-Options': 'nosniff',
-  'Referrer-Policy': 'no-referrer',
-  'X-Frame-Options': 'DENY',
-  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
-  'Permissions-Policy':
-    'accelerometer=(), camera=(), geolocation=(), gyroscope=(), microphone=(), payment=(), usb=()',
-  'Cross-Origin-Opener-Policy': 'same-origin',
-  'Cross-Origin-Resource-Policy': 'same-origin',
-}
+const headers = asObject(securityHeaders(csp))
 
 // --- 3. Clean URLs ----------------------------------------------------------
 // Without this /docs/threat-model 404s and only /docs/threat-model.html
@@ -136,5 +108,5 @@ const config = {
 writeFileSync(join(OUTPUT, 'config.json'), `${JSON.stringify(config, null, 2)}\n`)
 
 console.log(`build-vercel-output: ${files.length} files, ${htmlFiles.length} pages`)
-console.log(`  ${scriptHashes.size} inline script hashes pinned in the CSP`)
+console.log(`  ${scriptHashes.length} inline script hashes pinned in the CSP`)
 console.log(`  ${Object.keys(overrides).length} clean-URL overrides`)
