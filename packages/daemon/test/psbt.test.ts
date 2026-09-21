@@ -27,6 +27,8 @@ import {
   parseDescriptor,
   withChecksum,
 } from '@nullroute/core'
+import { hexToBytes } from '@noble/hashes/utils.js'
+import { reviewTransaction } from '@nullroute/core'
 import { buildOwnedIndex, changeLookup, signingPathsFor } from '../src/psbt.js'
 import { multisigAccountPath } from '../src/multisig.js'
 
@@ -115,16 +117,79 @@ describe('daemon.psbt', () => {
     const index = ownedIndex(seed, MAINNET, { gapLimit: 20 })
     const isChange = changeLookup(index)
 
-    // Whatever the transaction asserts, the index is built from the seed and
-    // the stranger's address is simply not in it.
+    /*
+     * THE PSBT, WHICH THIS TEST DID NOT USED TO BUILD.
+     *
+     * It asserted that STRANGER is absent from an index built from the seed,
+     * and that every entry of that index re-derives. Both are true by
+     * construction: the map is filled from re-derived addresses, so its keys
+     * re-derive and an address that is not one of them is not in it. Nothing in
+     * the body touched a transaction, a PSBT, or a bip32Derivation, and the
+     * docblock above describes all three.
+     *
+     * Measured: teach reviewTransaction to fall back to the output's own
+     * bip32Derivation when re-derivation says no, which is the attack, and all
+     * 539 core and daemon tests pass, this one included.
+     */
+    const ourFunding = ourAddress(false, 0)
+    const fundingScript = btc.OutScript.encode(
+      btc
+        .Address({
+          bech32: MAINNET.bech32,
+          pubKeyHash: MAINNET.pubKeyHash,
+          scriptHash: MAINNET.scriptHash,
+          wif: MAINNET.wif,
+        })
+        .decode(ourFunding.address)
+    )
+    const strangerScript = btc.OutScript.encode(
+      btc
+        .Address({
+          bech32: MAINNET.bech32,
+          pubKeyHash: MAINNET.pubKeyHash,
+          scriptHash: MAINNET.scriptHash,
+          wif: MAINNET.wif,
+        })
+        .decode(STRANGER)
+    )
+
+    const root = rootFromSeed(seed, MAINNET)
+    const child = root.derive(normalizePath(`${accountPath('p2wpkh', MAINNET, 0)}/1/0`))
+    const ourPubkey = child.publicKey
+    if (ourPubkey === null) throw new Error('no public key')
+
+    const tx = new btc.Transaction({ allowUnknownOutputs: true })
+    tx.addInput({
+      txid: hexToBytes('a'.repeat(64)),
+      index: 0,
+      witnessUtxo: { script: fundingScript, amount: 200_000n },
+    })
+    // The lie: the stranger's output, carrying a derivation record that names
+    // this wallet's fingerprint at a change path. A coordinator that wanted
+    // this output counted as "returned to you" would write exactly this.
+    tx.addOutput({
+      script: strangerScript,
+      amount: 150_000n,
+      bip32Derivation: [
+        [ourPubkey, { fingerprint: 0x73c5da0a, path: [2147483732, 2147483648, 2147483648, 1, 0] }],
+      ],
+    })
+    root.wipePrivateData()
+
+    // Through a serialise and reload, because that is how it would arrive.
+    const arrived = btc.Transaction.fromPSBT(tx.toPSBT())
+    const review = reviewTransaction(arrived, { network: MAINNET, isChange })
+
+    const paid = review.outputs[0]
+    expect(paid?.address).toBe(STRANGER)
+    expect(paid?.kind).toBe('payment')
+    expect(paid?.changePath).toBeUndefined()
+    // Nothing of this transaction is presented as money coming back.
+    expect(review.outputs.every((out) => out.kind === 'payment')).toBe(true)
+
+    // And the index it was judged against still says what it always said.
     expect(isChange(STRANGER)).toBeUndefined()
     expect(index.has(STRANGER)).toBe(false)
-
-    // And the index contains only addresses that re-derive.
-    for (const [address, owned] of index) {
-      expect(owned.address).toBe(address)
-      expect(owned.path.startsWith('m/')).toBe(true)
-    }
   })
 
   // INV-PSBT-13. A payment to our own receive address is a self-send. Calling
