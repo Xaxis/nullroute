@@ -125,15 +125,40 @@ if (specFiles.length === 0 || profileFiles.length === 0) {
 
 // --- what is referenced ------------------------------------------------------
 
-const DECLARATION_SOURCES = (file) =>
-  file.endsWith('.spec.yaml') || file.startsWith('provisioning/profiles/') || file === THREAT_MODEL
+/**
+ * The three files that DECLARE invariants are scanned too, minus their own
+ * declaration lines.
+ *
+ * Skipping them wholesale was the first version and it left a hole exactly the
+ * shape of the `threats:` key. spec/schema.json describes that key as "threat
+ * identifiers from docs/THREAT-MODEL.md that this module mitigates" and says in
+ * the same sentence that "verify checks that the ids resolve". It does not:
+ * packages/verify declares the field's type and reads it nowhere. Sixty-nine
+ * entries across the specs, checked by nothing, and all sixty-nine happen to
+ * resolve, which is the state in which a rule quietly stops being true.
+ *
+ * Spec prose cites ids as well, in statements and security notes, and those are
+ * references like any other. So the rule is: a line declaring an id is a
+ * declaration, and every other mention in the file is a reference that has to
+ * resolve.
+ */
+const DECLARATION_LINE = /^\s*-\s*id:\s*INV-[A-Z][A-Z0-9]*-[0-9]+\s*$/u
+
+const THREAT_MODEL_ROW = /^\|\s*INV-[A-Z][A-Z0-9]*-[0-9]+\s*\|/u
+
+/** Lines whose ids are the declaration itself rather than a mention of one. */
+const declaresOn = (file, line) => {
+  if (file === THREAT_MODEL) return THREAT_MODEL_ROW.test(line)
+  if (file.endsWith('.spec.yaml') || file.startsWith('provisioning/profiles/'))
+    return DECLARATION_LINE.test(line) || /^\s*id:\s*INV-/u.test(line)
+  return false
+}
 
 const undeclared = new Map()
 const seen = new Set()
 let references = 0
 
 for (const file of tracked()) {
-  if (DECLARATION_SOURCES(file)) continue
   let text
   try {
     text = read(file)
@@ -143,13 +168,18 @@ for (const file of tracked()) {
   }
   if (!text.includes('INV-')) continue
 
-  for (const match of text.matchAll(ID)) {
-    references += 1
-    seen.add(match[0])
-    if (declared.has(match[0]) || DELIBERATE.has(match[0])) continue
-    const line = text.slice(0, match.index).split('\n').length
-    if (!undeclared.has(match[0])) undeclared.set(match[0], [])
-    undeclared.get(match[0]).push(`${file}:${line}`)
+  const lines = text.split('\n')
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]
+    if (!line.includes('INV-')) continue
+    if (declaresOn(file, line)) continue
+    for (const match of line.matchAll(ID)) {
+      references += 1
+      seen.add(match[0])
+      if (declared.has(match[0]) || DELIBERATE.has(match[0])) continue
+      if (!undeclared.has(match[0])) undeclared.set(match[0], [])
+      undeclared.get(match[0]).push(`${file}:${String(index + 1)}`)
+    }
   }
 }
 

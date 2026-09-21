@@ -80,7 +80,7 @@
     "threats": {
       "type": "array",
       "uniqueItems": true,
-      "description": "Threat identifiers from docs/THREAT-MODEL.md that this module mitigates. The schema only checks the shape; verify checks that the ids resolve.",
+      "description": "Threat identifiers from docs/THREAT-MODEL.md that this module mitigates. The schema only checks the shape. That the ids resolve is checked by \"make invariant-ids\", which reads every id named anywhere in the tree and requires a spec, a profile or a row of the threat model behind it. This said \"verify checks that the ids resolve\" and verify does not: it declares the field type and reads the field nowhere, so sixty-nine entries were checked by nothing and all sixty-nine happened to resolve.",
       "items": { "type": "string", "pattern": "^INV-[A-Z][A-Z0-9]*-[0-9]+$" }
     },
 
