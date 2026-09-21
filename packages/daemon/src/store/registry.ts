@@ -552,11 +552,38 @@ export class WalletRegistry {
       options.cosigners ?? []
     )
 
+    /*
+     * THE BIP-39 PASSPHRASE FLAG IS CARRIED THROUGH, and it was not.
+     *
+     * This built a fresh hint from the four fields it had just computed and
+     * wrote it over the old one, so `bip39Passphrase` was dropped. Every path
+     * that reseals goes through here: renaming a wallet, registering a quorum,
+     * forgetting one, naming a cosigner. Any of them erased it, permanently,
+     * and nothing anywhere would put it back.
+     *
+     * What that flag turns on is the must-see banner on the unlocked screen
+     * saying a wrong passphrase does not produce an error, it opens a
+     * different, valid, empty wallet, every screen after it looks normal, and
+     * the mnemonic alone will not recover this one. Erasing the flag disarms
+     * that warning on exactly the wallets it exists for. Measured: create with
+     * the flag, unlock (which preserves it), rename, and it is gone.
+     *
+     * READ FROM THE HINT, which is the opposite of what changePassphrase does
+     * for the label and the colour, and for a reason worth stating. Those two
+     * are sealed inside the ciphertext, so the hint is the weaker of two
+     * sources and copying it would launder an unauthenticated value into an
+     * authenticated one. This flag is sealed nowhere. The hint is the only
+     * place it has ever lived, so preserving it is not a choice between
+     * sources, and losing it is not a downgrade to a weaker one: it is losing
+     * the value outright.
+     */
+    const previous = this.#readHint(id)
     const hint: WalletHint = {
       label,
       colour: options.colour,
       network: options.network.id,
       fingerprint,
+      ...(previous.bip39Passphrase === true ? { bip39Passphrase: true } : {}),
     }
     this.#writeHint(id, hint)
     return hint

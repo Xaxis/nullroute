@@ -489,6 +489,53 @@ describe('daemon.store.registry', () => {
     expect(reg.store(id).exists()).toBe(true)
   })
 
+  /**
+   * INV-MW-5. Renaming must not destroy what only the hint records.
+   *
+   * `bip39Passphrase` is sealed nowhere. The hint beside the blob is the only
+   * place it has ever lived, and it is what turns on the must-see banner on the
+   * unlocked screen: a wrong passphrase does not produce an error, it opens a
+   * different, valid, empty wallet, every screen after looks normal, and the
+   * mnemonic alone will not recover this one.
+   *
+   * rename built a fresh hint from the four fields it had just computed and
+   * wrote it over the old one, so the flag was dropped. Every path that reseals
+   * goes through rename: renaming, registering a quorum, forgetting one, naming
+   * a cosigner. Any of them disarmed that warning, permanently, on exactly the
+   * wallets it exists for, and nothing anywhere would put it back.
+   */
+  it('carries-the-passphrase-flag-through-a-rename', () => {
+    const reg = registry()
+    using seed = seedFor(1)
+    const { id } = reg.create({
+      seed,
+      network: MAINNET,
+      passphrase: PASSPHRASE,
+      label: 'Cold storage',
+      colour: 'teal',
+      bip39Passphrase: true,
+    })
+    const flag = (): unknown =>
+      (JSON.parse(readFileSync(hintPath(id), 'utf8')) as Record<string, unknown>)['bip39Passphrase']
+    expect(flag()).toBe(true)
+
+    const opened = reg.unlock(id, PASSPHRASE)
+    reg.rename(id, {
+      seed: opened.seed,
+      network: opened.network,
+      passphrase: PASSPHRASE,
+      label: 'Family Vault',
+      colour: 'rose',
+      registrations: opened.registrations,
+      cosigners: opened.cosigners,
+    })
+    opened.seed.dispose()
+
+    expect(flag()).toBe(true)
+    // And the listing, which is what the daemon reads to tell the session.
+    expect(reg.list().find((entry) => entry.id === id)?.hint.bip39Passphrase).toBe(true)
+  })
+
   it('ignores-directories-that-are-not-wallets', () => {
     const reg = registry()
     const id = createWallet(reg, 1, 'Cold storage')

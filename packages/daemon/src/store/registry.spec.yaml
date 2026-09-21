@@ -91,11 +91,13 @@ invariants:
 
   - id: INV-MW-5
     statement: >
-      Renaming cannot destroy a wallet. A wrong passphrase on a cosmetic change
-      spends none of the attempt budget, while a wrong passphrase at the picker
-      still counts and still erases at the limit.
+      Renaming cannot destroy a wallet, or anything the wallet's hint is the
+      only record of. A wrong passphrase on a cosmetic change spends none of the
+      attempt budget, while a wrong passphrase at the picker still counts and
+      still erases at the limit.
     tests:
       - packages/daemon/test/registry.test.ts::renames-without-spending-the-attempt-budget
+      - packages/daemon/test/registry.test.ts::carries-the-passphrase-flag-through-a-rename
       - packages/daemon/test/wallets.ipc.test.ts::renames-the-open-wallet-without-risking-it
 
   - id: INV-MW-6
