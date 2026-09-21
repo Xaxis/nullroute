@@ -45,10 +45,10 @@ import {
   chromeBinary,
   chromeProfile,
   finish,
-  reachStep,
-  waitForDebugEndpoint,
-  reachTarget,
   reap,
+  unreachedBecause,
+  waitForDebugEndpoint,
+  walkReach,
 } from '../lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
@@ -1094,27 +1094,34 @@ async function main() {
     // Tapped in order, and a testid that no longer exists fails rather than
     // being skipped: a reach list that quietly stopped reaching anywhere would
     // report every state as fitting while measuring only the first.
-    let unreachable = null
-    for (const step of reach) {
-      // Same reason: a control one render behind is not a missing control.
-      await settled(reachTarget(step))
+    /*
+     * THIS IS THE CALLER THE OTHER THREE NOW COPY, and it is here rather than
+     * in three shapes because it was here in three shapes. This one waited for
+     * the target to exist and then evaluated once, reporting the status; the
+     * two other checks polled the full condition for 3.2s and reported a
+     * boolean; the screenshot generator polled and then carried on. Three
+     * budgets, and the tightest was on the check that walks the most states.
+     *
+     * walkReach polls the whole condition rather than settling on presence
+     * first, which is strictly more patient: a control that is present but
+     * still disabled used to fail here on the spot, and now gets the same wait
+     * as one that has not mounted. It still ends as `(disabled)`, which is the
+     * report the reach lists for the transaction review depend on.
+     */
+    const walk = await walkReach(reach, async (expression) => {
       const acted = await cdp(
         page,
         'Runtime.evaluate',
-        { expression: reachStep(step), returnByValue: true, awaitPromise: true },
+        { expression, returnByValue: true, awaitPromise: true },
         state
       )
-      if (acted.result.value !== 'clicked') {
-        unreachable = `${step} (${String(acted.result.value)})`
-        break
-      }
-      await sleep(250)
-    }
+      return acted.result.value
+    })
 
-    if (unreachable !== null) {
+    if (!walk.reached) {
       failed += 1
       console.error(`\n${label}:`)
-      console.error(`    unreachable: ${unreachable}`)
+      console.error(`    unreachable: ${unreachedBecause(walk)}`)
       continue
     }
 

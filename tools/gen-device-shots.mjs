@@ -31,9 +31,10 @@ import {
   chromeBinary,
   chromeProfile,
   finish,
-  reachStep,
   reap,
+  unreachedBecause,
   waitForDebugEndpoint,
+  walkReach,
 } from './lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
@@ -194,20 +195,45 @@ async function main() {
       url: `http://127.0.0.1:${String(PORT)}/?screen=${screen.name}`,
     })
     await sleep(1200)
-    for (const step of screen.reach ?? []) {
-      for (let attempt = 0; attempt < 40; attempt += 1) {
-        const r = await cdp(page, 'Runtime.evaluate', {
-          expression: reachStep(step),
-          returnByValue: true,
-          // A `keys:` step types on the on-screen keyboard and has to wait for
-          // React between taps, so it resolves rather than returning. Harmless
-          // for the rest: CDP returns a non-promise result unchanged.
-          awaitPromise: true,
-        })
-        if (r.result.value === 'clicked') break
-        await sleep(80)
-      }
-      await sleep(300)
+    /*
+     * AND THIS ONE TOOK THE PICTURE ANYWAY.
+     *
+     * The three checks each refuse to walk past a step that never landed, and
+     * each carries a comment explaining that measuring the screen before a step
+     * and calling it the screen after is the failure being avoided. This loop
+     * ran out of attempts, fell through, and photographed whatever was on the
+     * panel. The published shot is what nullroute.diy shows a stranger as the
+     * device, so a wrong one is worse here than in a check: a check that is
+     * wrong fails, and a screenshot that is wrong gets committed.
+     *
+     * Dormant rather than harmless. No entry in SCREENS sets `reach`, so
+     * `screen.reach ?? []` has always been empty and the loop has never run.
+     * It was a trap set for whoever adds the first screenshot that needs a
+     * reach list, which is the same reason the rule about the browser path was
+     * written before any harness was getting it wrong on purpose.
+     */
+    const walk = await walkReach(screen.reach ?? [], async (expression) => {
+      const r = await cdp(page, 'Runtime.evaluate', {
+        expression,
+        returnByValue: true,
+        // A `keys:` step types on the on-screen keyboard and has to wait for
+        // React between taps, so it resolves rather than returning. Harmless
+        // for the rest: CDP returns a non-promise result unchanged.
+        awaitPromise: true,
+      })
+      return r.result.value
+    })
+    if (!walk.reached) {
+      console.error(`\ngen-device-shots: ${screen.name} was never reached, so there is no`)
+      console.error(`picture of it to take:\n`)
+      console.error(`    ${unreachedBecause(walk)}\n`)
+      console.error(
+        '  Shooting the screen this stopped on would publish it under the name of\n' +
+          '  the one it did not reach.\n'
+      )
+      reap(chrome)
+      server.close()
+      finish(1)
     }
     const shot = await cdp(page, 'Page.captureScreenshot', { format: 'png' })
     const bytes = Buffer.from(shot.data, 'base64')

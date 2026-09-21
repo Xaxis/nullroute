@@ -446,3 +446,81 @@ export function reachTarget(step) {
   const cut = step.indexOf(':', 'type:'.length)
   return `[data-testid="${step.slice('type:'.length, cut)}"]`
 }
+
+/**
+ * Walk a reach list, and say what the page said when it did not arrive.
+ *
+ * reachStep goes to real trouble to return a specific status. Its own docblock
+ * sets the contract: "Returns a status rather than throwing, so the caller
+ * decides what a step that reached nothing means." The statuses it can hand
+ * back include `missing`, `disabled`, `no-shift-key`, `no-key-C` and
+ * `typed-16-of-27`, and the comment on that last one says a step that typed
+ * sixteen of twenty seven characters "says so instead of leaving the caller
+ * measuring a half-filled screen".
+ *
+ * TWO OF THE FOUR CALLERS THREW ALL OF IT AWAY. check-ui-roles and
+ * check-contrast polled for `clicked`, kept a boolean, and on failure printed
+ * the step name plus a sentence naming two causes: either the step is wrong, or
+ * the state it waits for stopped arriving. Neither one is the cause that
+ * actually fires. The one that fires is a busy machine, because the budget was
+ * forty attempts at 80ms and the `wait:` step this polling exists for reaches a
+ * state that arrives about two seconds after the screen. That is 1.2 seconds of
+ * headroom, and a workstation running something else eats it. It read as a
+ * regression in a gallery that no commit had touched, and was looked for as
+ * one.
+ *
+ * check-screen-fit is the caller that reports the status, and this is that made
+ * the only one. The budget is a number here rather than three numbers in three
+ * files, for the same reason the top of this module gives about the browser
+ * path and the debug endpoint: the copy that is wrong is never the copy anyone
+ * is reading.
+ *
+ * Raising the budget is close to free. A step that lands on its first
+ * evaluation costs one evaluation; the budget is only ever spent in full by a
+ * step that was going to fail, and a check that is about to fail can afford
+ * eight seconds to be right about why.
+ *
+ * `evaluate` takes the expression and returns the page's value, because the
+ * four callers each wrap CDP differently and none of that is this function's
+ * business.
+ */
+export async function walkReach(reach, evaluate, { attempts = 80, gap = 100, between = 300 } = {}) {
+  const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+  for (const step of reach) {
+    // Never a bare boolean. The last thing the page said is the finding.
+    let status = 'nothing, because it was never evaluated'
+    let landed = false
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      status = String(await evaluate(reachStep(step)))
+      if (status === 'clicked') {
+        landed = true
+        break
+      }
+      await pause(gap)
+    }
+    if (!landed) return { reached: false, step, status, waitedMs: attempts * gap }
+    // A step lands the moment its control is clickable, which is before the
+    // screen it opens has rendered. The next step looks for that screen.
+    await pause(between)
+  }
+  return { reached: true, step: null, status: 'clicked', waitedMs: 0 }
+}
+
+/**
+ * The one sentence a harness prints when a walk did not arrive.
+ *
+ * Three harnesses described the same event at three levels of detail, and the
+ * least detailed was on the check that walks the most states.
+ *
+ * The selector is named because for half the step kinds the step does not name
+ * it. `keys:Cold storage` acts on the on-screen keyboard and fails with
+ * `no-key-C`, and the element it wanted was `[data-testid="pk-space"]`: nothing
+ * in the step or the status says that, and whether the keyboard was on screen
+ * at all is the first thing worth knowing.
+ */
+export function unreachedBecause({ step, status, waitedMs }) {
+  return (
+    `stopped at ${step}: the page said "${status}" for ${String(waitedMs / 1000)}s ` +
+    `while waiting on ${reachTarget(step)}`
+  )
+}

@@ -33,9 +33,10 @@ import {
   chromeBinary,
   chromeProfile,
   finish,
-  reachStep,
   reap,
+  unreachedBecause,
   waitForDebugEndpoint,
+  walkReach,
 } from '../lib/browser.mjs'
 import { fileURLToPath } from 'node:url'
 
@@ -144,8 +145,6 @@ async function main() {
   for (const { name, reach } of screens) {
     await cdp(page, 'Page.navigate', { url: `http://127.0.0.1:${PORT}/?screen=${name}` }, st)
     await sleep(500)
-    // Retried for the same reason check-contrast retries: a step that found
-    // nothing yet is not a step to walk past.
     /*
      * A STEP THAT NEVER LANDS FAILS, rather than being walked past.
      *
@@ -157,32 +156,22 @@ async function main() {
      * assertion for that screen was then made against the wrong one, and it
      * passed, because the screen before it is also a screen with correct roles.
      *
-     * check-screen-fit does this correctly and is where the shape comes from.
+     * THE POLLING LIVES IN walkReach NOW, and so does the status. This loop had
+     * its own budget of forty attempts at 80ms and kept a boolean, so what it
+     * could report was that a step had not landed, with no part of the page's
+     * own answer in it. See walkReach for what that cost.
      */
-    let unreachable = null
-    for (const step of reach) {
-      let landed = false
-      for (let a = 0; a < 40; a += 1) {
-        const r = await cdp(
-          page,
-          'Runtime.evaluate',
-          { expression: reachStep(step), returnByValue: true, awaitPromise: true },
-          st
-        )
-        if (r.result.value === 'clicked') {
-          landed = true
-          break
-        }
-        await sleep(80)
-      }
-      if (!landed) {
-        unreachable = step
-        break
-      }
-      await sleep(300)
-    }
-    if (unreachable !== null) {
-      unreached.push({ name, step: unreachable })
+    const walk = await walkReach(reach, async (expression) => {
+      const r = await cdp(
+        page,
+        'Runtime.evaluate',
+        { expression, returnByValue: true, awaitPromise: true },
+        st
+      )
+      return r.result.value
+    })
+    if (!walk.reached) {
+      unreached.push({ name, walk })
       continue
     }
     for (const r of JSON.parse(
@@ -198,13 +187,17 @@ async function main() {
       `\ncheck-ui-roles: ${unreached.length} screen state(s) were never reached, so they were\n` +
         `never measured:\n`
     )
-    for (const { name, step } of unreached)
-      console.error(`    ${name.padEnd(24)} stopped at: ${step}`)
+    for (const { name, walk } of unreached)
+      console.error(`    ${name.padEnd(24)} ${unreachedBecause(walk)}`)
     console.error(
       `\n  A reach step that never lands leaves the harness on the screen BEFORE it,\n` +
         `  and every role it then reads is read off that one. Walking past it is how a\n` +
-        `  screen passes without existing. Either the step is wrong, or the state it\n` +
-        `  waits for stopped arriving.\n`
+        `  screen passes without existing.\n\n` +
+        `  The quoted status is the page's own answer, not a guess. "missing" is a\n` +
+        `  testid that is not in the document; "disabled" is a control that is; a\n` +
+        `  "typed-N-of-M" is a keyboard walk that got part way. If it is none of\n` +
+        `  those, or the same status held for the whole wait on a state that is fine\n` +
+        `  when this target is run alone, the machine was busy and this measured that.\n`
     )
     reap(chrome)
     server.close()

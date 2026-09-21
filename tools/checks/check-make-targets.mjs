@@ -177,4 +177,96 @@ if (problems.length > 0) {
   }
 }
 
+/*
+ * AND THEY ALL WALK THE GALLERY THE SAME WAY.
+ *
+ * The third in the same sequence, and the one with the largest spread. Four
+ * scripts walk a gallery reach list, and all four wrote their own loop around
+ * reachStep: check-screen-fit waited for the target to exist and evaluated
+ * once, check-ui-roles and check-contrast polled the whole condition for 3.2
+ * seconds, and gen-device-shots polled and then carried on regardless and took
+ * the picture.
+ *
+ * Two costs, both paid. The tightest budget was on the check that walks the
+ * most states, so it was the one that failed on a busy workstation, and the
+ * screenshot generator had no budget at all in the sense that mattered.
+ *
+ * And reachStep returns a status precisely so the caller can say what went
+ * wrong: `missing`, `disabled`, `no-key-C`, `typed-16-of-27`. Two of the four
+ * kept a boolean and printed a sentence naming two causes instead, neither of
+ * which was the cause. Twenty minutes went into looking for a regression in a
+ * gallery no commit had touched.
+ *
+ * So reachStep is not for calling. walkReach is, and it holds the budget, the
+ * refusal and the wording in one place.
+ */
+{
+  const direct = []
+  let users = 0
+  for (const { rel, path } of toolScripts()) {
+    if (rel === 'tools/lib/browser.mjs') continue
+    // Against the source with its comments blanked. Three of these four files
+    // now carry a paragraph explaining what reachStep is and why they stopped
+    // calling it, and a rule that reads those would fail on the explanation.
+    const source = stripComments(readFileSync(path, 'utf8'))
+    /*
+     * GATED ON IMPORTING THE MODULE, which the two rules above cannot use and
+     * this one must.
+     *
+     * Those two ask whether a browser-spawning script CALLS the shared helper,
+     * so they have to consider a script that imports nothing, which is exactly
+     * the offender they exist to find. This one asks whether a script calls
+     * something it should not, and the difference matters: the first version
+     * was gated their way and failed on this file, because the sentences this
+     * file prints quote every identifier involved. `spawn(`, `Google Chrome`
+     * and `reachStep(` all appear here as words about code rather than as code.
+     *
+     * The same accident runs the other way in those two rules and is invisible
+     * because it is benign: this file contains the literals `chromeBinary()`
+     * and `waitForDebugEndpoint()` in its own advice, so `includes` counts it
+     * as obeying rules it is not a subject of.
+     *
+     * A file that does not import tools/lib/browser.mjs cannot call reachStep,
+     * so importing it is the honest predicate for "is one of the things this
+     * rule is about", and it is a property rather than a list of four names.
+     *
+     * Anchored on `from`, because this file names that path in the skip line
+     * of the two rules above and matched on it. Reading a file that is itself
+     * about reading files means every loose substring is a word this file uses
+     * to describe the rule as well as a word the rule is looking for.
+     */
+    if (!/from '[^']*lib\/browser\.mjs'/.test(source)) continue
+    if (source.includes('walkReach(')) users += 1
+    if (source.includes('reachStep(')) direct.push(rel)
+  }
+  if (direct.length > 0) {
+    console.error('\ncheck-make-targets: a harness walks the gallery its own way\n')
+    for (const rel of direct) console.error(`    ${rel}`)
+    console.error(
+      '\n  Use walkReach() from tools/lib/browser.mjs. Calling reachStep() directly\n' +
+        '  means writing the budget, the give-up and the wording again, and those\n' +
+        '  were written four times and disagreed four ways.\n'
+    )
+    process.exit(1)
+  }
+  /*
+   * A rule about who calls reachStep passes for free the day nothing does.
+   * The mechanism has to be in use for its absence to mean anything, which is
+   * the same argument as the zero-invocations guard at the top of this file.
+   */
+  if (users < 4) {
+    console.error(
+      `\ncheck-make-targets: only ${String(users)} script(s) call walkReach(), and four walk\n` +
+        '  the gallery. Either one went back to its own loop under another name, or\n' +
+        '  this rule is now asserting something about nothing.\n'
+    )
+    process.exit(1)
+  }
+}
+
+/** Source with // and /* comments blanked, so a rule reads code and not prose. */
+function stripComments(source) {
+  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
+}
+
 console.log(`check-make-targets: ${String(checked)} script invocations, all present`)
