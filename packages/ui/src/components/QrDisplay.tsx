@@ -18,6 +18,8 @@ import { encodeQrText, qrToSvgPath, splitBbqr, type QrCode } from '@nullroute/co
  * because a user who missed frame 3 of 7 needs to know which one.
  */
 
+export type QrFileType = 'psbt' | 'transaction' | 'json' | 'unicode' | 'binary'
+
 export interface QrDisplayProps {
   /** The payload. Split automatically when it is too large for one code. */
   readonly text: string
@@ -28,7 +30,7 @@ export interface QrDisplayProps {
    * scanners handle a plain string and a lone BBQr part would need software
    * that speaks the format for no gain.
    */
-  readonly fileType?: 'psbt' | 'transaction' | 'json' | 'unicode' | 'binary'
+  readonly fileType?: QrFileType
   /** Milliseconds per frame when animating. */
   readonly interval?: number
   readonly testId?: string
@@ -36,6 +38,26 @@ export interface QrDisplayProps {
 
 /** Slow enough for a phone to lock focus, fast enough not to bore anyone. */
 const DEFAULT_INTERVAL = 400
+
+/**
+ * The bytes a BBQr sequence carries for this payload.
+ *
+ * BBQr type P is a PSBT FILE, which BIP-174 defines as binary, and it is what
+ * Coldcard writes and what this device's own scanner expects: App decodes a
+ * P transfer as binary and base64-encodes it for review. This used to send the
+ * characters of the base64 text instead, so a signed PSBT too large for one
+ * code reached every reader, this device included, as bytes that are not a
+ * PSBT. Decoded here, with `atob` for the same reason App uses `btoa`: no
+ * dependency and no Buffer in the browser. Invalid base64 throws, and the
+ * display shows the error rather than a sequence nobody can read.
+ */
+export function bbqrPayload(text: string, fileType: QrFileType): Uint8Array {
+  if (fileType !== 'psbt') return new TextEncoder().encode(text)
+  const binary = atob(text.replace(/\s+/gu, ''))
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
+  return bytes
+}
 
 export function QrDisplay(props: QrDisplayProps): ReactElement {
   const { text, fileType = 'unicode', interval = DEFAULT_INTERVAL, testId } = props
@@ -52,8 +74,9 @@ export function QrDisplay(props: QrDisplayProps): ReactElement {
       return [encodeQrText(text, { level: 'M', version: 12 })]
     } catch {
       try {
-        const bytes = new TextEncoder().encode(text)
-        return splitBbqr(bytes, fileType).map((part) => encodeQrText(part.text, { level: 'M' }))
+        return splitBbqr(bbqrPayload(text, fileType), fileType).map((part) =>
+          encodeQrText(part.text, { level: 'M' })
+        )
       } catch (err) {
         setError((err as Error).message)
         return []

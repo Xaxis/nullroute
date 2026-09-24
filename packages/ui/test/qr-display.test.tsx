@@ -10,7 +10,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { encodeQrText, joinBbqr, parseBbqrPart } from '@nullroute/core'
-import { QrDisplay } from '../src/components/QrDisplay.js'
+import { QrDisplay, bbqrPayload } from '../src/components/QrDisplay.js'
+
+/** What App does to a scanned P transfer before review. */
+function toBase64(bytes: Uint8Array): string {
+  let binary = ''
+  for (const byte of bytes) binary += String.fromCharCode(byte)
+  return btoa(binary)
+}
 
 afterEach(cleanup)
 
@@ -114,16 +121,37 @@ describe('QrDisplay', () => {
       if (i + 1 < frames) fireEvent.click(screen.getByTestId('qr-next'))
     }
 
-    // The display owns the split, so reproduce it the way the component does
-    // and confirm the parts it produced are a complete, valid transfer.
+    // The split through the component's own payload function, so this reads
+    // what the display sends rather than a reconstruction of it.
     const { splitBbqr } = await import('@nullroute/core')
-    for (const part of splitBbqr(new TextEncoder().encode(text), 'psbt')) parts.push(part.text)
+    for (const part of splitBbqr(bbqrPayload(text, 'psbt'), 'psbt')) parts.push(part.text)
 
     expect(parts).toHaveLength(frames)
     for (const part of parts) expect(() => parseBbqrPart(part)).not.toThrow()
 
     const joined = await joinBbqr(parts)
-    expect(new TextDecoder().decode(joined.data)).toBe(text)
+    expect(toBase64(joined.data)).toBe(text)
+  })
+
+  /**
+   * INV-UI-21. A PSBT leaves as the binary file BBQr type P names.
+   *
+   * It used to leave as the characters of its base64 text, which no reader
+   * decodes as a PSBT: not a coordinator, and not this device's own scanner,
+   * which base64-encodes a P transfer for review. The test above round-tripped
+   * text through the same mistake twice and passed.
+   */
+  it('sends-a-psbt-as-the-binary-file-bbqr-defines', async () => {
+    const binary = new Uint8Array(4000)
+    binary.set([0x70, 0x73, 0x62, 0x74, 0xff])
+    for (let i = 5; i < binary.length; i += 1) binary[i] = (i * 31) % 256
+    const text = toBase64(binary)
+
+    const { splitBbqr } = await import('@nullroute/core')
+    const joined = await joinBbqr(splitBbqr(bbqrPayload(text, 'psbt'), 'psbt').map((p) => p.text))
+
+    expect(joined.fileType).toBe('psbt')
+    expect(joined.data).toEqual(binary)
   })
 
   it('keeps-the-code-dark-on-white-whatever-the-theme-is', () => {

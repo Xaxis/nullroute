@@ -285,6 +285,7 @@ invariants:
     tests:
       - packages/ui/test/qr-display.test.tsx::splits-a-large-payload-into-a-navigable-sequence
       - packages/ui/test/qr-display.test.tsx::shows-frames-that-reassemble-into-the-payload
+      - packages/ui/test/qr-display.test.tsx::sends-a-psbt-as-the-binary-file-bbqr-defines
       - packages/ui/test/qr-display.test.tsx::resets-to-the-first-frame-when-the-payload-changes
       - packages/ui/test/qr-display.test.tsx::advances-on-its-own-and-stops-when-paused
 

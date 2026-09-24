@@ -646,7 +646,8 @@ async function main() {
       }
 
       let broke = null
-      for (const step of [journey.goal, ...journey.steps]) {
+      const sequence = [journey.goal, ...journey.steps]
+      for (const [position, step] of sequence.entries()) {
         /*
          * Reading the screen to the end, which the review now requires.
          *
@@ -676,10 +677,24 @@ async function main() {
            * So: scroll, look again, and stop when the height has stopped
            * changing and the end is reached. Which is what a person does.
            */
+          /*
+           * AND UNTIL THE NEXT CONTROL EXISTS. A screen waiting on the daemon
+           * holds still, so "the height stopped changing" was also true while
+           * the review was still loading. That passed only because the signing
+           * screen used to count a scroll on its loading panel as reading the
+           * review, which was the bug fixed in b502b94. A person scrolls until
+           * the thing they are about to press is there; so does this.
+           */
+          const next = sequence[position + 1]
+          const waitFor = next !== undefined && !next.includes(':') ? next : null
           let height = -1
-          for (let attempt = 0; attempt < 40; attempt += 1) {
+          for (let attempt = 0; attempt < 80; attempt += 1) {
             const at = String(
               await evaluate(`(() => {
+                const want = ${JSON.stringify(waitFor)}
+                if (want !== null && document.querySelector('[data-testid="' + want + '"]') === null) {
+                  return '-1|false'
+                }
                 for (let pass = 0; pass < 2; pass += 1) {
                   for (const el of document.querySelectorAll('*')) {
                     if (el.scrollHeight > el.clientHeight) el.scrollTop = el.scrollHeight
