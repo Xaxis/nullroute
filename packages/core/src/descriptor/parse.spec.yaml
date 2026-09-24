@@ -27,7 +27,9 @@ algorithm: >
   raw hex key of 32, 33 or 65 bytes, or an extended public key with an optional
   derivation suffix. Both hardened notations are accepted and normalised to the
   apostrophe form. A trailing /* marks a range; BIP-389 /<a;b> multipath is
-  recorded as alternatives.
+  recorded as alternatives, and read only as the last step before the
+  wildcard. Anywhere else it is refused, because derivation substitutes the
+  chosen branch into the final step.
 
   The checksum is verified as part of parsing rather than left to the caller,
   and is required unless allowBadChecksum is explicitly passed.
@@ -56,6 +58,7 @@ invariants:
       accepted on the strength of its first four characters.
     tests:
       - packages/core/test/descriptor.parse.test.ts::refuses-what-it-does-not-understand
+      - packages/core/test/descriptor.parse.test.ts::refuses-multipath-anywhere-but-the-last-step
       - packages/core/test/descriptor.parse.test.ts::refuses-malformed-or-unknown-scripts
       - packages/core/test/descriptor.parse.test.ts::refuses-a-key-that-only-starts-like-an-extended-key
 

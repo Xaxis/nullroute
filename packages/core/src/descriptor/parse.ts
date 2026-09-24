@@ -313,6 +313,18 @@ function parseDerivation(suffix: string): {
     if (close === -1 || close < open) {
       throw new DescriptorParseError('Multipath is missing its closing angle bracket.')
     }
+    // THE LAST STEP, OR REFUSED. BIP-389 lets <a;b> stand anywhere in a path,
+    // but this parser keeps only which alternatives exist, not where they
+    // were, and derivation substitutes the chosen one into the final step.
+    // `A/<0;1>/7/*` therefore derived /0/0/* and /0/1/* instead of /0/7/*
+    // and /1/7/*: valid addresses, silently the wrong ones. Every coordinator
+    // this device reads writes the element last, so the position is refused
+    // rather than supported.
+    if (close !== working.length - 1 || working.slice(open + 1).includes('<')) {
+      throw new DescriptorParseError(
+        'A multipath element is read only as the last step before the wildcard, as in /<0;1>/*.'
+      )
+    }
     const options = working.slice(open + 1, close).split(';')
     if (options.length < 2) {
       throw new DescriptorParseError('Multipath must offer at least two alternatives.')

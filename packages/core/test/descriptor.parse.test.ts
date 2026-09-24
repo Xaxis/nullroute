@@ -66,6 +66,25 @@ describe('core.descriptor.parse key expressions', () => {
     }
   })
 
+  /**
+   * INV-DPARSE-3. A multipath element anywhere but the last step is refused.
+   *
+   * BIP-389 allows `A/<0;1>/7/*`, meaning /0/7/* for receive and /1/7/* for
+   * change. The parser kept the alternatives and not their position, and
+   * derivation put the chosen one in the last step, so this descriptor
+   * produced the addresses of /0/0/* and /0/1/* with no error anywhere.
+   */
+  it('refuses-multipath-anywhere-but-the-last-step', () => {
+    for (const suffix of ['/<0;1>/7/*', '/<0;1>/7', '/2/<0;1>/5/*', '/<0;1>/<2;3>/*']) {
+      expect(() => parseKeyExpression(`${XPUB}${suffix}`), suffix).toThrow(/last step/)
+    }
+    // The form every coordinator writes still reads, ranged or not.
+    for (const suffix of ['/<0;1>/*', '/7/<0;1>/*', '/<0;1>']) {
+      const key = parseKeyExpression(`${XPUB}${suffix}`)
+      expect(key.kind === 'extended' ? key.multipath : undefined, suffix).toEqual([0, 1])
+    }
+  })
+
   // INV-DPARSE-3: refusals. Each of these is something a lenient parser would
   // wave through, and each would mean deriving scripts nobody enumerated.
   it('refuses-what-it-does-not-understand', () => {

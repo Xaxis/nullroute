@@ -100,7 +100,10 @@ describe('core.psbt.sign', () => {
    * something, which is exactly the covert channel this device is built to
    * close.
    */
-  it('produces-byte-identical-signatures', () => {
+  // A hundred full signings: about eight seconds on an idle machine, so twice
+  // that under a busy one crosses the suite's fifteen. It says so here, as
+  // vitest.config.ts asks of any test that legitimately needs longer.
+  it('produces-byte-identical-signatures', { timeout: 60_000 }, () => {
     using seed = mnemonicToSeed(MNEMONIC, '')
 
     const signatures = new Set<string>()
