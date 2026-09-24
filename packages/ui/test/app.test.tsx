@@ -973,3 +973,181 @@ describe('ui.app device identity', () => {
     expect(screen.queryByTestId('screen-device')).toBeNull()
   })
 })
+
+/**
+ * Which quorums the Receive screen is given, and for which wallet.
+ *
+ * TWO DEFECTS, ONE CAUSE. The list was read when the wallet screen was entered
+ * and cleared by some of the paths that close a wallet. So a journey that went
+ * from unlocking straight to Receive never read it, and a wallet closed by the
+ * idle lock left its quorum behind for the next wallet's Receive screen to
+ * offer as where money should go.
+ */
+describe('ui.app which quorums Receive offers', () => {
+  const NET = { id: 'mainnet', label: 'Mainnet', isMainnet: true }
+  const JOINT = {
+    id: 'a'.repeat(16),
+    label: 'Joint',
+    colour: 'teal',
+    network: 'mainnet',
+    exists: true,
+    attemptsRemaining: 10,
+    destroyed: false,
+    bip39Passphrase: false,
+  }
+  const SPENDING = { ...JOINT, id: 'b'.repeat(16), label: 'Spending', colour: 'slate' }
+  const QUORUM = {
+    descriptor: 'wsh(sortedmulti(2,A,B,C))#aaaaqqqq',
+    checksum: 'aaaaqqqq',
+    cosigners: [],
+    threshold: 2,
+    total: 3,
+    ourPosition: 1,
+    kind: 'wsh',
+    sorted: true,
+    unreadable: null,
+  }
+
+  /** Script the daemon's answers for this wallet being the one that opens. */
+  function opens(wallet: typeof JOINT, fingerprint: string): void {
+    replies.set('wallets.unlock', {
+      unlocked: true,
+      active: { id: wallet.id, label: wallet.label, colour: wallet.colour },
+      fingerprint,
+      registrations: 0,
+      hintCorrected: false,
+      labelVerified: true,
+      bip39Passphrase: false,
+    })
+    replies.set('device.status', {
+      hasWallet: true,
+      unlocked: true,
+      fingerprint,
+      network: NET,
+      activeWallet: { id: wallet.id, label: wallet.label, colour: wallet.colour },
+    })
+  }
+
+  /** Guide me > Receive money, through the picker, from wherever the menu is. */
+  async function receiveJourney(wallet: typeof JOINT): Promise<void> {
+    fireEvent.click(screen.getByTestId('nav-menu-button'))
+    fireEvent.click(screen.getByTestId('nav-guide'))
+    await waitFor(() => {
+      expect(screen.getByTestId('start-screen')).toBeTruthy()
+    })
+    fireEvent.click(screen.getByTestId('start-goal-receive'))
+    fireEvent.click(screen.getByTestId('start-begin'))
+    await waitFor(() => {
+      expect(screen.getByTestId(`wallet-row-${wallet.id}`)).toBeTruthy()
+    })
+    fireEvent.click(screen.getByTestId(`wallet-row-${wallet.id}`))
+    fireEvent.click(screen.getByTestId('pk-key-a'))
+    fireEvent.click(screen.getByTestId('wallet-unlock-submit'))
+    await waitFor(() => {
+      expect(screen.getByTestId('unlocked-screen')).toBeTruthy()
+    })
+    fireEvent.click(screen.getByTestId('unlocked-continue'))
+  }
+
+  beforeEach(() => {
+    replies.set('wallets.list', {
+      migrated: null,
+      migrationError: null,
+      max: 8,
+      active: null,
+      wallets: [JOINT, SPENDING],
+      verified: false,
+      note: '',
+    })
+    replies.set('multisig.addresses', {
+      addresses: [{ address: 'bc1qquorumaddressforjoint', index: 0 }],
+    })
+    replies.set('wallet.addresses', {
+      addresses: [{ address: 'bc1qsinglesigforspending', path: "m/84'/0'/0'/0/0", index: 0 }],
+    })
+  })
+
+  /**
+   * INV-UI-88. A wallet in a quorum reached through Guide me > Receive money,
+   * which never passes the wallet screen, is still offered its quorum, and
+   * Receive waits for the list rather than settling on this device's own key
+   * while it is on its way.
+   */
+  it('reads-the-quorums-of-a-wallet-opened-on-the-way-to-receive', async () => {
+    replies.set('multisig.registrations', { descriptors: [QUORUM.descriptor], quorums: [QUORUM] })
+    // The list is held back until the test lets it go, so the screen is seen
+    // in the moment between the wallet opening and the answer arriving.
+    let release = (): void => undefined
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const answer = globalThis.fetch
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit & { body: string }) => {
+      const { method } = JSON.parse(init.body) as { method: string }
+      if (method === 'multisig.registrations') await held
+      return answer(url, init)
+    })
+
+    await boot()
+    opens(JOINT, 'aaaaaaaa')
+    await receiveJourney(JOINT)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('receive-waiting')).toBeTruthy()
+    })
+    expect(calls.some((c) => c.method === 'wallet.addresses')).toBe(false)
+
+    release()
+    await waitFor(() => {
+      expect(screen.getByTestId('receive-address').textContent).toContain('quor')
+    })
+    expect(screen.getByTestId('receive-source-aaaaqqqq')).toBeTruthy()
+    expect(lastCall('multisig.addresses')?.params).toMatchObject({
+      descriptor: QUORUM.descriptor,
+    })
+    expect(calls.some((c) => c.method === 'wallet.addresses')).toBe(false)
+  })
+
+  /**
+   * INV-UI-88. A wallet closed by the idle lock takes its quorums with it. The
+   * idle lock was one of the paths that did not clear them, and the next
+   * wallet's Receive screen offered the old wallet's 2-of-3 as the default.
+   */
+  it('does-not-offer-one-wallets-quorum-on-the-next-wallets-receive-screen', async () => {
+    opens(JOINT, 'aaaaaaaa')
+    replies.set('multisig.registrations', { descriptors: [QUORUM.descriptor], quorums: [QUORUM] })
+    // A one second idle window, so the lock fires on its own.
+    replies.set('session.heartbeat', { idle: { seconds: 1, warnAt: 0 } })
+    await boot()
+    fireEvent.click(screen.getByTestId('unlock'))
+    await waitFor(() => {
+      expect(calls.some((c) => c.method === 'multisig.registrations')).toBe(true)
+    })
+
+    replies.set('device.status', {
+      hasWallet: false,
+      unlocked: false,
+      fingerprint: null,
+      network: NET,
+      activeWallet: null,
+    })
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('wallets-screen')).toBeTruthy()
+      },
+      { timeout: 5000 }
+    )
+
+    replies.set('session.heartbeat', { idle: { seconds: 600, warnAt: 60 } })
+    replies.set('multisig.registrations', { descriptors: [], quorums: [] })
+    opens(SPENDING, 'bbbbbbbb')
+    await receiveJourney(SPENDING)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('receive-address').textContent).toContain('sing')
+    })
+    expect(screen.queryByTestId('receive-source-aaaaqqqq')).toBeNull()
+    expect(screen.queryByTestId('receive-sources')).toBeNull()
+    expect(calls.some((c) => c.method === 'multisig.addresses')).toBe(false)
+  }, 15_000)
+})

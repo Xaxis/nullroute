@@ -419,6 +419,10 @@ So Receive asks which one you want, and the quorum is the default. Choosing
 this device alone is allowed, says plainly that the money would be protected by
 one key rather than by the quorum, and is a thing you have to pick.
 
+The quorums offered are the open wallet's own, read each time a wallet opens,
+whichever route brought you to Receive. Until that list has been read, Receive
+shows no address at all, because it cannot yet tell which kind is yours.
+
 Money sent to the single-signature address is not lost: this device can spend
 it, and your mnemonic recovers it. It is protected by one key instead of two,
 which is the whole difference you built a fleet for.

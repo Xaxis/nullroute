@@ -3,6 +3,7 @@ import { Screen } from '../components/Screen.js'
 import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
 import { QrDisplay } from '../components/QrDisplay.js'
+import { Info } from '../components/Info.js'
 
 /**
  * One address, big enough to read off the screen.
@@ -457,6 +458,43 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
           </div>
         </>
       )}
+    </Screen>
+  )
+}
+
+/**
+ * Receive, while the open wallet's quorum list is still being read.
+ *
+ * NOT RECEIVE WITH AN EMPTY LIST. ReceiveScreen picks its default source once,
+ * when it mounts, and an empty list at that moment means this device's own key.
+ * Mounted before the list arrived, it settled on the single-signature address
+ * for a wallet in a 2-of-3 and kept it after the quorum turned up. So no
+ * address is shown until the device knows which kind is this wallet's.
+ * INV-UI-88.
+ */
+export function ReceiveWaiting(
+  props: Pick<ReceiveScreenProps, 'onBack' | 'steps' | 'identity' | 'banner' | 'nav'>
+): ReactElement {
+  const { onBack, steps, identity, banner, nav } = props
+  return (
+    <Screen
+      title="Receive"
+      subtitle="An address to give somebody, one at a time."
+      banner={banner}
+      nav={nav}
+      identity={identity}
+      steps={steps}
+      testId="receive-waiting"
+      actions={
+        <Button onClick={onBack} testId="receive-waiting-back">
+          Back
+        </Button>
+      }
+    >
+      <Info label="Reading this wallet's quorums" testId="receive-waiting-note">
+        No address yet. Whether this wallet is in a quorum decides which address is yours, so the
+        device asks before it shows one.
+      </Info>
     </Screen>
   )
 }

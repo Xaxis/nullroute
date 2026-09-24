@@ -31,7 +31,7 @@ export type { AttestationScreenProps } from './screens/AttestationScreen.js'
 
 export { StartScreen } from './screens/StartScreen.js'
 export { FinishScreen } from './screens/FinishScreen.js'
-export { ReceiveScreen, chunkAddress } from './screens/ReceiveScreen.js'
+export { ReceiveScreen, ReceiveWaiting, chunkAddress } from './screens/ReceiveScreen.js'
 export type { ReceiveScreenProps, ReceiveAddress } from './screens/ReceiveScreen.js'
 export type { FinishScreenProps } from './screens/FinishScreen.js'
 export type { StartScreenProps } from './screens/StartScreen.js'

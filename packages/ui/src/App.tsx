@@ -38,7 +38,7 @@ import { FleetScreen, type FleetQuorum } from './screens/FleetScreen.js'
 import { AssembleQuorumScreen, type AssembledView } from './screens/AssembleQuorumScreen.js'
 import { MachineEntropyScreen, type HealthReportView } from './screens/MachineEntropyScreen.js'
 import { FinishScreen } from './screens/FinishScreen.js'
-import { ReceiveScreen, type ReceiveAddress } from './screens/ReceiveScreen.js'
+import { ReceiveScreen, ReceiveWaiting, type ReceiveAddress } from './screens/ReceiveScreen.js'
 import { Steps } from './components/Steps.js'
 import { journeyById, stepsFor as journeyStepsFor, type JourneyId } from './journeys.js'
 import { LabelsScreen, type ImportedLabels, type LabelRow } from './screens/LabelsScreen.js'
@@ -399,23 +399,28 @@ export function App() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [wallets, setWallets] = useState<readonly WalletRow[]>([])
   /**
-   * Registered quorums, refreshed whenever the wallet screen is entered.
+   * Registered quorums, AND WHICH WALLET THEY WERE READ FOR.
    *
-   * Held here rather than fetched inside the screen so a lock clears it: a
-   * cosigner number left over from the previous wallet would be the exact
-   * wrong thing to show on a device that holds several.
-   */
-  const [quorums, setQuorums] = useState<readonly QuorumView[]>([])
-  /**
-   * Whether the list above is "none" or "could not ask".
+   * The wallet is part of the value because clearing a list on every path that
+   * closes a wallet did not hold. Two paths cleared it and four did not (the
+   * idle lock, the unlocked screen's Lock, erasing, opening another wallet from
+   * the picker), so a quorum read for one
+   * wallet was offered on the next one's Receive screen as where its money
+   * should go. Keyed like this, a list read for a different wallet is not a
+   * list at all, whichever path closed the old one. INV-UI-88.
    *
-   * The catch below turns a failed query into an empty list, which is right for
-   * the wallet screen and wrong for Receive: there, an empty list is a device in
-   * no quorum, and it shows the single-signature address as the only answer.
-   * That is the state ReceiveScreen's `quorums` prop was added to stop, so the
-   * error path was quietly restoring the bug the prop exists for.
+   * `unread` is "could not ask" as distinct from "none". The fetch below turns
+   * a failed query into an empty list, which is right for the wallet screen and
+   * wrong for Receive: there, an empty list is a device in no quorum, and it
+   * shows the single-signature address as the only answer.
    */
-  const [quorumsUnread, setQuorumsUnread] = useState(false)
+  const [quorumList, setQuorumList] = useState<{
+    readonly wallet: string
+    readonly quorums: readonly QuorumView[]
+    readonly unread: boolean
+  } | null>(null)
+  /** Bumped after anything that changes the registrations of the open wallet. */
+  const [quorumEdits, setQuorumEdits] = useState(0)
   /** Why the wallet list may be wrong or incomplete. Never rendered as empty. */
   const [listFailure, setListFailure] = useState<string | null>(null)
   const [maxWallets, setMaxWallets] = useState(8)
@@ -478,6 +483,21 @@ export function App() {
     label: string
     colour: string
   } | null>(null)
+
+  /*
+   * Which wallet is loaded, as one string, or null when none is.
+   *
+   * A seed that has not been saved has no id, and is told apart by its
+   * fingerprint so that replacing one unsaved seed with another still counts as
+   * a different wallet.
+   */
+  const walletKey =
+    status?.hasWallet === true ? (activeWallet?.id ?? `unsaved:${status.fingerprint ?? ''}`) : null
+  const readQuorums = quorumList !== null && quorumList.wallet === walletKey ? quorumList : null
+  const quorums = readQuorums?.quorums ?? []
+  const quorumsUnread = readQuorums?.unread ?? false
+  // With nothing loaded there is nothing to read, and so nothing to wait for.
+  const quorumsKnown = walletKey === null || readQuorums !== null
 
   const refresh = useCallback(async (): Promise<DeviceStatus> => {
     const next = await call<DeviceStatus>(transport, 'device.status')
@@ -707,11 +727,6 @@ export function App() {
       // The chip is the only always-visible answer to "which wallet is this",
       // so it must not survive the wallet it names.
       setActiveWallet(null)
-      setQuorums([])
-      // Cleared with them. A locked session has not failed to read a quorum
-      // list, it has no wallet to read one for, and carrying the flag across
-      // would put a refusal on the next wallet's Receive screen.
-      setQuorumsUnread(false)
       await refresh()
       setStage({ at: 'lock' })
     }
@@ -801,44 +816,46 @@ export function App() {
   }, [stage.at, loadWallets])
 
   /**
-   * Refresh the quorum list when the wallet screen is entered.
+   * Read the quorum list whenever the loaded wallet changes, or its
+   * registrations do.
+   *
+   * NOT WHEN THE WALLET SCREEN IS ENTERED, which is what this used to key on.
+   * Guide me > Receive money goes from unlocking straight to Receive without
+   * passing the wallet screen, so a wallet in a 2-of-3 was offered only its
+   * single-signature address. The wallet is what the list belongs to, so the
+   * wallet is what refetches it. INV-UI-88.
    *
    * Failure is swallowed here and only here: a device with no registrations at
    * all is the common case, and a wallet screen that refused to render because
    * a multisig query failed would be worse than one showing no cosigner number.
-   * The panel is absent rather than wrong.
+   * The failure is kept distinguishable from an answer, so Receive, where the
+   * difference decides what an address is worth, can say so.
    */
   useEffect(() => {
-    if (stage.at !== 'wallet') return
+    if (walletKey === null) return
     let cancelled = false
-    const run = async (): Promise<void> => {
+    const read = async (): Promise<void> => {
       try {
         const listed = await call<{ quorums: readonly QuorumView[] }>(
           transport,
           'multisig.registrations',
           {}
         )
-        if (!cancelled) {
-          setQuorums(listed.quorums)
-          setQuorumsUnread(false)
-        }
+        if (!cancelled) setQuorumList({ wallet: walletKey, quorums: listed.quorums, unread: false })
       } catch {
-        // Still swallowed, for the reason above: a wallet screen that refused to
-        // render because a multisig query failed would be worse than one showing
-        // no cosigner number. What changes is that the failure is now
-        // distinguishable from an answer, so a screen where the difference
-        // matters can say so.
-        if (!cancelled) {
-          setQuorums([])
-          setQuorumsUnread(true)
-        }
+        if (!cancelled) setQuorumList({ wallet: walletKey, quorums: [], unread: true })
       }
     }
-    void run()
+    void read()
     return () => {
       cancelled = true
     }
-  }, [stage.at])
+  }, [walletKey, quorumEdits])
+
+  /** Read the list again after something changed what it holds. */
+  const quorumsChanged = useCallback((): void => {
+    setQuorumEdits((edits) => edits + 1)
+  }, [])
 
   const unlockWallet = useCallback(
     async (id: string, passphrase: string): Promise<void> => {
@@ -970,9 +987,10 @@ export function App() {
         'multisig.register',
         passphrase === undefined ? { descriptor } : { descriptor, passphrase }
       )
+      quorumsChanged()
       return { persisted: answer.persisted === true }
     },
-    []
+    [quorumsChanged]
   )
 
   const verifyAddress = useCallback(
@@ -1293,8 +1311,6 @@ export function App() {
           const go = async (): Promise<void> => {
             await call(transport, 'session.lock')
             setActiveWallet(null)
-            setQuorums([])
-            setQuorumsUnread(false)
             await refresh()
             setStage({ at: 'wallets' })
           }
@@ -1559,8 +1575,9 @@ export function App() {
             transport,
             'multisig.registrations'
           )
-          setQuorums(listed.quorums)
-          setQuorumsUnread(false)
+          if (walletKey !== null) {
+            setQuorumList({ wallet: walletKey, quorums: listed.quorums, unread: false })
+          }
           return { persisted: answer.persisted === true }
         }}
         onBack={() => {
@@ -1803,9 +1820,26 @@ export function App() {
     )
   }
 
+  if (stage.at === 'receive' && !quorumsKnown) {
+    return (
+      <ReceiveWaiting
+        nav={menu('receive')}
+        banner={banner}
+        identity={identity}
+        steps={stepsFor('receive')}
+        onBack={() => {
+          setStage({ at: 'wallet' })
+        }}
+      />
+    )
+  }
+
   if (stage.at === 'receive') {
     return (
       <ReceiveScreen
+        // Remounted for a different wallet, because the screen chooses its
+        // default source once, from the list it mounts with. INV-UI-88.
+        key={walletKey ?? 'none'}
         nav={menu('receive')}
         banner={banner}
         identity={identity}
@@ -1959,6 +1993,10 @@ export function App() {
             passphrase,
           })
           await refresh()
+          // A backup restored into the open wallet hands back its quorums
+          // without changing which wallet is loaded, so nothing else would
+          // make the list be read again.
+          quorumsChanged()
           return result
         }}
         onBack={() => {

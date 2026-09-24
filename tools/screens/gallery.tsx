@@ -50,6 +50,7 @@ import {
   MachineEntropyScreen,
   FinishScreen,
   ReceiveScreen,
+  ReceiveWaiting,
   PassphraseScreen,
   PsbtScreen,
   QuorumAddressesScreen,
@@ -1422,6 +1423,15 @@ const SCREENS: Record<string, () => React.ReactElement> = {
         Promise.resolve({ address: ADDRESS, path: `m/84'/0'/0'/0/${String(index)}`, index })
       }
       onVerify={async () => Promise.resolve({ found: true, path: "m/84'/0'/0'/0/0" })}
+      onBack={noop}
+    />
+  ),
+  // Between the wallet opening and its quorum list arriving. Short on the
+  // device, and it is what a journey straight from unlocking lands on first.
+  'receive-waiting': () => (
+    <ReceiveWaiting
+      identity={DEVICE}
+      nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
       onBack={noop}
     />
   ),
