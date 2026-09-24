@@ -553,7 +553,7 @@ Reached from **More** on the wallet screen.
 
 | Screen | What it is |
 | --- | --- |
-| Switch wallet | Open a different wallet on this device. Locks this one first |
+| Switch wallet | Open a different wallet on this device. Locks this one first, so a wrong passphrase for the other one leaves no wallet open |
 | Check this device | The manifest root and the verification checks, after unlocking |
 | Prove an address | Sign a message with one of your addresses |
 | Check a proof | Verify somebody else's address and signature |

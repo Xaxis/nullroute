@@ -866,13 +866,30 @@ export function App() {
       // already closed.
       setActiveWallet(null)
 
-      const opened = await call<{
+      let opened: {
         active: { id: string; label: string; colour: string }
         fingerprint: string
         hintCorrected: boolean
         labelVerified: boolean
         bip39Passphrase: boolean
-      }>(transport, 'wallets.unlock', { id, passphrase })
+      }
+      try {
+        opened = await call<typeof opened>(transport, 'wallets.unlock', { id, passphrase })
+      } catch (refused) {
+        // THE OLD WALLET IS ALREADY GONE. The daemon locks before it tries, so a
+        // wrong passphrase for B closes A as well. Without asking again, status
+        // still said A was open: the menu offered its actions and the wallet
+        // screen showed its fingerprint on a device holding no seed. INV-UI-71.
+        try {
+          await refresh()
+        } catch (unasked) {
+          throw new Error(
+            `${(refused as Error).message} The device could not then be asked what is open: ` +
+              (unasked as Error).message
+          )
+        }
+        throw refused
+      }
       setActiveWallet(opened.active)
       setLabelVerified(opened.labelVerified)
       setError(null)

@@ -854,9 +854,12 @@ invariants:
   - id: INV-UI-71
     statement: >
       Switching wallets locks the session before showing the picker, and leaving
-      the picker returns to the open wallet rather than to the lock screen.
+      the picker returns to the open wallet rather than to the lock screen. A
+      switch that fails asks the daemon again what is open, so a wallet it has
+      already closed is not left on screen or offered in the menu.
     tests:
       - packages/ui/test/app.test.tsx::locks-before-showing-the-picker
+      - packages/ui/test/app.test.tsx::shows-nothing-open-after-a-switch-that-failed
       - packages/ui/test/app.test.tsx::returns-to-the-wallet-rather-than-logging-you-out
 
   - id: INV-UI-72

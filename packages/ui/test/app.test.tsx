@@ -613,6 +613,66 @@ describe('ui.app switching and checking', () => {
   })
 
   /**
+   * INV-UI-71. A switch that fails leaves nothing open, and the screen says so.
+   * The daemon locks before it tries the new wallet, so a wrong passphrase for
+   * the second wallet has closed the first. The menu kept offering the first
+   * one's actions and the wallet screen kept showing its fingerprint, on a
+   * device holding no seed at all.
+   */
+  it('shows-nothing-open-after-a-switch-that-failed', async () => {
+    const OTHER = {
+      id: 'b'.repeat(16),
+      label: 'Other',
+      colour: 'slate',
+      network: 'mainnet',
+      exists: true,
+      attemptsRemaining: 10,
+      destroyed: false,
+      bip39Passphrase: false,
+    }
+    replies.set('wallets.list', {
+      migrated: null,
+      migrationError: null,
+      max: 8,
+      active: null,
+      wallets: [OTHER],
+      verified: false,
+      note: '',
+    })
+    await intoWallet()
+    fireEvent.click(screen.getByTestId('nav-menu-button'))
+    expect(screen.getByTestId('nav-wallet')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('nav-menu-button'))
+
+    // Straight to the picker from the header, which is the route that does not
+    // lock first. wallets.unlock locks, then refuses.
+    fireEvent.click(screen.getByTestId('identity-switch'))
+    await waitFor(() => {
+      expect(screen.getByTestId(`wallet-row-${OTHER.id}`)).toBeTruthy()
+    })
+    replies.set('device.status', {
+      hasWallet: false,
+      unlocked: false,
+      fingerprint: null,
+      network: { id: 'mainnet', label: 'Mainnet', isMainnet: true },
+      activeWallet: null,
+    })
+    replies.set('wallets.unlock', new Error('Wrong passphrase.'))
+    fireEvent.click(screen.getByTestId(`wallet-row-${OTHER.id}`))
+    fireEvent.click(screen.getByTestId('pk-key-a'))
+    fireEvent.click(screen.getByTestId('wallet-unlock-submit'))
+    await waitFor(() => {
+      expect(document.body.textContent).toContain('Wrong passphrase')
+    })
+
+    fireEvent.click(screen.getByTestId('nav-menu-button'))
+    await waitFor(() => {
+      expect(screen.queryByTestId('nav-wallet')).toBeNull()
+    })
+    expect(screen.queryByTestId('nav-sign')).toBeNull()
+  })
+
+  /**
    * INV-UI-71. Leaving the picker goes back to the wallet when one is open.
    * It always went to the lock screen, which is the picker deciding to log
    * somebody out for having changed their mind.
