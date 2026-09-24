@@ -122,6 +122,8 @@ export function multisigMethods(ctx: HandlerContext): MethodTable {
             network: session.network,
             passphrase,
             label: active.label,
+            // Saving a quorum is not naming the wallet.
+            sealLabel: active.labelVerified !== false,
             colour: active.colour as WalletColour,
             cosigners: sealedCosigners,
             registrations: next,
@@ -241,6 +243,8 @@ export function multisigMethods(ctx: HandlerContext): MethodTable {
           network: session.network,
           passphrase,
           label: active.label,
+          // Saving a change is not naming the wallet.
+          sealLabel: active.labelVerified !== false,
           colour: active.colour as WalletColour,
           registrations: [...sealedRegistrations],
           cosigners: sealedNext,
@@ -332,6 +336,8 @@ export function multisigMethods(ctx: HandlerContext): MethodTable {
           network: session.network,
           passphrase,
           label: active.label,
+          // Saving a change is not naming the wallet.
+          sealLabel: active.labelVerified !== false,
           colour: active.colour as WalletColour,
           registrations: sealedNext,
           cosigners: [...sealedCosigners],

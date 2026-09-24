@@ -36,6 +36,7 @@ import {
 } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { randomBytes } from 'node:crypto'
+import { bytesToHex } from '@noble/hashes/utils.js'
 import { Secret, masterFingerprint, networkById, type Network } from '@nullroute/core'
 import {
   BadPassphraseError,
@@ -150,7 +151,11 @@ export interface CosignerLabel {
 
 /** A wallet's name and colour, as sealed. */
 export interface WalletIdentity {
-  readonly label: string
+  /**
+   * Absent to seal the colour and fingerprint without a name, which unlock
+   * reads as an unconfirmed label, exactly as it reads a v1 store.
+   */
+  readonly label?: string
   readonly colour: string
   readonly fingerprint: string
 }
@@ -172,6 +177,43 @@ export interface StoreStatus {
   readonly attemptsRemaining: number
   /** True once the blob has been destroyed by exhausted attempts. */
   readonly destroyed: boolean
+}
+
+/**
+ * The plaintext a store seals. One builder for creating and resealing, which
+ * had drifted into two copies of the same object literal.
+ *
+ * v1 when there is no identity to seal, and only then. A store with no label
+ * is byte-compatible with what every earlier build wrote and can still be
+ * opened by one, which the downgrade-and-verify workflow in
+ * docs/VERIFICATION.md depends on. Bumping the version for a field that is
+ * absent would break that for nothing. Cosigner names, likewise, appear only
+ * in a v2 payload.
+ *
+ * bytesToHex, not a Buffer: a Buffer copy of the seed lands in Node's shared
+ * pool and outlives the call (INV-STORE-9).
+ */
+function sealedPayload(
+  seed: Secret,
+  network: Network,
+  registrations: readonly string[],
+  identity: WalletIdentity | undefined,
+  cosigners: readonly CosignerLabel[]
+): SealedPayload {
+  if (identity === undefined) {
+    return { v: 1, network: network.id, seed: bytesToHex(seed.bytes), registrations }
+  }
+  return {
+    v: 2,
+    network: network.id,
+    seed: bytesToHex(seed.bytes),
+    registrations,
+    // Absent for a placeholder name, which unlock then reports as unverified.
+    ...(identity.label === undefined ? {} : { label: identity.label }),
+    colour: identity.colour,
+    fingerprint: identity.fingerprint,
+    ...(cosigners.length > 0 ? { cosigners } : {}),
+  }
 }
 
 export class WalletStore {
@@ -240,29 +282,7 @@ export class WalletStore {
       )
     }
 
-    // v1 when there is no identity to seal, and only then. A store with no
-    // label is byte-compatible with what every earlier build wrote and can
-    // still be opened by one, which the downgrade-and-verify workflow in
-    // docs/VERIFICATION.md depends on. Bumping the version for a field that is
-    // absent would break that for nothing.
-    const payload: SealedPayload =
-      identity === undefined
-        ? {
-            v: 1,
-            network: network.id,
-            seed: Buffer.from(seed.bytes).toString('hex'),
-            registrations,
-          }
-        : {
-            v: 2,
-            network: network.id,
-            seed: Buffer.from(seed.bytes).toString('hex'),
-            registrations,
-            label: identity.label,
-            colour: identity.colour,
-            fingerprint: identity.fingerprint,
-            ...(cosigners.length > 0 ? { cosigners } : {}),
-          }
+    const payload = sealedPayload(seed, network, registrations, identity, cosigners)
     using plaintext = Secret.fromBytes(
       new TextEncoder().encode(JSON.stringify(payload)),
       'store-payload'
@@ -430,33 +450,7 @@ export class WalletStore {
     identity?: WalletIdentity,
     cosigners: readonly CosignerLabel[] = []
   ): void {
-    // v1 when there is no identity to seal, and only then. A store with no
-    // label is byte-compatible with what every earlier build wrote and can
-    // still be opened by one, which the downgrade-and-verify workflow in
-    // docs/VERIFICATION.md depends on. Bumping the version for a field that is
-    // absent would break that for nothing.
-    const payload: SealedPayload =
-      identity === undefined
-        ? {
-            v: 1,
-            network: network.id,
-            seed: Buffer.from(seed.bytes).toString('hex'),
-            registrations,
-          }
-        : {
-            v: 2,
-            network: network.id,
-            seed: Buffer.from(seed.bytes).toString('hex'),
-            registrations,
-            label: identity.label,
-            colour: identity.colour,
-            fingerprint: identity.fingerprint,
-            // Only in a v2 payload. A store with no sealed identity has to stay
-            // byte-compatible with what earlier builds wrote, and an extra key
-            // in a v1 payload would break the downgrade-and-verify workflow in
-            // docs/VERIFICATION.md for a field that is cosmetic.
-            ...(cosigners.length > 0 ? { cosigners } : {}),
-          }
+    const payload = sealedPayload(seed, network, registrations, identity, cosigners)
     using plaintext = Secret.fromBytes(
       new TextEncoder().encode(JSON.stringify(payload)),
       'store-payload'

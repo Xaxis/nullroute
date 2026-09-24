@@ -60,6 +60,16 @@ export interface ActiveWallet {
   readonly id: string
   readonly label: string
   readonly colour: string
+  /**
+   * False when the label is the placeholder for a wallet that sealed no name.
+   *
+   * Carried so a reseal that is not a rename can leave the name unsealed. A
+   * passphrase change or a saved quorum wrote "Unconfirmed wallet" into the
+   * ciphertext, and the next unlock presented the placeholder as the wallet's
+   * verified name. Absent means verified: a wallet made on this device was
+   * named by its owner.
+   */
+  readonly labelVerified?: boolean
 }
 
 export interface WalletSession {

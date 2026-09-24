@@ -130,6 +130,7 @@ export function walletsMethods(ctx: HandlerContext): MethodTable {
         id: opened.id,
         label: opened.label,
         colour: opened.colour,
+        labelVerified: opened.labelVerified,
       })
       // Whether this wallet needs a BIP-39 passphrase is a property of the
       // wallet, recorded when it was made, and the session has just been
@@ -245,6 +246,9 @@ export function walletsMethods(ctx: HandlerContext): MethodTable {
         // changePassphrase.
         label: active.label,
         colour: active.colour,
+        // A placeholder name stays a placeholder: changing the passphrase is
+        // not the user naming the wallet.
+        sealLabel: active.labelVerified !== false,
         // Carried through, for the reason renaming carries them: this
         // reseals, and forgetting them would erase every cosigner name as a
         // side effect of changing a passphrase.

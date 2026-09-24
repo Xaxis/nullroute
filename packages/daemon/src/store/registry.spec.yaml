@@ -79,6 +79,16 @@ invariants:
       - packages/daemon/test/wallets.ipc.test.ts::reports-when-the-picker-was-showing-the-wrong-name
       - packages/daemon/test/passphrase-change.ipc.test.ts::seals-the-identity-from-the-ciphertext-and-not-the-hint-beside-it
 
+  - id: INV-MW-15
+    statement: >
+      A wallet that sealed no name stays unconfirmed through every reseal that
+      is not a rename: changing its passphrase or saving a quorum does not seal
+      the placeholder as its name. Renaming it seals the name the user chose.
+    tests:
+      - packages/daemon/test/unconfirmed-label.ipc.test.ts::stays-unconfirmed-through-a-passphrase-change
+      - packages/daemon/test/unconfirmed-label.ipc.test.ts::stays-unconfirmed-through-a-saved-quorum
+      - packages/daemon/test/unconfirmed-label.ipc.test.ts::is-confirmed-by-renaming-it
+
   - id: INV-MW-4
     statement: >
       One seed is one wallet. A seed already stored on a network cannot be

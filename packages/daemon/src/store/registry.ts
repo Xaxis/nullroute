@@ -532,6 +532,12 @@ export class WalletRegistry {
        * single-wallet path, which has none, does not have to say so.
        */
       readonly cosigners?: readonly { readonly xpub: string; readonly label: string }[]
+      /**
+       * False to reseal without sealing a name, for a wallet whose label is
+       * the unconfirmed placeholder and a caller that is saving something
+       * else. Only renaming names a wallet.
+       */
+      readonly sealLabel?: boolean
     }
   ): WalletHint {
     const label = normaliseLabel(options.label)
@@ -548,7 +554,11 @@ export class WalletRegistry {
       options.network,
       options.passphrase,
       options.registrations,
-      { label, colour: options.colour, fingerprint },
+      {
+        ...(options.sealLabel === false ? {} : { label }),
+        colour: options.colour,
+        fingerprint,
+      },
       options.cosigners ?? []
     )
 
@@ -660,6 +670,8 @@ export class WalletRegistry {
        */
       readonly colour: string
       readonly cosigners?: readonly { readonly xpub: string; readonly label: string }[]
+      /** False to leave a placeholder name unsealed. See `rename`. */
+      readonly sealLabel?: boolean
     }
   ): void {
     // The fingerprint is recomputed from the seed rather than carried, the same
@@ -672,7 +684,7 @@ export class WalletRegistry {
       options.newPassphrase,
       options.registrations,
       {
-        label: options.label,
+        ...(options.sealLabel === false ? {} : { label: options.label }),
         colour: isColour(options.colour) ? options.colour : DEFAULT_COLOUR,
         fingerprint: masterFingerprint(options.seed, options.network),
       },
