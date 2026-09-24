@@ -337,8 +337,16 @@ export function reviewTransaction(tx: btc.Transaction, options: ReviewOptions): 
      * The absence of derivation data is not remarkable and says nothing: a
      * coordinator has no key information for a stranger's address.
      */
-    const claimed: unknown = (output as { bip32Derivation?: readonly unknown[] }).bip32Derivation
-    const wasClaimedOurs = Array.isArray(claimed) && claimed.length > 0
+    // Both record kinds. A taproot output carries its claim in
+    // tapBip32Derivation, and reading only bip32Derivation showed a false
+    // taproot claim as a plain payment with nothing said (SP-REV-7).
+    const records = output as {
+      bip32Derivation?: readonly unknown[]
+      tapBip32Derivation?: readonly unknown[]
+    }
+    const wasClaimedOurs = [records.bip32Derivation, records.tapBip32Derivation].some(
+      (claimed) => Array.isArray(claimed) && claimed.length > 0
+    )
     const changeRejectedBecause =
       changePath === undefined && wasClaimedOurs
         ? 'The transaction carried a derivation record for this output, and it does not ' +

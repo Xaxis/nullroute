@@ -474,7 +474,7 @@ INV-SIG-1, INV-SIG-2 (differential against bitcoinjs-lib, 120 cases); manual:
 | SP-REV-4 | Met | INV-PSBT-4, INV-PSBT-8, INV-UI-12 |
 | SP-REV-5 | Met in the headless render; unverified on the panel | INV-PSBT-11; screens measured at 800x480 by `tools/checks/check-screen-fit.mjs` |
 | SP-REV-6 | Met | INV-PSBT-2, INV-PSBT-12, INV-PSBT-16, INV-UI-12; search bound four script types, two branches, 100 addresses each (`packages/daemon/src/psbt.spec.yaml` lines 77-89) |
-| SP-REV-7 | Met; the SHOULD is met for `PSBT_OUT_BIP32_DERIVATION` only | INV-UI-12. A false `PSBT_OUT_TAP_BIP32_DERIVATION` claim is shown as a payment but not reported as claimed (`review-change.json`, advisory) |
+| SP-REV-7 | Met, including the SHOULD | INV-UI-12, INV-PSBT-2. A false claim is shown as a payment and reported as claimed, from `PSBT_OUT_BIP32_DERIVATION` and `PSBT_OUT_TAP_BIP32_DERIVATION` alike (`review-change.json`; `psbt.review.test.ts::reports-a-false-taproot-claim-on-an-output`) |
 | SP-REV-8 | Met | INV-PSBT-6 |
 | SP-REV-9 | Met | INV-PSBT-7. A transaction is replaceable when any input signals, as BIP-125 defines it, checked by `review-timelocks.json` and `psbt.review.test.ts::counts-one-signalling-input-as-replaceable` |
 | SP-REV-10 | Met | INV-UI-3 |

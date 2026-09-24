@@ -49,6 +49,7 @@ invariants:
     tests:
       - packages/core/test/psbt.review.test.ts::labels-change-only-when-it-re-derives
       - packages/core/test/psbt.review.test.ts::refuses-to-call-an-attackers-address-change
+      - packages/core/test/psbt.review.test.ts::reports-a-false-taproot-claim-on-an-output
 
   - id: INV-PSBT-3
     statement: >

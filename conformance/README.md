@@ -231,7 +231,7 @@ for them.
 
 ## nullroute's results
 
-`make conformance` today: 104 cases pass, 3 fail, and one SHOULD is missed.
+`make conformance` today: 104 cases pass and 3 fail, with no SHOULD missed.
 The three failures are listed in
 [`known-failures/nullroute.json`](known-failures/nullroute.json). Two more,
 SP-REV-9 and SP-REV-11, failed when this directory was added and were fixed in
@@ -242,9 +242,9 @@ the next commit, which is what the list is for.
 | SP-TX-5 | `two-transfers-disjoint-indices` | Two transfers that agree on total, type and encoding are joined. |
 | SP-TX-6 | `write-1in20out`, `write-1in2out` | Frames are written in QR byte mode. |
 
-The advisory: an output carrying a false `PSBT_OUT_TAP_BIP32_DERIVATION` claim
-is shown as a payment, as required, but is not reported as claimed. The same
-claim made with `PSBT_OUT_BIP32_DERIVATION` is reported.
+A false `PSBT_OUT_TAP_BIP32_DERIVATION` claim used to be shown as a payment
+without being reported as claimed, while the same claim made with
+`PSBT_OUT_BIP32_DERIVATION` was. Both are reported now.
 
 ## Regenerating the vectors
 

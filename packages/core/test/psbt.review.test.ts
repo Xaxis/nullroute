@@ -441,6 +441,34 @@ describe('core.psbt.review', () => {
     expect(signed.partialSig).toHaveLength(1)
   })
 
+  /**
+   * INV-PSBT-2. A false claim that an output is ours is reported for a taproot
+   * output too. Only the segwit record was read, so a tapBip32Derivation
+   * naming this wallet's fingerprint made the output look like any payment.
+   */
+  it('reports-a-false-taproot-claim-on-an-output', () => {
+    const { changePathOf } = ourAddresses()
+    const stranger = btc.p2tr(new Uint8Array(32).fill(7))
+    const tx = build({ outputs: [] })
+    tx.addOutput({
+      script: stranger.script,
+      amount: 90_000n,
+      tapBip32Derivation: [
+        [
+          new Uint8Array(32).fill(7),
+          {
+            hashes: [],
+            der: { fingerprint: 0x73c5da0a, path: [2147483734, 2147483648, 2147483648, 1, 0] },
+          },
+        ],
+      ],
+    })
+    const arrived = btc.Transaction.fromPSBT(tx.toPSBT())
+    const review = reviewTransaction(arrived, { network: MAINNET, isChange: changePathOf })
+    expect(review.outputs[0]?.kind).toBe('payment')
+    expect(review.outputs[0]?.changeRejectedBecause).toContain('does not derive from this wallet')
+  })
+
   it('says-nothing-when-every-field-is-understood', () => {
     const { changePathOf } = ourAddresses()
     const tx = build({ outputs: [{ address: STRANGER, amount: 90_000n }] })
