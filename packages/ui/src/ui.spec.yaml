@@ -65,8 +65,6 @@ covers:
   - packages/ui/src/screens/MoreScreen.tsx::MoreScreen
   - packages/ui/src/screens/VerifyMessageScreen.tsx::VerifyMessageScreen
   - packages/ui/src/lib/idle.ts::useIdleLock
-  - packages/ui/src/lib/verdict.ts::judge
-  - packages/ui/src/lib/verdict.ts::passSentence
   - packages/ui/src/journeys.ts::JOURNEYS
   - packages/ui/src/journeys.ts::journeyById
   - packages/ui/src/journeys.ts::stepOf

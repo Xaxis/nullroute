@@ -533,7 +533,7 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
         {/* Not "saved". Whether the name outlives the next lock is the
             daemon's answer, and the line under the table repeats it once
             there is one. INV-UI-104. */}
-        <p className="nr-hint">An empty name clears it.</p>
+        <Info testId="multisig-name-why">An empty name clears it.</Info>
       </Screen>
     )
   }
