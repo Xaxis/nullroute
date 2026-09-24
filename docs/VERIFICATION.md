@@ -48,7 +48,8 @@ e4c81d6e661b430d874616bb2f2bbf7d5546cfd34097840a4a077991e80ef0dc  packages/core/
 ```
 
 **The root hash is the SHA-256 of `MANIFEST.lock` itself.** That is the value
-the device shows on its lock screen and the value published with each release.
+the device shows on its lock screen. It will also be published with each
+release once there are releases; there are none yet.
 
 ### Checking it
 
@@ -65,14 +66,14 @@ Compute the root hash:
 
 ```console
 $ sha256sum MANIFEST.lock
-283e136efdb49bd69061af47465edc24b69a416a6c4a5e81ab31b812104651e1  MANIFEST.lock
+5fd96264c418db674a0d252838ebbfd00d169fa2116254a773393b51ea9c95c4  MANIFEST.lock
 ```
 
 Regenerate the manifest from scratch and confirm it matches what is committed:
 
 ```console
 $ git ls-files -z packages spec provisioning | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum
-283e136efdb49bd69061af47465edc24b69a416a6c4a5e81ab31b812104651e1  -
+5fd96264c418db674a0d252838ebbfd00d169fa2116254a773393b51ea9c95c4  -
 ```
 
 On macOS use `shasum -a 256` in place of `sha256sum`. The values are identical.
@@ -123,15 +124,15 @@ manifest root hash means nothing, because you could not have checked it.
 ```bash
 git clone git@github.com:Xaxis/nullroute.git
 cd nullroute
-git checkout v0.1.0            # the release you are verifying
+git checkout <commit>          # the commit you are verifying; no release is tagged yet
 make install                   # npm ci, exact versions from the lockfile
 make build
 make manifest-check            # regenerates the manifest, diffs against committed
 ```
 
-Then compare the root hash against the one published with the release and the
-one displayed on your device's lock screen. Three values, all equal, or
-something is wrong.
+Then compare the root hash you computed against the one displayed on your
+device's lock screen. Nothing has been released, so there is no published value
+to make it three. Two values, equal, or something is wrong.
 
 CI runs a double build on every commit and fails if the two differ, so a
 reproducibility regression is caught at the commit that caused it rather than at
@@ -142,7 +143,9 @@ the release.
 - Every dependency pinned exactly, `npm ci` only, lockfile committed
 - `ignore-scripts=true`, so no package can run arbitrary code at install time
   and change the tree underneath you
-- `SOURCE_DATE_EPOCH` set from the commit timestamp
+- `SOURCE_DATE_EPOCH` is deliberately not set for this build, because nothing
+  in the Node toolchain reads it. It is set from the commit timestamp for the
+  image build only, which does honour it
 - File ordering sorted rather than filesystem-dependent
 - Build ids pinned rather than randomly generated
 
@@ -188,7 +191,8 @@ would prove is not yet a choice anybody has.
 
 `verification-report.json` is plain JSON. The fields that matter:
 
-- `rootHash`: compare against the lock screen and the published release
+- `rootHash`: compare against the lock screen, and against a published release
+  once one exists
 - `tier`: `signer` today, and only `signer`. See above.
 - `coverage.uncovered`: must be empty
 - `invariants[].status`: every one must be `passed`. Each entry is one
@@ -311,12 +315,15 @@ trusting arithmetic instead of people, and that argument has limits.
 
 **It does not verify the operating system.** The manifest covers the
 application. If the Raspberry Pi OS image you flashed was already backdoored,
-the root hash it displays is whatever the backdoor wants it to say. Neither
-half of the usual answer is available yet: there is no `tools/build-image/`,
-`make image` fails on purpose and says why, and no image has been published to
-check a signature on. That is the largest hole in what this document promises,
-and it is stated here rather than left to be discovered. Verification defends the application and cannot bootstrap trust in the
-thing that runs it.
+the root hash it displays is whatever the backdoor wants it to say. Half of the
+usual answer exists: `make image` builds a card from this repository, and CI
+builds the system partition and checks the unit hardening
+assertions (INV-PROV-18, INV-PROV-19) against it. The other half does not: no
+image has been published or signed, so there is nothing to check a signature
+on, and no image has run on a Raspberry Pi. That is the largest hole in what
+this document promises, and it is stated here rather than left to be
+discovered. Verification defends the application and cannot bootstrap trust in
+the thing that runs it.
 
 **It does not verify the hardware.** We check the software supply chain. We
 cannot check that your Pi is a real Pi.
@@ -357,18 +364,22 @@ Target build is under $120.
 | Case | Any | Consider one that makes tampering visible rather than one that looks nice. |
 | Power | Official PSU | An underpowered supply causes undervoltage throttling, which shows up as inexplicable slowness. |
 
-**Radios.** On any board with wifi or Bluetooth, both are disabled at two
-levels, and neither level alone is sufficient:
+**Radios.** The Pi 4 has wifi and Bluetooth, and the chip stays on the board.
+What the image does is remove the software that drives it:
 
-- `dtoverlay=disable-wifi` and `dtoverlay=disable-bt` in `config.txt`
-- the `firmware-brcm80211` and `bluez` packages removed from the image, so the
-  hardware cannot function even if someone reverts the overlay
-- `brcmfmac`, `brcmutil`, `btbcm`, `hci_uart`, `cfg80211` and `bluetooth`
-  blacklisted in modprobe config
+- the `firmware-brcm80211`, `bluez`, `wpasupplicant` and `wireless-tools`
+  packages are absent
+- the wireless and Bluetooth kernel modules (the drivers, the 802.11 stack and
+  the Bluetooth subsystem) and the `brcm` firmware files are absent
 
-If you want physical certainty rather than configuration certainty, use a board
-with no radio hardware at all. Configuration can be changed by whoever holds the
-card; a missing chip cannot.
+INV-PROV-13 asserts both against the built image, and the boot test counts
+radio modules in the mounted root filesystem. There is no
+`dtoverlay=disable-wifi` or `dtoverlay=disable-bt` in `config.txt` and no
+modprobe blacklist.
+
+The radio hardware itself is still present and still attached to the SoC.
+Anyone who can rewrite the card can put the drivers and firmware back. If you
+want physical certainty, use a board with no radio hardware at all.
 
 ---
 
@@ -396,7 +407,7 @@ language.
 
 | Tier | What it establishes | What it costs | Lands |
 | --- | --- | --- | --- |
-| 0 | The image you flashed is the image that was published, and the published image was built from the published source. | Nothing irreversible. Works on any supported board. | Phase 2 |
+| 0 | The image you flashed is byte-identical to one built from the source. Today that means an image you built: `make image` writes checksums and `make image-repro` shows two builds agree. Checking a published, signed image is planned: nothing is published or signed. | Nothing irreversible. Works on any supported board. | Phase 2, signing and publishing planned |
 | 1 | The system partition has not been modified since the build, and the device says so at boot. | A more involved build. Still reversible. | Phase 3 |
 | 2 | The boot chain itself is verified by the silicon, so the root hash the device shows cannot be chosen by an attacker. | **Irreversible.** Burns one-time fuses. Losing the signing key bricks every device provisioned with it. | Phase 7 |
 
@@ -405,9 +416,10 @@ fuses burned, no key custody, and no special hardware, and it is the default.
 
 **Tier 1's limit is the important one.** A dm-verity hash tree means the system
 partition cannot be altered without changing its root hash. But the boot
-partition is not covered, and the root hash is passed to the kernel from there.
-An attacker who rewrites the boot partition supplies their own `roothash=` and
-their own initramfs, and the device displays exactly the number they chose. Tier
+partition is not covered, and the root hash is read from there: the initramfs
+reads `/boot/system.roothash`. An attacker who rewrites the boot partition
+supplies their own `system.roothash` and their own initramfs, and the device
+displays exactly the number they chose. Tier
 1 raises the bar and gives an attentive user a chance to notice. It does not
 close the gap.
 
@@ -425,40 +437,38 @@ to "do you trust this BootROM", which is better without being elimination.
 The design principle is the one already load-bearing elsewhere in this project:
 **you check our tool with someone else's tools.** A verification procedure that
 requires running a nullroute binary to check a nullroute image is not
-verification. Every command below is `sha256sum`, `minisign`, `dd` or
-`veritysetup`, none of which are ours.
+verification. Every command below is `sha256sum`, `dd` or `veritysetup`, none of
+which are ours.
 
-#### The published artifact set
+#### What a build produces
 
-A release publishes, alongside the image:
+`make image` writes three files to `out/release/`:
 
 | File | What it is |
 | --- | --- |
-| `nullroute-<version>.img.xz` | The image |
-| `SHA256SUMS` | Plain `sha256sum` output covering every other file in the set |
-| `SHA256SUMS.minisig` | Detached signature over `SHA256SUMS` |
-| `system.roothash` | The dm-verity root hash, tier 1 and above |
-| `BUILD.lock` | Every value the build pinned to be deterministic: the epoch, the snapshot timestamp, the verity salt, and every UUID and GUID |
-| `PACKAGES.lock` | Exact package list, `dpkg-query` output sorted under `LC_ALL=C` |
-| `DEBS.lock` | Every contributing `.deb` with a sha256 and a resolvable pool URL |
-| `sbom.cdx.json` | Software bill of materials, CycloneDX, from `npm sbom` |
-| `REPRODUCE.md` | How to rebuild it and arrive at the same hashes |
+| `nullroute-<version>.img` | The card image |
+| `system.roothash` | The dm-verity root hash of the system partition |
+| `SHA256SUMS` | Plain `sha256sum` output covering the other two |
 
 Note the shape of `SHA256SUMS`: it is the same choice as `MANIFEST.lock`, for
 the same reason. One file, in the output format of a tool that already exists on
-every machine, so `sha256sum -c` checks the set and `minisign -V` checks the
-file.
+every machine, so `sha256sum -c` checks the set.
+
+**Planned, not built:** a published release carrying these files, a detached
+`minisign` signature over `SHA256SUMS`, lock files recording the pinned build
+values, the package list and every contributing `.deb`, an SBOM, and a
+`REPRODUCE.md`. No signing key exists, so there is no public key to compare and
+nothing is signed.
 
 #### Before flashing
 
 ```console
-$ minisign -Vm SHA256SUMS -P <the project public key>
-$ sha256sum -c SHA256SUMS
+$ cd out/release && sha256sum -c SHA256SUMS
 ```
 
-The public key appears verbatim in this repository, in the release, and on the
-device's own boot screen. Compare all three: a key you fetched from the same
-place as the file it verifies is not an independent check.
+This compares the image against checksums written by the same build, so it
+catches a file damaged between the build and the flash, and nothing more. It is
+not a signature check.
 
 #### After flashing
 
@@ -480,7 +490,7 @@ $ sudo veritysetup verify /dev/<card>p2 /dev/<card>p3 $(cat system.roothash)
 The lock screen shows two hashes.
 
 The first is `sha256sum MANIFEST.lock`, which attests the application. Compare
-it against the release.
+it against the value you computed from the source at the same commit.
 
 The second is the dm-verity root hash of the system partition, and it appears
 only where there is a mapping. It is read from the live device-mapper table
@@ -508,9 +518,9 @@ that draws them.
 #### Reproducing the build
 
 The strongest check available, and the only one that does not rely on us at all,
-is to build the image yourself and compare hashes. `REPRODUCE.md` in each
-release gives the exact commands, the pinned builder commit, and the snapshot
-timestamp.
+is to build the image yourself and compare hashes. There is no release and so
+no `REPRODUCE.md` yet: check out the commit, run `make image`, and compare
+`system.roothash` against the number the device shows.
 
 Where reproducibility stops short, that is stated rather than glossed. What is
 measured today is two builds on ONE machine, in two separate containers: `make
@@ -548,8 +558,8 @@ not.
 important limitation on the page. A verity hash tree means an attacker cannot
 alter the system partition without changing its root hash. But without a signed
 boot chain, the boot partition is unprotected, and an attacker who rewrites it
-supplies their own `roothash=` on the kernel command line along with their own
-initramfs. The device then cheerfully displays whatever root hash the attacker
+supplies their own `system.roothash`, which the initramfs reads from that
+partition, along with their own initramfs. The device then cheerfully displays whatever root hash the attacker
 chose. That is the same failure the threat model already describes, relocated
 one layer down. Only OTP-fused secure boot, with the root hash carried inside
 the signed image, actually closes it.
@@ -567,10 +577,11 @@ cannot check that your Pi is a real Pi, that its BootROM is the published one,
 or that nothing was added to the board between the factory and you.
 
 **Reproducibility depends on upstream archives.** A reproducible image needs its
-package inputs to remain fetchable at the versions used. Where an upstream
-archive offers no snapshot service, the mitigation is to record and publish the
-hashes of every input, so a future verifier can at least confirm what went in
-even if they can no longer reassemble it themselves.
+package inputs to remain fetchable at the versions used. Today the build
+installs from the live Debian mirror, not a snapshot, so two builds of one
+commit agree only while that archive has not moved. Pinning to a snapshot, and
+recording the hash of every input so a future verifier can at least confirm what
+went in, are planned and not built.
 
 ---
 
@@ -579,29 +590,27 @@ even if they can no longer reassemble it themselves.
 The hardware, the hardening controls and the constraints above are settled and
 will not change materially.
 
-The image build system and the boot attestation chain are in active design. That
-work also revisits the phase plan, because provisioning turned out to be
-foundational rather than the phase 7 footnote the original brief made it: an
-unverifiable operating system undercuts every application-level guarantee this
-project makes.
+The image builds and boots under QEMU. `make image-boot-test` opens the
+dm-verity mapping, reads every block, starts the signing daemon, and requires a
+copy with one byte changed to fail. No Raspberry Pi has run it, so the firmware
+path from power-on to the kernel is untested. Signing and publishing are
+planned and not built.
 
 **The contract that build has to satisfy is written and runs.** That half had to
 come first. A backend is supported when the unchanged verifiers pass against its
 output, and verifiers written afterwards would be written to agree with whatever
-the backend happened to produce, which is not a check. Fifteen of the eighteen
-assertions now carry a verifier that executes: three read the profiles, seven
-read an assembled root filesystem, and five read an image file.
+the backend happened to produce, which is not a check. Every provisioning
+assertion carries a verifier that executes. Some read the profiles, some an
+assembled root filesystem, some an image file, and some the console log of a
+booted device. `make profiles` prints the current counts and checks the ones
+`provisioning/README.md` states.
 
-The four that read an image cover the two defects that would otherwise make the
-published root hash meaningless.
-
-`rpi-image-gen` generates the dm-verity salt with `uuidgen`. The root hash is a
-function of (data, salt), so a random salt means the root hash changes on every
-build even when the filesystem is byte-identical, and the number this device
-displays at boot stops being something a user can compare against a release.
-`mke2fs` is separately never given a pinned hash seed, and the GPT GUIDs are
-generated fresh, which are invisible in a file-level diff of the root filesystem
-while making the images differ.
+Two of the image verifiers cover defects that would otherwise make the root
+hash meaningless. A dm-verity salt generated at random changes the root hash on
+every build even when the filesystem is byte-identical, and generated partition
+and filesystem identifiers make two images differ while being invisible in a
+file-level diff. Both would leave the number this device displays at boot
+impossible to compare against anything.
 
 Every identifier is instead derived from the release version by
 `provisioning/checks/identifiers.mjs`, so a third party recomputes it with
@@ -611,15 +620,11 @@ coreutils rather than with our tool:
 printf 'nullroute/verity-salt/0.4.0' | sha256sum
 ```
 
-To see those verifiers run, including a deliberate failure, use
-`make fixture-image`. It writes a synthetic image with the superblocks and the
-partition table at the offsets the published formats put them at, and then a
-third one with a drifting salt so the verifier can be watched failing. It is not
-bootable and is not an image of anything: what it proves is that the verifiers
-read the offsets they claim to, and that the derivation the build will use and
-the derivation the verifier checks are the same function. It does not prove they
-agree with what `sgdisk`, `mke2fs` and `veritysetup` actually write, and it
-cannot until an image exists.
+To see those verifiers fail on purpose, use `make fixture-image`. It writes a
+synthetic image with the superblocks and the partition table at the offsets the
+published formats put them at, then another with a drifting salt so the
+verifier can be watched failing. It is not bootable. The real image is checked
+by the same verifiers through `make verify-image` and `make image-repro`.
 
 The design is being written against a specific requirement: that building a new
 nullroute on any supported board is a repeatable, checkable operation, and that
@@ -630,8 +635,8 @@ adding a backend rather than rewriting the tooling.
 
 ## Reporting a verification failure
 
-If any check in this document fails on a released build, treat it as a security
-issue and report it privately. See [SECURITY.md](../SECURITY.md).
+If any check in this document fails, treat it as a security issue and report
+it privately. See [SECURITY.md](../SECURITY.md).
 
-Include the release tag, the root hash you computed, the root hash the device
+Include the commit, the root hash you computed, the root hash the device
 displayed, and the exact commands you ran.

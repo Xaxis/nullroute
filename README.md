@@ -69,8 +69,8 @@ $ sha256sum -c MANIFEST.lock   # every source file matches
 $ sha256sum MANIFEST.lock      # the number the device shows at boot
 ```
 
-Three values should agree: what you computed, what the lock screen shows, and
-what the release published.
+What you computed and what the lock screen shows should agree. A published
+release hash will make it three; nothing has been released yet.
 
 **Check the seed rule by hand.** Dice become a seed by SHA-256 of the ASCII roll
 string with no trailing newline. `printf`, not `echo`:
@@ -126,8 +126,10 @@ next to nullroute in a quorum.
 **One signer, not your whole wallet.** Designed for 2-of-3 or 3-of-5 alongside
 other vendors' hardware.
 
-**Duress features buy time, not safety.** This code is public, so anyone who has
-read it knows hidden profiles exist. Under real threat, give them the money.
+**Duress features are planned, not built.** Hidden profiles and a wipe PIN are
+phase 7 and no part of either exists today. When built, they buy time against
+someone unsophisticated and nothing more, because this code is public and anyone
+who has read it knows they exist. Under real threat, give them the money.
 
 **Also out of scope:** side channel attacks, sophisticated physical attacks on
 the chip, evil maid attacks without secure boot, and a backdoored OS image
@@ -143,7 +145,7 @@ and anything involving a cloud.
 | Phase | Scope | State |
 | --- | --- | --- |
 | 1 | Spec system, entropy, BIP-39/32, daemon, lock screen, networks | **Complete** |
-| 2 | Descriptors, addresses, PSBT review, signing. Provisioning tier 0. | **Complete** |
+| 2 | Descriptors, addresses, PSBT review, signing. Provisioning tier 0. | **Complete**, except tier 0 signing and publishing, which are planned |
 | 3 | Encrypted store, passphrase, multisig, cosigner registration, tier 1 boot attestation | **Complete** |
 | 4 | BIP-322 message signing, BIP-85 child seeds, BIP-329 labels | **Complete** |
 | 5 | Wallet layer, optional and lower assurance | Not started |
@@ -178,7 +180,8 @@ does not grade itself.
 from power-on to the kernel is carried and unexercised, and the kiosk browser
 has never had a display: `make image-boot-test` reports that component rather
 than judging it, because an emulator with no virtual terminal cannot. Tier 1
-boot attestation is the outstanding item in phase 3.
+boot attestation is built and proven under QEMU only. No image has been signed
+or published.
 
 **Not safe for funds** until somebody other than the author has read the
 cryptography, and until this has run on real hardware.
@@ -208,7 +211,9 @@ docs/              The documents above. A deliverable, not an afterthought.
 apps/web/          nullroute.diy. Never ships to the device.
 ```
 
-`make` on its own lists every target. `make check` runs everything CI runs.
+`make` on its own lists every target. `make check` runs most of what CI runs.
+It leaves out the recovery drill (`make test-recovery-drill`, which needs a
+regtest `bitcoind`) and the image build, which CI runs as separate jobs.
 
 ## Contributing
 

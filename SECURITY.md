@@ -28,11 +28,13 @@ about most:
   message or a log line
 - a signature that is not byte-for-byte reproducible from the seed and the PSBT
 - a PSBT that signs without matching a registered descriptor
-- an output shown as `CHANGE (verified)` that is not provably ours
+- an output the signing screen shows as change ("Change, re-derived at ...
+  Verified against your seed") that is not provably ours
 - any code path that can reach a non-loopback address
 - a build that verifies against `MANIFEST.lock` but does not match its sources
-- a way to distinguish, from outside, how many profiles a store holds, or
-  whether a given PIN attempt hit a real slot
+- once hidden profiles exist (planned for phase 7, not built), a way to
+  distinguish, from outside, how many profiles a store holds, or whether a given
+  PIN attempt hit a real slot
 
 ## What is out of scope
 

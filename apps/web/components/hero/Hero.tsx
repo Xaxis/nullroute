@@ -131,10 +131,18 @@ export function Hero({ facts }: { facts: Facts }) {
                 className="block w-full h-auto"
               />
             </figure>
+            {/* SAY THE HASHES ARE SAMPLES. The shots are rendered from the
+                gallery's fixtures, not from this commit, so the root in the
+                picture is not the root `make verify` prints further down. A
+                page that tells a reader to compare two hashes cannot show
+                them two that disagree without saying why. Rendering the real
+                root instead would make every commit under packages/ fail
+                device-shots-check. */}
             <p className="mt-3 text-sm text-ink-400 leading-relaxed">
-              The first screen, before any wallet is open. The top hash is the software the device
-              is about to run. Build the source yourself, and if your number differs, do not enter
-              your PIN. Nothing on this website runs that software.
+              The first screen, before any wallet is open, drawn with sample hashes. On a real
+              device the top one is the manifest root of the software it is about to run. Build the
+              source yourself, and if your number differs, do not enter your PIN. Nothing on this
+              website runs that software.
             </p>
           </div>
         </div>

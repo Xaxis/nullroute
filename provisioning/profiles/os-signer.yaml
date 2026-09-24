@@ -229,8 +229,8 @@ assertions:
       Scratch space holds decrypted material in the ordinary course of
       operation, and it must not survive a power cut or be executable.
     does_not_cover: >
-      Anything about the encrypted state partition, which is persistent by
-      design.
+      Anything about the state partition, which is persistent by design and not
+      encrypted at the partition level (see HARDENING.md).
     standard: ['ANSSI-BP-028 R12', 'CIS Debian 1.1.2']
 
   # --- Removing the network, not disabling it ------------------------------
@@ -695,7 +695,7 @@ excluded_controls:
     reason: >
       An audit trail exists to reconstruct who did what on a multi-user system.
       This device has no interactive users and one application, the logs would
-      have to be written to the encrypted state partition to survive, and the
+      have to be written to the state partition to survive, and the
       device already keeps a hash-chained operation log at the application layer
       that records exactly the events that matter.
 

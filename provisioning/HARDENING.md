@@ -14,11 +14,12 @@ subset of it, and the reasoning behind a control is what tells you whether a
 verifier is measuring the right thing. `MANIFEST.lock` covers this directory, so
 this file is inside the hash a user compares.
 
-Read it as a specification. The build system that applies these controls is
-still being designed, and `make image` refuses rather than producing something
-that looks flashable. Every table here says what the image WILL do, and none of
-it is running on a device yet. `README.md` in this directory carries the status
-of the verifiers that will judge it.
+Read it as a specification with a status. `make image` builds a card, and
+`make image-boot-test` boots it under QEMU. Nothing has been published and no
+image has run on a Raspberry Pi, so no row here has been observed on the target
+hardware. A row marked not applied is a control this image does not have.
+`README.md` in this directory carries the status of the verifiers that judge
+it.
 
 The controls below are the ones that matter for a single-purpose, air-gapped
 device. That qualifier is doing real work: most published hardening baselines
@@ -33,7 +34,7 @@ to see which controls are load-bearing.
 
 | Control | Implementation |
 | --- | --- |
-| No network daemons | `dhcpcd`, `wpa_supplicant`, `sshd`, `avahi` and `systemd-networkd` are absent from the image, not merely masked |
+| No network daemons | `dhcpcd`, `wpa_supplicant`, `sshd` and `avahi` are absent from the image, not merely masked (INV-PROV-13, INV-PROV-16). `systemd-networkd` ships inside the `systemd` package and is not removed |
 | Loopback only | The kernel network stack is retained for the Unix domain socket and loopback IPC, and nothing binds beyond it (INV-NET-1) |
 | No code path to a socket | Enforced in the application by a lint rule with its own regression suite (INV-NET-2), not by firewall configuration |
 
@@ -47,16 +48,16 @@ suggest the weaker one was the real defence.
 | Control | Implementation |
 | --- | --- |
 | Immutable root | Read-only root filesystem with an integrity hash tree over it, so modification is detected rather than merely discouraged |
-| Encrypted state | A separate LUKS2 partition holds the wallet store, unlocked with a key derived from the user PIN |
-| No swap | `dphys-swapfile` disabled and purged. Swap is how a seed reaches persistent storage in plaintext without anyone deciding it should |
+| State partition | A separate plain ext4 partition holds the wallet store. It is not encrypted at the partition level: LUKS2 is planned and not built. The wallet is protected by the application's own Argon2id and AES-256-GCM envelope, which is one layer, not two |
+| No swap | No swap device or file, confirmed on the running device (INV-PROV-11). Swap is how a seed reaches persistent storage in plaintext without anyone deciding it should |
 | Scratch in RAM | `/tmp` on tmpfs, mounted `noexec,nosuid,nodev` |
-| Removable media | Mounted `noexec,nosuid,nodev`. Nothing is ever auto-executed from an SD card or USB device |
+| Removable media | Not applied. Nothing in the image mounts removable media: no automount, no udev rule, no mount unit. See the threat model's section on malicious QR or SD payloads |
 
 ## Kernel and process isolation
 
 | Control | Implementation |
 | --- | --- |
-| Memory hygiene | `init_on_alloc=1 init_on_free=1` on the kernel command line, so freed pages are zeroed by the kernel rather than only by application code |
+| Memory hygiene | Not applied. `init_on_alloc=1 init_on_free=1` are not on the pinned kernel command line (INV-PROV-21), so secrets are zeroed only by application code (INV-KEY-2) |
 | Daemon sandbox | The signer runs under systemd with `ProtectSystem=strict`, `ProtectHome=true`, `PrivateTmp=true`, `PrivateUsers=true`, `PrivateNetwork=true`, `NoNewPrivileges=true`, an empty `CapabilityBoundingSet`, `RestrictAddressFamilies=AF_UNIX`, `IPAddressDeny=any`, and a `@system-service` syscall filter |
 | Device access | `DevicePolicy=closed` with `DeviceAllow=/dev/hwrng r` and nothing else |
 | No shell on the console | The device boots into the kiosk, not into a login prompt |
@@ -131,8 +132,8 @@ the point where it can actually be observed:
   hashable, which preserves hand-verifiability.
 - **At first boot on the device**, for the facts that are provably invisible to
   offline inspection: actual mount options from `/proc/mounts`
-  (`mount-options`), zero listening sockets outside `AF_UNIX`
-  (`no-listening-sockets`), and no active swap (`no-swap`).
+  (`mount-options`), no listening socket outside `AF_UNIX` except the permitted
+  loopback bridge (`no-listening-sockets`), and no active swap (`no-swap`).
 
 Each name in brackets is a verifier in `checks/registry.mjs`, which is the list
 `make profiles` counts and `make verify-image` runs.

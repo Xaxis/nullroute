@@ -119,9 +119,9 @@ verifier nobody knows works.
 
 It is not bootable and is not an image of anything. What it proves is that the
 verifiers read the offsets they claim to read, and that the derivation the build
-will use and the derivation the verifier checks are the same function. It does
-not prove they agree with what `sgdisk`, `mke2fs` and `veritysetup` actually
-write, and it cannot until an image exists.
+will use and the derivation the verifier checks are the same function. Whether
+they agree with what the real build writes is answered by pointing `make
+verify-image` at `out/system/nullroute.img`, which CI does.
 
 ### Where the pinned values come from
 
@@ -195,15 +195,15 @@ most likely to pass.
 Run them with `make verify-runtime` after `make image-boot-test`, or directly
 with `make verify-image CONSOLE=<log>`.
 
-One of the five rootfs verifiers, `systemd-exposure`, also needs
-`systemd-analyze` on the machine running it, and reports could-not-run rather
-than passing when it is absent. That is not a hypothetical. `make image-system`
-builds a real rootfs and `make verify-image` checks seven assertions against it,
-but INV-PROV-18 and INV-PROV-19, the two exposure thresholds for the units, have
-never actually been checked by a verifier: `systemd-analyze` is a Linux tool,
-much of this project is written on macOS, and CI has no job that builds an
-image. The units were measured by hand once. A hand measurement is evidence, not
-verification, and the difference is the whole point of this directory.
+One of the rootfs verifiers, `systemd-exposure`, also needs `systemd-analyze`
+on the machine running it, and reports could-not-run rather than passing when it
+is absent. `systemd-analyze` is a Linux tool and much of this project is written
+on macOS, so INV-PROV-18 and INV-PROV-19, the two exposure thresholds for the
+units, go unchecked on a workstation. The `image` job in CI closes that: it runs
+`make image-system` and then `make verify-image` with
+`REQUIRE=INV-PROV-18,INV-PROV-19`, so a missing tool there fails the job rather
+than passing quietly. Nothing built by that job is published, and none of it has
+run on a Raspberry Pi.
 
 These counts are checked against the registry by `make profiles`, because a
 status paragraph is exactly the kind of prose that goes stale the first time

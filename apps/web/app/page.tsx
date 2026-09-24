@@ -120,7 +120,7 @@ const REFUSALS: readonly (readonly [string, string])[] = [
   ],
   [
     'It will not save you from a person',
-    'The duress features buy time against somebody unsophisticated. This codebase is public, so anyone who reads it knows exactly what they do.',
+    'Hidden profiles and a wipe PIN are planned for phase 7 and not built. When they are, they buy time against somebody unsophisticated and nothing more: this codebase is public, so anyone who reads it knows exactly what they do.',
   ],
 ]
 

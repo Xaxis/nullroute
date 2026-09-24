@@ -41,7 +41,7 @@ rule seems wrong, say so in an issue before implementing around it.
 git clone git@github.com:Xaxis/nullroute.git
 cd nullroute
 make install     # npm ci, exact versions from the lockfile
-make check       # everything CI runs
+make check       # most of what CI runs
 ```
 
 `make check` must pass on a clean checkout before you change anything. If it
@@ -60,8 +60,11 @@ Run `make` with no arguments to list every target.
 3. Every invariant in a spec names at least one test, and that test must exist
    and pass. `make verify` enforces the binding, so you cannot declare an
    invariant and forget to test it.
-4. Run `make check` locally. CI runs the same targets, so a local pass and a CI
-   pass cannot diverge.
+4. Run `make check` locally. CI runs every target `make check` runs (`make
+   ci-parity` asserts it), plus two that `make check` leaves out: the recovery
+   drill (`make test-recovery-drill`, which needs a regtest `bitcoind`) and the
+   image build (`make image-system`, then `make verify-image`, which need Docker
+   and Linux). A local pass can still be followed by a CI failure in those.
 5. Open a pull request. Reference spec ids in the description.
 
 ### Commit messages
@@ -196,9 +199,12 @@ anyone can review this code at all.
 someone changes that code later, they need to know which spec they are about to
 falsify.
 
-**Secrets use the `Secret` wrapper, never a raw `Buffer` or `Uint8Array`.** Lint
-enforces this. The wrapper exists so that zeroization is explicit and auditable
-rather than something everyone remembers to do until one person does not.
+**Secrets use the `Secret` wrapper, never a raw `Buffer` or `Uint8Array`.** No
+lint rule enforces this yet: review does, so a raw secret buffer is a reason to
+block a pull request. The wrapper's zeroization is tested in
+`packages/core/test/util.secret.test.ts`. It exists so that zeroization is
+explicit and auditable rather than something everyone remembers to do until one
+person does not.
 
 **Never silently catch an error in a signing path.** Fail loudly and visibly. A
 swallowed exception in this codebase is how a user signs something they did not

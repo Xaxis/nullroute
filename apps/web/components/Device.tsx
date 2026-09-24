@@ -31,7 +31,7 @@ const SCREENS: readonly { file: string; caption: string; detail: string }[] = [
     file: 'lock',
     caption: 'Two hashes, before the PIN',
     detail:
-      'The manifest root of the application, and the dm-verity root the kernel is checking every block of the root filesystem against, read from the live device-mapper table rather than from the card. Compare the first against your own build. The second is absent where there is no mapping, rather than shown as a zero.',
+      'The manifest root of the application, and the dm-verity root the kernel is checking every block of the root filesystem against, read from the live device-mapper table rather than from the card. Compare the first against your own build. The second is absent where there is no mapping, rather than shown as a zero. The values in these pictures are samples, not this build.',
   },
   {
     file: 'dice',

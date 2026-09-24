@@ -24,8 +24,8 @@ have not read.
 
 ## Guided flows
 
-Tap **Guide me** on the lock screen, or **More** then **Walk me through
-something** once a wallet is open.
+Tap **Guide me** on the lock screen, or **Menu** then **Guide me** once a
+wallet is open.
 
 The rest of the device is organised by feature, because that is how the code is
 shaped. Nobody arrives thinking in features. You arrive with a sentence, and
@@ -35,7 +35,7 @@ this screen is a list of those sentences:
 - Restore a wallet I already have
 - Sign a transaction
 - Receive money
-- Set up a wallet across several devices
+- Set up a wallet across devices
 - Protect against this device dying
 
 If no wallet is open, a flow that works on one **opens a wallet as its first
@@ -77,8 +77,9 @@ The first thing you see, and the only screen that decides whether the device
 will run at all.
 
 It shows the **manifest root hash**: a SHA-256 over every source file, in
-`sha256sum` format. Three numbers should agree: what the device shows, what you
-computed with `sha256sum MANIFEST.lock`, and what the release published. See
+`sha256sum` format. What the device shows and what you computed with `sha256sum
+MANIFEST.lock` should agree. A published release hash will make it three;
+nothing has been released yet. See
 [VERIFICATION.md](VERIFICATION.md).
 
 **If verification fails, the wallet will not load.** The refusal is the first
@@ -279,8 +280,8 @@ writes the descriptor and every device registers it.
 ### Setting up a quorum
 
 The device will walk you through this. From the lock screen tap **Guide me**, or
-from the wallet screen open **More** and then **Walk me through something**, and
-pick "Set up a wallet across several devices". It tells you what you need before
+from the wallet screen open **Menu** and then **Guide me**, and pick "Set up a
+wallet across devices". It tells you what you need before
 it starts, numbers the steps as you go, and at the end lists what it has not
 finished, because most of this cannot be finished on one device.
 

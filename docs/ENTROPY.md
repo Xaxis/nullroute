@@ -179,7 +179,8 @@ e50a429924dbdf4500fa0cf03cca5b1a5dab1524cf1cd0efe1868eee17837be0
 If your device shows a different hex value for the same 100 rolls, **stop and do
 not use it**. Either the device is not running the code it claims to be running,
 or you entered a roll wrongly. Check the manifest root hash on the lock screen
-against the published release hash before you do anything else.
+against the one you compute from the source before you do anything else. No
+release hash has been published yet.
 
 You can confirm the mnemonic step against any offline BIP-39 tool. The entropy
 to mnemonic conversion is plain BIP-39 with no nullroute-specific behaviour, and

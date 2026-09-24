@@ -66,12 +66,12 @@ loudly if the defence regresses. Invariant identifiers are listed in the
 | Hostile input parsing (PSBT, QR, SD, snapshot) | Strict size limits, defensive parsers, fuzzing, fail closed | INV-PSBT-1 |
 | Network exfiltration | No network code paths at all, enforced by a lint rule and a runtime listener assertion, not by convention. The one listener is a loopback bridge on 127.0.0.1, whose host is a constant | INV-NET-1, INV-NET-2, INV-NET-3, INV-BRIDGE-1 |
 | Key material reaching the frontend | Frontend receives only xpubs, addresses, descriptors, and PSBTs. Asserted against serialized responses. | INV-KEY-1 |
-| Data remanence in memory | Typed `Secret` wrapper with explicit `dispose()`, raw `Buffer` for secrets banned by lint, heap snapshot test | INV-KEY-2 |
+| Data remanence in memory | Typed `Secret` wrapper with explicit `dispose()`, tested for zeroization. Its use is enforced by convention and review, not by lint, and there is no heap snapshot test | INV-KEY-2 |
 | Data remanence on disk | No swap, tmpfs for scratch, seed encrypted at rest under Argon2id and AES-256-GCM | INV-KEY-2, INV-STORE-1 |
 | A coordinator substituting a cosigner key | Registration re-derives this device's key and refuses a quorum it is not in; fingerprints are displayed, never trusted | INV-MULTI-6, INV-MULTI-7 |
 | Offline guessing of a stolen card | Argon2id at 64 MiB, parameters authenticated so they cannot be weakened in the file | INV-STORE-3 |
 | Supply chain tampering | Exact version pins, committed lockfile, `ignore-scripts=true`, SBOM, dependency review on every lockfile change | INV-BUILD-1 |
-| Build tampering | Reproducible builds, manifest root hash displayed at boot and comparable against the published release | INV-BUILD-1 |
+| Build tampering | Reproducible builds, manifest root hash displayed at boot and comparable against one you compute from the source. Nothing has been released, so there is no published hash to compare against yet | INV-BUILD-1 |
 | Casual physical access | Seed encrypted under an Argon2id-derived key, passphrase gate, failed-attempt counter that erases the sealed blob | INV-STORE-1, INV-STORE-4 |
 | Operator error | Address verification mode, descriptor checksums, forced scroll-through review, fingerprint display before funds actions | INV-INTEROP-1 |
 | Vendor lock-in becoming a loss vector | Every wallet recoverable from the mnemonic and a standard descriptor with third-party software, proved in CI against Bitcoin Core | INV-INTEROP-1 |
@@ -139,13 +139,15 @@ tells the adversary what to ask for.
 
 ### Device substitution and evil maid
 
-At unlock, the device shows an anti-phishing verification phrase derived from
-the seed and the passphrase. A swapped or reflashed device shows different
-words.
+**Not built.** An anti-phishing phrase shown at unlock, derived from the seed
+and the passphrase so that a swapped or reflashed device shows different words,
+is planned and does not exist. The device name and colour are not a
+substitute: they are a plain file on the card that anyone holding it can edit,
+and nothing authenticates them.
 
-This works only if you actually read the words every time, and only if you
-noticed and memorised them in the first place. It is a detection aid with a
-human in the loop, which means it fails the way humans fail. There is no secure
+When it is built, it will work only if you read the words every time, and only
+if you noticed and memorised them in the first place. It is a detection aid with
+a human in the loop, which means it fails the way humans fail. There is no secure
 boot chain in the current design (it is a phase 7 stretch goal), so a
 sufficiently prepared attacker who has had the device unattended can replace the
 software.
@@ -227,10 +229,10 @@ glitching, cold boot attacks, and direct flash reads are all out of scope.
 
 **Side channel attacks against the Pi.** Power analysis, electromagnetic
 emissions, acoustic, and timing attacks against the hardware are not defended
-against. The Pi was not designed for this and neither were we. The one exception
-is unlock timing, which is deliberately fixed-cost, and that is a defence
-against a remote observer of the UI, not against someone with an oscilloscope
-attached to the board.
+against. The Pi was not designed for this and neither were we. That includes
+unlock timing: a correct and an incorrect passphrase take different paths after
+the key derivation, and nothing equalises them. Fixed-cost unlock is planned
+for phase 7 (INV-DURESS-2) and is not built.
 
 **A compromised host OS image installed before first boot.** If the image you
 flashed was already backdoored, the manifest hash it displays is whatever the
@@ -240,10 +242,13 @@ application, and it cannot bootstrap trust in the thing that runs it.
 This is being addressed rather than merely conceded, and
 [Building a device](VERIFICATION.md#building-a-device) states exactly how far each step gets:
 
-- **Tier 0** (phase 2) makes the image reproducible and signed, so you can check
-  it against a published hash and signature before flashing, and read the card
-  back afterwards. This closes the "was the download tampered with" question and
-  leaves the "was the build itself honest" question to reproducing it yourself.
+- **Tier 0** (phase 2) makes the image reproducible and checkable before
+  flashing and after reading the card back. What exists today: `make image`
+  writes the image, its root hash and a `SHA256SUMS` over both, and `make
+  image-repro` builds it twice and compares. Signing and publishing are planned:
+  no signing key exists, nothing is signed, and no image has been published. So
+  today tier 0 answers "was the build honest" only for an image you built
+  yourself, and there is no download to ask "was it tampered with" about.
 - **Tier 1** (phase 3) puts the system partition under a dm-verity hash tree and
   shows its root hash at boot. Read carefully: **on its own this moves the gap
   rather than closing it.** Without a signed boot chain, an attacker who
@@ -383,8 +388,9 @@ Stated so they can be challenged:
   but would not catch both being wrong in the same way.
 - The user reads the screen. Every display-based defence in this document
   assumes this, and it is the assumption most likely to be false.
-- The Raspberry Pi's radios, once removed at the package level and disabled at
-  the device tree level, stay off.
+- The Raspberry Pi's radios stay off once their drivers, firmware and packages
+  are removed from the image (INV-PROV-13). The radio hardware is still on the
+  board, and nothing disables it at the device tree level.
 
 ---
 
