@@ -983,8 +983,11 @@ invariants:
       A cosigner's name is shown above its key and marked as the user's own
       rather than as a fact, naming sends the full extended key rather than the
       abbreviation on screen, and this device is never offered a nickname
-      because it is identified by re-deriving its key.
+      because it is identified by re-deriving its key. The name is typed on the
+      on-screen keyboard, on a panel of its own reached from the cosigner's row,
+      because the device has no other way to type.
     tests:
+      - packages/ui/test/multisig-screen.test.tsx::names-a-cosigner-on-the-on-screen-keyboard
       - packages/ui/test/multisig-screen.test.tsx::shows-a-name-above-the-key-and-marks-it-as-the-users-own
       - packages/ui/test/multisig-screen.test.tsx::names-a-key-by-its-full-value-not-the-abbreviation
       - packages/ui/test/multisig-screen.test.tsx::does-not-offer-to-name-this-device

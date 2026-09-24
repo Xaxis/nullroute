@@ -366,6 +366,21 @@ describe('ui.screens.multisig cosigner names', () => {
   }
 
   /**
+   * Name cosigner 1 the way the device does it: tap the row's button, type on
+   * the panel's own keyboard, save. The name used to be an input nothing on
+   * the device could type into.
+   */
+  function nameFirst(name: string): void {
+    fireEvent.click(screen.getByTestId('cosigner-rename-0'))
+    // The panel opens on the name the key already has, so clear it first.
+    while (screen.getByTestId('pk-length').textContent !== '0') {
+      fireEvent.click(screen.getByTestId('pk-back'))
+    }
+    for (const key of name) fireEvent.click(screen.getByTestId(`pk-key-${key}`))
+    fireEvent.click(screen.getByTestId('multisig-name-save'))
+  }
+
+  /**
    * INV-UI-81. A name is shown above the key, and marked as the user's own
    * rather than presented as a fact. It says nothing about who controls that
    * key: only the key does.
@@ -389,13 +404,35 @@ describe('ui.screens.multisig cosigner names', () => {
     const onNameCosigner = vi.fn().mockResolvedValue({ persisted: false })
     await reach(onNameCosigner)
 
-    const field = screen.getByTestId('cosigner-rename-0')
-    fireEvent.change(field, { target: { value: 'Office' } })
-    fireEvent.blur(field)
+    nameFirst('office')
 
     await waitFor(() => {
-      expect(onNameCosigner).toHaveBeenCalledWith(FULL_XPUB, 'Office')
+      expect(onNameCosigner).toHaveBeenCalledWith(FULL_XPUB, 'office')
     })
+  })
+
+  /**
+   * INV-UI-81. The name is typed on a keyboard the panel draws, because this
+   * device has no other. It was an input in the table with no keyboard bound
+   * to it, so no cosigner could be named on the device at all. Back on the
+   * review, the table shows the name that was saved.
+   */
+  it('names-a-cosigner-on-the-on-screen-keyboard', async () => {
+    const onNameCosigner = vi.fn().mockResolvedValue({ persisted: false })
+    await reach(onNameCosigner)
+    expect(screen.queryByTestId('multisig-cosigners')?.querySelector('input')).toBeNull()
+
+    fireEvent.click(screen.getByTestId('cosigner-rename-0'))
+    expect(screen.getByTestId('multisig-name-keyboard')).toBeTruthy()
+    // It starts from the name the key already has, so renaming is editing.
+    expect(screen.getByTestId('multisig-name').textContent).toContain('The attic Pi')
+
+    fireEvent.click(screen.getByTestId('multisig-name-back'))
+    nameFirst('den')
+    await waitFor(() => {
+      expect(screen.getByTestId('cosigner-name-0').textContent).toContain('den')
+    })
+    expect(onNameCosigner).toHaveBeenCalledWith(FULL_XPUB, 'den')
   })
 
   /**
@@ -406,9 +443,7 @@ describe('ui.screens.multisig cosigner names', () => {
    */
   it('says-a-name-lasts-until-the-lock-when-the-daemon-did-not-save-it', async () => {
     await reach(vi.fn().mockResolvedValue({ persisted: false }))
-    const field = screen.getByTestId('cosigner-rename-0')
-    fireEvent.change(field, { target: { value: 'Office' } })
-    fireEvent.blur(field)
+    nameFirst('office')
     await waitFor(() => {
       expect(screen.getByTestId('multisig-name-outcome').textContent).toContain(
         'lasts until the device locks'
@@ -418,9 +453,7 @@ describe('ui.screens.multisig cosigner names', () => {
 
   it('says-a-name-is-saved-only-when-the-daemon-said-so', async () => {
     await reach(vi.fn().mockResolvedValue({ persisted: true }))
-    const field = screen.getByTestId('cosigner-rename-0')
-    fireEvent.change(field, { target: { value: 'Office' } })
-    fireEvent.blur(field)
+    nameFirst('office')
     await waitFor(() => {
       expect(screen.getByTestId('multisig-name-outcome').textContent).toContain(
         'saved with this wallet'

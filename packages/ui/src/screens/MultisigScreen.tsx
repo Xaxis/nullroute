@@ -165,6 +165,9 @@ export interface MultisigScreenProps {
   readonly banner?: ReactElement | null
 }
 
+/** The longest cosigner name, as the input it replaced allowed. */
+const NAME_LIMIT = 32
+
 export function MultisigScreen(props: MultisigScreenProps): ReactElement {
   const {
     onOurKey,
@@ -201,6 +204,17 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
   const [passphrase, setPassphrase] = useState('')
   /** Whether the last cosigner name was written into the wallet, per the daemon. */
   const [nameKept, setNameKept] = useState<boolean | null>(null)
+  /** The cosigner being named, on its own panel, and what has been typed. */
+  const [naming, setNaming] = useState<{ readonly position: number; readonly xpub: string } | null>(
+    null
+  )
+  const [name, setName] = useState('')
+  /** Names given here since the review loaded, by full key, so the table shows them. */
+  const [named, setNamed] = useState<ReadonlyMap<string, string>>(new Map())
+  const nameOf = (cosigner: CosignerView): string =>
+    (cosigner.fullXpub === undefined ? undefined : named.get(cosigner.fullXpub)) ??
+    cosigner.name ??
+    ''
   const [imported, setImported] = useState<ImportedFileView | null>(null)
   const [bundle, setBundle] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -446,6 +460,80 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
             data-testid="multisig-descriptor-out"
           />
         </div>
+      </Screen>
+    )
+  }
+
+  // --- Naming one cosigner ---------------------------------------------------
+  // A PANEL OF ITS OWN, reached by tapping the cosigner's row. The name used to
+  // be an input inside the table, and this device has no keyboard but the one
+  // it draws: nothing could type into it, so no cosigner could be named on the
+  // device at all (check-typeable). The keyboard is 188px of a 287px body, and
+  // under the review's cards and table it would have been off the panel. Here
+  // it is whole, the way the passphrase panel below has it. INV-UI-81.
+  if (naming !== null && review !== null && onNameCosigner !== undefined) {
+    const close = (): void => {
+      setNaming(null)
+      setName('')
+      setError(null)
+    }
+    return (
+      <Screen
+        title={`Name cosigner ${String(naming.position + 1)}`}
+        subtitle="A label for you, not a fact about the key."
+        banner={banner}
+        nav={nav}
+        identity={identity}
+        steps={steps}
+        testId="multisig-name"
+        actions={
+          <>
+            <Button onClick={close} testId="multisig-name-back">
+              Back
+            </Button>
+            <div className="nr-spacer" />
+            <Button
+              variant="primary"
+              disabled={busy}
+              onClick={() =>
+                void run(async () => {
+                  const outcome = await onNameCosigner(naming.xpub, name)
+                  setNameKept(outcome.persisted === true)
+                  setNamed((before) => new Map(before).set(naming.xpub, name.trim()))
+                  close()
+                })
+              }
+              testId="multisig-name-save"
+            >
+              {busy ? 'Saving' : 'Save'}
+            </Button>
+          </>
+        }
+      >
+        {error !== null && (
+          <Refusal title="Not named" testId="multisig-name-error">
+            {error}
+          </Refusal>
+        )}
+
+        {/* The keyboard's readout is the field, as on the passphrase panel. Not
+            a secret, so it shows what was typed, and capped at the length the
+            input it replaced allowed. */}
+        <TextKeyboard
+          value={name}
+          secret={false}
+          placeholder="Name it, for you"
+          onChange={(next) => {
+            setError(null)
+            setName(next.slice(0, NAME_LIMIT))
+          }}
+          testId="multisig-name-keyboard"
+        />
+
+        {/* Not "saved". Whether the name outlives the next lock is the
+            daemon's answer, and the line under the table repeats it once
+            there is one. INV-UI-104. */}
+        <p className="nr-hint">An empty name clears it.</p>
       </Screen>
     )
   }
@@ -802,9 +890,9 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
                           is the only part anybody can act on. Marked as theirs
                           rather than presented as a fact: it says nothing
                           about who controls the key. */}
-                      {cosigner.name !== undefined && (
+                      {nameOf(cosigner) !== '' && (
                         <div data-testid={`cosigner-name-${String(cosigner.position)}`}>
-                          {cosigner.name}
+                          {nameOf(cosigner)}
                           <span className="nr-hint"> your name for it</span>
                         </div>
                       )}
@@ -823,44 +911,23 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
                       {onNameCosigner !== undefined &&
                         !cosigner.isThisDevice &&
                         cosigner.fullXpub !== undefined && (
-                          <input
-                            className="nr-input"
-                            defaultValue={cosigner.name ?? ''}
-                            maxLength={32}
-                            placeholder="Name it, for you"
-                            spellCheck={false}
-                            // THROUGH run(), NOT `void`. Two things were wrong
-                            // with firing this bare.
-                            //
-                            // Naming a cosigner can RESEAL THE WALLET, given a
-                            // passphrase: two Argon2id runs and several seconds
-                            // on a Pi. Outside run() nothing set busy, so the
-                            // device could go away for seconds with no disabled
-                            // control and no message.
-                            //
-                            // And `void` DISCARDED THE REJECTION. A write that
-                            // failed left the typed name sitting in the input
-                            // looking saved. The name is not key material, but
-                            // a silently dropped write is how somebody comes to
-                            // trust a label that does not exist on the device.
-                            //
-                            // THE ANSWER IS KEPT, for the same reason. This
-                            // sends no passphrase, so the daemon holds the name
-                            // for the session and says `persisted: false`, and
-                            // the line under the table repeats that rather than
-                            // letting a name that goes at the next lock look
-                            // saved. INV-UI-104.
-                            onBlur={(e) => {
+                          // THROUGH run(), NOT `void`, on the panel this opens.
+                          // Naming a cosigner can reseal the wallet, and a
+                          // write that failed must say so rather than leave a
+                          // name looking saved. The daemon's answer is kept
+                          // and repeated under this table. INV-UI-104.
+                          <Button
+                            onClick={() => {
                               const full = cosigner.fullXpub
                               if (full === undefined) return
-                              const name = e.target.value
-                              void run(async () => {
-                                const outcome = await onNameCosigner(full, name)
-                                setNameKept(outcome.persisted === true)
-                              })
+                              setError(null)
+                              setName(nameOf(cosigner))
+                              setNaming({ position: cosigner.position, xpub: full })
                             }}
-                            data-testid={`cosigner-rename-${String(cosigner.position)}`}
-                          />
+                            testId={`cosigner-rename-${String(cosigner.position)}`}
+                          >
+                            {nameOf(cosigner) === '' ? 'Name it' : 'Rename'}
+                          </Button>
                         )}
                     </td>
                   </tr>

@@ -1664,6 +1664,11 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
     ['multisig-review'],
     ['multisig-review', 'multisig-agree'],
     ['multisig-review', 'multisig-agree', 'keys:abc', 'multisig-register'],
+    // Naming a cosigner on its own panel, with the keyboard whole and the old
+    // name in its readout, and then a new name refused, which puts the refusal
+    // above the keys.
+    ['multisig-review', 'cosigner-rename-0'],
+    ['multisig-review', 'cosigner-rename-2', 'keys:abc', 'multisig-name-save'],
   ],
   'multisig-working': [['multisig-review', 'multisig-agree', 'keys:abc', 'multisig-register']],
   'multisig-saved': [['multisig-review', 'multisig-agree', 'keys:abc', 'multisig-register']],
@@ -1715,12 +1720,7 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   'verify-message-error': [['verify-run']],
   child: [['child-derive']],
   'device-name': [['device-name-save']],
-  // And under Legacy, where the commitment row gives way to the note saying
-  // why there is none.
-  message: [
-    ['pk-key-a', 'message-review'],
-    ['pk-key-a', 'message-review', 'message-script-p2pkh'],
-  ],
+  message: [['pk-key-a', 'message-review']],
   passphrase: [['pk-key-a', 'passphrase-submit']],
   'passphrase-working': [['pk-key-a', 'passphrase-submit']],
   // Acknowledged and generated, which is the only route to this screen's last
@@ -1893,6 +1893,9 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   'message-signed': [
     ['pk-key-a', 'message-review'],
     ['pk-key-a', 'message-review', 'message-sign'],
+    // Under Legacy, where the commitment row gives way to the note saying why
+    // there is none.
+    ['pk-key-a', 'message-review', 'message-script-p2pkh'],
   ],
 }
 

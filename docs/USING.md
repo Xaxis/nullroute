@@ -459,8 +459,9 @@ only this device's key. Backing that up does not back the quorum up.
 ### Telling the devices apart
 
 **Name the other cosigners too.** On the quorum review screen every other key
-gets a field: call one "the attic Pi" and another "Dad's Coldcard", and the
-quorum stops being a list of extended keys nobody can tell apart. A name given
+has a **Name it** button, which opens a panel with the on-screen keyboard: call
+one "the attic Pi" and another "Dad's Coldcard", and the quorum stops being a
+list of extended keys nobody can tell apart. A name given
 there is held for the session and is not saved with the wallet, so it is gone
 at the next lock. The screen says so under the list of keys.
 
