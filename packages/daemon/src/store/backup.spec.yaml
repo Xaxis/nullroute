@@ -66,6 +66,17 @@ invariants:
       - packages/daemon/test/backup.test.ts::describes-a-backup-without-opening-it
       - packages/daemon/test/backup.test.ts::refuses-a-file-that-is-not-a-backup
 
+  - id: INV-BACKUP-6
+    statement: >
+      A seeded backup seals whether its seed was derived with a BIP-39
+      passphrase, and restoring it, on this device or another, sets that flag
+      from inside the ciphertext. A backup written before the flag was sealed
+      restores as no passphrase, and a flag of the wrong type is refused.
+    tests:
+      - packages/daemon/test/backup-passphrase-flag.ipc.test.ts::carries-the-flag-through-a-restore-onto-another-device
+      - packages/daemon/test/backup-passphrase-flag.ipc.test.ts::restores-a-wallet-without-a-passphrase-as-without-one
+      - packages/daemon/test/backup-passphrase-flag.ipc.test.ts::reads-the-flag-from-the-sealed-payload-only
+
   - id: INV-BACKUP-5
     statement: >
       A seedless restore hands back the quorum descriptors rather than a count

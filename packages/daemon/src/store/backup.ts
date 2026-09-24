@@ -23,6 +23,7 @@
  * a second thing to review.
  */
 
+import { bytesToHex } from '@noble/hashes/utils.js'
 import { Secret, type Network, networkById } from '@nullroute/core'
 import { open, seal, seedFromHex, StoreError, type Envelope, type KdfCost } from './envelope.js'
 
@@ -36,6 +37,11 @@ export interface BackupContents {
   readonly label: string
   /** Absent for a watch-only backup, which is the default. */
   readonly seed?: Secret
+  /**
+   * Whether the seed was derived with a BIP-39 passphrase. Meaningful only
+   * with a seed, and sealed with it.
+   */
+  readonly bip39Passphrase?: boolean
 }
 
 export interface RestoredBackup {
@@ -46,6 +52,11 @@ export interface RestoredBackup {
   readonly seed?: Secret
   /** True when this restores a spending wallet rather than a watching one. */
   readonly hasSeed: boolean
+  /**
+   * Whether the restored seed carries a BIP-39 passphrase. False for a backup
+   * written before the flag was sealed, which is what those always said.
+   */
+  readonly bip39Passphrase: boolean
   readonly createdWith: string
 }
 
@@ -83,6 +94,15 @@ interface SealedBackup {
   readonly registrations: readonly string[]
   /** Hex, because JSON has no bytes. Absent for a watch-only backup. */
   readonly seed?: string
+  /**
+   * SEALED WITH THE SEED, because it decides a warning. A wallet made with a
+   * BIP-39 passphrase is shown that the passphrase matters, since the words
+   * alone restore a different, empty wallet. The backup did not carry the
+   * flag, so a restored copy of exactly that wallet came back saying it had no
+   * passphrase and the warning was off on the wallets it exists for. The same
+   * class of bug as 8cb9494 and fed1a51, by a third route.
+   */
+  readonly bip39Passphrase?: boolean
 }
 
 /**
@@ -104,9 +124,14 @@ export function createBackup(
     v: BACKUP_VERSION,
     network: contents.network.id,
     registrations: contents.registrations,
+    // bytesToHex, not Buffer.from: a Buffer copy of the seed lands in Node's
+    // shared pool and outlives this call (INV-STORE-9).
     ...(contents.seed === undefined
       ? {}
-      : { seed: Buffer.from(contents.seed.bytes).toString('hex') }),
+      : {
+          seed: bytesToHex(contents.seed.bytes),
+          bip39Passphrase: contents.bip39Passphrase === true,
+        }),
   }
 
   using plaintext = Secret.fromBytes(
@@ -205,6 +230,14 @@ export function restoreBackup(text: string, passphrase: string): RestoredBackup 
     throw new StoreError('The backup holds a seed field this build cannot read.')
   }
 
+  // Refused if present and not a boolean, like every other sealed field: it
+  // decides whether a warning is shown. Absent is a backup from before the
+  // flag was sealed, which never said anything else.
+  const flag = sealed['bip39Passphrase']
+  if (flag !== undefined && typeof flag !== 'boolean') {
+    throw new StoreError('The backup holds a passphrase flag this build cannot read.')
+  }
+
   const label = typeof document['label'] === 'string' ? document['label'] : 'restored wallet'
   const createdWith =
     typeof document['createdWith'] === 'string' ? document['createdWith'] : 'unknown'
@@ -214,6 +247,7 @@ export function restoreBackup(text: string, passphrase: string): RestoredBackup 
     registrations: registrations as readonly string[],
     label,
     hasSeed,
+    bip39Passphrase: hasSeed && flag === true,
     createdWith,
     ...(hasSeed ? { seed: Secret.fromBytes(seedFromHex(seedHex), 'restored-seed') } : {}),
   }

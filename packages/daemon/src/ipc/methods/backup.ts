@@ -37,7 +37,9 @@ export function backupMethods(ctx: HandlerContext): MethodTable {
             network: session.network,
             registrations: session.registrations,
             label: optionalString(request, 'label', 'nullroute wallet'),
-            ...(includeSeed ? { seed: session.requireSeed() } : {}),
+            ...(includeSeed
+              ? { seed: session.requireSeed(), bip39Passphrase: session.bip39Passphrase }
+              : {}),
           },
           passphrase,
           state.attestation.version
@@ -95,6 +97,9 @@ export function backupMethods(ctx: HandlerContext): MethodTable {
           // lock. Cleared so the catch below cannot zeroize a live seed.
           owned = undefined
           session.setRegistrations(restored.registrations)
+          // Out of the sealed payload. loadFromStore clears it, and a restored
+          // wallet that uses a BIP-39 passphrase must say so like the original.
+          session.setBip39Passphrase(restored.bip39Passphrase)
         } else if (!session.hasWallet) {
           /*
            * A seedless backup carries a network, and may only set one when
