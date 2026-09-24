@@ -1,10 +1,10 @@
 import Link from 'next/link'
 import { DOCS } from '../lib/docs'
 import { readFacts } from '../lib/facts'
+import { readEntropyExample } from '../lib/entropy'
 import { Hero } from '../components/hero/Hero'
 import { Section } from '../components/Section'
 import { Terminal } from '../components/Terminal'
-import { DiceDemo } from '../components/DiceDemo'
 import { Device } from '../components/Device'
 import { REPO_URL } from '../lib/site'
 
@@ -126,6 +126,7 @@ const REFUSALS: readonly (readonly [string, string])[] = [
 
 export default function HomePage() {
   const facts = readFacts()
+  const entropy = readEntropyExample()
   const working = WORKING.filter((entry) => entry.specs.every((id) => facts.has(id)))
 
   return (
@@ -158,30 +159,41 @@ export default function HomePage() {
             <Terminal command="make verify" facts={facts} />
           </div>
 
-          {/* THE DEMO LIVES HERE NOW, and this is where it was always about.
-              It sat in the hero, beside the headline, where the first
-              interactive thing a stranger met was a grid of dice buttons: that
-              reads as a web page where you roll dice, and the product is a
-              Raspberry Pi with no network. Under "how you check it", next to
-              the command that does the checking, it is the same proof making
-              the same point to someone who has been told what they are
-              looking at. */}
-          <div className="mt-12 grid gap-8 lg:grid-cols-[minmax(0,1fr)_26rem] lg:gap-12 lg:items-start">
-            <div className="min-w-0">
-              <p className="font-mono text-[0.7rem] uppercase tracking-[0.18em] text-ink-500">
-                Check the smallest claim yourself
-              </p>
-              <p className="mt-4 text-base text-ink-400 leading-relaxed">
-                Dice become a seed by one rule, and it is a rule you can repeat without any of this
-                code: SHA-256 of the digits you rolled, as ASCII, with no trailing newline. Roll
-                some here, then run the command it hands you and check that your own terminal
-                agrees. If it does, you have verified the first step of the chain by yourself. If it
-                does not, one of us is wrong and it is worth finding out which.
-              </p>
-            </div>
-            <div className="min-w-0">
-              <DiceDemo />
-            </div>
+          {/* A transcript, not a widget. An interactive dice pad used to sit
+              here, and before that in the hero, and in both places it read as
+              the product: a web page where you roll dice. The claim it proved
+              is the one below, and a command with the answer beside it proves
+              it without looking like an app. See lib/entropy.ts. */}
+          <div className="mt-12 max-w-3xl">
+            <p className="font-mono text-[0.7rem] uppercase tracking-[0.18em] text-ink-500">
+              Check the smallest claim yourself
+            </p>
+            <p className="mt-4 text-base text-ink-400 leading-relaxed">
+              The device turns dice into a seed by one rule you can repeat without any of this code:
+              SHA-256 of the rolls as ASCII digits, with no trailing newline. Here is the public
+              example from the entropy document, 100 rolls of{' '}
+              <code className="font-mono text-ink-300">123456</code> repeated. Paste it into a
+              terminal. On macOS, use <code className="font-mono text-ink-300">shasum -a 256</code>.
+            </p>
+            <pre className="mt-5 rounded-md border border-ink-800 bg-ink-900/70 p-4 font-mono text-xs leading-relaxed text-ink-300 whitespace-pre-wrap break-all">
+              <span className="text-ink-500">$ </span>
+              {`printf '%s' '${entropy.rolls}' | sha256sum`}
+              {'\n'}
+              <span className="text-verify-500">{entropy.digest}</span>
+              {'  -'}
+            </pre>
+            <p className="mt-4 text-sm text-ink-500 leading-relaxed">
+              Those 32 bytes are the seed&rsquo;s entropy. If your terminal prints a different
+              number, one of us is wrong and it is worth finding out which. Never use this sequence
+              for money: it is public.{' '}
+              <Link
+                href="/docs/entropy"
+                className="text-signal-400 hover:text-signal-300 underline underline-offset-4 decoration-ink-700"
+              >
+                The whole derivation, down to the 24 words
+              </Link>
+              .
+            </p>
           </div>
 
           <p className="mt-8 text-base text-ink-400 max-w-2xl leading-relaxed">

@@ -25,7 +25,7 @@ MANIFEST_ROOTS := packages spec provisioning
         prose links profiles sbom sbom-check repro-check clean dev-daemon build-app web web-build web-lint web-type-check \
         screens screen-fit ui-constants dev-check verify-image docs-reachable no-dead-ends \
         image-env image-shell image-system image-repro journeys \
-        web-isolation web-csp web-responsive web-site-links web-dice-demo device-shots device-shots-check \
+        web-isolation web-csp web-responsive web-site-links device-shots device-shots-check \
         web-check web-root web-live-check deploy image image-boot-test verify-runtime slow-feedback typeable
 
 help: ## List available targets
@@ -843,10 +843,7 @@ device-shots-check: screens ## The committed screenshots still match the fronten
 web-site-links: ## Every link in the BUILT site resolves, routes and anchors both
 	@node tools/checks/check-site-links.mjs
 
-web-dice-demo: ## The site's dice demo hashes to the digest docs/ENTROPY.md publishes
-	@node tools/checks/check-dice-demo.mjs
-
-web-check: web-lint web-type-check web-build web-isolation web-csp web-root web-responsive web-site-links web-dice-demo ## Every website check
+web-check: web-lint web-type-check web-build web-isolation web-csp web-root web-responsive web-site-links ## Every website check
 
 web-live-check: ## Load the DEPLOYED site in a real browser and assert nothing is broken
 	# The one check that caught a broken CSP. Every other check passed while

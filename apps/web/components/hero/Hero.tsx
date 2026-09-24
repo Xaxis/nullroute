@@ -13,8 +13,8 @@ import type { Facts } from '../../lib/facts'
  * So the space goes to the device itself, on its own panel, showing the number
  * this whole project is arranged around. Someone who looks at it for two
  * seconds knows what is being offered and where it runs. The demo moved to the
- * section about checking, which is what it is for, and is no less checkable for
- * being three screens down.
+ * section about checking and then went altogether: it read as an app there
+ * too, and a printed command with its expected digest makes the same point.
  *
  * There are no buttons here on purpose. A pair of accented calls to action is
  * the grammar of a page trying to convert a visitor, and this page is not.
@@ -109,24 +109,33 @@ export function Hero({ facts }: { facts: Facts }) {
 
           {/* The panel, at its own aspect ratio. Not a mockup and not a render
               of a design file: the real frontend, laid out by a real browser at
-              800x480, which is the size of the screen this ships on. */}
+              800x480, which is the size of the screen this ships on.
+
+              LABELLED AS HARDWARE, because a bare screenshot in the right
+              column of a web page reads as the web page's own app, which is the
+              confusion the dice pad caused here. The strip names the board and
+              the panel instead of drawing a plastic case round it (see the
+              bezel note in Device.tsx). */}
           <div className="min-w-0">
-            <figure className="m-0">
+            <figure className="m-0 rounded-lg border border-ink-800 bg-ink-950 overflow-hidden">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-4 py-2.5 border-b border-ink-800 font-mono text-[0.7rem] uppercase tracking-[0.16em]">
+                <span className="text-ink-300">On the device</span>
+                <span className="text-ink-500">Raspberry Pi 4 &middot; 7 inch touchscreen</span>
+              </div>
               <img
                 src="/device/lock.png"
-                alt="The device's lock screen, showing the manifest root hash above a PIN pad"
+                alt="The device's first screen: a verified badge, the manifest root and the system partition hash, and a button to open a wallet"
                 width={1600}
                 height={960}
                 fetchPriority="high"
-                className="w-full rounded-lg border border-ink-800 bg-ink-950"
+                className="block w-full h-auto"
               />
-              <figcaption className="mt-3 text-sm text-ink-400 leading-relaxed">
-                The lock screen, before anything is unlocked. The first hash is the application the
-                device is about to run, and it is the number this whole project is arranged around:
-                build the source yourself, and if the two disagree, do not enter your PIN. The
-                second is what the kernel is checking the rest of the system against.
-              </figcaption>
             </figure>
+            <p className="mt-3 text-sm text-ink-400 leading-relaxed">
+              The first screen, before any wallet is open. The top hash is the software the device
+              is about to run. Build the source yourself, and if your number differs, do not enter
+              your PIN. Nothing on this website runs that software.
+            </p>
           </div>
         </div>
       </div>
