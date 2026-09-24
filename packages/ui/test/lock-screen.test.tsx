@@ -63,7 +63,12 @@ describe('ui.screens.lock', () => {
 
   it('shows-verification-status-and-tier', () => {
     render(<LockScreen attestation={passing} network={mainnet} onUnlock={() => undefined} />)
-    expect(screen.getByTestId('verified').textContent).toContain('All 3 checks passed')
+    // Two passed and one had nothing to check, and the sentence says exactly
+    // that. It said "All 3 checks passed". INV-UI-53.
+    const said = screen.getByTestId('verified').textContent
+    expect(said).toContain('2 checks passed')
+    expect(said).not.toContain('All')
+    expect(said).toContain('Not applicable here: differential')
     // The spec and invariant counts moved to the attestation screen, which is
     // where somebody goes to ask a detailed question. Here they cost four
     // lines and pushed the sentence about what this screen does NOT prove off
@@ -223,8 +228,12 @@ describe('ui.screens.lock verdict', () => {
   })
 
   /**
-   * `not-applicable` has to keep passing. A spec that declares no vectors has
+   * `not-applicable` does not block. A spec that declares no vectors has
    * nothing to verify, and calling that a failure would mean no device boots.
+   *
+   * It does not count as a pass either. This asserted "All 2 checks passed"
+   * about one check that passed and one that did not run, which is the screen
+   * rounding in its own favour on the one sentence it exists to say.
    */
   it('still-passes-a-check-that-had-nothing-to-do', () => {
     render(
@@ -235,10 +244,50 @@ describe('ui.screens.lock verdict', () => {
       />
     )
     expect(screen.getByTestId<HTMLButtonElement>('unlock').disabled).toBe(false)
-    // No count on a passing device: the verdict banner already says all of
-    // them passed, and the same number twice reads as two measurements.
+    // No count on a passing device: the verdict banner already says what
+    // passed, and the same number twice reads as two measurements.
     expect(screen.queryByTestId('checks')).toBeNull()
-    expect(screen.getByTestId('verified').textContent).toContain('All 2 checks passed')
+    const said = screen.getByTestId('verified').textContent
+    expect(said).toContain('1 check passed')
+    expect(said).toContain('Not applicable here: integrity')
+    expect(said).not.toContain('2 checks passed')
+  })
+
+  /**
+   * INV-UI-53. A verdict with nothing in it is not a pass. "All 0 checks
+   * passed" with Open a wallet enabled was what an empty list produced, and a
+   * list where every check had nothing to check verified just as little.
+   */
+  it('does-not-call-nothing-verified-a-pass', () => {
+    for (const checks of [
+      [],
+      [
+        { name: 'vectors', status: 'not-applicable', detail: '' },
+        { name: 'differential', status: 'not-applicable', detail: '' },
+      ],
+    ]) {
+      cleanup()
+      render(
+        <LockScreen
+          attestation={{ ...passing, checks }}
+          network={mainnet}
+          onUnlock={() => undefined}
+        />
+      )
+      expect(
+        screen.getByTestId<HTMLButtonElement>('unlock').disabled,
+        checks.length.toString()
+      ).toBe(true)
+      expect(screen.queryByTestId('verified')).toBeNull()
+      expect(screen.getByTestId('verification-status').textContent).toContain('FAILED')
+      // And it does not claim the code is wrong either. Nothing was checked.
+      const blocked = screen.getByTestId('blocked').textContent
+      expect(blocked).toContain('Nothing was verified')
+      expect(blocked).not.toContain('not running the code')
+    }
+    expect(screen.getByTestId('verification-status').textContent).toContain(
+      'no check had anything to check'
+    )
   })
 
   /**

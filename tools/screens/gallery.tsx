@@ -456,6 +456,42 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       onToggleExpanded={noop}
     />
   ),
+  // A pass with checks that had nothing to check, which are named in the
+  // verdict sentence rather than counted as passed. The longest pass it says.
+  'lock-not-applicable': () =>
+    variant('lock-passing', {
+      attestation: {
+        rootHash: '942b6a2b53d02c1bce1ce4e7592d3f13e44f23db8dea4ef02c4aea2970813600',
+        rootHashShort: '942b6a2b',
+        verityRootHash: 'c30d56036f3729bac36a5683533133016638af11d2d59debf9b90f09e8b56ade',
+        specCount: 37,
+        invariantCount: 283,
+        tier: 'signer',
+        version: '0.1.0',
+        checks: [
+          { name: 'coverage', status: 'passed', detail: '' },
+          { name: 'invariants', status: 'passed', detail: '' },
+          { name: 'vectors', status: 'not-applicable', detail: '' },
+          { name: 'differential', status: 'not-applicable', detail: '' },
+          { name: 'integrity', status: 'passed', detail: '' },
+        ],
+      },
+    }),
+  // No checks at all, which is a refusal, and says nothing was checked
+  // rather than that the code is wrong.
+  'lock-nothing-checked': () =>
+    variant('lock-passing', {
+      attestation: {
+        rootHash: '942b6a2b53d02c1bce1ce4e7592d3f13e44f23db8dea4ef02c4aea2970813600',
+        rootHashShort: '942b6a2b',
+        verityRootHash: 'c30d56036f3729bac36a5683533133016638af11d2d59debf9b90f09e8b56ade',
+        specCount: 37,
+        invariantCount: 283,
+        tier: 'signer',
+        version: '0.1.0',
+        checks: [],
+      },
+    }),
   /*
    * The menu open, on the gate screen, which is the reason it is a menu.
    *

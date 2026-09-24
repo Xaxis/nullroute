@@ -52,6 +52,27 @@ describe('AttestationScreen', () => {
   })
 
   /**
+   * INV-UI-70. The same count as the lock screen: a check with nothing to
+   * check is named as not applicable, is not coloured as a pass, and a list
+   * with nothing passed is a failure rather than "Verification passed".
+   */
+  it('names-a-check-that-had-nothing-to-do-rather-than-passing-it', () => {
+    render(<AttestationScreen attestation={attestation()} onBack={vi.fn()} />)
+    expect(screen.getByTestId('attestation-verdict').textContent).toContain(
+      'not applicable: differential'
+    )
+    const rows = [...screen.getByTestId('attestation-checks').querySelectorAll('tbody tr')]
+    const differential = rows.find((row) => row.textContent.includes('differential'))
+    expect(differential?.querySelector('.nr-status--ok')).toBeNull()
+
+    for (const checks of [[], [{ name: 'vectors', status: 'not-applicable', detail: '' }]]) {
+      cleanup()
+      render(<AttestationScreen attestation={attestation({ checks })} onBack={vi.fn()} />)
+      expect(screen.getByTestId('attestation-verdict').textContent).toContain('FAILED')
+    }
+  })
+
+  /**
    * INV-UI-69. The caveat is word for word the lock screen's. Two phrasings of
    * one limit would let a reader believe the weaker of them.
    */

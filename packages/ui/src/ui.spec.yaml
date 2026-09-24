@@ -65,6 +65,8 @@ covers:
   - packages/ui/src/screens/MoreScreen.tsx::MoreScreen
   - packages/ui/src/screens/VerifyMessageScreen.tsx::VerifyMessageScreen
   - packages/ui/src/lib/idle.ts::useIdleLock
+  - packages/ui/src/lib/verdict.ts::judge
+  - packages/ui/src/lib/verdict.ts::passSentence
   - packages/ui/src/journeys.ts::JOURNEYS
   - packages/ui/src/journeys.ts::journeyById
   - packages/ui/src/journeys.ts::stepOf
@@ -669,12 +671,17 @@ invariants:
     statement: >
       The lock screen counts a verification check as passing only when its
       status is one it recognises as a pass, treats every other value as a
-      failure, and names an unrecognised status rather than only the check.
+      failure, and names an unrecognised status rather than only the check. A
+      check that had nothing to check does not block and is not counted as
+      passed: the verdict names it. A verdict in which nothing passed, because
+      no checks were reported or none had anything to check, is a failure and
+      does not unlock.
     tests:
       - packages/ui/test/lock-screen.test.tsx::treats-an-unrecognised-status-as-a-failure
       - packages/ui/test/lock-screen.test.tsx::names-an-unrecognised-status-rather-than-just-the-check
       - packages/ui/test/lock-screen.test.tsx::still-passes-a-check-that-had-nothing-to-do
       - packages/ui/test/lock-screen.test.tsx::agrees-with-the-verifier-about-what-a-status-can-be
+      - packages/ui/test/lock-screen.test.tsx::does-not-call-nothing-verified-a-pass
 
   - id: INV-UI-54
     statement: >
@@ -844,9 +851,11 @@ invariants:
 
   - id: INV-UI-70
     statement: >
-      That screen fails closed like the lock screen, and states plainly if a
-      device is somehow open while a check is failing.
+      That screen fails closed like the lock screen, counts a pass the same way
+      it does, and states plainly if a device is somehow open while a check is
+      failing.
     tests:
+      - packages/ui/test/attestation-screen.test.tsx::names-a-check-that-had-nothing-to-do-rather-than-passing-it
       - packages/ui/test/attestation-screen.test.tsx::treats-an-unrecognised-status-as-a-failure
       - packages/ui/test/attestation-screen.test.tsx::says-plainly-when-a-failing-device-is-somehow-open
       - packages/ui/test/attestation-screen.test.tsx::does-not-warn-on-a-device-that-is-fine

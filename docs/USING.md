@@ -91,6 +91,12 @@ recognises. Anything else is a failure. That is the opposite of the obvious
 reading, and it is deliberate: a status the daemon emits that this screen has
 not been told about would otherwise show "Verification passed" in green.
 
+A check that had nothing to check here is reported as not applicable. It does
+not block, and it is not counted as passed: the verdict names it, as in "3
+checks passed against this build. Not applicable here: vectors, differential."
+A device that reports no checks, or none that passed, has verified nothing, so
+it is refused the same way a failing one is.
+
 **What the hash does not prove.** These values are reported by the software you
 are looking at. They catch an accident or a crude substitution. They do not
 catch an attacker who replaced the code that draws them, which is what the tier

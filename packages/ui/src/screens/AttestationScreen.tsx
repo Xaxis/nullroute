@@ -6,6 +6,7 @@ import { Hash } from '../components/Hash.js'
 import { type AttestationView } from './LockScreen.js'
 import { Info } from '../components/Info.js'
 import { useMoreBelow } from '../lib/scroll.js'
+import { judge } from '../lib/verdict.js'
 
 /**
  * Check the device, after it is open.
@@ -58,9 +59,6 @@ export interface AttestationScreenProps {
   readonly banner?: ReactElement | null
 }
 
-/** The statuses that count as a pass, and no others. Same rule as the lock screen. */
-const PASSING = new Set(['passed', 'not-applicable'])
-
 export function AttestationScreen(props: AttestationScreenProps): ReactElement {
   const moreBelow = useMoreBelow()
   const {
@@ -75,9 +73,11 @@ export function AttestationScreen(props: AttestationScreenProps): ReactElement {
   } = props
 
   // Fail closed, for the reason the lock screen does: a status this file has
-  // not been told about must not read as a pass. See INV-UI-53.
-  const failing = attestation.checks.filter((check) => !PASSING.has(check.status))
-  const verified = failing.length === 0
+  // not been told about must not read as a pass, and a check that had nothing
+  // to check is named rather than counted as one. The same function decides
+  // both screens, so they cannot disagree. See INV-UI-53 and INV-UI-70.
+  const verdict = judge(attestation.checks)
+  const { verified, failing } = verdict
 
   return (
     <Screen
@@ -115,8 +115,12 @@ export function AttestationScreen(props: AttestationScreenProps): ReactElement {
             data-testid="attestation-verdict"
           >
             {verified
-              ? 'Verification passed'
-              : `Verification FAILED: ${failing.map((check) => check.name).join(', ')}`}
+              ? verdict.notApplicable.length === 0
+                ? 'Verification passed'
+                : `Verification passed, not applicable: ${verdict.notApplicable
+                    .map((check) => check.name)
+                    .join(', ')}`
+              : `Verification FAILED: ${verdict.reasons.join(', ')}`}
           </span>
         </>
       }
@@ -227,9 +231,15 @@ export function AttestationScreen(props: AttestationScreenProps): ReactElement {
                   <td className="nr-mono">{check.name}</td>
                   <td>
                     <span
-                      className={`nr-status ${
-                        PASSING.has(check.status) ? 'nr-status--ok' : 'nr-status--fail'
-                      }`}
+                      // Not green when not applicable. It did not pass, and
+                      // the colour of a pass on it said it did.
+                      className={
+                        check.status === 'passed'
+                          ? 'nr-status nr-status--ok'
+                          : check.status === 'not-applicable'
+                            ? 'nr-status'
+                            : 'nr-status nr-status--fail'
+                      }
                     >
                       {check.status}
                     </span>

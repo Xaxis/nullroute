@@ -46,6 +46,7 @@ import { tierLabel } from '../lib/tier.js'
 import { Button } from '../components/Button.js'
 import { Hash } from '../components/Hash.js'
 import { NetworkBanner } from '../components/NetworkBanner.js'
+import { judge, passSentence } from '../lib/verdict.js'
 
 export interface AttestationView {
   readonly rootHash: string
@@ -88,14 +89,6 @@ export interface LockScreenProps {
   readonly onToggleExpanded?: () => void
 }
 
-/**
- * The statuses that count as a pass, and no others.
- *
- * `not-applicable` is a pass: a spec with no vectors declared has nothing to
- * verify, and calling that a failure would mean no device ever boots.
- */
-const PASSING = new Set(['passed', 'not-applicable'])
-
 export function LockScreen(props: LockScreenProps): ReactElement {
   const {
     attestation,
@@ -118,8 +111,11 @@ export function LockScreen(props: LockScreenProps): ReactElement {
   // either side, produced "Verification passed" in green with Unlock enabled.
   // The value crosses a JSON boundary, so TypeScript guarantees nothing about
   // it, and the check names are drawn from the same payload.
-  const failing = attestation.checks.filter((c) => !PASSING.has(c.status))
-  const verified = failing.length === 0
+  //
+  // And a pass is `passed` alone: a check that had nothing to check is named
+  // beside the verdict rather than counted into it. See lib/verdict.ts.
+  const verdict = judge(attestation.checks)
+  const { verified, failing } = verdict
 
   return (
     <Screen
@@ -145,14 +141,7 @@ export function LockScreen(props: LockScreenProps): ReactElement {
               control that will not let you. */}
           {!verified && (
             <span className="nr-status nr-status--fail" data-testid="verification-status">
-              {`Verification FAILED: ${failing
-                .map((c) =>
-                  // An unrecognised status is named, because "integrity
-                  // failed" and "nobody here knows what integrity said" are
-                  // different problems and the second one is worse.
-                  c.status === 'failed' ? c.name : `${c.name} (status: ${c.status})`
-                )
-                .join(', ')}`}
+              {`Verification FAILED: ${verdict.reasons.join(', ')}`}
             </span>
           )}
           <div className="nr-spacer" />
@@ -189,8 +178,13 @@ export function LockScreen(props: LockScreenProps): ReactElement {
         <div data-must-see className="nr-banner nr-banner--danger" data-testid="blocked">
           <strong>Do not enter your passphrase</strong>
           <span>
-            Verification failed, so the wallet will not load. This device is not running the code it
-            was built from.{' '}
+            {/* Only a check that failed says anything about the code. With
+                none passed and none failed, nothing was checked, and claiming
+                the code was wrong would be as unfounded as claiming it was
+                right. */}
+            {failing.length > 0
+              ? 'Verification failed, so the wallet will not load. This device is not running the code it was built from. '
+              : 'Nothing was verified, so the wallet will not load. The verifier reported no check that passed, so nothing about the code on this device has been checked. '}
             {failing
               .map((c) => c.detail)
               .filter(Boolean)
@@ -212,9 +206,7 @@ export function LockScreen(props: LockScreenProps): ReactElement {
         <div className="nr-verdict" data-testid="verified">
           <div className="nr-verdict__line">
             <span className="nr-verdict__mark">Verified</span>
-            <span className="nr-verdict__detail">
-              All {attestation.checks.length} checks passed against this build.
-            </span>
+            <span className="nr-verdict__detail">{passSentence(verdict)}</span>
           </div>
           {/* THE LIMIT, WITH THE CLAIM. This was a paragraph two cards further
               down, which put it below the fold on a 480px panel: the screen
@@ -304,7 +296,7 @@ export function LockScreen(props: LockScreenProps): ReactElement {
           <div className="nr-fact">
             <span className="nr-fact__key">Checks</span>
             <span className="nr-fact__val" data-testid="checks">
-              {attestation.checks.length - failing.length}/{attestation.checks.length}
+              {verdict.passed.length}/{attestation.checks.length}
             </span>
           </div>
         )}
