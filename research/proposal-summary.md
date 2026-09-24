@@ -240,7 +240,7 @@ transaction claimed it (SP-REV-7). The same claim made through
 | Item | State |
 | --- | --- |
 | SP-TX-5 cannot be fully met from BBQr frames alone | Needs a decision: validate the assembled payload, require a digest BBQr has no field for, or weaken the requirement |
-| BIP-322 variant prefix | At `bitcoin/bips` commit `7c7cb232`, BIP-322 says signers MUST prefix the signature with its variant (`smp`). nullroute's output matches the published vector after that prefix only |
+| BIP-322 variant prefix | Closed. BIP-322 1.0.0 says signers MUST prefix the signature with its variant (`smp`). nullroute now writes it and reproduces the published p2wpkh vector byte for byte, prefix included, against `bip-0322/basic-test-vectors.json` pinned in `spec/vectors/` |
 | The override path | Every vector signs with `override: false`. No case checks that a blocked transaction signs only with the override and that it does not persist (SP-REV-22) |
 | Locktime when every input is final | The review still says the transaction cannot confirm before the locktime, which is not enforced in that case. The profile does not say what to show |
 | PSBT version 2 | Referenced by two specs, fed by no test. The profile requires version 0 only |
