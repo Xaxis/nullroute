@@ -81,6 +81,39 @@ describe('core.message.bip322 verification', () => {
   })
 
   /**
+   * INV-MSG-9. The official BIP-322 vectors, which nothing in this repository
+   * produced. The first two are the current RFC 6979 signatures, the last two
+   * the original ones with random nonces; a verifier must accept both kinds.
+   */
+  it('accepts-the-official-bip322-vectors', () => {
+    const address = 'bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l'
+    const vectors: readonly (readonly [string, string])[] = [
+      [
+        '',
+        'AkgwRQIhAPkJ1Q4oYS0htvyuSFHLxRQpFAY56b70UvE7Dxazen0ZAiAtZfFz1S6T6I23MWI2lK/pcNTWncuyL8UL+oMdydVgzAEhAsfxIAMZZEKUPYWI4BruhAQjzFT8FSFSajuFwrDL1Yhy',
+      ],
+      [
+        'Hello World',
+        'AkgwRQIhAOzyynlqt93lOKJr+wmmxIens//zPzl9tqIOua93wO6MAiBi5n5EyAcPScOjf1lAqIUIQtr3zKNeavYabHyR8eGhowEhAsfxIAMZZEKUPYWI4BruhAQjzFT8FSFSajuFwrDL1Yhy',
+      ],
+      [
+        '',
+        'AkcwRAIgM2gBAQqvZX15ZiysmKmQpDrG83avLIT492QBzLnQIxYCIBaTpOaD20qRlEylyxFSeEA2ba9YOixpX8z46TSDtS40ASECx/EgAxlkQpQ9hYjgGu6EBCPMVPwVIVJqO4XCsMvViHI=',
+      ],
+      [
+        'Hello World',
+        'AkcwRAIgZRfIY3p7/DoVTty6YZbWS71bc5Vct9p9Fia83eRmw2QCICK/ENGfwLtptFluMGs2KsqoNSk89pO7F29zJLUx9a/sASECx/EgAxlkQpQ9hYjgGu6EBCPMVPwVIVJqO4XCsMvViHI=',
+      ],
+    ]
+    for (const [message, signature] of vectors) {
+      expect(verifyMessage(address, message, signature, MAINNET), signature).toEqual({
+        valid: true,
+        scriptType: 'p2wpkh',
+      })
+    }
+  })
+
+  /**
    * INV-MSG-9. The signature is real and the key is somebody else's. This is
    * the failure a verifier that only checks the signature accepts from anybody,
    * and it is the reason the key is checked against the address FIRST.

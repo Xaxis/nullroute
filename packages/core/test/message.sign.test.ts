@@ -143,11 +143,30 @@ describe('core.message.bip322 signing', () => {
     expect(raw[2 + sigLength - 1]).toBe(bitcoin.Transaction.SIGHASH_ALL)
 
     const compact = secp256k1.Signature.fromBytes(der, 'der').toBytes('compact')
-    expect(secp256k1.verify(compact, Uint8Array.from(digest), pubkey)).toBe(true)
+    // `prehash: false`, or noble hashes the digest again and this check agrees
+    // with a signer making the same mistake. It did, for as long as both did.
+    expect(secp256k1.verify(compact, Uint8Array.from(digest), pubkey, { prehash: false })).toBe(
+      true
+    )
 
     // And the witness carries the public key that address commits to.
     const keyStart = 2 + sigLength + 1
     expect(bytesToHex(raw.subarray(keyStart))).toBe(bytesToHex(pubkey))
+  })
+
+  /**
+   * INV-MSG-6. The published answer, byte for byte. BIP-322 lists this exact
+   * signature for this key and message, produced with RFC 6979 nonces, so a
+   * deterministic signer that signs the right digest must reproduce it. Every
+   * other test here was written by the same hand as the code; this one was not.
+   */
+  it('reproduces-the-official-bip322-vector-byte-for-byte', () => {
+    const key = btc.WIF(btc.NETWORK).decode(VECTOR_WIF)
+    const signed = signMessageWithKey(key, MAINNET, 'p2wpkh', 'Hello World')
+    expect(signed.address).toBe(VECTOR_ADDRESS)
+    expect(signed.signature).toBe(
+      'AkgwRQIhAOzyynlqt93lOKJr+wmmxIens//zPzl9tqIOua93wO6MAiBi5n5EyAcPScOjf1lAqIUIQtr3zKNeavYabHyR8eGhowEhAsfxIAMZZEKUPYWI4BruhAQjzFT8FSFSajuFwrDL1Yhy'
+    )
   })
 
   it('signs-wrapped-segwit-too', async () => {

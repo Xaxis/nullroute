@@ -98,6 +98,7 @@ invariants:
       carries the public key the address commits to.
     tests:
       - packages/core/test/message.sign.test.ts::produces-a-signature-that-verifies-against-an-independent-sighash
+      - packages/core/test/message.sign.test.ts::reproduces-the-official-bip322-vector-byte-for-byte
       - packages/core/test/message.sign.test.ts::signs-the-same-message-identically-every-time
       - packages/core/test/message.sign.test.ts::signs-wrapped-segwit-too
       - packages/core/test/message.sign.test.ts::signs-for-the-address-the-path-produces
@@ -139,6 +140,7 @@ invariants:
     tests:
       - packages/core/test/message.verify.test.ts::accepts-every-kind-of-proof-this-device-produces
       - packages/core/test/message.verify.test.ts::accepts-a-taproot-proof-built-outside-this-module
+      - packages/core/test/message.verify.test.ts::accepts-the-official-bip322-vectors
       - packages/core/test/message.verify.test.ts::refuses-a-valid-signature-by-a-key-that-is-not-this-address
       - packages/core/test/message.verify.test.ts::refuses-a-proof-of-a-message-that-is-not-the-one-shown
 

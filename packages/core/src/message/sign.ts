@@ -321,7 +321,13 @@ export function signMessageWithKey(
   const digest = toSign.preimageWitnessV0(0, payment.scriptCode, btc.SigHash.ALL, 0n)
   // noble returns the compact form. Converted to DER here, which is what a
   // Bitcoin witness carries.
-  const compact = secp256k1.sign(digest, privateKey)
+  //
+  // `prehash: false` IS THE SIGNATURE. @noble/curves 2.x hashes its input with
+  // SHA-256 unless told not to, and the digest above is already the thing
+  // Bitcoin signs. Without it the device signed sha256(sighash): deterministic,
+  // well formed, accepted by this module's own verifier, and rejected by every
+  // other BIP-322 implementation. The official vectors in the tests catch it.
+  const compact = secp256k1.sign(digest, privateKey, { prehash: false })
   const der = secp256k1.Signature.fromBytes(compact, 'compact').toBytes('der')
 
   // Witness for a key-hash spend: the signature with its sighash byte, then the

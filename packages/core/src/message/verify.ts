@@ -362,7 +362,9 @@ function verifyKeyHash(
     return fail(scriptType, 'That signature is not valid DER.')
   }
 
-  return secp256k1.verify(compact, digest, pubkey)
+  // `prehash: false`, for the reason given in sign.ts: the digest is already
+  // the sighash, and noble would otherwise hash it again.
+  return secp256k1.verify(compact, digest, pubkey, { prehash: false })
     ? { valid: true, scriptType }
     : fail(scriptType, 'That signature does not match this address and this message.')
 }
