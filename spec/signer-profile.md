@@ -480,7 +480,7 @@ INV-SIG-1, INV-SIG-2 (differential against bitcoinjs-lib, 120 cases); manual:
 | SP-REV-10 | Met | INV-UI-3 |
 | SP-REV-11 | Met | Unknown pairs never block and are reported (INV-PSBT-15), and survive parsing and signing in globals, inputs and outputs: `parsePsbt` keeps them for the signer, checked by `review-unknown-fields.json` and `psbt.review.test.ts::keeps-fields-it-does-not-understand-through-signing` |
 | SP-REV-12 | Met | INV-QUORUM-4, INV-QUORUM-8, INV-UI-37, INV-UI-63 |
-| SP-REV-13 | Met | `review.ts` warnings are non-blocking. `docs/THREAT-MODEL.md` line 62 describes "a hard warning threshold and a second confirmation", which the code does not have (see `research/handoff-C.md`) |
+| SP-REV-13 | Met | `review.ts` raises non-blocking warnings above a fee rate and a fee percentage, which is what the requirement asks. `docs/THREAT-MODEL.md` now says so; it used to promise a second confirmation the code never had |
 | SP-REV-14 | Met | INV-PSBT-13 |
 | SP-REV-20 | Met | INV-UI-11 |
 | SP-REV-21 | Met in tests; unverified on the panel | INV-UI-103 |
@@ -549,9 +549,8 @@ in the manifest.
 **SP-ATT-6.** If the signer's own verification fails, or its record of that
 verification does not match the manifest on disk, the signer MUST refuse to
 unlock and MUST NOT offer a way to proceed. Check: nullroute INV-UI-2,
-INV-UI-70 for the screen. The daemon's refusal to start (`daemon.ipc.socket`
-algorithm, `packages/daemon/src/daemon.spec.yaml` lines 43-45) has no
-invariant id and no test in this repository; see 4.4.
+INV-UI-70 for the screen, and INV-BUILD-1 for the daemon's refusal to start
+(`packages/daemon/test/verification-gate.test.ts`).
 
 **SP-ATT-7.** Wherever the value is shown, the screen MUST state that it is
 reported by the software being checked. Check: nullroute INV-UI-5, INV-UI-69.

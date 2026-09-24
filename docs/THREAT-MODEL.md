@@ -14,7 +14,8 @@ device.
 
 A signing-only Bitcoin device. It holds keys, displays transactions, and
 produces signatures. It has no network stack reachable from outside loopback,
-and it moves data across an air gap by QR code or SD card.
+and it moves data across an air gap by QR code. An SD card transport is planned
+and not built: nothing in the image mounts removable media.
 
 It is designed to be **one signer in a vendor-diverse multisig quorum**, not
 sole custody. The intended deployment is 2-of-3 or 3-of-5 where the other keys

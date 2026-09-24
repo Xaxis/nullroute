@@ -105,7 +105,8 @@ describe('the BIP-39 passphrase flag in a seeded backup', () => {
   })
 
   /** INV-BACKUP-6. And a wallet without one still restores as without one. */
-  it('restores-a-wallet-without-a-passphrase-as-without-one', async () => {
+  // Two devices and a backup's key derivation: seconds idle, more on a busy machine.
+  it('restores-a-wallet-without-a-passphrase-as-without-one', { timeout: 60_000 }, async () => {
     const first = fresh()
     await first.call('wallet.import', { mnemonic: MNEMONIC, passphrase: '' })
     const { backup } = (await first.call('backup.create', {

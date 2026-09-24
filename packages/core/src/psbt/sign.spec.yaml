@@ -50,6 +50,17 @@ differential:
     moves money.
 
 invariants:
+  - id: INV-PSBT-1
+    statement: >
+      The device signs only inputs whose script it derives from its own seed or
+      a registered quorum. Any other input in the same transaction is left
+      unsigned, and a transaction with no such input is refused rather than
+      returned unchanged.
+    tests:
+      - packages/core/test/psbt.sign.test.ts::signs-only-the-inputs-it-owns
+      - packages/core/test/psbt.sign.test.ts::fails-loudly-when-no-path-matches
+      - packages/daemon/test/psbt.test.ts::finds-nothing-for-a-foreign-input
+
   - id: INV-SIG-1
     statement: >
       Every ECDSA signature uses RFC 6979 deterministic nonces and every Schnorr

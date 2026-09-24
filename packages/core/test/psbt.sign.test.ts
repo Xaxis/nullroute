@@ -92,6 +92,28 @@ describe('core.psbt.sign', () => {
   })
 
   /**
+   * INV-PSBT-1. An input this wallet cannot account for is left unsigned, even
+   * in a transaction where another input is ours. The stranger's input is
+   * spent from a script derived from nothing this seed holds.
+   */
+  it('signs-only-the-inputs-it-owns', () => {
+    using seed = mnemonicToSeed(MNEMONIC, '')
+    const tx = fundedTransaction()
+    const stranger = btc.OutScript.encode(btc.Address(btc.NETWORK).decode(STRANGER))
+    tx.addInput(fundedBy(stranger, 50_000n, 9))
+    const result = signTransaction(tx, seed, {
+      network: MAINNET,
+      paths: [SIGNING_PATH],
+      review: review(tx),
+    })
+
+    const signed = btc.Transaction.fromPSBT(result.psbt)
+    expect(signed.getInput(0).partialSig).toHaveLength(1)
+    expect(signed.getInput(1).partialSig).toBeUndefined()
+    expect(result.inputsSigned).toBe(1)
+  })
+
+  /**
    * INV-SIG-2. The whole determinism apparatus exists for this assertion.
    *
    * The brief asks for a hundred signatures of the same input. Any variation at

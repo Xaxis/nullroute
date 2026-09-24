@@ -307,22 +307,15 @@ buy time against an unsophisticated adversary and nothing more. Image
 reproducibility depends on the live Debian mirror, not a pinned snapshot. The
 full list is in [docs/THREAT-MODEL.md](../docs/THREAT-MODEL.md#out-of-scope).
 
-### Documents that disagree with the code
+### Documents that disagreed with the code
 
-Found while writing this summary and not changed here:
-
-- The SD card transport is documented as planned and not built in
-  `docs/USING.md`, but the README parts table says to "use an SD card to move
-  data" and `docs/THREAT-MODEL.md` ("What nullroute is") says data moves "by QR
-  code or SD card".
-- In `spec/signer-profile.md`, the SP-ATT-6 check line still says the daemon's
-  refusal has no test, and the SP-REV-13 row still cites a threat model sentence
-  that has since been corrected. Both conformance tables are current.
-- The results section of `conformance/README.md` still reports six failures;
-  the run today has three.
-- INV-PSBT-1 is named in the threat model and in three specs' threat lists and is
-  declared as an invariant in none. INV-PSBT-14 and INV-SIG-4 cover the
-  behaviour.
+Writing this summary found four, all corrected in the commit that added it:
+the SD card transport described as available in the README and the threat
+model, two stale rows in `spec/signer-profile.md`, the failure count in
+`conformance/README.md`, and INV-PSBT-1, which was named in the threat model
+and three specs and declared nowhere. It is now declared, with a test that a
+transaction mixing an owned and a foreign input is signed only where it is
+owned.
 
 ## What needs people rather than code
 

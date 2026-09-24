@@ -231,14 +231,14 @@ for them.
 
 ## nullroute's results
 
-`make conformance`, on the commit that added this directory: 101 cases pass, 6
-fail, and one SHOULD is missed. The six failures are listed in
-[`known-failures/nullroute.json`](known-failures/nullroute.json):
+`make conformance` today: 104 cases pass, 3 fail, and one SHOULD is missed.
+The three failures are listed in
+[`known-failures/nullroute.json`](known-failures/nullroute.json). Two more,
+SP-REV-9 and SP-REV-11, failed when this directory was added and were fixed in
+the next commit, which is what the list is for.
 
 | Requirement | Case | What happens |
 | --- | --- | --- |
-| SP-REV-9 | `one-of-two-inputs-signals`, `second-of-two-inputs-signals` | The review reports a transaction as not replaceable unless every input signals. BIP-125 signals when any input does, and Bitcoin Core's mempool agrees on these PSBTs. |
-| SP-REV-11 | `unknown-pairs-survive-signing` | An unknown pair in an input is dropped from the signed PSBT. Global and output pairs survive. |
 | SP-TX-5 | `two-transfers-disjoint-indices` | Two transfers that agree on total, type and encoding are joined. |
 | SP-TX-6 | `write-1in20out`, `write-1in2out` | Frames are written in QR byte mode. |
 

@@ -3,7 +3,7 @@
 [![CI](https://github.com/Xaxis/nullroute/actions/workflows/ci.yml/badge.svg)](https://github.com/Xaxis/nullroute/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Specs](https://img.shields.io/badge/specs-38-informational)](packages/verify)
-[![Invariants](https://img.shields.io/badge/invariants-318-informational)](docs/THREAT-MODEL.md)
+[![Invariants](https://img.shields.io/badge/invariants-319-informational)](docs/THREAT-MODEL.md)
 
 An air-gapped Bitcoin signing device you can check rather than trust. You roll
 100 dice, it turns them into a seed by a rule you can repeat with `sha256sum`,
@@ -107,7 +107,7 @@ Roughly $100 to $120.
 | Screen | Official Raspberry Pi 7 inch touchscreen | The DSI panel. Every screen is measured at exactly 800x480 and no other size. |
 | Storage | 16GB+ A2 SD card | The image is about 1.6GB. |
 | Dice | One d6 | Casino grade if you care. Any die works. |
-| Camera | Pi Camera Module 3 | Optional. Skip it and use an SD card to move data. |
+| Camera | Pi Camera Module 3 | How transactions reach the device today. Without one it can still show codes, but receives nothing: an SD card transport is planned and not built. |
 | Case, PSU | Anything, official PSU | An underpowered supply causes strange slowness. |
 
 You do **not** need a network connection on the device, ever. That is the point.

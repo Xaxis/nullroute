@@ -331,17 +331,24 @@ describe('daemon.psbt', () => {
    * A wide gap limit is used deliberately: a foreign address must be foreign at
    * every index, not merely outside the window the other tests happen to use.
    */
-  it('uses-a-stranger-address-that-is-genuinely-not-ours', () => {
-    using seed = mnemonicToSeed(MNEMONIC, '')
-    const wide = ownedIndex(seed, MAINNET, { gapLimit: 500 })
-    expect(wide.has(STRANGER)).toBe(false)
-    expect(changeLookup(wide)(STRANGER)).toBeUndefined()
-    expect(signingPathsFor([scriptFor(STRANGER)], wide, MAINNET)).toEqual([])
-    // Four script types across receive and change at 500 indices is four
-    // thousand derivations, each a BIP-32 step and a hash. That is slow on
-    // purpose, and slower still when the rest of the suite is competing for
-    // cores, so the budget is stated rather than left at the default.
-  }, 30_000)
+  // The wide gap limit derives thousands of addresses on purpose, so this asks
+  // for more than the suite's fifteen seconds rather than timing out under load.
+  it(
+    'uses-a-stranger-address-that-is-genuinely-not-ours',
+    { timeout: 90_000 },
+    () => {
+      using seed = mnemonicToSeed(MNEMONIC, '')
+      const wide = ownedIndex(seed, MAINNET, { gapLimit: 500 })
+      expect(wide.has(STRANGER)).toBe(false)
+      expect(changeLookup(wide)(STRANGER)).toBeUndefined()
+      expect(signingPathsFor([scriptFor(STRANGER)], wide, MAINNET)).toEqual([])
+      // Four script types across receive and change at 500 indices is four
+      // thousand derivations, each a BIP-32 step and a hash. That is slow on
+      // purpose, and slower still when the rest of the suite is competing for
+      // cores, so the budget is stated rather than left at the default.
+    },
+    30_000
+  )
 
   // --- Registered quorums -------------------------------------------------
 
