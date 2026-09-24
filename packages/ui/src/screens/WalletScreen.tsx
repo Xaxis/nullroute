@@ -188,14 +188,31 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
   // leaves its section empty, which is legible; a disclosure that opens onto
   // nothing is not.
   const [xpubError, setXpubError] = useState<string | null>(null)
+  /*
+   * Why the address list or the descriptor is not on screen.
+   *
+   * Both loads had no catch and left the previous answer in place, so a
+   * failure after switching to Taproot showed the native segwit descriptor and
+   * its QR code under a Taproot chip. That is a wallet description for a
+   * different script type, handed over as this one. Each load now clears what
+   * it is about to replace and says why when it cannot.
+   */
+  const [rowsError, setRowsError] = useState<string | null>(null)
+  const [descriptorError, setDescriptorError] = useState<string | null>(null)
 
   const GAP = 10
 
   useEffect(() => {
     let cancelled = false
+    setRows([])
+    setRowsError(null)
     const run = async (): Promise<void> => {
-      const result = await onAddresses(scriptType, change, start, GAP)
-      if (!cancelled) setRows(result.addresses)
+      try {
+        const result = await onAddresses(scriptType, change, start, GAP)
+        if (!cancelled) setRows(result.addresses)
+      } catch (err) {
+        if (!cancelled) setRowsError((err as Error).message)
+      }
     }
     void run()
     return () => {
@@ -206,9 +223,15 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
   useEffect(() => {
     if (tab !== 'export') return
     let cancelled = false
+    setDescriptor(null)
+    setDescriptorError(null)
     const run = async (): Promise<void> => {
-      const result = await onDescriptor(scriptType, change)
-      if (!cancelled) setDescriptor(result)
+      try {
+        const result = await onDescriptor(scriptType, change)
+        if (!cancelled) setDescriptor(result)
+      } catch (err) {
+        if (!cancelled) setDescriptorError((err as Error).message)
+      }
     }
     void run()
     return () => {
@@ -415,6 +438,18 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
           Change. Both of those are what tells you which address you are
           looking at. Measured then: ten rows laid out in a 333px window with
           none of them fully on screen, on the screen named Addresses. */}
+      {tab === 'addresses' && rowsError !== null && (
+        <Refusal title="Not derived" testId="addresses-error">
+          {rowsError}
+        </Refusal>
+      )}
+
+      {tab === 'export' && descriptorError !== null && (
+        <Refusal title="Not derived" testId="descriptor-error">
+          {descriptorError}
+        </Refusal>
+      )}
+
       {tab === 'addresses' && (
         <div className="nr-card nr-card--tight nr-fill nr-scrolls" ref={moreBelow}>
           <table className="nr-table nr-table--dense">

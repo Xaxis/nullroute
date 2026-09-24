@@ -975,6 +975,19 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       onVerifyAddress={never}
     />
   ),
+  // Both loads refused. The address list says so on arrival, and the export
+  // tab says so under the quorum's descriptor card, which is its tallest state.
+  'wallet-load-failed': () => (
+    <WalletScreen
+      identity={DEVICE}
+      nav={<NavMenu open={false} onToggle={noop} onNavigate={noop} />}
+      fingerprint="73c5da0a"
+      quorums={[QUORUM]}
+      onAddresses={never}
+      onDescriptor={never}
+      onVerifyAddress={never}
+    />
+  ),
 
   'psbt-idle': () => (
     <PsbtScreen
@@ -1712,6 +1725,7 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   // disclosure, which is the part worth measuring: a refusal nested two levels
   // down on the tab that already holds a QR code and a 200 character descriptor.
   'wallet-xpub-failed': [['tab-export', 'xpub-disclosure', 'xpub-show']],
+  'wallet-load-failed': [['tab-export']],
   // Unlocking a wallet that refuses, and clearing a row whose wallet is
   // already gone. Two different screens inside the one fixture, and the second
   // is reached through a row that is disabled unless the wallet is a tombstone.

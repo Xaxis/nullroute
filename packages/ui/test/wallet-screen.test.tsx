@@ -216,7 +216,12 @@ describe('ui.screens.wallet xpub', () => {
 
     fireEvent.click(screen.getByTestId('script-p2tr'))
     expect(screen.queryByTestId('xpub')).toBeNull()
-    expect(screen.getByTestId('xpub-show')).toBeTruthy()
+    // Offered again once the new type's descriptor is in, which it now waits
+    // for, since the old descriptor goes the moment the chip changes.
+    await waitFor(() => {
+      expect(screen.getByTestId('xpub-show')).toBeTruthy()
+    })
+    expect(screen.queryByTestId('xpub')).toBeNull()
   })
 
   it('is-absent-rather-than-dead-when-there-is-nowhere-to-get-one', async () => {
@@ -398,5 +403,79 @@ describe('WalletScreen branch picker', () => {
     await waitFor(() => {
       expect(addresses.mock.calls.at(-1)?.[2]).toBe(0)
     })
+  })
+})
+
+/**
+ * What is left on screen when a load fails.
+ *
+ * Neither load had a catch, and neither cleared the previous answer, so a
+ * failure after changing a chip left the old answer under the new chip. On the
+ * export tab that is a native segwit descriptor and its QR code under a
+ * selected Taproot chip: a description of a different wallet, handed over as
+ * this one.
+ */
+describe('WalletScreen after a failed load', () => {
+  const SEGWIT = 'wpkh([73c5da0a/84h/0h/0h]xpubAAA/0/*)#wpkhwpkh'
+
+  function open(): void {
+    render(
+      <WalletScreen
+        fingerprint="73c5da0a"
+        quorums={[]}
+        onAddresses={vi.fn(async (scriptType: string, change: boolean) => {
+          if (scriptType === 'p2wpkh' && !change) {
+            return Promise.resolve({
+              addresses: [{ index: 0, address: 'bc1qreceivezero', path: "m/84'/0'/0'/0/0" }],
+            })
+          }
+          return Promise.reject(new Error('derivation failed'))
+        })}
+        onDescriptor={vi.fn(async (scriptType: string) =>
+          scriptType === 'p2wpkh'
+            ? Promise.resolve({ descriptor: SEGWIT, checksum: 'wpkhwpkh' })
+            : Promise.reject(new Error('derivation failed'))
+        )}
+        onVerifyAddress={vi.fn(async () => Promise.resolve({ found: false }))}
+      />
+    )
+  }
+
+  /**
+   * INV-UI-105. A descriptor that failed to load for the chosen script type
+   * leaves no descriptor and no QR code, and says why.
+   */
+  it('shows-no-descriptor-for-a-script-type-it-could-not-derive', async () => {
+    open()
+    fireEvent.click(screen.getByTestId('tab-export'))
+    await waitFor(() => {
+      expect(screen.getByTestId('descriptor').textContent).toContain('wpkh(')
+    })
+
+    fireEvent.click(screen.getByTestId('script-p2tr'))
+    await waitFor(() => {
+      expect(screen.getByTestId('descriptor-error').textContent).toContain('derivation failed')
+    })
+    expect(screen.getByTestId('script-p2tr').getAttribute('aria-pressed')).toBe('true')
+    expect(screen.queryByTestId('descriptor')).toBeNull()
+    expect(screen.queryByTestId('descriptor-qr')).toBeNull()
+  })
+
+  /**
+   * INV-UI-105. The same for the address list: a branch that failed to load
+   * shows no rows from the branch before it.
+   */
+  it('shows-no-addresses-from-the-branch-before-a-failed-one', async () => {
+    open()
+    await waitFor(() => {
+      expect(screen.getByTestId('address-rows').textContent).toContain('bc1qreceivezero')
+    })
+
+    fireEvent.click(screen.getByTestId('branch-change'))
+    await waitFor(() => {
+      expect(screen.getByTestId('addresses-error').textContent).toContain('derivation failed')
+    })
+    expect(screen.getByTestId('address-rows').textContent).not.toContain('bc1qreceivezero')
+    expect(screen.queryByTestId('addresses-path')).toBeNull()
   })
 })

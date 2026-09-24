@@ -650,6 +650,16 @@ invariants:
       - packages/ui/test/wallet-screen.test.tsx::drops-the-xpub-when-the-script-type-changes
       - packages/ui/test/wallet-screen.test.tsx::is-absent-rather-than-dead-when-there-is-nowhere-to-get-one
 
+  - id: INV-UI-105
+    statement: >
+      The wallet screen's address list and descriptor belong to the script type
+      and branch the chips show. Each is cleared when a chip changes, and a load
+      that fails says why rather than leaving the previous answer, or its QR
+      code, under the new chip.
+    tests:
+      - packages/ui/test/wallet-screen.test.tsx::shows-no-descriptor-for-a-script-type-it-could-not-derive
+      - packages/ui/test/wallet-screen.test.tsx::shows-no-addresses-from-the-branch-before-a-failed-one
+
   # --- The panel is fixed hardware --------------------------------------------
   # Held here as well as by tools/checks/check-screen-fit.mjs, which measures the real
   # layout in a browser. These tests hold the half jsdom can see.
