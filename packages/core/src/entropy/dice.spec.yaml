@@ -107,6 +107,16 @@ invariants:
     tests:
       - packages/core/test/entropy.dice.test.ts::avalanche
 
+vectors:
+  - name: Signer profile SP-ENT-1 to SP-ENT-4, dice to entropy
+    file: spec/vectors/signer-profile/dice-to-entropy.json
+    sha256: a789242a31e6fdf2ebf64779f61655d0104acabec906cf92a8bc3427fdddff1c
+    source: conformance/README.md; run by make conformance
+  - name: Signer profile SP-ENT-5, entropy count ceiling
+    file: spec/vectors/signer-profile/dice-accounting.json
+    sha256: 39dd64a6782bca8b0c91c1f531bfae9cf3e61475eb962b0cea2d7d33752b0d4c
+    source: conformance/README.md; run by make conformance
+
 threats:
   - INV-KEY-2
 

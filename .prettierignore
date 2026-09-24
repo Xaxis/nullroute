@@ -9,6 +9,7 @@ package-lock.json
 MANIFEST.lock
 spec/vectors/
 spec/interop/
+conformance/fixtures/
 *.md
 
 # Written by `next build`, reformatted by nothing, and regenerated on the next

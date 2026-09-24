@@ -82,6 +82,12 @@ invariants:
       - packages/core/test/qr.bbqr.test.ts::honours-a-lower-density-cap-by-using-more-frames
       - packages/core/test/qr.bbqr.test.ts::reads-compressed-parts-it-does-not-write
 
+vectors:
+  - name: Signer profile SP-TX-2 to SP-TX-6, BBQr PSBT transport
+    file: spec/vectors/signer-profile/bbqr-psbt.json
+    sha256: f113bc1172dd72081488000b566e9a2dca6b8f2b63d263925beb5ac2c29213b9
+    source: conformance/README.md; run by make conformance
+
 threats:
   - INV-QR-4
 

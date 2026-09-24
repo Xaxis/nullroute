@@ -1,0 +1,127 @@
+{
+  "format": "signer-profile-vectors",
+  "version": 1,
+  "profile": "spec/signer-profile.md, draft specification version 0.1",
+  "file": "manifest-root.json",
+  "requirements": [
+    "SP-ATT-2"
+  ],
+  "operations": "buildManifest",
+  "description": "The manifest is `sha256sum` output over the tracked files, one line per file, ordered by path compared byte by byte (`LC_ALL=C`), and the root is SHA-256 of the manifest bytes. The tree includes paths that a locale-aware collation orders differently.",
+  "cases": [
+    {
+      "id": "byte-order-tree",
+      "operation": "buildManifest",
+      "requirements": [
+        "SP-ATT-2"
+      ],
+      "level": "MUST",
+      "description": "Sixteen files under two roots, listed here in no particular order. The paths mix upper and lower case, punctuation that sorts before and after \"/\", digits, a space, and a non-ASCII name. The manifest is ordered by path bytes. File contents include an empty file, CRLF line endings and every byte value.",
+      "input": {
+        "files": [
+          {
+            "path": "packages/B.txt",
+            "contentBase64": "dXBwZXIgY2FzZSBCCg=="
+          },
+          {
+            "path": "packages/a.txt",
+            "contentBase64": "bG93ZXIgY2FzZSBhCg=="
+          },
+          {
+            "path": "packages/Zeta/z.ts",
+            "contentBase64": "ZXhwb3J0IGNvbnN0IHogPSAxCg=="
+          },
+          {
+            "path": "packages/_private/x.ts",
+            "contentBase64": "ZXhwb3J0IGNvbnN0IHggPSAyCg=="
+          },
+          {
+            "path": "packages/alpha.txt",
+            "contentBase64": "YWxwaGEK"
+          },
+          {
+            "path": "packages/alpha-beta.txt",
+            "contentBase64": "YWxwaGEtYmV0YQo="
+          },
+          {
+            "path": "packages/alpha/beta.txt",
+            "contentBase64": "YWxwaGEvYmV0YQo="
+          },
+          {
+            "path": "packages/alpha_beta.txt",
+            "contentBase64": "YWxwaGFfYmV0YQo="
+          },
+          {
+            "path": "packages/alpha10.txt",
+            "contentBase64": "dGVuCg=="
+          },
+          {
+            "path": "packages/alpha9.txt",
+            "contentBase64": "bmluZQo="
+          },
+          {
+            "path": "packages/émigré.txt",
+            "contentBase64": "TkZDIHBhdGgsIFVURi04IGJ5dGVzIGMzIGE5Cg=="
+          },
+          {
+            "path": "packages/with space.txt",
+            "contentBase64": "YSBzcGFjZSBpbiB0aGUgcGF0aAo="
+          },
+          {
+            "path": "packages/empty",
+            "contentBase64": ""
+          },
+          {
+            "path": "packages/crlf.txt",
+            "contentBase64": "bGluZSBvbmUNCmxpbmUgdHdvDQo="
+          },
+          {
+            "path": "packages/no-final-newline.txt",
+            "contentBase64": "bm8gbmV3bGluZSBhdCB0aGUgZW5k"
+          },
+          {
+            "path": "spec/binary.bin",
+            "contentBase64": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChoqOkpaanqKmqq6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/w=="
+          }
+        ]
+      },
+      "expected": {
+        "manifest": "9c41a763273eb2fd5f65eedaf4a584ce1984a95a3fd1c01d8a78d24f40bfeb49  packages/B.txt\n1b8274812f672bd931e01d9ff3714fcf99f3767767d3006df168c7a539283050  packages/Zeta/z.ts\n3524b2593af2dcf30517e9c5eddbd934fa69c7073cd11dfef73df34c117eae01  packages/_private/x.ts\neb0aab4e6ef02868d92fd2a28677038092c761a8337a7f7a8e59560c5e2994c3  packages/a.txt\nf0a694b2ddcc769cec41395b4af1ea3e2d208d244d35e2f3ac3c22c1cd556f4a  packages/alpha-beta.txt\nb6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060  packages/alpha.txt\n3698225106e518e9669291c24e0722688dea1b5611e33ff3327f19fdd37f3c2f  packages/alpha/beta.txt\n6db0f6e1133a0debabee7bf20a2ad413d0279f891fcf74c05da928eb34863c6b  packages/alpha10.txt\n9257872a1fba978179a9b2b5ffb6ba54d9f06aad1d4c69169f89bbe4cd0d543b  packages/alpha9.txt\n2702d06f3cb671c7ef4bb53f96a1e1633a427e003f540eca2793cc135cf74da4  packages/alpha_beta.txt\n6612d9c94c2da8d2544e1188348fc7baf717ffff1bacde51929a166404a41ffc  packages/crlf.txt\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  packages/empty\ne421985de8560d2d2847361afd20f82baf462e4ae68b199b19d664a7e4c2428d  packages/no-final-newline.txt\ndab36c36bd1bd8668b2532b4a971169c7540aa036123e47dc9eb2badbc89f7fd  packages/with space.txt\n3aa90d290caacacb7e05dfed9583b07f52b60ae092b4b15679c759a08135a851  packages/émigré.txt\n40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880  spec/binary.bin\n",
+        "root": "7d64a8c520e0d971f523bfc48083184e4883ab2fd2f0963596dff919bcae893f",
+        "rootMustNotBe": [
+          "d11dfb7597c62b104adc43ae32d8b96a6cdbf8e700d0fa26cd3291e01e6ad135"
+        ]
+      },
+      "sources": [
+        "manifest: LC_ALL=C sort -z | xargs -0 sha256sum over the files as written (macOS /sbin/sha256sum and shasum -a 256 agree)",
+        "root: sha256sum of the manifest file",
+        "rootMustNotBe: the root of the same lines ordered by Intl.Collator(\"en-US\") (ICU in Node v24.3.0) and the root from LC_ALL=en_US.UTF-8 sort on macOS: examples of the locale-aware order SP-ATT-2 forbids"
+      ],
+      "notes": "macOS `LC_ALL=en_US.UTF-8 sort` orders these paths differently from C"
+    },
+    {
+      "id": "single-file",
+      "operation": "buildManifest",
+      "requirements": [
+        "SP-ATT-2"
+      ],
+      "level": "MUST",
+      "description": "One file. The manifest is one line ending in LF, and the root is the SHA-256 of that line.",
+      "input": {
+        "files": [
+          {
+            "path": "packages/only.txt",
+            "contentBase64": "b25lIGZpbGUK"
+          }
+        ]
+      },
+      "expected": {
+        "manifest": "915d8335c6764cb570d4b6acfaeb25d932eee8b29720c220051265908731ce70  packages/only.txt\n",
+        "root": "7e0388180b5a85024ff9db78033183cd6683a19ea1bcde05dba9851424dff74f"
+      },
+      "sources": [
+        "printf 'one file\\n' | sha256sum, and sha256sum of the resulting one-line manifest"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "adapter": "conformance/adapters/nullroute.mjs",
+  "about": "Cases nullroute fails today. Each is a finding, not a waiver: the expected values are unchanged, and the runner fails if any of these starts passing so the list cannot outlive the fix.",
+  "failures": [
+    {
+      "file": "bbqr-psbt.json",
+      "case": "two-transfers-disjoint-indices",
+      "check": "verdict",
+      "requirement": "SP-TX-5",
+      "reason": "N5: the collector compares total, file type and encoding only, so two transfers with disjoint indices are joined"
+    },
+    {
+      "file": "bbqr-psbt.json",
+      "case": "write-1in20out",
+      "check": "qrMode",
+      "requirement": "SP-TX-6",
+      "reason": "G2: the QR encoder writes byte mode only"
+    },
+    {
+      "file": "bbqr-psbt.json",
+      "case": "write-1in2out",
+      "check": "qrMode",
+      "requirement": "SP-TX-6",
+      "reason": "G2: the QR encoder writes byte mode only"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "one-of-two-inputs-signals",
+      "check": "replaceable",
+      "requirement": "SP-REV-9",
+      "reason": "review.ts reports replaceable only when every input signals; BIP-125 signals when any input does"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "second-of-two-inputs-signals",
+      "check": "replaceable",
+      "requirement": "SP-REV-9",
+      "reason": "review.ts reports replaceable only when every input signals; BIP-125 signals when any input does"
+    },
+    {
+      "file": "review-unknown-fields.json",
+      "case": "unknown-pairs-survive-signing",
+      "check": "preserved.input.a00304",
+      "requirement": "SP-REV-11",
+      "reason": "@scure/btc-signer 2.3.0 drops unknown input pairs when signing updates the input, because parsePsbt does not pass allowUnknown"
+    }
+  ]
+}

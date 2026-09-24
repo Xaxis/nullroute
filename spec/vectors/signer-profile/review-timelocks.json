@@ -1,0 +1,286 @@
+{
+  "format": "signer-profile-vectors",
+  "version": 1,
+  "profile": "spec/signer-profile.md, draft specification version 0.1",
+  "file": "review-timelocks.json",
+  "requirements": [
+    "SP-REV-9"
+  ],
+  "operations": "review",
+  "description": "nLockTime shown as a block height or a time, and BIP-125 replaceability shown as the BIP defines it.",
+  "cases": [
+    {
+      "id": "no-locktime-signals-rbf",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-9"
+      ],
+      "level": "MUST",
+      "description": "nLockTime 0, input sequences 0xfffffffd.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAATVPCqZ+nJ6fDbPHTyNL50Yw6h8hT/g0AfQUp8m5sfZgAAAAAAD9////AfDKBSoBAAAAFgAUm/GSAz8NM699KgPLLYa+AiUZHQsAAAAAAAEAgwIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////AlMA/v///wIA8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiAAAAAAAAAAAmaiSqIant4vYcP3HR3v0/qZnfo2lTdVxpBol5mWK0i+vYNpdOjPkCAAAAAQEfAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4iIGAzDVT9DdQgpuX402JPXzSCyuNQ951fB1O/W+75wtka88GHPF2gpUAACAAAAAgAAAAIAAAAAAAAAAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "locktime": {
+          "kind": "none",
+          "value": 0
+        },
+        "replaceable": true
+      },
+      "sources": [
+        "locktime kind: values below 500000000 are block heights, others are UNIX times (Bitcoin Core v31.1 src/script/script.h line 47, LOCKTIME_THRESHOLD)",
+        "replaceable: BIP-125 line 40, explicit signalling if any input has nSequence below 0xfffffffe; Core getmempoolentry bip125-replaceable agrees, recorded below"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "tx.locktime": 0,
+        "tx.sequence": [
+          4294967293
+        ],
+        "bip125-replaceable": true
+      }
+    },
+    {
+      "id": "height-locktime",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-9"
+      ],
+      "level": "MUST",
+      "description": "nLockTime 840000, input sequences 0xfffffffd.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAASzun1FOUpsvr83lFoUEpLsGvRKy5xqcGOsUU/1loCpiAAAAAAD9////AfDKBSoBAAAAFgAUm/GSAz8NM699KgPLLYa+AiUZHQtA0QwAAAEAhAIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////AwEwAP7///8CAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4gAAAAAAAAAAJmokqiGp7eL2HD9x0d79P6mZ36NpU3VcaQaJeZlitIvr2DaXToz5LwAAAAEBHwDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIiBgMw1U/Q3UIKbl+NNiT180gsrjUPedXwdTv1vu+cLZGvPBhzxdoKVAAAgAAAAIAAAACAAAAAAAAAAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "locktime": {
+          "kind": "height",
+          "value": 840000
+        },
+        "replaceable": true
+      },
+      "sources": [
+        "locktime kind: values below 500000000 are block heights, others are UNIX times (Bitcoin Core v31.1 src/script/script.h line 47, LOCKTIME_THRESHOLD)",
+        "replaceable: BIP-125 line 40, explicit signalling if any input has nSequence below 0xfffffffe"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "tx.locktime": 840000,
+        "tx.sequence": [
+          4294967293
+        ]
+      }
+    },
+    {
+      "id": "largest-height",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-9"
+      ],
+      "level": "MUST",
+      "description": "nLockTime 499999999, input sequences 0xfffffffd.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAZ68IXDW5lJvRlYrhpTqvgZrjEG+xlb7z1Ebe2LCtypjAAAAAAD9////AfDKBSoBAAAAFgAUm/GSAz8NM699KgPLLYa+AiUZHQv/ZM0dAAEAgwIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////AloA/v///wIA8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiAAAAAAAAAAAmaiSqIant4vYcP3HR3v0/qZnfo2lTdVxpBol5mWK0i+vYNpdOjPkJAAAAAQEfAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4iIGAzDVT9DdQgpuX402JPXzSCyuNQ951fB1O/W+75wtka88GHPF2gpUAACAAAAAgAAAAIAAAAAAAAAAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "locktime": {
+          "kind": "height",
+          "value": 499999999
+        },
+        "replaceable": true
+      },
+      "sources": [
+        "locktime kind: values below 500000000 are block heights, others are UNIX times (Bitcoin Core v31.1 src/script/script.h line 47, LOCKTIME_THRESHOLD)",
+        "replaceable: BIP-125 line 40, explicit signalling if any input has nSequence below 0xfffffffe"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "tx.locktime": 499999999,
+        "tx.sequence": [
+          4294967293
+        ]
+      }
+    },
+    {
+      "id": "smallest-time",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-9"
+      ],
+      "level": "MUST",
+      "description": "nLockTime 500000000, input sequences 0xfffffffd.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAV6oZZ75kldFzHxXfQeEkTEGRksVmPBF8E6jJFwsnPRjAAAAAAD9////AfDKBSoBAAAAFgAUm/GSAz8NM699KgPLLYa+AiUZHQsAZc0dAAEAhAIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////AwE3AP7///8CAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4gAAAAAAAAAAJmokqiGp7eL2HD9x0d79P6mZ36NpU3VcaQaJeZlitIvr2DaXToz5NgAAAAEBHwDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIiBgMw1U/Q3UIKbl+NNiT180gsrjUPedXwdTv1vu+cLZGvPBhzxdoKVAAAgAAAAIAAAACAAAAAAAAAAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "locktime": {
+          "kind": "time",
+          "value": 500000000
+        },
+        "replaceable": true
+      },
+      "sources": [
+        "locktime kind: values below 500000000 are block heights, others are UNIX times (Bitcoin Core v31.1 src/script/script.h line 47, LOCKTIME_THRESHOLD)",
+        "replaceable: BIP-125 line 40, explicit signalling if any input has nSequence below 0xfffffffe; Core getmempoolentry bip125-replaceable agrees, recorded below"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "tx.locktime": 500000000,
+        "tx.sequence": [
+          4294967293
+        ],
+        "bip125-replaceable": true
+      }
+    },
+    {
+      "id": "time-locktime-final-sequence-minus-one",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-9"
+      ],
+      "level": "MUST",
+      "description": "nLockTime 1767225600, input sequences 0xfffffffe.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAQW9kGckI+3Ku8KPqE6Y6eXq1+4Hyh91pD7+6IUitAtlAAAAAAD+////AfDKBSoBAAAAFgAUm/GSAz8NM699KgPLLYa+AiUZHQsAuVVpAAEAgwIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////AlYA/v///wIA8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiAAAAAAAAAAAmaiSqIant4vYcP3HR3v0/qZnfo2lTdVxpBol5mWK0i+vYNpdOjPkFAAAAAQEfAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4iIGAzDVT9DdQgpuX402JPXzSCyuNQ951fB1O/W+75wtka88GHPF2gpUAACAAAAAgAAAAIAAAAAAAAAAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "locktime": {
+          "kind": "time",
+          "value": 1767225600
+        },
+        "replaceable": false
+      },
+      "sources": [
+        "locktime kind: values below 500000000 are block heights, others are UNIX times (Bitcoin Core v31.1 src/script/script.h line 47, LOCKTIME_THRESHOLD)",
+        "replaceable: BIP-125 line 40, explicit signalling if any input has nSequence below 0xfffffffe; Core getmempoolentry bip125-replaceable agrees, recorded below"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "tx.locktime": 1767225600,
+        "tx.sequence": [
+          4294967294
+        ],
+        "bip125-replaceable": false
+      }
+    },
+    {
+      "id": "no-locktime-final-sequence",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-9"
+      ],
+      "level": "MUST",
+      "description": "nLockTime 0, input sequences 0xffffffff.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAReQIL7iKfnl6e/9D8MVwX9idiznphkCoOOQqcnP3BxlAAAAAAD/////AfDKBSoBAAAAFgAUm/GSAz8NM699KgPLLYa+AiUZHQsAAAAAAAEAhAIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////AwE/AP7///8CAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4gAAAAAAAAAAJmokqiGp7eL2HD9x0d79P6mZ36NpU3VcaQaJeZlitIvr2DaXToz5PgAAAAEBHwDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIiBgMw1U/Q3UIKbl+NNiT180gsrjUPedXwdTv1vu+cLZGvPBhzxdoKVAAAgAAAAIAAAACAAAAAAAAAAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "locktime": {
+          "kind": "none",
+          "value": 0
+        },
+        "replaceable": false
+      },
+      "sources": [
+        "locktime kind: values below 500000000 are block heights, others are UNIX times (Bitcoin Core v31.1 src/script/script.h line 47, LOCKTIME_THRESHOLD)",
+        "replaceable: BIP-125 line 40, explicit signalling if any input has nSequence below 0xfffffffe; Core getmempoolentry bip125-replaceable agrees, recorded below"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "tx.locktime": 0,
+        "tx.sequence": [
+          4294967295
+        ],
+        "bip125-replaceable": false
+      }
+    },
+    {
+      "id": "one-of-two-inputs-signals",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-9"
+      ],
+      "level": "MUST",
+      "description": "nLockTime 0, input sequences 0xfffffffd, 0xffffffff.",
+      "input": {
+        "psbt": "cHNidP8BAHsCAAAAAtER9rtWxxmDtQqdekz6WbuojbIb0XRl54Hg3UgsxR9tAAAAAAD9////9U9wq/g7z15NRlgEpW397S7fUzd06axCrqoQ73sbhXAAAAAAAP////8B8LwLVAIAAAAWABSb8ZIDPw0zr30qA8sthr4CJRkdCwAAAAAAAQCEAgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP////8DATIA/v///wIA8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiAAAAAAAAAAAmaiSqIant4vYcP3HR3v0/qZnfo2lTdVxpBol5mWK0i+vYNpdOjPkxAAAAAQEfAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4iIGAzDVT9DdQgpuX402JPXzSCyuNQ951fB1O/W+75wtka88GHPF2gpUAACAAAAAgAAAAIAAAAAAAAAAAAABAIMCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wJSAP7///8CAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4gAAAAAAAAAAJmokqiGp7eL2HD9x0d79P6mZ36NpU3VcaQaJeZlitIvr2DaXToz5AQAAAAEBHwDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIiBgMw1U/Q3UIKbl+NNiT180gsrjUPedXwdTv1vu+cLZGvPBhzxdoKVAAAgAAAAIAAAACAAAAAAAAAAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "locktime": {
+          "kind": "none",
+          "value": 0
+        },
+        "replaceable": true
+      },
+      "sources": [
+        "locktime kind: values below 500000000 are block heights, others are UNIX times (Bitcoin Core v31.1 src/script/script.h line 47, LOCKTIME_THRESHOLD)",
+        "replaceable: BIP-125 line 40, explicit signalling if any input has nSequence below 0xfffffffe; Core getmempoolentry bip125-replaceable agrees, recorded below"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "tx.locktime": 0,
+        "tx.sequence": [
+          4294967293,
+          4294967295
+        ],
+        "bip125-replaceable": true
+      }
+    },
+    {
+      "id": "second-of-two-inputs-signals",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-9"
+      ],
+      "level": "MUST",
+      "description": "nLockTime 0, input sequences 0xffffffff, 0x0.",
+      "input": {
+        "psbt": "cHNidP8BAHsCAAAAAuzljYGbbDQaqtL1BuB5SdjlpaieXJZINica96C6+LN1AAAAAAD/////CThTjGt+4KDjtOhhjhuZpmg3fUSlTDtWlUIR8pVquH8AAAAAAAAAAAAB8LwLVAIAAAAWABSb8ZIDPw0zr30qA8sthr4CJRkdCwAAAAAAAQCEAgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP////8DARwA/v///wIA8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiAAAAAAAAAAAmaiSqIant4vYcP3HR3v0/qZnfo2lTdVxpBol5mWK0i+vYNpdOjPkbAAAAAQEfAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4iIGAzDVT9DdQgpuX402JPXzSCyuNQ951fB1O/W+75wtka88GHPF2gpUAACAAAAAgAAAAIAAAAAAAAAAAAABAIQCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wMBNAD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+TMAAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAA=",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "locktime": {
+          "kind": "none",
+          "value": 0
+        },
+        "replaceable": true
+      },
+      "sources": [
+        "locktime kind: values below 500000000 are block heights, others are UNIX times (Bitcoin Core v31.1 src/script/script.h line 47, LOCKTIME_THRESHOLD)",
+        "replaceable: BIP-125 line 40, explicit signalling if any input has nSequence below 0xfffffffe; Core getmempoolentry bip125-replaceable agrees, recorded below"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "tx.locktime": 0,
+        "tx.sequence": [
+          4294967295,
+          0
+        ],
+        "bip125-replaceable": true
+      }
+    }
+  ],
+  "bitcoinCore": "/Satoshi:31.1.0/",
+  "contexts": {
+    "abandon-mainnet": {
+      "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+      "passphrase": "",
+      "network": "mainnet",
+      "masterFingerprint": "73c5da0a"
+    }
+  }
+}

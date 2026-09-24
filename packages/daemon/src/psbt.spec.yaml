@@ -69,6 +69,16 @@ invariants:
       - packages/daemon/test/psbt.test.ts::finds-the-path-that-owns-an-input
       - packages/daemon/test/psbt.test.ts::finds-nothing-for-a-foreign-input
 
+vectors:
+  - name: Signer profile SP-REV-6, SP-REV-7, change by re-derivation
+    file: spec/vectors/signer-profile/review-change.json
+    sha256: 743ae45d75f625eab1ef28275d01a8f39a940a4cae2b1fbc64476d118154ee3a
+    source: conformance/README.md; run by make conformance
+  - name: Signer profile SP-REV-24, SP-REV-25, ownership
+    file: spec/vectors/signer-profile/review-ownership.json
+    sha256: 24b2e951224a24c04472767483eeb1b10022d37131245fb9186f4332b7474f87
+    source: conformance/README.md; run by make conformance
+
 threats:
   - INV-PSBT-2
   - INV-PSBT-12

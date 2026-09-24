@@ -1,0 +1,379 @@
+{
+  "format": "signer-profile-vectors",
+  "version": 1,
+  "profile": "spec/signer-profile.md, draft specification version 0.1",
+  "file": "dice-to-entropy.json",
+  "requirements": [
+    "SP-ENT-1",
+    "SP-ENT-2",
+    "SP-ENT-3",
+    "SP-ENT-4",
+    "SP-ENT-7",
+    "SP-ENT-10",
+    "SP-HW-9"
+  ],
+  "operations": "diceToSeed",
+  "description": "Dice rolls to BIP-39 entropy, 24-word mnemonic and seed. Each accepted case gives the SHA-256 of the ASCII roll string (no separator, no trailing newline), the mnemonic for that entropy, and the BIP-39 seed with an empty passphrase. Each refused case is input the signer MUST refuse rather than normalise. Running an accepted case twice MUST give the same result (SP-HW-9: no randomness).",
+  "cases": [
+    {
+      "id": "published-worked-example",
+      "operation": "diceToSeed",
+      "requirements": [
+        "SP-ENT-1",
+        "SP-ENT-2",
+        "SP-ENT-3",
+        "SP-ENT-10",
+        "SP-HW-9"
+      ],
+      "level": "MUST",
+      "description": "The worked example in section 2.5 of the profile: 123456 repeated to 100 rolls.",
+      "input": {
+        "rolls": "1234561234561234561234561234561234561234561234561234561234561234561234561234561234561234561234561234",
+        "count": 100
+      },
+      "expected": {
+        "verdict": "accept",
+        "entropyHex": "e56403e8522ddeae1b44a1e8148b1ba4d3b4c626ccf20980056eedcc7e0c0f35",
+        "mnemonic": "tornado cactus wheel picture target finish home neither trend picture shoulder endless deputy glide open oxygen another ability forum swear side alcohol devote random",
+        "seedHex": "e50a429924dbdf4500fa0cf03cca5b1a5dab1524cf1cd0efe1868eee17837be02e061f3eaae7e08aaae894eb0dd14b6f04f793826f246d9b4960aded98ab8011"
+      },
+      "sources": [
+        "entropyHex: printf '%s' ROLLS | shasum -a 256, and /sbin/sha256sum, agreeing with Python hashlib",
+        "mnemonic: BIP-39 (bip-0039.mediawiki, \"Generating the mnemonic\") with bip-0039/english.txt from bitcoin/bips at 7c7cb232, implementation checked against the 24 Trezor vectors in spec/vectors/bip39-english.json",
+        "seedHex: PBKDF2-HMAC-SHA512, 2048 iterations, salt \"mnemonic\" (bip-0039.mediawiki, \"From mnemonic to seed\"), empty passphrase"
+      ]
+    },
+    {
+      "id": "one-hundred-sixes",
+      "operation": "diceToSeed",
+      "requirements": [
+        "SP-ENT-1",
+        "SP-ENT-2",
+        "SP-ENT-7"
+      ],
+      "level": "MUST",
+      "description": "A pattern any detector would flag. A warning is allowed; refusing or altering the rolls is not.",
+      "input": {
+        "rolls": "6666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666666",
+        "count": 100
+      },
+      "expected": {
+        "verdict": "accept",
+        "entropyHex": "495bd978198b68c4b68900f20bf8662f505fb07c7bdc4da8fc1094cc8f021305",
+        "mnemonic": "enable tell fun credit repair girl surface cactus velvet garlic book gadget album subway vehicle knee ethics elevator aerobic civil similar library equal same",
+        "seedHex": "2dff8beddbf0adafdf7c82b75acd98b5efc2c6ccd381fe1418b4c98748d92943f0bd7fe80d04a5550946b1ad91494ae0dcd6d4aa0bd7f0ed79200a5203a96705"
+      },
+      "sources": [
+        "entropyHex: printf '%s' ROLLS | shasum -a 256, and /sbin/sha256sum, agreeing with Python hashlib",
+        "mnemonic: BIP-39 (bip-0039.mediawiki, \"Generating the mnemonic\") with bip-0039/english.txt from bitcoin/bips at 7c7cb232, implementation checked against the 24 Trezor vectors in spec/vectors/bip39-english.json",
+        "seedHex: PBKDF2-HMAC-SHA512, 2048 iterations, salt \"mnemonic\" (bip-0039.mediawiki, \"From mnemonic to seed\"), empty passphrase"
+      ]
+    },
+    {
+      "id": "one-hundred-and-one-rolls",
+      "operation": "diceToSeed",
+      "requirements": [
+        "SP-ENT-2",
+        "SP-ENT-3"
+      ],
+      "level": "MUST",
+      "description": "One more than the minimum.",
+      "input": {
+        "rolls": "12345612345612345612345612345612345612345612345612345612345612345612345612345612345612345612345612345",
+        "count": 101
+      },
+      "expected": {
+        "verdict": "accept",
+        "entropyHex": "74b04bc1a818259c5067e7037f634e1f9a626aa10d6cf74303edadf46bd36fac",
+        "mnemonic": "input liquid vacant expand liquid soda dose woman address wild squeeze dish plate crystal loud pulse warrior blossom window fossil effort trust salt math",
+        "seedHex": "822c6fcb9581cfa8d5dcd60ace99d25250d0e74ab6f241b476a9255aeb1aabdddcbb2d1411d49a553dc1acc483e891502bff72385bf669373763f2c4aaab0a57"
+      },
+      "sources": [
+        "entropyHex: printf '%s' ROLLS | shasum -a 256, and /sbin/sha256sum, agreeing with Python hashlib",
+        "mnemonic: BIP-39 (bip-0039.mediawiki, \"Generating the mnemonic\") with bip-0039/english.txt from bitcoin/bips at 7c7cb232, implementation checked against the 24 Trezor vectors in spec/vectors/bip39-english.json",
+        "seedHex: PBKDF2-HMAC-SHA512, 2048 iterations, salt \"mnemonic\" (bip-0039.mediawiki, \"From mnemonic to seed\"), empty passphrase"
+      ]
+    },
+    {
+      "id": "one-hundred-and-fifty-rolls",
+      "operation": "diceToSeed",
+      "requirements": [
+        "SP-ENT-2",
+        "SP-ENT-3"
+      ],
+      "level": "MUST",
+      "description": "The 150-roll case section 2.1 names.",
+      "input": {
+        "rolls": "155155155155155155155155155155155155155155155155155155155155155155155155155155155155155155155155155155155155155155155155155155155155155155155155155155",
+        "count": 150
+      },
+      "expected": {
+        "verdict": "accept",
+        "entropyHex": "265b55980454365fee521751ab6b324eb10891f2cadba3e099bd713ded10438c",
+        "mnemonic": "chaos survey gravity anger drop copper rich drill faculty forget smart output awesome employ sleep fork physical age hungry tiny tell market athlete neck",
+        "seedHex": "901d8d0160621653ce9bd28ac4044fea604bb94d6accc9aa2b7ec1f4df4311da443610e39ebe19f911dad811fcef3d494bf7c0daa82638dcbc74d01e47994497"
+      },
+      "sources": [
+        "entropyHex: printf '%s' ROLLS | shasum -a 256, and /sbin/sha256sum, agreeing with Python hashlib",
+        "mnemonic: BIP-39 (bip-0039.mediawiki, \"Generating the mnemonic\") with bip-0039/english.txt from bitcoin/bips at 7c7cb232, implementation checked against the 24 Trezor vectors in spec/vectors/bip39-english.json",
+        "seedHex: PBKDF2-HMAC-SHA512, 2048 iterations, salt \"mnemonic\" (bip-0039.mediawiki, \"From mnemonic to seed\"), empty passphrase"
+      ]
+    },
+    {
+      "id": "one-thousand-rolls",
+      "operation": "diceToSeed",
+      "requirements": [
+        "SP-ENT-2",
+        "SP-ENT-3"
+      ],
+      "level": "MUST",
+      "description": "There is no upper bound: any count of 100 or more is accepted.",
+      "input": {
+        "rolls": "1234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345123451234512345",
+        "count": 1000
+      },
+      "expected": {
+        "verdict": "accept",
+        "entropyHex": "e987ddba8f237d56608b83db03b7e80e2ffdf2970cd4498910c8d20dc4d59bb1",
+        "mnemonic": "trumpet discover huge bundle daughter private lion idea swallow buffalo wheel brisk zone welcome found once end embrace cram piano sword hello human daughter",
+        "seedHex": "7811669dbe93940237603d5806d19970f44de89fe65adac207fc6eec617348076fc584f3c8da6b2e81f7efae1548bfd1838d536a94b77ce2eb430ccde82241f9"
+      },
+      "sources": [
+        "entropyHex: printf '%s' ROLLS | shasum -a 256, and /sbin/sha256sum, agreeing with Python hashlib",
+        "mnemonic: BIP-39 (bip-0039.mediawiki, \"Generating the mnemonic\") with bip-0039/english.txt from bitcoin/bips at 7c7cb232, implementation checked against the 24 Trezor vectors in spec/vectors/bip39-english.json",
+        "seedHex: PBKDF2-HMAC-SHA512, 2048 iterations, salt \"mnemonic\" (bip-0039.mediawiki, \"From mnemonic to seed\"), empty passphrase"
+      ]
+    },
+    {
+      "id": "ninety-nine-rolls",
+      "operation": "diceToSeed",
+      "requirements": [
+        "SP-ENT-3"
+      ],
+      "level": "MUST",
+      "description": "99 rolls carry 255.911 bits, short of 256.",
+      "input": {
+        "rolls": "123456123456123456123456123456123456123456123456123456123456123456123456123456123456123456123456123",
+        "count": 99
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "verdict: SP-ENT-3 text"
+      ]
+    },
+    {
+      "id": "trailing-newline",
+      "operation": "diceToSeed",
+      "requirements": [
+        "SP-ENT-4"
+      ],
+      "level": "MUST",
+      "description": "What `echo` appends. Refused, not stripped.",
+      "input": {
+        "rolls": "1234561234561234561234561234561234561234561234561234561234561234561234561234561234561234561234561234\n",
+        "count": 101
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "verdict: SP-ENT-4 text"
+      ]
+    },
+    {
+      "id": "trailing-crlf",
+      "operation": "diceToSeed",
+      "requirements": [
+        "SP-ENT-4"
+      ],
+      "level": "MUST",
+      "description": "A Windows line ending.",
+      "input": {
+        "rolls": "1234561234561234561234561234561234561234561234561234561234561234561234561234561234561234561234561234\r\n",
+        "count": 102
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "verdict: SP-ENT-4 text"
+      ]
+    },
+    {
+      "id": "leading-space",
+      "operation": "diceToSeed",
+      "requirements": [
+        "SP-ENT-4"
+      ],
+      "level": "MUST",
+      "description": "Whitespace before the first roll.",
+      "input": {
+        "rolls": " 1234561234561234561234561234561234561234561234561234561234561234561234561234561234561234561234561234",
+        "count": 101
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "verdict: SP-ENT-4 text"
+      ]
+    },
+    {
+      "id": "space-separated",
+      "operation": "diceToSeed",
+      "requirements": [
+        "SP-ENT-1",
+        "SP-ENT-4"
+      ],
+      "level": "MUST",
+      "description": "Groups of six separated by spaces.",
+      "input": {
+        "rolls": "123456 123456 123456 123456 123456 123456 123456 123456 123456 123456 123456 123456 123456 123456 123456 123456 1234",
+        "count": 116
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "verdict: SP-ENT-1, SP-ENT-4 text"
+      ]
+    },
+    {
+      "id": "comma-separated",
+      "operation": "diceToSeed",
+      "requirements": [
+        "SP-ENT-1",
+        "SP-ENT-4"
+      ],
+      "level": "MUST",
+      "description": "Every roll separated by a comma.",
+      "input": {
+        "rolls": "1,2,3,4,5,6,1,2,3,4,5,6,1,2,3,4,5,6,1,2,3,4,5,6,1,2,3,4,5,6,1,2,3,4,5,6,1,2,3,4,5,6,1,2,3,4,5,6,1,2,3,4,5,6,1,2,3,4,5,6,1,2,3,4,5,6,1,2,3,4,5,6,1,2,3,4,5,6,1,2,3,4,5,6,1,2,3,4,5,6,1,2,3,4,5,6,1,2,3,4",
+        "count": 199
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "verdict: SP-ENT-1, SP-ENT-4 text"
+      ]
+    },
+    {
+      "id": "tab-inside",
+      "operation": "diceToSeed",
+      "requirements": [
+        "SP-ENT-4"
+      ],
+      "level": "MUST",
+      "description": "A tab between roll 50 and roll 51.",
+      "input": {
+        "rolls": "12345612345612345612345612345612345612345612345612\t34561234561234561234561234561234561234561234561234",
+        "count": 101
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "verdict: SP-ENT-4 text"
+      ]
+    },
+    {
+      "id": "zero-based-faces",
+      "operation": "diceToSeed",
+      "requirements": [
+        "SP-ENT-4"
+      ],
+      "level": "MUST",
+      "description": "A d6 read as 0 to 5. Not relabelled.",
+      "input": {
+        "rolls": "0123450123450123450123450123450123450123450123450123450123450123450123450123450123450123450123450123",
+        "count": 100
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "verdict: SP-ENT-4 text"
+      ]
+    },
+    {
+      "id": "face-seven",
+      "operation": "diceToSeed",
+      "requirements": [
+        "SP-ENT-4"
+      ],
+      "level": "MUST",
+      "description": "Last roll is 7.",
+      "input": {
+        "rolls": "1234561234561234561234561234561234561234561234561234561234561234561234561234561234561234561234561237",
+        "count": 100
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "verdict: SP-ENT-4 text"
+      ]
+    },
+    {
+      "id": "face-zero",
+      "operation": "diceToSeed",
+      "requirements": [
+        "SP-ENT-4"
+      ],
+      "level": "MUST",
+      "description": "First roll is 0.",
+      "input": {
+        "rolls": "0234561234561234561234561234561234561234561234561234561234561234561234561234561234561234561234561234",
+        "count": 100
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "verdict: SP-ENT-4 text"
+      ]
+    },
+    {
+      "id": "fullwidth-digits",
+      "operation": "diceToSeed",
+      "requirements": [
+        "SP-ENT-4"
+      ],
+      "level": "MUST",
+      "description": "Unicode full-width digits U+FF11 to U+FF16, which some keyboards produce. Not normalised to ASCII.",
+      "input": {
+        "rolls": "１２３４５６１２３４５６１２３４５６１２３４５６１２３４５６１２３４５６１２３４５６１２３４５６１２３４５６１２３４５６１２３４５６１２３４５６１２３４５６１２３４５６１２３４５６１２３４５６１２３４",
+        "count": 100
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "verdict: SP-ENT-4 text"
+      ]
+    },
+    {
+      "id": "empty",
+      "operation": "diceToSeed",
+      "requirements": [
+        "SP-ENT-3",
+        "SP-ENT-4"
+      ],
+      "level": "MUST",
+      "description": "No rolls.",
+      "input": {
+        "rolls": "",
+        "count": 0
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "verdict: SP-ENT-3, SP-ENT-4 text"
+      ]
+    }
+  ]
+}

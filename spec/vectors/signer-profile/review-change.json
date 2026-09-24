@@ -1,0 +1,385 @@
+{
+  "format": "signer-profile-vectors",
+  "version": 1,
+  "profile": "spec/signer-profile.md, draft specification version 0.1",
+  "file": "review-change.json",
+  "requirements": [
+    "SP-REV-6",
+    "SP-REV-7",
+    "SP-REV-14"
+  ],
+  "operations": "review",
+  "description": "Change is established only by re-deriving the output script from the signer's own seed. Derivation records in the PSBT, output position and amount contribute nothing.",
+  "cases": [
+    {
+      "id": "genuine-change-segwit-v0",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-6"
+      ],
+      "level": "MUST",
+      "description": "Change to m/84'/0'/0'/1/0, the BIP-84 first change address. It re-derives, so it is change and its path is shown.",
+      "input": {
+        "psbt": "cHNidP8BAHECAAAAAQ9ZAR8axWVRLttHDOEHHCtKk8y6Qo87yMhCXpJvjqyFAAAAAAD9////AgDKmjsAAAAAFgAUkD5Rz862uY2eKXyN5q4AoLTDwRnwAGvuAAAAABYAFD40mF3Kb93J+zaZQOTH2OKHP1KcAAAAAAABAIQCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wMBJgD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+SUAAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAAiAgMCUySIjkKauOPbrx94AmSLnNAem0GEhcX6TBubVwDhphhzxdoKVAAAgAAAAIAAAACAAQAAAAAAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "outputs": [
+          {
+            "index": 0,
+            "address": "bc1qjql9rn7wk6ucm83f0jx7dtsq5z6v8sgeaz984c",
+            "amountSats": "1000000000",
+            "kind": "payment"
+          },
+          {
+            "index": 1,
+            "address": "bc1q8c6fshw2dlwun7ekn9qwf37cu2rn755upcp6el",
+            "amountSats": "3999990000",
+            "kind": "change",
+            "changePath": "m/84'/0'/0'/1/0"
+          }
+        ]
+      },
+      "sources": [
+        "kind and changePath: Bitcoin Core /Satoshi:31.1.0/ getaddressinfo (ismine, hdkeypath); change when Core derives the script on branch 1, in a descriptor wallet holding the BIP-84 and BIP-86 test key, imported with range 0 to 1000",
+        "address: scriptPubKey from decodepsbt, encoded with hrp \"bc\" by the BIP-173/350 reference code (sipa/bech32 ref/python/segwit_addr.py)",
+        "BIP-84 lines 87-90 publish this change address"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "genuine-change-taproot",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-6"
+      ],
+      "level": "MUST",
+      "description": "Change to m/86'/0'/0'/1/0, the BIP-86 first change address.",
+      "input": {
+        "psbt": "cHNidP8BAH0CAAAAAaJGaL1GSSwGcrVaqg5iJNrTwd+HArrq2ch0ZV5JkryKAAAAAAD9////AgDKmjsAAAAAFgAUB3tS/z3IWAk5uGIU1BBNbVDofeTwAGvuAAAAACJRIIgtdOXQVy1agWzvAEGpa2wd6DL2+WdtlgXETV6al9PcAAAAAAABAIQCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wMBOgD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+TkAAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAABBSA5nxsvQ5PymhjJN4WcXdinc1AQMVfriA8C6MCCFCd87yEHOZ8bL0OT8poYyTeFnF3Yp3NQEDFX64gPAujAghQnfO8ZAHPF2gpWAACAAAAAgAAAAIABAAAAAAAAAAA=",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "outputs": [
+          {
+            "index": 0,
+            "address": "bc1qqaa49leaepvqjwdcvg2dgyzdd4gwsl0yzggjyc",
+            "amountSats": "1000000000",
+            "kind": "payment"
+          },
+          {
+            "index": 1,
+            "address": "bc1p3qkhfews2uk44qtvauqyr2ttdsw7svhkl9nkm9s9c3x4ax5h60wqwruhk7",
+            "amountSats": "3999990000",
+            "kind": "change",
+            "changePath": "m/86'/0'/0'/1/0"
+          }
+        ]
+      },
+      "sources": [
+        "kind and changePath: Bitcoin Core /Satoshi:31.1.0/ getaddressinfo (ismine, hdkeypath); change when Core derives the script on branch 1, in a descriptor wallet holding the BIP-84 and BIP-86 test key, imported with range 0 to 1000",
+        "address: scriptPubKey from decodepsbt, encoded with hrp \"bc\" by the BIP-173/350 reference code (sipa/bech32 ref/python/segwit_addr.py)",
+        "BIP-86 lines 110-116 publish this change address"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "change-without-derivation-record",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-6"
+      ],
+      "level": "MUST",
+      "description": "The same change output with its PSBT_OUT_BIP32_DERIVATION removed. Change is found by re-deriving the script, so the missing hint changes nothing.",
+      "input": {
+        "psbt": "cHNidP8BAHECAAAAAVVAjnghKV46ZhSdq3+Mot+iZgrkEy/KLXfq1FvQAF+LAAAAAAD9////AgDKmjsAAAAAFgAU12F+0/F7hygBSlVt5KDjSsoscLvwAGvuAAAAABYAFD40mF3Kb93J+zaZQOTH2OKHP1KcAAAAAAABAIQCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wMBQwD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+UIAAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "outputs": [
+          {
+            "index": 0,
+            "address": "bc1q6asha5l30wrjsq2224k7fg8rft9zcu9m5yw9vz",
+            "amountSats": "1000000000",
+            "kind": "payment"
+          },
+          {
+            "index": 1,
+            "address": "bc1q8c6fshw2dlwun7ekn9qwf37cu2rn755upcp6el",
+            "amountSats": "3999990000",
+            "kind": "change",
+            "changePath": "m/84'/0'/0'/1/0"
+          }
+        ]
+      },
+      "sources": [
+        "kind and changePath: Bitcoin Core /Satoshi:31.1.0/ getaddressinfo (ismine, hdkeypath); change when Core derives the script on branch 1, in a descriptor wallet holding the BIP-84 and BIP-86 test key, imported with range 0 to 1000"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "attacker-in-change-position-with-derivation-claim",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-6",
+        "SP-REV-7"
+      ],
+      "level": "MUST",
+      "description": "Output 1 pays an address the signer does not own, and carries a PSBT_OUT_BIP32_DERIVATION naming the signer's fingerprint, the path m/84'/0'/0'/1/0 and that path's public key. It MUST be shown as a payment, and SHOULD say the transaction claimed it.",
+      "input": {
+        "psbt": "cHNidP8BAHECAAAAAZgm1q0gzi00hr3YFBOfCnYmOVoVY/H80AK5WjMcinOOAAAAAAD9////AgDKmjsAAAAAFgAUWEwqh6M3b91BmePmV21UVr4CBmTwAGvuAAAAABYAFMro5auSto3bCK/l8D47eQozGAM1AAAAAAABAIQCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wMBQQD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+UAAAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAAiAgMCUySIjkKauOPbrx94AmSLnNAem0GEhcX6TBubVwDhphhzxdoKVAAAgAAAAIAAAACAAQAAAAAAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "outputs": [
+          {
+            "index": 0,
+            "address": "bc1qtpxz4parxaha6sveu0n9wm2526lqypny0c35pq",
+            "amountSats": "1000000000",
+            "kind": "payment"
+          },
+          {
+            "index": 1,
+            "address": "bc1qet5wt2ujk6xakz90uhcruwmepge3sqe4vvmljr",
+            "amountSats": "3999990000",
+            "kind": "payment"
+          }
+        ],
+        "claimedOutputs": {
+          "should": [
+            1
+          ]
+        }
+      },
+      "sources": [
+        "kind and changePath: Bitcoin Core /Satoshi:31.1.0/ getaddressinfo (ismine, hdkeypath); change when Core derives the script on branch 1, in a descriptor wallet holding the BIP-84 and BIP-86 test key, imported with range 0 to 1000",
+        "address: scriptPubKey from decodepsbt, encoded with hrp \"bc\" by the BIP-173/350 reference code (sipa/bech32 ref/python/segwit_addr.py)",
+        "claim: public key from BIP-84 line 89, fingerprint from Core listdescriptors"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "attacker-in-change-position-with-taproot-derivation-claim",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-6",
+        "SP-REV-7"
+      ],
+      "level": "MUST",
+      "description": "As above with PSBT_OUT_TAP_BIP32_DERIVATION naming the BIP-86 first change key. MUST be a payment; SHOULD be reported as claimed.",
+      "input": {
+        "psbt": "cHNidP8BAH0CAAAAAZMQaGeMZIZ1e9XfXRQNQqzvwd23hdfImtts/dcm4l6WAAAAAAD9////AgDKmjsAAAAAFgAU+LMnbyB4EgCsr+aTEIeoDIOHLkvwAGvuAAAAACJRIO1/IAV9GNZ3iQWMb4hkyHGKcTXM0v+vLOva6BsNsj1WAAAAAAABAIQCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wMBFQD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+RQAAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAAhBzmfGy9Dk/KaGMk3hZxd2KdzUBAxV+uIDwLowIIUJ3zvGQBzxdoKVgAAgAAAAIAAAACAAQAAAAAAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "outputs": [
+          {
+            "index": 0,
+            "address": "bc1qlzejwmeq0qfqpt90u6f3ppagpjpcwtjtpn64jx",
+            "amountSats": "1000000000",
+            "kind": "payment"
+          },
+          {
+            "index": 1,
+            "address": "bc1pa4ljqptarrt80zg933hcsexgwx98zdwv6tl67t8tmt5pkrdj84tqzese37",
+            "amountSats": "3999990000",
+            "kind": "payment"
+          }
+        ],
+        "claimedOutputs": {
+          "should": [
+            1
+          ]
+        }
+      },
+      "sources": [
+        "kind and changePath: Bitcoin Core /Satoshi:31.1.0/ getaddressinfo (ismine, hdkeypath); change when Core derives the script on branch 1, in a descriptor wallet holding the BIP-84 and BIP-86 test key, imported with range 0 to 1000",
+        "address: scriptPubKey from decodepsbt, encoded with hrp \"bc\" by the BIP-173/350 reference code (sipa/bech32 ref/python/segwit_addr.py)",
+        "claim: x-only key from BIP-86 line 113"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "change-at-index-99",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-6"
+      ],
+      "level": "MUST",
+      "description": "Change at m/84'/0'/0'/1/99. It is change if the signer searches that far and a payment if it does not. The runner compares against the search bound the adapter declares.",
+      "input": {
+        "psbt": "cHNidP8BAHECAAAAAfbrT2VhAWIMYzT0JRtkGzinPLeg0Td6NeCDvc7oyrKZAAAAAAD9////AgDKmjsAAAAAFgAULrBhZDZpku+dMI9Kvtdszgi32HPwAGvuAAAAABYAFAMbpkb4V4LibqyA7glF0D9R5GENAAAAAAABAIQCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wMBIwD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+SIAAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAAiAgKMgJ8u/nGQ08kZZL0mM2SVM8rwnqQBumBULuyLNbY/PRhzxdoKVAAAgAAAAIAAAACAAQAAAGMAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "outputs": [
+          {
+            "index": 0,
+            "address": "bc1q96cxzepkdxfwl8fs3a9ta4mvecyt0krnpjjn8z",
+            "amountSats": "1000000000",
+            "kind": "payment"
+          },
+          {
+            "index": 1,
+            "address": "bc1qqvd6v3hc27pwym4vsrhqj3ws8ag7gcgd3yum8a",
+            "amountSats": "3999990000",
+            "kind": {
+              "changeIfIndexBelowBound": 99
+            },
+            "changePath": "m/84'/0'/0'/1/99"
+          }
+        ]
+      },
+      "sources": [
+        "kind and changePath: Bitcoin Core /Satoshi:31.1.0/ getaddressinfo (ismine, hdkeypath); change when Core derives the script on branch 1, in a descriptor wallet holding the BIP-84 and BIP-86 test key, imported with range 0 to 1000"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "change-at-index-100",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-6"
+      ],
+      "level": "MUST",
+      "description": "Change at m/84'/0'/0'/1/100. It is change if the signer searches that far and a payment if it does not. The runner compares against the search bound the adapter declares.",
+      "input": {
+        "psbt": "cHNidP8BAHECAAAAAVPhsU7Wp63vYgve4HF4uau19fpAe315FpOlJRd00zybAAAAAAD9////AgDKmjsAAAAAFgAULrBhZDZpku+dMI9Kvtdszgi32HPwAGvuAAAAABYAFNGoPwRzQo4Qo3gZRUkqXY9MVY1SAAAAAAABAIQCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wMBNgD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+TUAAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAAiAgK8yA5KSirLOVs1BSvnS8gqRWiiBGvubCfZw24pb+O4+hhzxdoKVAAAgAAAAIAAAACAAQAAAGQAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "outputs": [
+          {
+            "index": 0,
+            "address": "bc1q96cxzepkdxfwl8fs3a9ta4mvecyt0krnpjjn8z",
+            "amountSats": "1000000000",
+            "kind": "payment"
+          },
+          {
+            "index": 1,
+            "address": "bc1q6x5r7prng28ppgmcr9z5j2ja3ax9tr2j7vp5t6",
+            "amountSats": "3999990000",
+            "kind": {
+              "changeIfIndexBelowBound": 100
+            },
+            "changePath": "m/84'/0'/0'/1/100"
+          }
+        ]
+      },
+      "sources": [
+        "kind and changePath: Bitcoin Core /Satoshi:31.1.0/ getaddressinfo (ismine, hdkeypath); change when Core derives the script on branch 1, in a descriptor wallet holding the BIP-84 and BIP-86 test key, imported with range 0 to 1000"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "change-at-index-999",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-6"
+      ],
+      "level": "MUST",
+      "description": "Change at m/84'/0'/0'/1/999. It is change if the signer searches that far and a payment if it does not. The runner compares against the search bound the adapter declares.",
+      "input": {
+        "psbt": "cHNidP8BAHECAAAAAb5rOxKZUV7TMlwv2ngwko85YgNnvaLMuXQ76+lstZScAAAAAAD9////AgDKmjsAAAAAFgAULrBhZDZpku+dMI9Kvtdszgi32HPwAGvuAAAAABYAFH2hIhdeWjcTvlX2F8bgfPUABgDhAAAAAAABAIQCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wMBOAD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+TcAAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAAiAgOlt8Zq650R+tGz3BKYpQwEAxOXsGqJ+nYx6mfD9yX/IxhzxdoKVAAAgAAAAIAAAACAAQAAAOcDAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "outputs": [
+          {
+            "index": 0,
+            "address": "bc1q96cxzepkdxfwl8fs3a9ta4mvecyt0krnpjjn8z",
+            "amountSats": "1000000000",
+            "kind": "payment"
+          },
+          {
+            "index": 1,
+            "address": "bc1q0ksjy967tgm380j47ctudcru75qqvq8p0kjek4",
+            "amountSats": "3999990000",
+            "kind": {
+              "changeIfIndexBelowBound": 999
+            },
+            "changePath": "m/84'/0'/0'/1/999"
+          }
+        ]
+      },
+      "sources": [
+        "kind and changePath: Bitcoin Core /Satoshi:31.1.0/ getaddressinfo (ismine, hdkeypath); change when Core derives the script on branch 1, in a descriptor wallet holding the BIP-84 and BIP-86 test key, imported with range 0 to 1000"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "payment-to-own-receive-address",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-6",
+        "SP-REV-14"
+      ],
+      "level": "MUST",
+      "description": "Output 0 pays the signer's own receive address m/84'/0'/0'/0/1 (BIP-84 lines 82-85). SP-REV-14 says it SHOULD be shown as a payment rather than change.",
+      "input": {
+        "psbt": "cHNidP8BAHECAAAAAU5SG74Rhq5Xpw+Sd6k0Jeyb9rCPC4JaseTXmy5etPWfAAAAAAD9////AgDKmjsAAAAAFgAUnJD5NOpR+g9lBBdwQ+CQjaaSmYPwAGvuAAAAABYAFJn79N60H+Eq1Dhq3pVjrViWiYqoAAAAAAABAIQCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wMBHgD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+R0AAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAACICA+d1/VHw37jNhl2f8cyioVjPZR/pl/3J/unB07Xplep3GHPF2gpUAACAAAAAgAAAAIAAAAAAAQAAAAAiAgKbqNSxNGatj3jNEgj2ACPuVo6Uo/48P/SkzNvFugYn+hhzxdoKVAAAgAAAAIAAAACAAQAAAAIAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "outputs": [
+          {
+            "index": 1,
+            "address": "bc1qn8alfh45rlsj44pcdt0f2cadtztgnz4gq3h3uf",
+            "amountSats": "3999990000",
+            "kind": "change",
+            "changePath": "m/84'/0'/0'/1/2"
+          }
+        ],
+        "shouldOutputs": [
+          {
+            "index": 0,
+            "address": "bc1qnjg0jd8228aq7egyzacy8cys3knf9xvrerkf9g",
+            "amountSats": "1000000000",
+            "kind": "payment"
+          }
+        ]
+      },
+      "sources": [
+        "kind and changePath: Bitcoin Core /Satoshi:31.1.0/ getaddressinfo (ismine, hdkeypath); change when Core derives the script on branch 1, in a descriptor wallet holding the BIP-84 and BIP-86 test key, imported with range 0 to 1000",
+        "address: scriptPubKey from decodepsbt, encoded with hrp \"bc\" by the BIP-173/350 reference code (sipa/bech32 ref/python/segwit_addr.py)"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    }
+  ],
+  "bitcoinCore": "/Satoshi:31.1.0/",
+  "contexts": {
+    "abandon-mainnet": {
+      "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+      "passphrase": "",
+      "network": "mainnet",
+      "masterFingerprint": "73c5da0a"
+    }
+  }
+}

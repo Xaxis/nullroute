@@ -1,0 +1,227 @@
+{
+  "format": "signer-profile-vectors",
+  "version": 1,
+  "profile": "spec/signer-profile.md, draft specification version 0.1",
+  "file": "review-fee-and-amounts.json",
+  "requirements": [
+    "SP-REV-2",
+    "SP-REV-4",
+    "SP-REV-13"
+  ],
+  "operations": "review",
+  "description": "Input amounts come from the UTXO records, the fee is inputs minus outputs in integer satoshis, a missing amount or outputs above inputs are refused, and a high fee warns without blocking.",
+  "cases": [
+    {
+      "id": "fee-one-input",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-2",
+        "SP-REV-4"
+      ],
+      "level": "MUST",
+      "description": "One segwit v0 input with both UTXO records, a payment and change. The fee is inputs minus outputs.",
+      "input": {
+        "psbt": "cHNidP8BAHECAAAAAVFMwhPiIInuW+N/+aOiF74lwWO862u386dFYxxkKZoDAAAAAAD9////AgDKmjsAAAAAFgAU25YAnZD2l4Gco0TI9qQ4+qmhWc/wAGvuAAAAABYAFD40mF3Kb93J+zaZQOTH2OKHP1KcAAAAAAABAIQCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wMBQAD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+T8AAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAAiAgMCUySIjkKauOPbrx94AmSLnNAem0GEhcX6TBubVwDhphhzxdoKVAAAgAAAAIAAAACAAQAAAAAAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "feeSats": "10000",
+        "outputs": [
+          {
+            "index": 0,
+            "address": "bc1qmwtqp8vs76tcr89rgny0dfpcl256zkw0j4mu00",
+            "amountSats": "1000000000",
+            "kind": "payment"
+          },
+          {
+            "index": 1,
+            "address": "bc1q8c6fshw2dlwun7ekn9qwf37cu2rn755upcp6el",
+            "amountSats": "3999990000",
+            "kind": "change",
+            "changePath": "m/84'/0'/0'/1/0"
+          }
+        ]
+      },
+      "sources": [
+        "fee: Bitcoin Core /Satoshi:31.1.0/ decodepsbt field \"fee\", converted from BTC to satoshis",
+        "kind and changePath: Bitcoin Core /Satoshi:31.1.0/ getaddressinfo (ismine, hdkeypath); change when Core derives the script on branch 1, in a descriptor wallet holding the BIP-84 and BIP-86 test key, imported with range 0 to 1000",
+        "address: scriptPubKey from decodepsbt, encoded with hrp \"bc\" by the BIP-173/350 reference code (sipa/bech32 ref/python/segwit_addr.py)"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "fee-two-input-types",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-2",
+        "SP-REV-4"
+      ],
+      "level": "MUST",
+      "description": "A segwit v0 input and a taproot input, both from the UTXO records, change to the taproot change branch.",
+      "input": {
+        "psbt": "cHNidP8BAKYCAAAAAhQtslylbJahrCdaVRvD0EfqHHlsIqv5ZKniTI6KqwIEAAAAAAD9////jiylmdP4e9DQQqYhdnwb2GZDtLqsDY6RiJIaU5yPxBYAAAAAAP3///8CAF7QsgAAAAAWABTPamwnoKo/2RM5Sjcu0WsMIpAsi3hyO6EBAAAAIlEgiC105dBXLVqBbO8AQalrbB3oMvb5Z22WBcRNXpqX09wAAAAAAAEAhAIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////AwEgAP7///8CAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4gAAAAAAAAAAJmokqiGp7eL2HD9x0d79P6mZ36NpU3VcaQaJeZlitIvr2DaXToz5HwAAAAEBHwDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIiBgMw1U/Q3UIKbl+NNiT180gsrjUPedXwdTv1vu+cLZGvPBhzxdoKVAAAgAAAAIAAAACAAAAAAAAAAAAAAQCQAgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP////8DAVUA/v///wIA8gUqAQAAACJRIKYIafDbzx3GWcnOy6+AUBNeqejNxIcFPx3GiAlJ3GhMAAAAAAAAAAAmaiSqIant4vYcP3HR3v0/qZnfo2lTdVxpBol5mWK0i+vYNpdOjPlUAAAAAQErAPIFKgEAAAAiUSCmCGnw288dxlnJzsuvgFATXqnozcSHBT8dxogJSdxoTCEWzIpLxk2Je93F+8L2cPeougs4Z3kQbPEiPG/F181vwRUZAHPF2gpWAACAAAAAgAAAAIAAAAAAAAAAAAEXIMyKS8ZNiXvdxfvC9nD3qLoLOGd5EGzxIjxvxdfNb8EVAAABBSA5nxsvQ5PymhjJN4WcXdinc1AQMVfriA8C6MCCFCd87yEHOZ8bL0OT8poYyTeFnF3Yp3NQEDFX64gPAujAghQnfO8ZAHPF2gpWAACAAAAAgAAAAIABAAAAAAAAAAA=",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "feeSats": "5000",
+        "outputs": [
+          {
+            "index": 0,
+            "address": "bc1qea4xcfaq4glajyeefgmja5ttps3fqtytlrj4kx",
+            "amountSats": "3000000000",
+            "kind": "payment"
+          },
+          {
+            "index": 1,
+            "address": "bc1p3qkhfews2uk44qtvauqyr2ttdsw7svhkl9nkm9s9c3x4ax5h60wqwruhk7",
+            "amountSats": "6999995000",
+            "kind": "change",
+            "changePath": "m/86'/0'/0'/1/0"
+          }
+        ]
+      },
+      "sources": [
+        "fee: Bitcoin Core /Satoshi:31.1.0/ decodepsbt field \"fee\", converted from BTC to satoshis",
+        "kind and changePath: Bitcoin Core /Satoshi:31.1.0/ getaddressinfo (ismine, hdkeypath); change when Core derives the script on branch 1, in a descriptor wallet holding the BIP-84 and BIP-86 test key, imported with range 0 to 1000",
+        "address: scriptPubKey from decodepsbt, encoded with hrp \"bc\" by the BIP-173/350 reference code (sipa/bech32 ref/python/segwit_addr.py)"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00005000"
+      }
+    },
+    {
+      "id": "no-utxo-records",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-2"
+      ],
+      "level": "MUST",
+      "description": "A PSBT straight from createpsbt, with no UTXO record for its only input. No amount is known, so it MUST be refused rather than reviewed.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAbVkUp3NEuB2l4aMZkaVhdjGE0Jj/lcXlZCuOROJ4qwJAAAAAAD9////AfDKBSoBAAAAFgAUPgBAVgs2EDxSDFhf8rNnfGifJ4UAAAAAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "verdict: SP-REV-2 text; Core decodepsbt reports no fee for this PSBT"
+      ],
+      "bitcoinCore": {
+        "fee": null,
+        "analyzepsbt.next": "updater"
+      }
+    },
+    {
+      "id": "one-input-without-utxo",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-2"
+      ],
+      "level": "MUST",
+      "description": "Two inputs, the second stripped of both UTXO records. One missing amount is enough to refuse.",
+      "input": {
+        "psbt": "cHNidP8BAHsCAAAAAjY87+KvdbZGPDFv/ok+sCdt/1RAF6SunF+WlOZ2EdgLAAAAAAD9////71fagJ8qJtgyKLR/+qYvjDBj1mCem0BLPzF5BK798R4AAAAAAP3///8B8LwLVAIAAAAWABSP9X1sigz5Dbnhl8bHBlQlK0ck9wAAAAAAAQCDAgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP////8CWwD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+QoAAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAACEWzIpLxk2Je93F+8L2cPeougs4Z3kQbPEiPG/F181vwRUZAHPF2gpWAACAAAAAgAAAAIAAAAAAAAAAAAEXIMyKS8ZNiXvdxfvC9nD3qLoLOGd5EGzxIjxvxdfNb8EVAAA=",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "verdict: SP-REV-2 text; Core decodepsbt reports no fee for this PSBT"
+      ],
+      "bitcoinCore": {
+        "fee": null
+      }
+    },
+    {
+      "id": "outputs-exceed-inputs",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-4"
+      ],
+      "level": "MUST",
+      "description": "Outputs total 0.1 BTC more than the only input. The transaction is invalid and MUST be refused.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAQwPe4iDLiH8nHbnS8wcnBfxAnGCfgpZ9io9bP31By0MAAAAAAD9////AYCInioBAAAAFgAUkSGYAMDnZojCC3RFz+a4q7A4UW0AAAAAAAEAhAIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////AwEtAP7///8CAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4gAAAAAAAAAAJmokqiGp7eL2HD9x0d79P6mZ36NpU3VcaQaJeZlitIvr2DaXToz5LAAAAAEBHwDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIiBgMw1U/Q3UIKbl+NNiT180gsrjUPedXwdTv1vu+cLZGvPBhzxdoKVAAAgAAAAIAAAACAAAAAAAAAAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "verdict: SP-REV-4 text; Core decodepsbt reports a negative fee and testmempoolaccept rejects the signed transaction"
+      ],
+      "bitcoinCore": {
+        "fee": "-0.10000000",
+        "testmempoolaccept": "bad-txns-in-belowout"
+      }
+    },
+    {
+      "id": "high-fee-warns-and-does-not-block",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-4",
+        "SP-REV-13"
+      ],
+      "level": "MUST",
+      "description": "A 4 BTC fee on a 1 BTC payment. The profile does not make a high fee blocking, so the verdict is allow; SP-REV-13 says it SHOULD warn.",
+      "input": {
+        "psbt": "cHNidP8BAHECAAAAASs1CvO5r89sVncxZg7TR7gtlcqJ7mMcBYZNCjp/qgQNAAAAAAD9////AgDh9QUAAAAAFgAUlw7puAQMpmYU0woRhXNjmQVwX8YAjTgMAQAAABYAFEIn2DTxqulSc/DIdJX0/wyzZlRSAAAAAAABAIMCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wJeAP7///8CAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4gAAAAAAAAAAJmokqiGp7eL2HD9x0d79P6mZ36NpU3VcaQaJeZlitIvr2DaXToz5DQAAAAEBHwDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIiBgMw1U/Q3UIKbl+NNiT180gsrjUPedXwdTv1vu+cLZGvPBhzxdoKVAAAgAAAAIAAAACAAAAAAAAAAAAAACICA9z3HfccdVs69G9+hLQYLmKRzsWoxjD3dWOKc52imty2GHPF2gpUAACAAAAAgAAAAIABAAAAAQAAAAA=",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "feeSats": "400000000",
+        "warnings": {
+          "should": [
+            "high-fee"
+          ]
+        }
+      },
+      "sources": [
+        "fee: Bitcoin Core /Satoshi:31.1.0/ decodepsbt field \"fee\", converted from BTC to satoshis",
+        "verdict and warning: SP-REV-13 text"
+      ],
+      "bitcoinCore": {
+        "fee": "4.00000000"
+      }
+    },
+    {
+      "id": "zero-fee",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-4"
+      ],
+      "level": "MUST",
+      "description": "Outputs equal inputs. A zero fee is valid arithmetic and is shown as 0.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAXj+FMQdBjprgnqdmv6IRCgqQE6lRw4/H6aWyI2XFn8SAAAAAAD9////AQDyBSoBAAAAFgAU1BymNUmGaAkNZCeEp+O5FihH274AAAAAAAEAgwIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////AmAA/v///wIA8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiAAAAAAAAAAAmaiSqIant4vYcP3HR3v0/qZnfo2lTdVxpBol5mWK0i+vYNpdOjPkPAAAAAQEfAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4iIGAzDVT9DdQgpuX402JPXzSCyuNQ951fB1O/W+75wtka88GHPF2gpUAACAAAAAgAAAAIAAAAAAAAAAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "feeSats": "0"
+      },
+      "sources": [
+        "fee: Bitcoin Core /Satoshi:31.1.0/ decodepsbt field \"fee\", converted from BTC to satoshis"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00000000"
+      }
+    }
+  ],
+  "bitcoinCore": "/Satoshi:31.1.0/",
+  "contexts": {
+    "abandon-mainnet": {
+      "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+      "passphrase": "",
+      "network": "mainnet",
+      "masterFingerprint": "73c5da0a"
+    }
+  }
+}

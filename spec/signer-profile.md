@@ -12,10 +12,10 @@ so in a conformance column, as one implementation of the profile, and marks
 the places nullroute does not meet it.
 
 Every requirement has an identifier and a line saying how it is checked. A
-requirement that cannot be checked by a test says so. Vector files named
-`spec/vectors/signer-profile/*.json` do not exist yet: they are the output of
-the next workstream, and each one is named here so that nothing in this
-document relies on a check nobody has written down.
+requirement that cannot be checked by a test says so. The vector files named
+here are in `spec/vectors/signer-profile/`, pinned by `SHA256SUMS` in that
+directory, and `conformance/README.md` says how to run them against any signer.
+No expected value in them was produced by nullroute.
 
 ## 1. Conventions
 
@@ -49,7 +49,7 @@ without renumbering.
 
 Each requirement ends with a **Check** line naming one of:
 
-- a vector file to be produced in Workstream D, under `spec/vectors/signer-profile/`
+- a vector file under `spec/vectors/signer-profile/`
 - an existing nullroute invariant id and its test, where nullroute already checks it
 - a manual procedure, stated in full
 - **UNTESTABLE**, with the reason
@@ -474,11 +474,11 @@ INV-SIG-1, INV-SIG-2 (differential against bitcoinjs-lib, 120 cases); manual:
 | SP-REV-4 | Met | INV-PSBT-4, INV-PSBT-8, INV-UI-12 |
 | SP-REV-5 | Met in the headless render; unverified on the panel | INV-PSBT-11; screens measured at 800x480 by `tools/checks/check-screen-fit.mjs` |
 | SP-REV-6 | Met | INV-PSBT-2, INV-PSBT-12, INV-PSBT-16, INV-UI-12; search bound four script types, two branches, 100 addresses each (`packages/daemon/src/psbt.spec.yaml` lines 77-89) |
-| SP-REV-7 | Met | INV-UI-12 |
+| SP-REV-7 | Met; the SHOULD is met for `PSBT_OUT_BIP32_DERIVATION` only | INV-UI-12. A false `PSBT_OUT_TAP_BIP32_DERIVATION` claim is shown as a payment but not reported as claimed (`review-change.json`, advisory) |
 | SP-REV-8 | Met | INV-PSBT-6 |
-| SP-REV-9 | Met | INV-PSBT-7 |
+| SP-REV-9 | **Not met** for replaceability | INV-PSBT-7 covers the locktime. The review reports a transaction as replaceable only when every input signals, where BIP-125 signals when any input does (`review-timelocks.json`, two cases) |
 | SP-REV-10 | Met | INV-UI-3 |
-| SP-REV-11 | Met | INV-PSBT-15. Global-level pairs are preserved but not counted (`review.spec.yaml` lines 140-144) |
+| SP-REV-11 | **Not met** for input pairs | Unknown pairs never block and are reported (INV-PSBT-15). An unknown pair in an input is dropped from the signed PSBT; global and output pairs survive (`review-unknown-fields.json`). INV-PSBT-15's preservation test round-trips a PSBT without signing it. Global-level pairs are not counted (`review.spec.yaml` lines 140-144) |
 | SP-REV-12 | Met | INV-QUORUM-4, INV-QUORUM-8, INV-UI-37, INV-UI-63 |
 | SP-REV-13 | Met | `review.ts` warnings are non-blocking. `docs/THREAT-MODEL.md` line 62 describes "a hard warning threshold and a second confirmation", which the code does not have (see `research/handoff-C.md`) |
 | SP-REV-14 | Met | INV-PSBT-13 |
@@ -793,11 +793,11 @@ is not decided here.
 | Id | Status | Evidence |
 | --- | --- | --- |
 | SP-TX-1 | Met | INV-UI-22 |
-| SP-TX-2 | Met for nullroute's own reader; no external sequence tested | INV-UI-21; no BBQr vector from another implementation exists in the repository (gap G6) |
-| SP-TX-3 | Met | `packages/core/src/qr/bbqr.ts`, read path accepts `2`, `H`, `Z` |
-| SP-TX-4 | Met | Writer emits `2` only |
-| SP-TX-5 | Partly met | INV-QR-4 covers mismatched headers and conflicting repeats; the disjoint-index case is untested and would be joined (N5) |
-| SP-TX-6 | **Not met** | The encoder writes byte mode only (`packages/core/src/qr/encode.spec.yaml` lines 22-25; gap G2) |
+| SP-TX-2 | Met | INV-UI-21; reads sequences from Coinkite's reference splitter, and the frames it writes join to the binary PSBT (`bbqr-psbt.json`) |
+| SP-TX-3 | Met | Reads reference sequences in `2`, `H` and `Z` and a real Coldcard scan (`bbqr-psbt.json`) |
+| SP-TX-4 | Met | Writer emits `2` only (`bbqr-psbt.json`) |
+| SP-TX-5 | Partly met | INV-QR-4 covers mismatched headers and conflicting repeats. Two transfers with disjoint indices are joined (N5; `bbqr-psbt.json`, `two-transfers-disjoint-indices`) |
+| SP-TX-6 | **Not met** | The encoder writes byte mode only (`packages/core/src/qr/encode.spec.yaml` lines 22-25; gap G2; `bbqr-psbt.json`, both writer cases) |
 
 ## 7. Normative dependencies
 
@@ -833,8 +833,8 @@ Deployed.
 **SP-DEP-1.** A conforming signer MUST implement BIP-32, BIP-39, BIP-174 and
 the descriptor documents it claims, and MUST pass the published vectors of each
 where the BIP provides them. Check: nullroute's vectors in `spec/vectors/`;
-Workstream D to list, per BIP, which published vectors are and are not
-included.
+`research/handoff-D.md`, "BIP vectors for SP-DEP-1", lists per BIP which
+published vectors nullroute includes and which it does not.
 
 ## 8. Out of scope
 
@@ -873,3 +873,4 @@ scope", restated without the nullroute specifics.
 | Version | Date | Change |
 | --- | --- | --- |
 | 0.1 | 24 September 2026 | First draft, from nullroute at commit `00a460a` |
+| 0.1 | 24 September 2026 | Vector files published in `spec/vectors/signer-profile/`, with `conformance/`. Check lines and the nullroute conformance column updated from running them. No requirement changed |

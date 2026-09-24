@@ -1,0 +1,137 @@
+{
+  "format": "signer-profile-vectors",
+  "version": 1,
+  "profile": "spec/signer-profile.md, draft specification version 0.1",
+  "file": "review-unknown-fields.json",
+  "requirements": [
+    "SP-REV-11"
+  ],
+  "operations": "review, sign",
+  "description": "Key-value pairs the signer does not model do not block signing and survive it byte for byte.",
+  "cases": [
+    {
+      "id": "unknown-pairs-do-not-block-review",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-11"
+      ],
+      "level": "MUST",
+      "description": "Unknown key-value pairs in the global map, an input and an output, plus one proprietary pair. Their presence MUST NOT block signing, and SHOULD be reported.",
+      "input": {
+        "psbt": "cHNidP8BAHECAAAAAfkxDexPghgWWXijZcTP1Y1uddvesHz2kEoUBIuigs+iAAAAAAD9////AgDKmjsAAAAAFgAUUAJOiSPLes/lZfIixEp3z//ZnefwAGvuAAAAABYAFGaZ3LQ5tlXzDiB7s2O1vpivxZXPAAAAAAOgAQIE3q2+7wABAIQCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wMBJQD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+SQAAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAA6ADBATK/rq+CfwFbnVsbHMAAQQBAgMEAAOgBQYEC63wDQAiAgPQ0kO2oxdvog+pXNf7Do4IKbg/wrUgU2M9CIwaS6ke3xhzxdoKVAAAgAAAAIAAAACAAQAAAAMAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "unknownFieldsReported": {
+          "should": 2
+        }
+      },
+      "sources": [
+        "verdict: SP-REV-11 text; Core decodepsbt lists the pairs as unknown or proprietary, recorded below"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "unknown": {
+          "global": {
+            "a00102": "deadbeef"
+          },
+          "input0": {
+            "a00304": "cafebabe"
+          },
+          "output0": {
+            "a00506": "0badf00d"
+          },
+          "input0.proprietary": [
+            {
+              "identifier": "6e756c6c73",
+              "subtype": 0,
+              "key": "fc056e756c6c730001",
+              "value": "01020304"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "unknown-pairs-survive-signing",
+      "operation": "sign",
+      "requirements": [
+        "SP-REV-11"
+      ],
+      "level": "MUST",
+      "description": "The same PSBT signed. Every pair MUST be in the signed PSBT with the same key and value (BIP-174 line 417, \"The Signer must only add data to a PSBT\").",
+      "input": {
+        "psbt": "cHNidP8BAHECAAAAAfkxDexPghgWWXijZcTP1Y1uddvesHz2kEoUBIuigs+iAAAAAAD9////AgDKmjsAAAAAFgAUUAJOiSPLes/lZfIixEp3z//ZnefwAGvuAAAAABYAFGaZ3LQ5tlXzDiB7s2O1vpivxZXPAAAAAAOgAQIE3q2+7wABAIQCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wMBJQD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+SQAAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAA6ADBATK/rq+CfwFbnVsbHMAAQQBAgMEAAOgBQYEC63wDQAiAgPQ0kO2oxdvog+pXNf7Do4IKbg/wrUgU2M9CIwaS6ke3xhzxdoKVAAAgAAAAIAAAACAAQAAAAMAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "signed",
+        "preserved": [
+          {
+            "map": "global",
+            "index": null,
+            "keyHex": "a00102",
+            "valueHex": "deadbeef"
+          },
+          {
+            "map": "input",
+            "index": 0,
+            "keyHex": "a00304",
+            "valueHex": "cafebabe"
+          },
+          {
+            "map": "output",
+            "index": 0,
+            "keyHex": "a00506",
+            "valueHex": "0badf00d"
+          },
+          {
+            "map": "input",
+            "index": 0,
+            "keyHex": "fc056e756c6c730001",
+            "valueHex": "01020304"
+          }
+        ],
+        "signatures": {
+          "0": true
+        }
+      },
+      "sources": [
+        "BIP-174 line 417",
+        "pairs as written by this generator"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "unknown": {
+          "global": {
+            "a00102": "deadbeef"
+          },
+          "input0": {
+            "a00304": "cafebabe"
+          },
+          "output0": {
+            "a00506": "0badf00d"
+          },
+          "input0.proprietary": [
+            {
+              "identifier": "6e756c6c73",
+              "subtype": 0,
+              "key": "fc056e756c6c730001",
+              "value": "01020304"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "bitcoinCore": "/Satoshi:31.1.0/",
+  "contexts": {
+    "abandon-mainnet": {
+      "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+      "passphrase": "",
+      "network": "mainnet",
+      "masterFingerprint": "73c5da0a"
+    }
+  }
+}

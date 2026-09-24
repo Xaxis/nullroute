@@ -1,0 +1,139 @@
+{
+  "format": "signer-profile-vectors",
+  "version": 1,
+  "profile": "spec/signer-profile.md, draft specification version 0.1",
+  "file": "review-ownership.json",
+  "requirements": [
+    "SP-REV-24",
+    "SP-REV-25"
+  ],
+  "operations": "review, sign",
+  "description": "A transaction with no input the signer owns is not signable, and signing keys are found from each input's own script, never from a derivation path the PSBT supplies.",
+  "cases": [
+    {
+      "id": "no-owned-input-review",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-24"
+      ],
+      "level": "MUST",
+      "description": "Every input belongs to another wallet (BIP-32 test vector 1). The transaction MUST NOT be signable.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAQTglxhcwVAVx43K9BFJYhebAPCNJP8xA9WxyqupJwI5AAAAAAD9////AfDKBSoBAAAAFgAUkqdhHT/A5eoVZp75TaWp/psSz8wAAAAAAAEAhAIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////AwFcAP7///8CAPIFKgEAAAAWABQPDRF6h+fgZGi5CvvbcsPvZgctpgAAAAAAAAAAJmokqiGp7eL2HD9x0d79P6mZ36NpU3VcaQaJeZlitIvr2DaXToz5WwAAAAEBHwDyBSoBAAAAFgAUDw0Reofn4GRouQr723LD72YHLaYiBgLOMIi0I7RDp90D/8kXlhxD30G1ClYn4a8xov1lxXvlChg0Qhk+VAAAgAAAAIAAAACAAAAAAAAAAAAAIgIDB2aBv27q7XBr/8pYL1KPhwzCYRsJobOk+RNspGD+uMsYNEIZPlQAAIAAAACAAAAAgAAAAACgAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "verdict: SP-REV-24 text; Core getaddressinfo ismine=false for the input address"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "no-owned-input-sign",
+      "operation": "sign",
+      "requirements": [
+        "SP-REV-24"
+      ],
+      "level": "MUST",
+      "description": "Asking to sign it anyway MUST fail visibly, not return an unsigned PSBT.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAQTglxhcwVAVx43K9BFJYhebAPCNJP8xA9WxyqupJwI5AAAAAAD9////AfDKBSoBAAAAFgAUkqdhHT/A5eoVZp75TaWp/psSz8wAAAAAAAEAhAIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////AwFcAP7///8CAPIFKgEAAAAWABQPDRF6h+fgZGi5CvvbcsPvZgctpgAAAAAAAAAAJmokqiGp7eL2HD9x0d79P6mZ36NpU3VcaQaJeZlitIvr2DaXToz5WwAAAAEBHwDyBSoBAAAAFgAUDw0Reofn4GRouQr723LD72YHLaYiBgLOMIi0I7RDp90D/8kXlhxD30G1ClYn4a8xov1lxXvlChg0Qhk+VAAAgAAAAIAAAACAAAAAAAAAAAAAIgIDB2aBv27q7XBr/8pYL1KPhwzCYRsJobOk+RNspGD+uMsYNEIZPlQAAIAAAACAAAAAgAAAAACgAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "verdict: SP-REV-24 text"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "foreign-input-with-our-derivation-claim",
+      "operation": "sign",
+      "requirements": [
+        "SP-REV-24",
+        "SP-REV-25"
+      ],
+      "level": "MUST",
+      "description": "A foreign segwit v0 input whose PSBT_IN_BIP32_DERIVATION names the signer's fingerprint, the path m/84'/0'/0'/0/0 and its public key (BIP-84 line 79). The script is not the signer's, so it MUST NOT sign.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAcydjXoWnyIszgsFFmsL24A0JincRWromwDXNMIGEFhiAAAAAAD9////AfDKBSoBAAAAFgAUZrtfAmnIGcyLEBciVWu4Nig86aEAAAAAAAEAhAIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////AwFXAP7///8CAPIFKgEAAAAWABQPDRF6h+fgZGi5CvvbcsPvZgctpgAAAAAAAAAAJmokqiGp7eL2HD9x0d79P6mZ36NpU3VcaQaJeZlitIvr2DaXToz5VgAAAAEBHwDyBSoBAAAAFgAUDw0Reofn4GRouQr723LD72YHLaYiBgLOMIi0I7RDp90D/8kXlhxD30G1ClYn4a8xov1lxXvlChg0Qhk+VAAAgAAAAIAAAACAAAAAAAAAAAAiBgMw1U/Q3UIKbl+NNiT180gsrjUPedXwdTv1vu+cLZGvPBhzxdoKVAAAgAAAAIAAAACAAAAAAAAAAAAAIgICH66cgW4MTZVhtWNtjAGwJSW8XPnP3RRsQLO1RY4+B5MYNEIZPlQAAIAAAACAAAAAgAAAAAChAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "verdict: SP-REV-25 text"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "foreign-taproot-input-with-our-derivation-claim",
+      "operation": "sign",
+      "requirements": [
+        "SP-REV-24",
+        "SP-REV-25"
+      ],
+      "level": "MUST",
+      "description": "As above for a foreign taproot input carrying PSBT_IN_TAP_BIP32_DERIVATION for the BIP-86 key at m/86'/0'/0'/0/0.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAaFxdscg5mfjky3lOTY4fdyoSgymdv9vH6HIPCorFcULAAAAAAD9////AfDKBSoBAAAAFgAUMTKpd7aj3lFR5wH0/7vAl0HAbw0AAAAAAAEBKwDyBSoBAAAAIlEgADJL9vpHqNcMtVGZV91UoCs4XA6tjk+S+fB/mSsojuYhFock8gBUT1k4RsOoaPqhPPxH+ymELgEHWMC5Xm95iWQ0GQA0Qhk+VgAAgAAAAIAAAACAAAAAAAAAAAAhFsyKS8ZNiXvdxfvC9nD3qLoLOGd5EGzxIjxvxdfNb8EVGQBzxdoKVgAAgAAAAIAAAACAAAAAAAAAAAABFyCHJPIAVE9ZOEbDqGj6oTz8R/sphC4BB1jAuV5veYlkNAAiAgPJMSdhYyGg7Jxyg2PuNOOOHmxyMcJsD0+9esXwjgU3mhg0Qhk+VAAAgAAAAIAAAACAAAAAAKIAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "verdict: SP-REV-25 text; key from BIP-86 line 97"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "sign-only-the-owned-input",
+      "operation": "sign",
+      "requirements": [
+        "SP-REV-25"
+      ],
+      "level": "MUST",
+      "description": "Input 0 is the signer's taproot input. Input 1 is foreign and carries a derivation record naming the signer. Only input 0 may receive a signature.",
+      "input": {
+        "psbt": "cHNidP8BAHsCAAAAAjcuzy/aWM588V4Sj9fdzhMxslkmuw+3ILwhOZhIM4DRAAAAAAD9////44qAvFHb+wyXEbNublIAekOHH4mafes4bcWsvlSR9oIAAAAAAP3///8B8LwLVAIAAAAWABTGJVNclEEcfq27Xy1xET/uasfRXgAAAAAAAQCQAgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP////8DAU8A/v///wIA8gUqAQAAACJRIKYIafDbzx3GWcnOy6+AUBNeqejNxIcFPx3GiAlJ3GhMAAAAAAAAAAAmaiSqIant4vYcP3HR3v0/qZnfo2lTdVxpBol5mWK0i+vYNpdOjPlOAAAAAQErAPIFKgEAAAAiUSCmCGnw288dxlnJzsuvgFATXqnozcSHBT8dxogJSdxoTCEWzIpLxk2Je93F+8L2cPeougs4Z3kQbPEiPG/F181vwRUZAHPF2gpWAACAAAAAgAAAAIAAAAAAAAAAAAEXIMyKS8ZNiXvdxfvC9nD3qLoLOGd5EGzxIjxvxdfNb8EVAAEAhAIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////AwFZAP7///8CAPIFKgEAAAAWABQPDRF6h+fgZGi5CvvbcsPvZgctpgAAAAAAAAAAJmokqiGp7eL2HD9x0d79P6mZ36NpU3VcaQaJeZlitIvr2DaXToz5WAAAAAEBHwDyBSoBAAAAFgAUDw0Reofn4GRouQr723LD72YHLaYiBgLOMIi0I7RDp90D/8kXlhxD30G1ClYn4a8xov1lxXvlChg0Qhk+VAAAgAAAAIAAAACAAAAAAAAAAAAiBgMw1U/Q3UIKbl+NNiT180gsrjUPedXwdTv1vu+cLZGvPBhzxdoKVAAAgAAAAIAAAACAAAAAAAAAAAAAIgICAO85IIZtrpA9bhJs7rtifxfQFmGagk9OcJBgmdthwmgYNEIZPlQAAIAAAACAAAAAgAAAAACjAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "signed",
+        "signatures": {
+          "0": true,
+          "1": false
+        }
+      },
+      "sources": [
+        "verdict: SP-REV-25 text"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    }
+  ],
+  "bitcoinCore": "/Satoshi:31.1.0/",
+  "contexts": {
+    "abandon-mainnet": {
+      "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+      "passphrase": "",
+      "network": "mainnet",
+      "masterFingerprint": "73c5da0a"
+    }
+  }
+}

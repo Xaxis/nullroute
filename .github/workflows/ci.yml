@@ -225,6 +225,13 @@ jobs:
       - name: Differential agreement with bitcoinjs-lib
         run: make test-differential
 
+      # The signer profile vectors (spec/signer-profile.md, a draft). Expected
+      # values come from Bitcoin Core, the BIP texts and Coinkite's BBQr code,
+      # and the files are pinned in SHA256SUMS. Known failures are findings,
+      # listed with reasons in conformance/known-failures/nullroute.json.
+      - name: Signer profile conformance
+        run: make conformance
+
   # ---------------------------------------------------------------------------
   # Supply chain and reproducibility. The manifest root hash is worthless if a
   # third party cannot arrive at the same number.

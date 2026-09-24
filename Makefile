@@ -21,7 +21,7 @@ MANIFEST_ROOTS := packages spec provisioning
 	qr-readback badges invariant-ids \
 	manifest-recipe print-manifest-roots \
         lint ui-classes type-check test test-report test-vectors test-differential test-repro \
-        test-recovery-drill \
+        test-recovery-drill conformance \
         prose links profiles sbom sbom-check repro-check clean dev-daemon build-app web web-build web-lint web-type-check \
         screens screen-fit ui-race ui-constants dev-check verify-image docs-reachable no-dead-ends \
         image-env image-shell image-system image-repro journeys \
@@ -243,6 +243,17 @@ test-vectors: ## Official BIP test vectors from spec/vectors/
 
 test-differential: ## Cross-check against bitcoinjs-lib, an independent implementation
 	@npx vitest run --project core -t 'differential'
+
+conformance: build ## The signer profile vectors in spec/vectors/signer-profile/, run against this build
+	# spec/signer-profile.md is a draft any signer can be checked against, and
+	# nullroute is one implementation of it. The expected values come from
+	# Bitcoin Core, the BIP texts, coreutils and Coinkite's BBQr code, never from
+	# nullroute (conformance/README.md). What nullroute fails today is listed,
+	# with the reason, in conformance/known-failures/nullroute.json. Those are
+	# findings, not waivers: a new failure fails this target, and so does a
+	# listed one that starts passing, so the list cannot outlive the fix.
+	@node conformance/run.mjs conformance/adapters/nullroute.mjs \
+	  --known-failures conformance/known-failures/nullroute.json
 
 # Lands with PSBT signing. There is no signature to reproduce until then, and a
 # target that passed with nothing to examine would report assurance the project
@@ -880,4 +891,4 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 
 check-fast: lint shell format-check ci-parity ui-race ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims invariant-ids make-targets ipc-reachable slow-feedback typeable device-csp qr-readback test manifest-check manifest-recipe ## Everything except the slow suites
 
-check: check-fast build verify badges test-vectors test-differential repro-check sbom device-ui screen-fit contrast ui-roles journeys dev-check device-shots-check web-check ## Everything CI runs
+check: check-fast build verify badges test-vectors test-differential conformance repro-check sbom device-ui screen-fit contrast ui-roles journeys dev-check device-shots-check web-check ## Everything CI runs

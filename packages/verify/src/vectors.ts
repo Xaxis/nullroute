@@ -1,11 +1,11 @@
 /**
  * Checks 3 and 4: official test vectors, and differential agreement.
  *
- * Both are structural checks here rather than executors. The vectors themselves
- * run inside the normal test suite (so a failing vector fails a test, which the
- * invariant binding then catches), and what this module verifies is that the
- * vector files a spec claims to test against actually exist and still hash to
- * what the spec pinned.
+ * Both are structural checks here rather than executors. The BIP vectors run
+ * inside the normal test suite (so a failing vector fails a test, which the
+ * invariant binding then catches), the signer profile vectors run under `make
+ * conformance`, and what this module verifies is that the vector files a spec
+ * claims to test against actually exist and still hash to what the spec pinned.
  *
  * Pinning the hash is the point. Without it, a vector file could be edited to
  * make a failing implementation pass, and every check in the system would stay

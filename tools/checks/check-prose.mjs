@@ -22,7 +22,7 @@ import { fileURLToPath } from 'node:url'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 
-const SEARCH_ROOTS = ['docs', 'packages', 'apps', 'spec', 'tools', '.github']
+const SEARCH_ROOTS = ['docs', 'packages', 'apps', 'spec', 'tools', 'conformance', '.github']
 const ROOT_FILES = ['README.md', 'CONTRIBUTING.md', 'SECURITY.md', 'CHANGELOG.md', 'CLAUDE.md']
 
 // Build output and vendored fixtures. Generated code is not ours to style, and

@@ -116,6 +116,28 @@ invariants:
       - packages/core/test/psbt.fee-attack.test.ts::refuses-a-previous-transaction-that-disagrees-with-the-stated-amount
       - packages/core/test/psbt.fee-attack.test.ts::does-not-block-an-all-taproot-transaction
 
+vectors:
+  - name: Signer profile SP-REV-2, SP-REV-4, SP-REV-13, fee and amounts
+    file: spec/vectors/signer-profile/review-fee-and-amounts.json
+    sha256: 0d76d6dcdfaafaf8be98fd970af0636c6eec55f5ae4600232c292b3b0deb9833
+    source: conformance/README.md; run by make conformance
+  - name: Signer profile SP-REV-3, confirmed input amounts
+    file: spec/vectors/signer-profile/review-input-amounts.json
+    sha256: 4fccf6fd8682540ca7a704ef228acd63c1b10671123cdf58d2fd979c31376590
+    source: conformance/README.md; run by make conformance
+  - name: Signer profile SP-REV-8, SP-REV-23, sighash
+    file: spec/vectors/signer-profile/review-sighash.json
+    sha256: d5ca6c588b60fa8d885c5ccb32e4b27074a6f609e6731de9ddef252a17e37fd4
+    source: conformance/README.md; run by make conformance
+  - name: Signer profile SP-REV-9, locktime and replaceability
+    file: spec/vectors/signer-profile/review-timelocks.json
+    sha256: e4aa374d3ed136f4a36d0caee72f8c8e12a2bb9debcf8bdfe9b0f239cc4fd02a
+    source: conformance/README.md; run by make conformance
+  - name: Signer profile SP-REV-11, unknown key-value pairs
+    file: spec/vectors/signer-profile/review-unknown-fields.json
+    sha256: e8cb838419c3aa85a3657baa9c7870159f5e4dd09aba0520d755593b4193678f
+    source: conformance/README.md; run by make conformance
+
 threats:
   - INV-PSBT-1
   - INV-PSBT-2

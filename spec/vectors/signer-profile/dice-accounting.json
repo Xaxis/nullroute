@@ -1,0 +1,463 @@
+{
+  "format": "signer-profile-vectors",
+  "version": 1,
+  "profile": "spec/signer-profile.md, draft specification version 0.1",
+  "file": "dice-accounting.json",
+  "requirements": [
+    "SP-ENT-5"
+  ],
+  "operations": "diceBitsShown",
+  "description": "The entropy count a signer displays after n rolls MUST NOT exceed floor(n * log2(6)). The expected ceiling is computed in exact integer arithmetic as the largest k with 2^k <= 6^n, so floating point cannot round it up. Cases include the counts where n * log2(6) lies closest below an integer, where a floating-point floor is most likely to overstate.",
+  "cases": [
+    {
+      "id": "rolls-0",
+      "operation": "diceBitsShown",
+      "requirements": [
+        "SP-ENT-5"
+      ],
+      "level": "MUST",
+      "description": "0 rolls.",
+      "input": {
+        "count": 0
+      },
+      "expected": {
+        "maxBits": 0
+      },
+      "sources": [
+        "maxBits: the largest k with 2^k <= 6^n, by exact integer comparison in Python"
+      ]
+    },
+    {
+      "id": "rolls-1",
+      "operation": "diceBitsShown",
+      "requirements": [
+        "SP-ENT-5"
+      ],
+      "level": "MUST",
+      "description": "1 rolls.",
+      "input": {
+        "count": 1
+      },
+      "expected": {
+        "maxBits": 2
+      },
+      "sources": [
+        "maxBits: the largest k with 2^k <= 6^n, by exact integer comparison in Python"
+      ]
+    },
+    {
+      "id": "rolls-2",
+      "operation": "diceBitsShown",
+      "requirements": [
+        "SP-ENT-5"
+      ],
+      "level": "MUST",
+      "description": "2 rolls.",
+      "input": {
+        "count": 2
+      },
+      "expected": {
+        "maxBits": 5
+      },
+      "sources": [
+        "maxBits: the largest k with 2^k <= 6^n, by exact integer comparison in Python"
+      ]
+    },
+    {
+      "id": "rolls-3",
+      "operation": "diceBitsShown",
+      "requirements": [
+        "SP-ENT-5"
+      ],
+      "level": "MUST",
+      "description": "3 rolls.",
+      "input": {
+        "count": 3
+      },
+      "expected": {
+        "maxBits": 7
+      },
+      "sources": [
+        "maxBits: the largest k with 2^k <= 6^n, by exact integer comparison in Python"
+      ]
+    },
+    {
+      "id": "rolls-10",
+      "operation": "diceBitsShown",
+      "requirements": [
+        "SP-ENT-5"
+      ],
+      "level": "MUST",
+      "description": "10 rolls.",
+      "input": {
+        "count": 10
+      },
+      "expected": {
+        "maxBits": 25
+      },
+      "sources": [
+        "maxBits: the largest k with 2^k <= 6^n, by exact integer comparison in Python"
+      ]
+    },
+    {
+      "id": "rolls-50",
+      "operation": "diceBitsShown",
+      "requirements": [
+        "SP-ENT-5"
+      ],
+      "level": "MUST",
+      "description": "50 rolls.",
+      "input": {
+        "count": 50
+      },
+      "expected": {
+        "maxBits": 129
+      },
+      "sources": [
+        "maxBits: the largest k with 2^k <= 6^n, by exact integer comparison in Python"
+      ]
+    },
+    {
+      "id": "rolls-98",
+      "operation": "diceBitsShown",
+      "requirements": [
+        "SP-ENT-5"
+      ],
+      "level": "MUST",
+      "description": "98 rolls.",
+      "input": {
+        "count": 98
+      },
+      "expected": {
+        "maxBits": 253
+      },
+      "sources": [
+        "maxBits: the largest k with 2^k <= 6^n, by exact integer comparison in Python"
+      ]
+    },
+    {
+      "id": "rolls-99",
+      "operation": "diceBitsShown",
+      "requirements": [
+        "SP-ENT-5"
+      ],
+      "level": "MUST",
+      "description": "99 rolls.",
+      "input": {
+        "count": 99
+      },
+      "expected": {
+        "maxBits": 255
+      },
+      "sources": [
+        "maxBits: the largest k with 2^k <= 6^n, by exact integer comparison in Python"
+      ]
+    },
+    {
+      "id": "rolls-100",
+      "operation": "diceBitsShown",
+      "requirements": [
+        "SP-ENT-5"
+      ],
+      "level": "MUST",
+      "description": "100 rolls.",
+      "input": {
+        "count": 100
+      },
+      "expected": {
+        "maxBits": 258
+      },
+      "sources": [
+        "maxBits: the largest k with 2^k <= 6^n, by exact integer comparison in Python"
+      ]
+    },
+    {
+      "id": "rolls-101",
+      "operation": "diceBitsShown",
+      "requirements": [
+        "SP-ENT-5"
+      ],
+      "level": "MUST",
+      "description": "101 rolls.",
+      "input": {
+        "count": 101
+      },
+      "expected": {
+        "maxBits": 261
+      },
+      "sources": [
+        "maxBits: the largest k with 2^k <= 6^n, by exact integer comparison in Python"
+      ]
+    },
+    {
+      "id": "rolls-150",
+      "operation": "diceBitsShown",
+      "requirements": [
+        "SP-ENT-5"
+      ],
+      "level": "MUST",
+      "description": "150 rolls.",
+      "input": {
+        "count": 150
+      },
+      "expected": {
+        "maxBits": 387
+      },
+      "sources": [
+        "maxBits: the largest k with 2^k <= 6^n, by exact integer comparison in Python"
+      ]
+    },
+    {
+      "id": "rolls-200",
+      "operation": "diceBitsShown",
+      "requirements": [
+        "SP-ENT-5"
+      ],
+      "level": "MUST",
+      "description": "200 rolls.",
+      "input": {
+        "count": 200
+      },
+      "expected": {
+        "maxBits": 516
+      },
+      "sources": [
+        "maxBits: the largest k with 2^k <= 6^n, by exact integer comparison in Python"
+      ]
+    },
+    {
+      "id": "rolls-1000",
+      "operation": "diceBitsShown",
+      "requirements": [
+        "SP-ENT-5"
+      ],
+      "level": "MUST",
+      "description": "1000 rolls.",
+      "input": {
+        "count": 1000
+      },
+      "expected": {
+        "maxBits": 2584
+      },
+      "sources": [
+        "maxBits: the largest k with 2^k <= 6^n, by exact integer comparison in Python"
+      ]
+    },
+    {
+      "id": "rolls-2301",
+      "operation": "diceBitsShown",
+      "requirements": [
+        "SP-ENT-5"
+      ],
+      "level": "MUST",
+      "description": "2301 rolls. n * log2(6) lies just below an integer here, so a floating-point product can round up past it.",
+      "input": {
+        "count": 2301
+      },
+      "expected": {
+        "maxBits": 5947
+      },
+      "sources": [
+        "maxBits: the largest k with 2^k <= 6^n, by exact integer comparison in Python"
+      ]
+    },
+    {
+      "id": "rolls-2966",
+      "operation": "diceBitsShown",
+      "requirements": [
+        "SP-ENT-5"
+      ],
+      "level": "MUST",
+      "description": "2966 rolls. n * log2(6) lies just below an integer here, so a floating-point product can round up past it.",
+      "input": {
+        "count": 2966
+      },
+      "expected": {
+        "maxBits": 7666
+      },
+      "sources": [
+        "maxBits: the largest k with 2^k <= 6^n, by exact integer comparison in Python"
+      ]
+    },
+    {
+      "id": "rolls-3631",
+      "operation": "diceBitsShown",
+      "requirements": [
+        "SP-ENT-5"
+      ],
+      "level": "MUST",
+      "description": "3631 rolls. n * log2(6) lies just below an integer here, so a floating-point product can round up past it.",
+      "input": {
+        "count": 3631
+      },
+      "expected": {
+        "maxBits": 9385
+      },
+      "sources": [
+        "maxBits: the largest k with 2^k <= 6^n, by exact integer comparison in Python"
+      ]
+    },
+    {
+      "id": "rolls-4296",
+      "operation": "diceBitsShown",
+      "requirements": [
+        "SP-ENT-5"
+      ],
+      "level": "MUST",
+      "description": "4296 rolls. n * log2(6) lies just below an integer here, so a floating-point product can round up past it.",
+      "input": {
+        "count": 4296
+      },
+      "expected": {
+        "maxBits": 11104
+      },
+      "sources": [
+        "maxBits: the largest k with 2^k <= 6^n, by exact integer comparison in Python"
+      ]
+    },
+    {
+      "id": "rolls-4961",
+      "operation": "diceBitsShown",
+      "requirements": [
+        "SP-ENT-5"
+      ],
+      "level": "MUST",
+      "description": "4961 rolls. n * log2(6) lies just below an integer here, so a floating-point product can round up past it.",
+      "input": {
+        "count": 4961
+      },
+      "expected": {
+        "maxBits": 12823
+      },
+      "sources": [
+        "maxBits: the largest k with 2^k <= 6^n, by exact integer comparison in Python"
+      ]
+    },
+    {
+      "id": "rolls-5626",
+      "operation": "diceBitsShown",
+      "requirements": [
+        "SP-ENT-5"
+      ],
+      "level": "MUST",
+      "description": "5626 rolls. n * log2(6) lies just below an integer here, so a floating-point product can round up past it.",
+      "input": {
+        "count": 5626
+      },
+      "expected": {
+        "maxBits": 14542
+      },
+      "sources": [
+        "maxBits: the largest k with 2^k <= 6^n, by exact integer comparison in Python"
+      ]
+    },
+    {
+      "id": "rolls-6291",
+      "operation": "diceBitsShown",
+      "requirements": [
+        "SP-ENT-5"
+      ],
+      "level": "MUST",
+      "description": "6291 rolls. n * log2(6) lies just below an integer here, so a floating-point product can round up past it.",
+      "input": {
+        "count": 6291
+      },
+      "expected": {
+        "maxBits": 16261
+      },
+      "sources": [
+        "maxBits: the largest k with 2^k <= 6^n, by exact integer comparison in Python"
+      ]
+    },
+    {
+      "id": "rolls-6956",
+      "operation": "diceBitsShown",
+      "requirements": [
+        "SP-ENT-5"
+      ],
+      "level": "MUST",
+      "description": "6956 rolls. n * log2(6) lies just below an integer here, so a floating-point product can round up past it.",
+      "input": {
+        "count": 6956
+      },
+      "expected": {
+        "maxBits": 17980
+      },
+      "sources": [
+        "maxBits: the largest k with 2^k <= 6^n, by exact integer comparison in Python"
+      ]
+    },
+    {
+      "id": "rolls-7621",
+      "operation": "diceBitsShown",
+      "requirements": [
+        "SP-ENT-5"
+      ],
+      "level": "MUST",
+      "description": "7621 rolls. n * log2(6) lies just below an integer here, so a floating-point product can round up past it.",
+      "input": {
+        "count": 7621
+      },
+      "expected": {
+        "maxBits": 19699
+      },
+      "sources": [
+        "maxBits: the largest k with 2^k <= 6^n, by exact integer comparison in Python"
+      ]
+    },
+    {
+      "id": "rolls-8286",
+      "operation": "diceBitsShown",
+      "requirements": [
+        "SP-ENT-5"
+      ],
+      "level": "MUST",
+      "description": "8286 rolls. n * log2(6) lies just below an integer here, so a floating-point product can round up past it.",
+      "input": {
+        "count": 8286
+      },
+      "expected": {
+        "maxBits": 21418
+      },
+      "sources": [
+        "maxBits: the largest k with 2^k <= 6^n, by exact integer comparison in Python"
+      ]
+    },
+    {
+      "id": "rolls-8951",
+      "operation": "diceBitsShown",
+      "requirements": [
+        "SP-ENT-5"
+      ],
+      "level": "MUST",
+      "description": "8951 rolls. n * log2(6) lies just below an integer here, so a floating-point product can round up past it.",
+      "input": {
+        "count": 8951
+      },
+      "expected": {
+        "maxBits": 23137
+      },
+      "sources": [
+        "maxBits: the largest k with 2^k <= 6^n, by exact integer comparison in Python"
+      ]
+    },
+    {
+      "id": "rolls-9616",
+      "operation": "diceBitsShown",
+      "requirements": [
+        "SP-ENT-5"
+      ],
+      "level": "MUST",
+      "description": "9616 rolls. n * log2(6) lies just below an integer here, so a floating-point product can round up past it.",
+      "input": {
+        "count": 9616
+      },
+      "expected": {
+        "maxBits": 24856
+      },
+      "sources": [
+        "maxBits: the largest k with 2^k <= 6^n, by exact integer comparison in Python"
+      ]
+    }
+  ]
+}

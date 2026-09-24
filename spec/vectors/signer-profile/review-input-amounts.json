@@ -1,0 +1,191 @@
+{
+  "format": "signer-profile-vectors",
+  "version": 1,
+  "profile": "spec/signer-profile.md, draft specification version 0.1",
+  "file": "review-input-amounts.json",
+  "requirements": [
+    "SP-REV-3"
+  ],
+  "operations": "review",
+  "description": "Whether each input amount is confirmed. A segwit v0 amount is confirmed only by a PSBT_IN_NON_WITNESS_UTXO whose TXID matches the prevout; where every signature produced is BIP-341 without ANYONECANPAY, a witness UTXO is enough.",
+  "cases": [
+    {
+      "id": "segwit-v0-with-previous-transaction",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-3"
+      ],
+      "level": "MUST",
+      "description": "A segwit v0 input carrying both PSBT_IN_WITNESS_UTXO and a matching PSBT_IN_NON_WITNESS_UTXO. The amount is confirmed.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAZJm7e6ln0o1kot45PLj5HB7cFkEeJB78wGuml5PG44UAAAAAAD9////AfDKBSoBAAAAFgAUSa0guDjlsbzTkKpf2cBwu7biH+oAAAAAAAEAhAIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////AwEzAP7///8CAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4gAAAAAAAAAAJmokqiGp7eL2HD9x0d79P6mZ36NpU3VcaQaJeZlitIvr2DaXToz5MgAAAAEBHwDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIiBgMw1U/Q3UIKbl+NNiT180gsrjUPedXwdTv1vu+cLZGvPBhzxdoKVAAAgAAAAIAAAACAAAAAAAAAAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow"
+      },
+      "sources": [
+        "verdict: SP-REV-3 text"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "segwit-v0-witness-utxo-only",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-3"
+      ],
+      "level": "MUST",
+      "description": "A segwit v0 input with only PSBT_IN_WITNESS_UTXO. The amount is the coordinator's word (BIP-174, Signer), so the fee is unverified and signing MUST be blocked.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAU14h8JpgCDh9qg5jW3ZI43HlIWP2nTn7W/ILeSYzKobAAAAAAD9////AfDKBSoBAAAAFgAU/LMpUfQ/ezGaJH4FERiIj/Lsgy0AAAAAAAEBHwDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIiBgMw1U/Q3UIKbl+NNiT180gsrjUPedXwdTv1vu+cLZGvPBhzxdoKVAAAgAAAAIAAAACAAAAAAAAAAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdictIn": [
+          "block-until-override",
+          "refuse"
+        ]
+      },
+      "sources": [
+        "verdict: SP-REV-3 text, BIP-174 line 415"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "witness-utxo-contradicts-previous-transaction",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-3"
+      ],
+      "level": "MUST",
+      "description": "PSBT_IN_WITNESS_UTXO states 0.1 BTC less than the output of the PSBT_IN_NON_WITNESS_UTXO it spends. The amount cannot be confirmed, so the verdict MUST NOT be allow.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAATWxN7aImqQSUvnFEdA0gXa0IHHMhp4m136SXTNbqTsiAAAAAAD9////AfDKBSoBAAAAFgAUo9YTmenBxi8OVyHJQJMVbv8x2xYAAAAAAAEAgwIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////Al8A/v///wIA8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiAAAAAAAAAAAmaiSqIant4vYcP3HR3v0/qZnfo2lTdVxpBol5mWK0i+vYNpdOjPkOAAAAAQEfgFttKQEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4iIGAzDVT9DdQgpuX402JPXzSCyuNQ951fB1O/W+75wtka88GHPF2gpUAACAAAAAgAAAAIAAAAAAAAAAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdictIn": [
+          "block-until-override",
+          "refuse"
+        ]
+      },
+      "sources": [
+        "verdict: SP-REV-3 text"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "previous-transaction-txid-mismatch",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-3"
+      ],
+      "level": "MUST",
+      "description": "PSBT_IN_NON_WITNESS_UTXO holds a different transaction from the one the input spends. Bitcoin Core refuses to decode it.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAfFd8pVjqKz2g5+hoyzgnlQTB/3g1DWkzIBZoEL0LGcjAAAAAAD9////AfDKBSoBAAAAFgAU/sf9FoJVKtu+bUUItUNgT2k1xssAAAAAAAEAgwIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////AlwA/v///wIA8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiAAAAAAAAAAAmaiSqIant4vYcP3HR3v0/qZnfo2lTdVxpBol5mWK0i+vYNpdOjPkLAAAAAQEfAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4iIGAzDVT9DdQgpuX402JPXzSCyuNQ951fB1O/W+75wtka88GHPF2gpUAACAAAAAgAAAAIAAAAAAAAAAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdictIn": [
+          "block-until-override",
+          "refuse"
+        ]
+      },
+      "sources": [
+        "verdict: SP-REV-3 text; Core decodepsbt error recorded below"
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed Non-witness UTXO does not match outpoint hash: unspecified iostream_category error'"
+      }
+    },
+    {
+      "id": "all-taproot-witness-utxo-only",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-3"
+      ],
+      "level": "MUST",
+      "description": "Two taproot inputs with only PSBT_IN_WITNESS_UTXO. Every signature is BIP-341 without ANYONECANPAY, so it commits to every input amount (bip-0341.mediawiki line 133) and no previous transaction is needed.",
+      "input": {
+        "psbt": "cHNidP8BAHsCAAAAAhxWGOwUobME8e+K5ZrOaQLW3i0ZMivWWja7gY3RIPM0AAAAAAD9////y9jmGNTac1HgunamiILgLUbR18bm9YYojn4872DqBTsAAAAAAP3///8B8LwLVAIAAAAWABTzJlhrPpjVsdXWiFLp/Ije0iqB6gAAAAAAAQErAPIFKgEAAAAiUSCmCGnw288dxlnJzsuvgFATXqnozcSHBT8dxogJSdxoTCEWzIpLxk2Je93F+8L2cPeougs4Z3kQbPEiPG/F181vwRUZAHPF2gpWAACAAAAAgAAAAIAAAAAAAAAAAAEXIMyKS8ZNiXvdxfvC9nD3qLoLOGd5EGzxIjxvxdfNb8EVAAEBKwDyBSoBAAAAIlEgpghp8NvPHcZZyc7Lr4BQE16p6M3EhwU/HcaICUncaEwhFsyKS8ZNiXvdxfvC9nD3qLoLOGd5EGzxIjxvxdfNb8EVGQBzxdoKVgAAgAAAAIAAAACAAAAAAAAAAAABFyDMikvGTYl73cX7wvZw96i6CzhneRBs8SI8b8XXzW/BFQAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow"
+      },
+      "sources": [
+        "verdict: SP-REV-3 text, BIP-341 line 133"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "taproot-signer-foreign-segwit-v0-witness-only",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-3"
+      ],
+      "level": "MUST",
+      "description": "The signer owns only the taproot input; the segwit v0 input belongs to someone else and has only a witness UTXO. The only signature produced is BIP-341, which commits to every amount, so the profile permits allow. Blocking is stricter than required and also conforms.",
+      "input": {
+        "psbt": "cHNidP8BAHsCAAAAAqaQRJFWpHl36qW+luFQpIyu5PJC8dijiu0SN50TFb4/AAAAAAD9////yz6puQvuEj02WO6DG9UGegjrx52TgHd6j4s0jpDCkiEAAAAAAP3///8B8LwLVAIAAAAWABTRWlJ5qLwkAzr7J+W/KlyYApl3xAAAAAAAAQErAPIFKgEAAAAiUSCmCGnw288dxlnJzsuvgFATXqnozcSHBT8dxogJSdxoTCEWzIpLxk2Je93F+8L2cPeougs4Z3kQbPEiPG/F181vwRUZAHPF2gpWAACAAAAAgAAAAIAAAAAAAAAAAAEXIMyKS8ZNiXvdxfvC9nD3qLoLOGd5EGzxIjxvxdfNb8EVAAEBHwDyBSoBAAAAFgAUNdmLALUicmi7iRGuaQWBwcUbjDAiBgN0Z1F0Fc2b6/dBc3eSXEysC93r1p4ZWibWwVco2sTXbBg0Qhk+VAAAgAAAAIAAAACAAAAAAAUAAAAAIgIDmIU1CJZLSCPw//MHnKOb8ynnrVI5K9l1eiHMEiUayKEYNEIZPlQAAIAAAACAAAAAgAAAAABzAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdictIn": [
+          "allow",
+          "block-until-override"
+        ]
+      },
+      "sources": [
+        "verdict: SP-REV-3 text"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "one-of-two-segwit-v0-unverified",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-3"
+      ],
+      "level": "MUST",
+      "description": "Two owned segwit v0 inputs; the second has lost its previous transaction. One unconfirmed amount is enough.",
+      "input": {
+        "psbt": "cHNidP8BAHsCAAAAAmdVVCmXGUplr8WUmMN+HSVUGqDJnZTYIMbVs7dhd2sxAAAAAAD9////nJw2ybyKbU+5j8OsL4m2iYRkBnwp6cpD6SMAgUHvZzIAAAAAAP3///8B8LwLVAIAAAAWABTMbTu/QVVpAzCc411nOfIQ1wQQjwAAAAAAAQCEAgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP////8DARoA/v///wIA8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiAAAAAAAAAAAmaiSqIant4vYcP3HR3v0/qZnfo2lTdVxpBol5mWK0i+vYNpdOjPkZAAAAAQEfAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4iIGAzDVT9DdQgpuX402JPXzSCyuNQ951fB1O/W+75wtka88GHPF2gpUAACAAAAAgAAAAIAAAAAAAAAAAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAA=",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdictIn": [
+          "block-until-override",
+          "refuse"
+        ]
+      },
+      "sources": [
+        "verdict: SP-REV-3 text"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    }
+  ],
+  "bitcoinCore": "/Satoshi:31.1.0/",
+  "contexts": {
+    "abandon-mainnet": {
+      "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+      "passphrase": "",
+      "network": "mainnet",
+      "masterFingerprint": "73c5da0a"
+    }
+  }
+}

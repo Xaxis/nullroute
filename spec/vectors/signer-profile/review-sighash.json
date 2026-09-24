@@ -1,0 +1,447 @@
+{
+  "format": "signer-profile-vectors",
+  "version": 1,
+  "profile": "spec/signer-profile.md, draft specification version 0.1",
+  "file": "review-sighash.json",
+  "requirements": [
+    "SP-REV-8",
+    "SP-REV-23"
+  ],
+  "operations": "review",
+  "description": "Only SIGHASH_ALL, and SIGHASH_DEFAULT on taproot, may be signed without an override. The review describes each type by what the signature does not commit to.",
+  "cases": [
+    {
+      "id": "taproot-default",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-8",
+        "SP-REV-23"
+      ],
+      "level": "MUST",
+      "description": "One owned input requesting sighash type 0x00.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAQHVPb6tBga6GkH8FGSQBkb46wVlP9n5yy9HveM7mclwAAAAAAD9////AfDKBSoBAAAAFgAUTtqyQmahZEFdet9wPe4NUT8z78EAAAAAAAEBKwDyBSoBAAAAIlEgpghp8NvPHcZZyc7Lr4BQE16p6M3EhwU/HcaICUncaEwBAwQAAAAAIRbMikvGTYl73cX7wvZw96i6CzhneRBs8SI8b8XXzW/BFRkAc8XaClYAAIAAAACAAAAAgAAAAAAAAAAAARcgzIpLxk2Je93F+8L2cPeougs4Z3kQbPEiPG/F181vwRUAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "sighash": {
+          "outputs": "all",
+          "otherInputsMayBeAdded": false
+        }
+      },
+      "sources": [
+        "verdict: SP-REV-23 text",
+        "sighash meaning: BIP-143 (hashPrevouts, hashOutputs, lines 58-68) for segwit v0 and BIP-341 (hash_type rules, lines 93-127) for taproot; Core decodepsbt names the type as recorded below"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "sighash": [
+          ""
+        ]
+      }
+    },
+    {
+      "id": "segwit-v0-all",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-8",
+        "SP-REV-23"
+      ],
+      "level": "MUST",
+      "description": "One owned input requesting sighash type 0x01.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAQgcbPIRgB1UPpdV5HUBcholf6F3eSb4PcLdVTiKi4E1AAAAAAD9////AfDKBSoBAAAAFgAUTtqyQmahZEFdet9wPe4NUT8z78EAAAAAAAEAhAIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////AwEZAP7///8CAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4gAAAAAAAAAAJmokqiGp7eL2HD9x0d79P6mZ36NpU3VcaQaJeZlitIvr2DaXToz5GAAAAAEBHwDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIBAwQBAAAAIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAA=",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "sighash": {
+          "outputs": "all",
+          "otherInputsMayBeAdded": false
+        }
+      },
+      "sources": [
+        "verdict: SP-REV-23 text",
+        "sighash meaning: BIP-143 (hashPrevouts, hashOutputs, lines 58-68) for segwit v0 and BIP-341 (hash_type rules, lines 93-127) for taproot; Core decodepsbt names the type as recorded below"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "sighash": [
+          "ALL"
+        ]
+      }
+    },
+    {
+      "id": "taproot-all",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-8",
+        "SP-REV-23"
+      ],
+      "level": "MUST",
+      "description": "One owned input requesting sighash type 0x01.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAcgIbD+rrcymD7PXzzKfUpzfa8bdX5AasBe8eZQJSkpxAAAAAAD9////AfDKBSoBAAAAFgAUTtqyQmahZEFdet9wPe4NUT8z78EAAAAAAAEBKwDyBSoBAAAAIlEgpghp8NvPHcZZyc7Lr4BQE16p6M3EhwU/HcaICUncaEwBAwQBAAAAIRbMikvGTYl73cX7wvZw96i6CzhneRBs8SI8b8XXzW/BFRkAc8XaClYAAIAAAACAAAAAgAAAAAAAAAAAARcgzIpLxk2Je93F+8L2cPeougs4Z3kQbPEiPG/F181vwRUAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "sighash": {
+          "outputs": "all",
+          "otherInputsMayBeAdded": false
+        }
+      },
+      "sources": [
+        "verdict: SP-REV-23 text",
+        "sighash meaning: BIP-143 (hashPrevouts, hashOutputs, lines 58-68) for segwit v0 and BIP-341 (hash_type rules, lines 93-127) for taproot; Core decodepsbt names the type as recorded below"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "sighash": [
+          "ALL"
+        ]
+      }
+    },
+    {
+      "id": "segwit-v0-none",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-8",
+        "SP-REV-23"
+      ],
+      "level": "MUST",
+      "description": "One owned input requesting sighash type 0x02. Anything other than ALL or DEFAULT MUST block signing.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAbjQ3XFyG28eKYp+UnYYvVRQYbCxFmd07ZZ1sfZZjgo5AAAAAAD9////AfDKBSoBAAAAFgAUTtqyQmahZEFdet9wPe4NUT8z78EAAAAAAAEAgwIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////AlQA/v///wIA8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiAAAAAAAAAAAmaiSqIant4vYcP3HR3v0/qZnfo2lTdVxpBol5mWK0i+vYNpdOjPkDAAAAAQEfAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4gEDBAIAAAAiBgMw1U/Q3UIKbl+NNiT180gsrjUPedXwdTv1vu+cLZGvPBhzxdoKVAAAgAAAAIAAAACAAAAAAAAAAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdictIn": [
+          "block-until-override",
+          "refuse"
+        ],
+        "sighash": {
+          "outputs": "none",
+          "otherInputsMayBeAdded": false
+        }
+      },
+      "sources": [
+        "verdict: SP-REV-23 text",
+        "sighash meaning: BIP-143 (hashPrevouts, hashOutputs, lines 58-68) for segwit v0 and BIP-341 (hash_type rules, lines 93-127) for taproot; Core decodepsbt names the type as recorded below"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "sighash": [
+          "NONE"
+        ]
+      }
+    },
+    {
+      "id": "segwit-v0-single",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-8",
+        "SP-REV-23"
+      ],
+      "level": "MUST",
+      "description": "One owned input requesting sighash type 0x03. Anything other than ALL or DEFAULT MUST block signing.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAV061PNnSn9kkZxRHL+rvqHcI1EHJjsWCZ8xpLtyLms6AAAAAAD9////AfDKBSoBAAAAFgAUTtqyQmahZEFdet9wPe4NUT8z78EAAAAAAAEAhAIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////AwEbAP7///8CAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4gAAAAAAAAAAJmokqiGp7eL2HD9x0d79P6mZ36NpU3VcaQaJeZlitIvr2DaXToz5GgAAAAEBHwDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIBAwQDAAAAIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAA=",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdictIn": [
+          "block-until-override",
+          "refuse"
+        ],
+        "sighash": {
+          "outputs": "one",
+          "otherInputsMayBeAdded": false
+        }
+      },
+      "sources": [
+        "verdict: SP-REV-23 text",
+        "sighash meaning: BIP-143 (hashPrevouts, hashOutputs, lines 58-68) for segwit v0 and BIP-341 (hash_type rules, lines 93-127) for taproot; Core decodepsbt names the type as recorded below"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "sighash": [
+          "SINGLE"
+        ]
+      }
+    },
+    {
+      "id": "segwit-v0-all-anyonecanpay",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-8",
+        "SP-REV-23"
+      ],
+      "level": "MUST",
+      "description": "One owned input requesting sighash type 0x81. Anything other than ALL or DEFAULT MUST block signing.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAXdOvliUcNb7XqmSeQbkPelQqrgDMOFnrmkLQBh0V089AAAAAAD9////AfDKBSoBAAAAFgAUTtqyQmahZEFdet9wPe4NUT8z78EAAAAAAAEAhAIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////AwFCAP7///8CAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4gAAAAAAAAAAJmokqiGp7eL2HD9x0d79P6mZ36NpU3VcaQaJeZlitIvr2DaXToz5QQAAAAEBHwDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIBAwSBAAAAIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAA=",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdictIn": [
+          "block-until-override",
+          "refuse"
+        ],
+        "sighash": {
+          "outputs": "all",
+          "otherInputsMayBeAdded": true
+        }
+      },
+      "sources": [
+        "verdict: SP-REV-23 text",
+        "sighash meaning: BIP-143 (hashPrevouts, hashOutputs, lines 58-68) for segwit v0 and BIP-341 (hash_type rules, lines 93-127) for taproot; Core decodepsbt names the type as recorded below"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "sighash": [
+          "ALL|ANYONECANPAY"
+        ]
+      }
+    },
+    {
+      "id": "segwit-v0-none-anyonecanpay",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-8",
+        "SP-REV-23"
+      ],
+      "level": "MUST",
+      "description": "One owned input requesting sighash type 0x82. Anything other than ALL or DEFAULT MUST block signing.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAUraJh8XPiOfDLyFzkxRD0+lpG+ojnKxnh9fyPjezWo9AAAAAAD9////AfDKBSoBAAAAFgAUTtqyQmahZEFdet9wPe4NUT8z78EAAAAAAAEAgwIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////AlEA/v///wIA8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiAAAAAAAAAAAmaiSqIant4vYcP3HR3v0/qZnfo2lTdVxpBol5mWK0i+vYNpdOjPkAAAAAAQEfAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4gEDBIIAAAAiBgMw1U/Q3UIKbl+NNiT180gsrjUPedXwdTv1vu+cLZGvPBhzxdoKVAAAgAAAAIAAAACAAAAAAAAAAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdictIn": [
+          "block-until-override",
+          "refuse"
+        ],
+        "sighash": {
+          "outputs": "none",
+          "otherInputsMayBeAdded": true
+        }
+      },
+      "sources": [
+        "verdict: SP-REV-23 text",
+        "sighash meaning: BIP-143 (hashPrevouts, hashOutputs, lines 58-68) for segwit v0 and BIP-341 (hash_type rules, lines 93-127) for taproot; Core decodepsbt names the type as recorded below"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "sighash": [
+          "NONE|ANYONECANPAY"
+        ]
+      }
+    },
+    {
+      "id": "segwit-v0-single-anyonecanpay",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-8",
+        "SP-REV-23"
+      ],
+      "level": "MUST",
+      "description": "One owned input requesting sighash type 0x83. Anything other than ALL or DEFAULT MUST block signing.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAcYoMyrmoo1FHnnkX9ZT8L8zjJZWJsLa4ZF0VkWW4Uo+AAAAAAD9////AfDKBSoBAAAAFgAUTtqyQmahZEFdet9wPe4NUT8z78EAAAAAAAEAgwIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////Al0A/v///wIA8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiAAAAAAAAAAAmaiSqIant4vYcP3HR3v0/qZnfo2lTdVxpBol5mWK0i+vYNpdOjPkMAAAAAQEfAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4gEDBIMAAAAiBgMw1U/Q3UIKbl+NNiT180gsrjUPedXwdTv1vu+cLZGvPBhzxdoKVAAAgAAAAIAAAACAAAAAAAAAAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdictIn": [
+          "block-until-override",
+          "refuse"
+        ],
+        "sighash": {
+          "outputs": "one",
+          "otherInputsMayBeAdded": true
+        }
+      },
+      "sources": [
+        "verdict: SP-REV-23 text",
+        "sighash meaning: BIP-143 (hashPrevouts, hashOutputs, lines 58-68) for segwit v0 and BIP-341 (hash_type rules, lines 93-127) for taproot; Core decodepsbt names the type as recorded below"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "sighash": [
+          "SINGLE|ANYONECANPAY"
+        ]
+      }
+    },
+    {
+      "id": "taproot-none",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-8",
+        "SP-REV-23"
+      ],
+      "level": "MUST",
+      "description": "One owned input requesting sighash type 0x02. Anything other than ALL or DEFAULT MUST block signing.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAWKUdS0rPXzNFbz2PGjHbukPNw6MQyK93fPpfJAOptKQAAAAAAD9////AfDKBSoBAAAAFgAUTtqyQmahZEFdet9wPe4NUT8z78EAAAAAAAEBKwDyBSoBAAAAIlEgpghp8NvPHcZZyc7Lr4BQE16p6M3EhwU/HcaICUncaEwBAwQCAAAAIRbMikvGTYl73cX7wvZw96i6CzhneRBs8SI8b8XXzW/BFRkAc8XaClYAAIAAAACAAAAAgAAAAAAAAAAAARcgzIpLxk2Je93F+8L2cPeougs4Z3kQbPEiPG/F181vwRUAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdictIn": [
+          "block-until-override",
+          "refuse"
+        ],
+        "sighash": {
+          "outputs": "none",
+          "otherInputsMayBeAdded": false
+        }
+      },
+      "sources": [
+        "verdict: SP-REV-23 text",
+        "sighash meaning: BIP-143 (hashPrevouts, hashOutputs, lines 58-68) for segwit v0 and BIP-341 (hash_type rules, lines 93-127) for taproot; Core decodepsbt names the type as recorded below"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "sighash": [
+          "NONE"
+        ]
+      }
+    },
+    {
+      "id": "taproot-single-anyonecanpay",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-8",
+        "SP-REV-23"
+      ],
+      "level": "MUST",
+      "description": "One owned input requesting sighash type 0x83. Anything other than ALL or DEFAULT MUST block signing.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAeH+DE0NemdM04vdxwhpXDipi2NKKCYNuq3HhgBBlFaeAAAAAAD9////AfDKBSoBAAAAFgAUTtqyQmahZEFdet9wPe4NUT8z78EAAAAAAAEBKwDyBSoBAAAAIlEgpghp8NvPHcZZyc7Lr4BQE16p6M3EhwU/HcaICUncaEwBAwSDAAAAIRbMikvGTYl73cX7wvZw96i6CzhneRBs8SI8b8XXzW/BFRkAc8XaClYAAIAAAACAAAAAgAAAAAAAAAAAARcgzIpLxk2Je93F+8L2cPeougs4Z3kQbPEiPG/F181vwRUAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdictIn": [
+          "block-until-override",
+          "refuse"
+        ],
+        "sighash": {
+          "outputs": "one",
+          "otherInputsMayBeAdded": true
+        }
+      },
+      "sources": [
+        "verdict: SP-REV-23 text",
+        "sighash meaning: BIP-143 (hashPrevouts, hashOutputs, lines 58-68) for segwit v0 and BIP-341 (hash_type rules, lines 93-127) for taproot; Core decodepsbt names the type as recorded below"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "sighash": [
+          "SINGLE|ANYONECANPAY"
+        ]
+      }
+    },
+    {
+      "id": "segwit-v0-undefined-0x04",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-8",
+        "SP-REV-23"
+      ],
+      "level": "MUST",
+      "description": "One owned input requesting sighash type 0x04. Anything other than ALL or DEFAULT MUST block signing.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAZPTqyGCEgGCZSZjbYPo6Q7bnz1x7a3pNf8cnm7PqX1FAAAAAAD9////AfDKBSoBAAAAFgAUTtqyQmahZEFdet9wPe4NUT8z78EAAAAAAAEAhAIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////AwEUAP7///8CAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4gAAAAAAAAAAJmokqiGp7eL2HD9x0d79P6mZ36NpU3VcaQaJeZlitIvr2DaXToz5EwAAAAEBHwDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIBAwQEAAAAIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAA=",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdictIn": [
+          "block-until-override",
+          "refuse"
+        ],
+        "sighash": {
+          "outputs": "unrecognised"
+        }
+      },
+      "sources": [
+        "verdict: SP-REV-23 text",
+        "sighash meaning: BIP-143 (hashPrevouts, hashOutputs, lines 58-68) for segwit v0 and BIP-341 (hash_type rules, lines 93-127) for taproot; Core decodepsbt names the type as recorded below"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "sighash": [
+          ""
+        ]
+      }
+    },
+    {
+      "id": "mixed-all-and-single",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-23"
+      ],
+      "level": "MUST",
+      "description": "Two owned inputs, one requesting ALL and one SINGLE. A transaction whose inputs do not all request the same type MUST block.",
+      "input": {
+        "psbt": "cHNidP8BAHsCAAAAAtcgo7s2sSxfGdA5lOMR6QZ0oeW1REs8kNfURuM+hWJGAAAAAAD9////c8HnKWuRTlHwVSw/lv+JvIDg2seLoh1xMLJvWYLKrkgAAAAAAP3///8B8LwLVAIAAAAWABSt4U3jvB8CaMDhpqzh3FKC5BmnqAAAAAAAAQCEAgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP////8DAT0A/v///wIA8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiAAAAAAAAAAAmaiSqIant4vYcP3HR3v0/qZnfo2lTdVxpBol5mWK0i+vYNpdOjPk8AAAAAQEfAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4gEDBAEAAAAiBgMw1U/Q3UIKbl+NNiT180gsrjUPedXwdTv1vu+cLZGvPBhzxdoKVAAAgAAAAIAAAACAAAAAAAAAAAAAAQCEAgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP////8DAUQA/v///wIA8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiAAAAAAAAAAAmaiSqIant4vYcP3HR3v0/qZnfo2lTdVxpBol5mWK0i+vYNpdOjPlDAAAAAQEfAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4gEDBAMAAAAiBgMw1U/Q3UIKbl+NNiT180gsrjUPedXwdTv1vu+cLZGvPBhzxdoKVAAAgAAAAIAAAACAAAAAAAAAAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdictIn": [
+          "block-until-override",
+          "refuse"
+        ]
+      },
+      "sources": [
+        "verdict: SP-REV-23 text"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "sighash": [
+          "ALL",
+          "SINGLE"
+        ]
+      }
+    },
+    {
+      "id": "two-inputs-both-all",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-23"
+      ],
+      "level": "MUST",
+      "description": "Two owned inputs, both explicitly ALL. Agreement is not a blocking condition.",
+      "input": {
+        "psbt": "cHNidP8BAHsCAAAAAl7Jm7TUmPBpVZQmtAZuqn8yRxubfDJV0h7nhXjaRU5VAAAAAAD9////7ADyBiCXDTAMkl/NjeJ4+FkAy8XjvGEkGv7oSznn/14AAAAAAP3///8B8LwLVAIAAAAWABRzGbzyslCcHv6o06SCzpKDae73IAAAAAAAAQCDAgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP////8CVQD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+QQAAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiAQMEAQAAACIGAzDVT9DdQgpuX402JPXzSCyuNQ951fB1O/W+75wtka88GHPF2gpUAACAAAAAgAAAAIAAAAAAAAAAAAABAIQCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wMBFwD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+RYAAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiAQMEAQAAACIGAzDVT9DdQgpuX402JPXzSCyuNQ951fB1O/W+75wtka88GHPF2gpUAACAAAAAgAAAAIAAAAAAAAAAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "sighash": {
+          "outputs": "all",
+          "otherInputsMayBeAdded": false
+        }
+      },
+      "sources": [
+        "verdict: SP-REV-23 text",
+        "sighash meaning: BIP-143 (hashPrevouts, hashOutputs, lines 58-68) for segwit v0 and BIP-341 (hash_type rules, lines 93-127) for taproot; Core decodepsbt names the type as recorded below"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "sighash": [
+          "ALL",
+          "ALL"
+        ]
+      }
+    }
+  ],
+  "bitcoinCore": "/Satoshi:31.1.0/",
+  "contexts": {
+    "abandon-mainnet": {
+      "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+      "passphrase": "",
+      "network": "mainnet",
+      "masterFingerprint": "73c5da0a"
+    }
+  }
+}
