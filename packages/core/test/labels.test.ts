@@ -108,6 +108,13 @@ describe('core.labels', () => {
     expect(read.labels).toHaveLength(0)
   })
 
+  /** INV-LABEL-6. The bidi control every hand-written list missed. */
+  it('refuses-an-arabic-letter-mark-in-a-label', () => {
+    const read = importLabels(jsonl({ type: 'tx', ref: TXID, label: 'Rent \u061Cpaid' }))
+    expect(read.labels).toHaveLength(0)
+    expect(read.skipped[0]?.reason).toContain('render as something else')
+  })
+
   it('accepts-ordinary-text-including-other-scripts', () => {
     // Non-Latin scripts and punctuation are ordinary label text and must pass.
     // No emoji here, and not because the parser would refuse one: `make prose`

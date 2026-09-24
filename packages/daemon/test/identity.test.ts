@@ -102,6 +102,15 @@ describe('daemon.store.identity', () => {
   })
 
   /**
+   * INV-LABEL-6. The same definition core refuses by, so the characters every
+   * hand-written list missed are stripped from a name here too.
+   */
+  it('strips-the-format-characters-no-list-named', () => {
+    const saved = identity.write({ name: 'At\u061Ctic\u180E\u00AD', colour: 'teal' })
+    expect(saved.name).toBe('Attic')
+  })
+
+  /**
    * INV-IDENT-1. A hand-edited file does not get to bypass the stripping. The
    * file is editable by anyone holding the card, so what was written is not
    * necessarily what this code wrote.

@@ -31,6 +31,7 @@
 
 import { sha256 } from '@noble/hashes/sha2.js'
 import { concatBytes, utf8ToBytes } from '@noble/hashes/utils.js'
+import { hasForgeable } from '../labels/forgeable.js'
 
 export class MessageError extends Error {
   constructor(message: string) {
@@ -47,46 +48,6 @@ export class MessageError extends Error {
  * than this without becoming a scroll nobody finishes.
  */
 export const MAX_MESSAGE_LENGTH = 1024
-
-/**
- * Characters that let a message render as something other than what is signed.
- *
- * The signature commits to the bytes. The user agrees to what the screen shows.
- * Anything that makes those two differ is the whole attack, and it is more
- * dangerous here than in a label: a label sits beside an amount, whereas a
- * message IS the thing being agreed to.
- *
- * THE SAME SET IN THREE PLACES, AND THIS ONE WAS SHORT BY TWO. The label
- * reviewer and the wallet-name stripper both write `\u0000-\u001F` in one
- * range and both list `\u2028-\u2029` after it. This list splits the control
- * range in two, at `\u0008` and `\u000B`, so that tab and newline stay legal
- * in a message, and the edit that did the splitting dropped the line and
- * paragraph separators on the way past. Of the three lists, the one that lost
- * them is the one guarding the text a user is agreeing to.
- *
- * They belong on the list for the reason every other entry does: they are not
- * what they draw as. Measured in the engine this device runs, Blink lays U+2028
- * out as a single blank the width of a space inside `white-space: pre-wrap`,
- * which is what `.nr-message` uses, rather than as the forced break UAX #14
- * calls it. So the panel shows a space, the bytes carry a line separator, and
- * the signature commits to the bytes. Whoever checks the proof later renders it
- * in something else, which may agree with the panel or may not.
- *
- * That is a smaller effect than the bidi overrides beside it and it is the same
- * kind, and this list refuses rather than ranks. Note also that refusing them
- * is not what stops a message being padded below the fold of a scrolling box:
- * a few hundred non-breaking spaces do that and are legitimate characters. That
- * is a separate question about the message screen, not about this list.
- */
-/* eslint-disable no-control-regex -- matching them is the point.
-   A block rather than a -next-line directive, because the assignment below is
-   too long for one line and the formatter wraps it, which moves the regex off
-   the line the directive covers. That silently disarmed the rule, and the
-   rule is the one that stops a label or a message rendering differently from
-   what it contains. */
-const FORGEABLE =
-  /[\u0000-\u0008\u000B-\u001F\u007F-\u009F\u200B-\u200F\u2028-\u2029\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/u
-/* eslint-enable no-control-regex */
 
 /**
  * The BIP-340 style tagged hash BIP-322 uses to commit to a message.
@@ -156,7 +117,7 @@ export function reviewMessage(message: string): MessageReview {
         `agreed to.`
     )
   }
-  if (FORGEABLE.test(message)) {
+  if (hasForgeable(message, { allowLineBreaks: true })) {
     refusals.push(
       'That message contains characters that can make it display differently from what would ' +
         'be signed. The signature commits to the bytes, not to what the screen shows, so this ' +

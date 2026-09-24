@@ -34,7 +34,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { randomBytes } from 'node:crypto'
-import { type Network, type Secret, masterFingerprint } from '@nullroute/core'
+import { type Network, type Secret, masterFingerprint, stripForgeable } from '@nullroute/core'
 import { StoreError, type KdfCost, KDF_DEFAULTS } from './envelope.js'
 import { WalletStore, type StoredWallet } from './store.js'
 
@@ -169,25 +169,13 @@ export function stripUndisplayable(raw: string): string {
   // defeat a duplicate check.
   const composed = raw.normalize('NFC')
 
-  // Written as escapes rather than as the characters themselves, because the
-  // whole point of this set is that several of them are invisible in an editor.
-  //
-  //   \u0000-\u001F, \u007F-\u009F   C0 and C1 controls
-  //   \u200B-\u200F                  zero width space, joiners, LTR and RTL marks
-  //   \u2028-\u2029                  line and paragraph separators
-  //   \u202A-\u202E                  bidi embedding and override
-  //   \u2060-\u2064, \u2066-\u2069   word joiner, invisible operators, isolates
-  //   \uFEFF                          zero width no-break space
-  //
-  // The bidi ones can make a label render in an order it is not stored in,
-  // which is how one wallet's name is made to look like another's. The
-  // zero-width ones render as nothing, which is how a label passes a non-empty
-  // check and then shows as a blank row in the picker.
-  const stripped = composed.replace(
-    // eslint-disable-next-line no-control-regex -- matching them is the point
-    /[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u2028-\u2029\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/gu,
-    ''
-  )
+  // The bidi controls can make a label render in an order it is not stored
+  // in, which is how one wallet's name is made to look like another's, and
+  // the zero-width ones render as nothing, which is how a label passes a
+  // non-empty check and shows as a blank row in the picker. What counts is
+  // defined once in core, by Unicode category (INV-LABEL-6); this list used to
+  // be a third hand-written copy and missed U+061C like the other two.
+  const stripped = stripForgeable(composed)
   // Collapse every Unicode space to an ordinary one before trimming. A label
   // of non-breaking spaces survives `trim`, renders as a blank row, and lets
   // two wallets carry names that look identical while differing in storage.

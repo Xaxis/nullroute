@@ -8,3 +8,4 @@ export {
   findLabel,
 } from './bip329.js'
 export type { Label, LabelType, ImportResult } from './bip329.js'
+export { hasForgeable, stripForgeable } from './forgeable.js'

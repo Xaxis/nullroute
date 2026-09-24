@@ -18,6 +18,8 @@ covers:
   - packages/core/src/labels/bip329.ts::LABEL_TYPES
   - packages/core/src/labels/bip329.ts::MAX_FILE_BYTES
   - packages/core/src/labels/bip329.ts::MAX_LABEL_LENGTH
+  - packages/core/src/labels/forgeable.ts::hasForgeable
+  - packages/core/src/labels/forgeable.ts::stripForgeable
 
 algorithm: >
   JSON Lines: one object per line, no wrapping array, so a file can be appended
@@ -66,6 +68,19 @@ invariants:
     tests:
       - packages/core/test/labels.test.ts::carries-the-do-not-spend-flag-in-both-directions
       - packages/core/test/labels.test.ts::finds-nothing-for-a-reference-it-does-not-hold
+  - id: INV-LABEL-6
+    statement: >
+      What renders as something other than it stores is defined once, by
+      Unicode category (control, format, line and paragraph separator), and
+      that one definition refuses it in a label and in a message, where tab
+      and newline stay legal, and strips it from a wallet name.
+    tests:
+      - packages/core/test/forgeable.test.ts::refuses-every-format-character-including-the-ones-no-list-named
+      - packages/core/test/forgeable.test.ts::lets-a-message-keep-tab-and-newline-and-nothing-else-of-the-kind
+      - packages/core/test/forgeable.test.ts::strips-rather-than-refuses-when-asked-to
+      - packages/core/test/labels.test.ts::refuses-an-arabic-letter-mark-in-a-label
+      - packages/core/test/message.test.ts::refuses-an-arabic-letter-mark-in-a-message
+      - packages/daemon/test/identity.test.ts::strips-the-format-characters-no-list-named
 
 threats:
   - INV-PSBT-2
