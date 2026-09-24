@@ -1715,7 +1715,12 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   'verify-message-error': [['verify-run']],
   child: [['child-derive']],
   'device-name': [['device-name-save']],
-  message: [['pk-key-a', 'message-review']],
+  // And under Legacy, where the commitment row gives way to the note saying
+  // why there is none.
+  message: [
+    ['pk-key-a', 'message-review'],
+    ['pk-key-a', 'message-review', 'message-script-p2pkh'],
+  ],
   passphrase: [['pk-key-a', 'passphrase-submit']],
   'passphrase-working': [['pk-key-a', 'passphrase-submit']],
   // Acknowledged and generated, which is the only route to this screen's last

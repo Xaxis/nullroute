@@ -370,16 +370,25 @@ export function MessageScreen(props: MessageScreenProps): ReactElement {
                 address {String(index)}
               </span>
             </div>
-            <div className="nr-row">
-              <span className="nr-label">Commitment</span>
-              <span className="nr-value nr-mono">
-                <Hash value={review.hashHex} />
-              </span>
-            </div>
-            <p className="nr-hint">
-              The commitment is what a verifier recomputes from the message. It does not depend on
-              your keys, so you can check it against whatever asked you to sign.
-            </p>
+            {/* BIP-322's commitment, and only under a BIP-322 script type. The
+                review computes it without knowing the type, and a legacy
+                signature commits to different bytes, so under Legacy this was
+                a hash no verifier of that signature would ever recompute,
+                offered as the thing to check. */}
+            {scriptType !== 'p2pkh' && (
+              <>
+                <div className="nr-row">
+                  <span className="nr-label">Commitment</span>
+                  <span className="nr-value nr-mono">
+                    <Hash value={review.hashHex} />
+                  </span>
+                </div>
+                <p className="nr-hint">
+                  The commitment is what a verifier recomputes from the message. It does not depend
+                  on your keys, so you can check it against whatever asked you to sign.
+                </p>
+              </>
+            )}
 
             {/* Said where the choice is made, not only in a document. Somebody
                 who was asked for "a BIP-322 signature" and hands over a
@@ -390,7 +399,8 @@ export function MessageScreen(props: MessageScreenProps): ReactElement {
                 A legacy address uses the older signmessage scheme rather than BIP-322. It commits
                 to different bytes and produces a different signature, and almost everything accepts
                 it, including Bitcoin Core. If you were asked specifically for a BIP-322 proof, use
-                one of the other address types instead.
+                one of the other address types instead. The BIP-322 commitment does not apply to it,
+                so none is shown.
               </p>
             )}
           </div>

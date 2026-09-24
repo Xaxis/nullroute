@@ -599,7 +599,9 @@ passphrase, and says that everything shown at that point is unverified.
 yours. Segwit, nested segwit and taproot produce a BIP-322 signature. A legacy
 address produces a signmessage signature instead, which is a different scheme
 committing to different bytes, and the screen says so where you pick the type.
-Almost everything accepts both, including Bitcoin Core.
+Almost everything accepts both, including Bitcoin Core. The BIP-322 commitment
+the review shows is hidden under Legacy, because no verifier of a signmessage
+signature recomputes it.
 
 What leaves is an address, a message and a signature together. A signature
 without the address it is about proves nothing.

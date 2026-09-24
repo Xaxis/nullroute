@@ -487,8 +487,10 @@ invariants:
   - id: INV-UI-38
     statement: >
       Reviewing a message never signs it, and the message is shown in full with
-      the commitment a verifier recomputes.
+      the commitment a verifier recomputes. Under Legacy, which is not BIP-322,
+      no BIP-322 commitment is shown.
     tests:
+      - packages/ui/test/message-screen.test.tsx::shows-no-bip322-commitment-for-a-legacy-signature
       - packages/ui/test/message-screen.test.tsx::does-not-sign-when-reviewing
       - packages/ui/test/message-screen.test.tsx::shows-the-whole-message-and-what-a-verifier-recomputes
       - packages/ui/test/message-screen.test.tsx::reports-a-failure-and-leaves-nothing-stale

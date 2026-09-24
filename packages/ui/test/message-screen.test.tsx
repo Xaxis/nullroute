@@ -93,6 +93,25 @@ describe('MessageScreen', () => {
   })
 
   /**
+   * INV-UI-38. The commitment shown is the one a verifier of THIS signature
+   * recomputes. Under Legacy that is not BIP-322's, and the screen showed
+   * BIP-322's anyway as "what a verifier recomputes".
+   */
+  it('shows-no-bip322-commitment-for-a-legacy-signature', async () => {
+    setup()
+    await reachReview()
+    const flat = (): string => screen.getByTestId('message-screen').textContent.replace(/\s+/g, '')
+    expect(flat()).toContain(HASH.slice(0, 8))
+
+    fireEvent.click(screen.getByTestId('message-script-p2pkh'))
+    expect(flat()).not.toContain(HASH.slice(0, 8))
+    expect(document.body.textContent).not.toContain('what a verifier recomputes')
+    expect(screen.getByTestId('message-legacy-scheme').textContent).toContain(
+      'commitment does not apply'
+    )
+  })
+
+  /**
    * INV-UI-39. A refusal blocks signing outright. There is no override here,
    * unlike the transaction screen: a message that cannot be displayed honestly
    * has no legitimate reason to be signed.
