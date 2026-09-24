@@ -102,6 +102,16 @@ invariants:
       - packages/daemon/test/registration-derivable.test.ts::tr-sortedmulti-a-derives-an-address-and-confirms-it-belongs
       - packages/daemon/test/registration-derivable.test.ts::still-says-a-single-key-taproot-descriptor-is-not-a-quorum
 
+  - id: INV-MULTI-13
+    statement: >
+      A request naming a multisig account other than 0 is refused by every
+      method that hands out or checks this device's multisig key, because
+      registrations store no account and everything that reads them derives
+      at account 0.
+    tests:
+      - packages/daemon/test/multisig-account.ipc.test.ts::refuses-an-account-nothing-downstream-would-recognise
+      - packages/daemon/test/multisig-account.ipc.test.ts::accepts-account-zero-whether-named-or-not
+
 threats:
   - INV-PSBT-2
   - INV-MULTI-6

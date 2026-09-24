@@ -21,6 +21,28 @@ import { params, requireString, optionalString, requireNumber } from '../params.
 import { stripUndisplayable, type WalletColour } from '../../store/registry.js'
 import { type HandlerContext, type MethodTable } from '../context.js'
 
+/**
+ * The multisig account, which is 0 or refused.
+ *
+ * Registrations are stored as descriptors and nothing else, so every reader of
+ * them, the owned-output index, the review and the signer, derives this
+ * device's key at account 0. A quorum registered at account 1 was accepted,
+ * saved, and then recognised by none of them: its change read as a stranger's
+ * and signing refused. Refused here instead, where the caller can be told, for
+ * every method that hands out or checks a multisig key. Supporting other
+ * accounts means storing the account with the registration first.
+ */
+function multisigAccount(request: Parameters<typeof requireNumber>[0]): number {
+  const account = requireNumber(request, 'account', 0)
+  if (account !== 0) {
+    throw new Error(
+      'This device registers quorums at multisig account 0 only. A quorum at another ' +
+        'account would be saved and then recognised by nothing that reads registrations.'
+    )
+  }
+  return account
+}
+
 export function multisigMethods(ctx: HandlerContext): MethodTable {
   const { state, session, quorumAddresses } = ctx
 
@@ -32,7 +54,7 @@ export function multisigMethods(ctx: HandlerContext): MethodTable {
      * one seed both alone and in a quorum does not link the two on chain.
      */
     'multisig.ourKey': (request) => {
-      const account = requireNumber(request, 'account', 0)
+      const account = multisigAccount(request)
       const path = multisigAccountPath(session.network, account)
       const derived = deriveAccountXpub(session.requireSeed(), session.network, path)
       return {
@@ -56,7 +78,7 @@ export function multisigMethods(ctx: HandlerContext): MethodTable {
         requireString(request, 'descriptor'),
         session.requireSeed(),
         session.network,
-        requireNumber(request, 'account', 0),
+        multisigAccount(request),
         session.cosigners
       )
     },
@@ -75,7 +97,7 @@ export function multisigMethods(ctx: HandlerContext): MethodTable {
         requireString(request, 'descriptor'),
         session.requireSeed(),
         session.network,
-        requireNumber(request, 'account', 0),
+        multisigAccount(request),
         session.cosigners
       )
       // Persisted only when a passphrase is supplied, because re-sealing
@@ -389,7 +411,7 @@ export function multisigMethods(ctx: HandlerContext): MethodTable {
 
     /** A bundle for the coordinator, in the shape Core's importdescriptors takes. */
     'multisig.exportBundle': (request) => {
-      const account = requireNumber(request, 'account', 0)
+      const account = multisigAccount(request)
       const derived = deriveAccountXpub(
         session.requireSeed(),
         session.network,
