@@ -180,6 +180,7 @@ invariants:
     tests:
       - packages/ui/test/psbt-screen.test.tsx::refuses-to-sign-until-the-review-has-been-read
       - packages/ui/test/psbt-screen.test.tsx::does-not-count-the-paste-panel-as-having-read-the-transaction
+      - packages/ui/test/psbt-screen.test.tsx::does-not-count-a-measurement-taken-while-the-review-was-loading
 
   - id: INV-UI-12
     statement: >

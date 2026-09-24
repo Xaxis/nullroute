@@ -9,7 +9,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { PsbtScreen, type PsbtReviewView, type PsbtWarningView } from '../src/screens/PsbtScreen.js'
 
 afterEach(cleanup)
@@ -92,6 +92,22 @@ async function reachReview(): Promise<void> {
   fireEvent.click(screen.getByTestId('psbt-review'))
   await waitFor(() => {
     expect(screen.getByTestId('psbt-outputs')).toBeTruthy()
+  })
+  await settle()
+}
+
+/**
+ * Let the read gate measure the review that just rendered.
+ *
+ * The gate latches only on a measurement of the review itself, which the body
+ * takes in an effect after the review is drawn. A person cannot tap Sign
+ * inside that gap and a test can, so every route to the review waits it out.
+ * These tests used to pass without this because the gate had already latched
+ * on the paste panel, which was the bug.
+ */
+async function settle(): Promise<void> {
+  await act(async () => {
+    await Promise.resolve()
   })
 }
 
@@ -240,6 +256,62 @@ describe('ui.screens.psbt', () => {
         expect(screen.getByTestId('psbt-outputs')).toBeTruthy()
       })
       expect(screen.getByTestId<HTMLButtonElement>('psbt-sign').disabled).toBe(true)
+    } finally {
+      for (const spy of spies) spy.mockRestore()
+    }
+  })
+
+  /**
+   * The same gate, with the review arriving a tick after the busy render.
+   *
+   * The test above makes the body tall inside `onReview`, before the busy
+   * render, so the gate never measures the short panel while waiting. In the
+   * browser it does: the busy render gives the body new children, the body
+   * reports again, the paste panel is still there and still at its end, and
+   * `read` latched on a transaction nobody had seen. Measured in Chrome at
+   * 800x480 with 309 of 1132 pixels ever on screen. Here the height depends on
+   * whether the review is in the DOM, which is what the browser does.
+   */
+  it('does-not-count-a-measurement-taken-while-the-review-was-loading', async () => {
+    const tall = (): boolean => document.querySelector('[data-testid="psbt-outputs"]') !== null
+    const geometry = {
+      scrollTop: () => 0,
+      clientHeight: () => 300,
+      scrollHeight: () => (tall() ? 1300 : 300),
+    }
+    const spies = (['scrollTop', 'clientHeight', 'scrollHeight'] as const).map((name) =>
+      vi.spyOn(HTMLElement.prototype, name, 'get').mockImplementation(function (this: HTMLElement) {
+        return this.className === 'nr-screen__body' ? geometry[name]() : 0
+      })
+    )
+    try {
+      let resolve: (r: PsbtReviewView) => void = () => undefined
+      const onReview = vi.fn(
+        () =>
+          new Promise<PsbtReviewView>((r) => {
+            resolve = r
+          })
+      )
+      const onSign = vi.fn()
+      render(<PsbtScreen onReview={onReview} onSign={onSign} onBack={vi.fn()} />)
+
+      type(screen.getByTestId('psbt-input'), 'cHNidP8B')
+      fireEvent.click(screen.getByTestId('psbt-review'))
+      // The daemon round trip, during which the busy panel is measured.
+      await act(async () => {
+        await Promise.resolve()
+      })
+      await act(async () => {
+        resolve(review({ warnings: [], signable: true }))
+        await Promise.resolve()
+      })
+      await waitFor(() => {
+        expect(screen.getByTestId('psbt-outputs')).toBeTruthy()
+      })
+
+      expect(screen.getByTestId<HTMLButtonElement>('psbt-sign').disabled).toBe(true)
+      fireEvent.click(screen.getByTestId('psbt-sign'))
+      expect(onSign).not.toHaveBeenCalled()
     } finally {
       for (const spy of spies) spy.mockRestore()
     }
@@ -473,6 +545,7 @@ describe('ui.screens.psbt', () => {
     await waitFor(() => {
       expect(screen.getByTestId('psbt-sign')).toBeTruthy()
     })
+    await settle()
     fireEvent.click(screen.getByTestId('psbt-sign'))
 
     await waitFor(() => {
@@ -675,6 +748,7 @@ describe('ui.screens.psbt refusal', () => {
     await waitFor(() => {
       expect(screen.getByTestId('psbt-sign')).toBeTruthy()
     })
+    await settle()
     return onSign
   }
 
@@ -778,6 +852,7 @@ describe('ui.screens.psbt what to do next', () => {
     await waitFor(() => {
       expect(screen.getByTestId('psbt-sign')).toBeTruthy()
     })
+    await settle()
     fireEvent.click(screen.getByTestId('psbt-sign'))
     await waitFor(() => {
       expect(screen.getByTestId('psbt-signed')).toBeTruthy()

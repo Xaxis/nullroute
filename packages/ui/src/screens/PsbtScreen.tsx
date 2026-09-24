@@ -573,9 +573,16 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
          claim is that you read it first. It also removes a race, since a
          review that grows by a pixel after it has been read stops un-reading
          itself. Cleared in doReview, because a new transaction is a new thing
-         to read. */
+         to read.
+
+         ONLY WHILE A REVIEW IS WHAT IS ON SCREEN. The body reports whenever
+         its children change, and the busy render of the paste panel is a
+         change: a panel scrolled to its end reported "at end" while the
+         daemon was still parsing, and `read` latched on a transaction that
+         had not been drawn yet. A report counts only when it measures the
+         review itself. */
       onScrolledToEnd={(atEnd) => {
-        if (atEnd) setRead(true)
+        if (atEnd && review !== null && !busy) setRead(true)
       }}
       actions={
         <>
