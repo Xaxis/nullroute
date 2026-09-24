@@ -59,9 +59,9 @@ loudly if the defence regresses. Invariant identifiers are listed in the
 | Malicious or compromised RNG | Dice-only entropy path, hand-reproducible derivation, HKDF combiner that survives one bad source | INV-ENT-1..4 |
 | Key exfiltration through signature nonces | RFC 6979 deterministic ECDSA, BIP-340 Schnorr with `aux_rand` fixed to 32 zero bytes, third-party reproducibility verifier | INV-SIG-1, INV-SIG-2 |
 | Change address substitution in a malicious PSBT | Every change output re-derived from a registered descriptor and compared exactly | INV-PSBT-2 |
-| Fee drain | Fee shown in sats, BTC, sat/vB, and as a percentage of spend, with a hard warning threshold and a second confirmation | INV-PSBT-2 |
+| Fee drain | Fee derived from inputs minus outputs and shown in sats, BTC, sat/vB, and as a percentage of spend, with a warning above a threshold (a warning, not a block). A segwit v0 input whose PSBT does not carry the transaction it spends blocks until overridden, because its amount could be understated | INV-PSBT-4, INV-PSBT-5, INV-PSBT-17 |
 | Sighash abuse | `SIGHASH_ALL` and `SIGHASH_DEFAULT` enforced, anything else refused unless advanced mode is explicitly enabled for that one operation and never persisted | INV-PSBT-3 |
-| Hidden timelock or RBF state | `nLockTime` and `nSequence` surfaced in human terms on the review screen | INV-PSBT-2 |
+| Hidden timelock or RBF state | `nLockTime` and `nSequence` surfaced in human terms on the review screen | INV-PSBT-7 |
 | Signing for a script we do not own | Refuse any input whose script does not match a registered descriptor | INV-PSBT-1 |
 | Hostile input parsing (PSBT, QR, SD, snapshot) | Strict size limits, defensive parsers, fuzzing, fail closed | INV-PSBT-1 |
 | Network exfiltration | No network code paths at all, enforced by a lint rule and a runtime listener assertion, not by convention. The one listener is a loopback bridge on 127.0.0.1, whose host is a constant | INV-NET-1, INV-NET-2, INV-NET-3, INV-BRIDGE-1 |

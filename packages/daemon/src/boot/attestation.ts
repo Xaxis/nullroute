@@ -91,7 +91,10 @@ function asReport(value: unknown): VerificationReport {
   if (typeof passed !== 'boolean') {
     throw new AttestationError('The report does not record whether it passed.')
   }
-  if (!Array.isArray(checks)) {
+  // An empty list is refused like a missing one. A report that passed while
+  // checking nothing would start the daemon on a verification that verified
+  // nothing, and the lock screen would call it verified.
+  if (!Array.isArray(checks) || checks.length === 0) {
     throw new AttestationError('The report records no checks.')
   }
 

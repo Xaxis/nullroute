@@ -144,6 +144,20 @@ invariants:
       - packages/daemon/test/verity-attestation.test.ts::reports-nothing-rather-than-a-blank-where-there-is-no-mapping
       - packages/daemon/test/verity-attestation.test.ts::refuses-anything-that-is-not-a-root-hash
 
+  - id: INV-BUILD-1
+    statement: >
+      The daemon starts only on a verification report that passed, records at
+      least one check and no failed or unrecognised ones, and names the
+      SHA-256 of the MANIFEST.lock on disk. It compares that one hash and opens
+      no source file: file contents are covered by the verifier's integrity
+      check and, on a device, by dm-verity.
+    tests:
+      - packages/daemon/test/verification-gate.test.ts::starts-on-a-passing-report-that-describes-this-build
+      - packages/daemon/test/verification-gate.test.ts::refuses-a-missing-or-unreadable-report
+      - packages/daemon/test/verification-gate.test.ts::refuses-a-report-that-did-not-pass-or-contradicts-itself
+      - packages/daemon/test/verification-gate.test.ts::refuses-a-report-that-records-no-checks
+      - packages/daemon/test/verification-gate.test.ts::refuses-a-report-that-describes-another-build
+
 threats:
   - INV-NET-1
   - INV-NET-2

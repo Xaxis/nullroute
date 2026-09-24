@@ -639,7 +639,7 @@ does not require it.
 | SP-ATT-3 | Met | `docs/VERIFICATION.md` recipe, `make manifest-recipe` |
 | SP-ATT-4 | Met | `docs/VERIFICATION.md` |
 | SP-ATT-5 | **Not met** | `MANIFEST_ROOTS := packages spec provisioning` in `Makefile`; `package-lock.json` is at the repository root |
-| SP-ATT-6 | Partly met | Screen half: INV-UI-2, INV-UI-70. Daemon half: implemented in `requirePassingVerification`, no invariant id, no test found by searching the repository for the function name or its error messages |
+| SP-ATT-6 | Met | Screen half: INV-UI-2, INV-UI-70. Daemon half: `requirePassingVerification`, now INV-BUILD-1 with five tests in `packages/daemon/test/verification-gate.test.ts`, which also refuses a report that records no checks |
 | SP-ATT-7 | Met | INV-UI-5, INV-UI-69 |
 | SP-ATT-8 | Met | INV-UI-1, INV-UI-6 |
 | SP-ATT-9 | Met | INV-UI-72 |

@@ -769,22 +769,15 @@ do](THREAT-MODEL.md#what-the-air-gap-does-and-does-not-do) for what it stops.
 
 ### The two transports
 
-Two, and you can use either.
+QR codes, and only QR codes today. The device draws them on screen and reads
+them with a camera. This is the transport that needs no shared hardware, which
+matters because a USB stick or an SD card that has been in both machines is a
+channel in its own right.
 
-**QR codes.** The device draws them on screen and reads them with a camera. This
-is the transport that needs no shared hardware, which matters because a USB
-stick or an SD card that has been in both machines is a channel in its own right.
-
-**SD card.** Files, written and read as plain text. Slower, needs a card you are
-willing to move between machines, and works on a device with no camera.
-
-Neither is more trusted than the other. Both produce bytes that go to the same
-parsers and the same review screens.
-
-A build with no camera loses nothing except convenience: the device still
-displays codes for anything leaving it, and transactions arrive on an SD card as
-base64 text. If your threat model includes the camera itself, that is the
-configuration to use.
+**SD card: planned, not built.** Nothing in the image mounts removable media
+(see `provisioning/HARDENING.md`), so no screen can read a file from a card
+yet. Until it can, a device with no camera can show codes for anything leaving
+it but has no way to receive a transaction.
 
 ### Codes too large for one frame
 
@@ -808,11 +801,14 @@ and this device reads it, because other wallets write it by default. It does not
 produce it, because compressing would put a compressor in the path that produces
 signed transactions, and the only thing bought is a few fewer frames.
 
-**Frames from two transfers are never merged.** If a second sequence comes into
-shot, or you restart an export while a scan is running, the scanner stops and
-says so. Both sequences produce structurally valid frames, and assembling them
-together would give you a transaction that parses, looks plausible, and is not
-the one either screen was showing.
+**Frames from two transfers are not merged when their headers differ.** If a
+second sequence with a different frame count, file type or encoding comes into
+shot, the scanner stops and says so, because assembling the two would give you a
+transaction that parses, looks plausible, and is not the one either screen was
+showing. Two sequences whose headers match exactly cannot be told apart by
+BBQr, which has no field that names the transfer, so show one sequence at a
+time. The review screen is the backstop: it shows what was assembled, not what
+you meant to send.
 
 ### The decoder is the one dependency that reads
 
@@ -865,7 +861,9 @@ any more is removed rather than left making the list look longer than it is.
 
 Collected in one place, because the refusals are the design:
 
-- To start, if its own code does not match the manifest.
+- To start, unless a passing verification report describes the `MANIFEST.lock` it
+  is running with (INV-BUILD-1). It compares that one hash; the file contents are
+  checked by `make verify` and, on a device, by dm-verity.
 - To store a wallet whose mnemonic you have not confirmed you wrote down.
 - To register a multisig quorum it holds no key in.
 - To sign past a blocking warning without an explicit tick.

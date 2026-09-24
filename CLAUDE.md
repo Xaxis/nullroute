@@ -43,7 +43,9 @@ answer is no.
 **Never let secrets reach the frontend.** The daemon holds key material. The UI
 receives xpubs, addresses, descriptors, and PSBTs, and that is all (INV-KEY-1).
 Secrets use the `Secret` wrapper with explicit `dispose()`, never a raw
-`Uint8Array`, enforced by lint (INV-KEY-2).
+`Uint8Array` (INV-KEY-2). No lint rule enforces this yet, so review does, and a
+seed must not pass through a pooled `Buffer` on its way in or out
+(INV-STORE-9).
 
 **Never randomise a signature.** RFC 6979 for ECDSA, BIP-340 with `aux_rand`
 fixed to 32 zero bytes for Schnorr. A randomised signature has room in it to
@@ -87,7 +89,7 @@ make web         # the website, locally
 
 **The website is not the device, and the boundary is enforced.** `apps/web` is
 a Next.js site that obviously uses the network. It never ships to the Pi,
-`MANIFEST.lock` covers `packages/` and `spec/` only, and the no-network lint
+`MANIFEST.lock` covers `packages/`, `spec/` and `provisioning/` only, and the no-network lint
 rule does not apply to it. `apps/web` must never import from `packages/daemon`.
 If you want to show device behaviour on the site, generate a static artifact
 into `docs/`, do not import the code.
