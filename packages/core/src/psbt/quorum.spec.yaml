@@ -73,6 +73,15 @@ invariants:
       - packages/core/test/psbt.quorum.test.ts::reports-a-single-signature-wallet-as-complete-when-signed
       - packages/core/test/psbt.quorum.test.ts::treats-an-unreadable-requirement-as-unmet-rather-than-guessing
 
+  - id: INV-QUORUM-8
+    statement: >
+      Only a signature by a key the script names counts toward its threshold,
+      and a taproot input carrying a script leaf is judged by that leaf rather
+      than assumed to need one signature.
+    tests:
+      - packages/core/test/psbt.quorum.test.ts::does-not-count-a-signature-from-a-key-outside-the-script
+      - packages/core/test/psbt.quorum.test.ts::reads-a-taproot-multi-a-threshold-rather-than-assuming-one
+
   - id: INV-QUORUM-5
     statement: >
       A signature is attributed to a cosigner only through the PSBT's own

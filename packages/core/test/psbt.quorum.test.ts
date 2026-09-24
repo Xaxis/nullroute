@@ -20,7 +20,8 @@
 
 import { describe, expect, it } from 'vitest'
 import * as btc from '@scure/btc-signer'
-import { hexToBytes } from '@noble/hashes/utils.js'
+import { bytesToHex, hexToBytes } from '@noble/hashes/utils.js'
+import { secp256k1 } from '@noble/curves/secp256k1.js'
 import { mnemonicToSeed } from '../src/bip39/mnemonic.js'
 import { rootFromSeed } from '../src/derive/hd.js'
 import { MAINNET } from '../src/network/networks.js'
@@ -229,6 +230,62 @@ describe('core.psbt.quorum', () => {
     expect(progress.complete).toBe(false)
     // The total is unknown rather than zero, so a screen cannot render "0 of 0".
     expect(progress.required).toBeUndefined()
+  })
+
+  /**
+   * INV-QUORUM-8. A signature counts only if the script names its key.
+   *
+   * Whoever hands a device a PSBT decides what is in it. One partial signature
+   * from a stranger's key, plus this device's, read as 2 of 2 and "nothing
+   * else has to sign this" on a transaction that could not be finalised.
+   */
+  it('does-not-count-a-signature-from-a-key-outside-the-script', () => {
+    const payment = quorumPayment()
+    const outsider = secp256k1.getPublicKey(hexToBytes('11'.repeat(32)), true)
+    const tx = new btc.Transaction()
+    // The output first: an input that arrives already signed seals them.
+    tx.addOutputAddress(STRANGER, 90_000n, btc.NETWORK)
+    tx.addInput({
+      txid: hexToBytes('c'.repeat(64)),
+      index: 0,
+      witnessUtxo: { script: payment.script, amount: 100_000n },
+      witnessScript: payment.witnessScript,
+      partialSig: [[outsider, hexToBytes('300602010102010101')]],
+    })
+
+    const signed = signOn(0, tx.toPSBT())
+    expect(signed.review.signatures.present).toBe(0)
+    expect(signed.result.signatures.inputs[0]?.present).toBe(1)
+    expect(signed.result.signatures.inputs[0]?.signedBy).not.toContain(bytesToHex(outsider))
+    expect(signed.result.signatures.complete).toBe(false)
+  })
+
+  /**
+   * INV-QUORUM-8. A taproot quorum is judged by its leaf.
+   *
+   * `tr(NUMS, multi_a(2,A,B,C))` has no key path anyone can sign with, so it
+   * needs two script signatures. It used to be read as any taproot output,
+   * needing one, and a 2-of-3 signed by a single device reported complete.
+   */
+  it('reads-a-taproot-multi-a-threshold-rather-than-assuming-one', () => {
+    const xOnly = SEEDS.map(publicKeyOf).map((key) => key.slice(1))
+    // BIP-341's provably unspendable internal key.
+    const nums = hexToBytes('50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0')
+    const payment = btc.p2tr(nums, btc.p2tr_ms(2, xOnly), btc.NETWORK, true)
+    const tx = new btc.Transaction()
+    tx.addInput({
+      txid: hexToBytes('b'.repeat(64)),
+      index: 0,
+      witnessUtxo: { script: payment.script, amount: 100_000n },
+      ...payment,
+    })
+    tx.addOutputAddress(STRANGER, 90_000n, btc.NETWORK)
+
+    const signed = signOn(0, tx.toPSBT())
+    expect(signed.review.signatures.inputs[0]?.required).toBe(2)
+    expect(signed.review.signatures.inputs[0]?.cosigners).toBe(3)
+    expect(signed.result.signatures.inputs[0]?.present).toBe(1)
+    expect(signed.result.signatures.complete).toBe(false)
   })
 
   it('reports-progress-on-the-review-so-a-screen-can-show-it-before-signing', () => {

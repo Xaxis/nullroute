@@ -45,11 +45,13 @@ describe('ui.screens.dice', () => {
     mount({})
     fireEvent.click(screen.getByTestId('die-4'))
     fireEvent.click(screen.getByTestId('die-2'))
-    await waitFor(() => {
-      expect(screen.getByTestId('dice-bits').textContent).toContain('of 256 bits')
-    })
+    // Waits for the figure itself. Waiting for "of 256 bits" returned at once,
+    // because the screen says "0 of 256 bits" before the daemon answers, and
+    // the assertion below then raced the answer and lost under load.
     // Truncated, not rounded: two rolls is 5.16 bits, shown as 5.
-    expect(screen.getByTestId('dice-bits').textContent).toContain('5 of 256')
+    await waitFor(() => {
+      expect(screen.getByTestId('dice-bits').textContent).toContain('5 of 256')
+    })
   })
 
   it('blocks-continue-until-sufficient', async () => {

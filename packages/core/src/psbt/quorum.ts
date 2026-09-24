@@ -67,26 +67,42 @@ export interface SignatureProgress {
 }
 
 /**
- * The m and n of a multisig input, from whichever script the PSBT carries.
+ * The m and n of a multisig input, and the keys allowed to count toward m.
  *
  * A `wsh(multi)` input has a witness script; a `sh(multi)` has a redeem script;
  * a `sh(wsh(multi))` has both, and the witness script is the one that holds the
  * quorum. Checked in that order for that reason.
+ *
+ * `members` IS WHO MAY COUNT. A PSBT is assembled by whoever handed it over,
+ * and nothing stops a partial signature from a key outside the script being in
+ * it. Counting every entry made a 2-of-3 with one stranger's signature read as
+ * complete after this device's, when it could not be finalised. Undefined
+ * means every signature counts, which is only true of a single-key input.
  */
-function quorumOf(input: ReturnType<btc.Transaction['getInput']>): {
-  required: number | undefined
-  cosigners: number | undefined
-} {
+interface Quorum {
+  readonly required: number | undefined
+  readonly cosigners: number | undefined
+  readonly members?: ReadonlySet<string>
+}
+
+const UNKNOWN: Quorum = { required: undefined, cosigners: undefined }
+
+function quorumOf(input: ReturnType<btc.Transaction['getInput']>): Quorum {
   for (const script of [input.witnessScript, input.redeemScript]) {
     if (script === undefined) continue
     try {
       const decoded = btc.OutScript.decode(script) as {
         type: string
         m?: number
-        pubkeys?: readonly unknown[]
+        pubkeys?: readonly Uint8Array[]
       }
       if (decoded.type === 'ms' && typeof decoded.m === 'number') {
-        return { required: decoded.m, cosigners: decoded.pubkeys?.length }
+        const pubkeys = decoded.pubkeys ?? []
+        return {
+          required: decoded.m,
+          cosigners: pubkeys.length,
+          members: new Set(pubkeys.map((key) => bytesToHex(key))),
+        }
       }
     } catch {
       // A script this build cannot decode leaves the requirement unknown, which
@@ -94,24 +110,65 @@ function quorumOf(input: ReturnType<btc.Transaction['getInput']>): {
     }
   }
 
+  const script = input.witnessUtxo?.script
+  if (
+    script === undefined ||
+    input.witnessScript !== undefined ||
+    input.redeemScript !== undefined
+  ) {
+    return UNKNOWN
+  }
+  let kind: string
+  try {
+    kind = (btc.OutScript.decode(script) as { type: string }).type
+  } catch {
+    return UNKNOWN
+  }
+
   // A single-key input needs exactly one signature, and that IS readable: the
   // previous output's script is a key hash with no accompanying script that
   // could add conditions.
-  const script = input.witnessUtxo?.script
-  if (
-    script !== undefined &&
-    input.witnessScript === undefined &&
-    input.redeemScript === undefined
-  ) {
-    try {
-      const kind = (btc.OutScript.decode(script) as { type: string }).type
-      if (kind === 'wpkh' || kind === 'pkh' || kind === 'tr') return { required: 1, cosigners: 1 }
-    } catch {
-      // Same as above.
-    }
-  }
+  if (kind === 'wpkh' || kind === 'pkh') return { required: 1, cosigners: 1 }
+  if (kind === 'tr') return taprootQuorumOf(input)
+  return UNKNOWN
+}
 
-  return { required: undefined, cosigners: undefined }
+/**
+ * A taproot input's requirement, which depends on the path it will spend by.
+ *
+ * With no leaf scripts in the PSBT it can only be spent by the key path, which
+ * takes one signature. With leaf scripts it may be spent through one of them,
+ * and `tr(NUMS, multi_a(2,A,B,C))` has no usable key path at all. That input
+ * was read as needing one signature, so a 2-of-3 signed by one device said
+ * "nothing else has to sign this". One `multi_a` leaf is decoded for its m and
+ * its keys; anything else is unknown rather than guessed, as the header says.
+ */
+function taprootQuorumOf(input: ReturnType<btc.Transaction['getInput']>): Quorum {
+  const leaves: unknown = input.tapLeafScript
+  if (!Array.isArray(leaves) || leaves.length === 0) return { required: 1, cosigners: 1 }
+  if (leaves.length !== 1) return UNKNOWN
+
+  const leaf = (leaves[0] as readonly unknown[])[1]
+  if (!(leaf instanceof Uint8Array) || leaf.length < 2) return UNKNOWN
+  try {
+    // The PSBT carries the leaf script followed by its one-byte leaf version.
+    const decoded = btc.OutScript.decode(leaf.subarray(0, -1)) as {
+      type: string
+      m?: number
+      pubkeys?: readonly Uint8Array[]
+    }
+    const pubkeys = decoded.pubkeys ?? []
+    const members = new Set(pubkeys.map((key) => bytesToHex(key)))
+    if (decoded.type === 'tr_ms' && typeof decoded.m === 'number') {
+      return { required: decoded.m, cosigners: pubkeys.length, members }
+    }
+    if (decoded.type === 'tr_ns') {
+      return { required: pubkeys.length, cosigners: pubkeys.length, members }
+    }
+  } catch {
+    // Unknown, below.
+  }
+  return UNKNOWN
 }
 
 /** Signatures attached to one input, however they are carried. */
@@ -150,8 +207,13 @@ export function signatureProgress(tx: btc.Transaction): SignatureProgress {
 
   for (let index = 0; index < tx.inputsLength; index += 1) {
     const input = tx.getInput(index)
-    const { required, cosigners } = quorumOf(input)
-    const signedBy = signaturesOn(input)
+    const { required, cosigners, members } = quorumOf(input)
+    // A key-path signature spends a taproot output on its own, so it always
+    // counts. Anything else counts only when the script names the key.
+    const signedBy = signaturesOn(input).filter(
+      (key) => members === undefined || key === 'taproot-key-path' || members.has(key)
+    )
+    const keyPath = signedBy.includes('taproot-key-path')
 
     inputs.push({
       index,
@@ -161,7 +223,7 @@ export function signatureProgress(tx: btc.Transaction): SignatureProgress {
       signedBy,
       // Unknown requirement is unmet. Saying otherwise would mean reporting
       // completion on the strength of a script this code did not decode.
-      satisfied: required !== undefined && signedBy.length >= required,
+      satisfied: keyPath || (required !== undefined && signedBy.length >= required),
     })
   }
 

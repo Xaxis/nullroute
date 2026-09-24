@@ -53,8 +53,8 @@ f4517f2446bab96d0a16e82d88cf38cb3af31675f4bf58c60ae46340929382a8  packages/core/
 125af2a9dfc4a6fb782e5a9678cb6343b144c1b897461a1c6bd2b30915ed8bef  packages/core/src/psbt/index.ts
 f5726b17a0001d72b88c7053ff5ee5b4ba43854c2cdb622ea5683824cdb03b20  packages/core/src/psbt/parse.spec.yaml
 df8c96b5b9975ac8769805bfe581e045ad792368621949210da713593d26e7fe  packages/core/src/psbt/parse.ts
-9525403325d938e1b4514cff73db9423709240efeca7ec7490dfcc6cd45bba31  packages/core/src/psbt/quorum.spec.yaml
-494769ae8e051a958b9835e7ceb40857d92cfd0c6f48447460aeadff9b85faab  packages/core/src/psbt/quorum.ts
+fec2f77689e726fb955d4410a3e43bd5d947c2e83f63dee1a96c871f08dbb22b  packages/core/src/psbt/quorum.spec.yaml
+9ac7b6a92f8fcf841c219162e60171d92015193019d80f1460d0b9d7f9655315  packages/core/src/psbt/quorum.ts
 1dfe03762f67b4913b93f29458c5a15d5d648edae12dc9e88f40984991f4a348  packages/core/src/psbt/review.spec.yaml
 8df1e4a1737341d9833af4b16692d9d92c13d0913f8964681ad8bc6433f67641  packages/core/src/psbt/review.ts
 537b7dd217529c08a724d47114cb6a0be2491e8ce6f8d9a4c498a359b24fa747  packages/core/src/psbt/sign.spec.yaml
@@ -90,7 +90,7 @@ adfd3466863b0b609425776f94495f6d967502cceda0c5a58c431bc06b7ff78d  packages/core/
 40628de918cd396517ee29c3dc87d5710da1bf189969e099e1823a5e7990f196  packages/core/test/psbt.attribution.multi.test.ts
 382d5519b7f19377b5cada8b280e0e52e91547ceda28fb4c145ff7d19b8e1a30  packages/core/test/psbt.attribution.test.ts
 f63f7cda29521b624d3bd9e87e5e6f6f9982d8e74776f67bdabd49dbf32085af  packages/core/test/psbt.parse.test.ts
-4e10cefa91161fd5352a0324d1b7c5eb5f10523e9440e2fffd9b9ba2bd53e3bf  packages/core/test/psbt.quorum.test.ts
+29905469cc7ba9cb718ebcbc7087a5f6acbf3dacd0542c6744963c4581d0ab0f  packages/core/test/psbt.quorum.test.ts
 fdd73c9ca5dbd1518f635c4ffdadfb2814fb963f7006d9f9b0379e01d98db9b7  packages/core/test/psbt.review.test.ts
 60d4ba23afe28151ed62571532e93e5b8683893dece8006048c8b5248ec1115c  packages/core/test/psbt.sign.taproot.test.ts
 71aaf47296e0711cd7c5923311afd27171bfcc3d4960f0d3854323639b0ff4a5  packages/core/test/psbt.sign.test.ts
@@ -235,7 +235,7 @@ eb6cd298dcdf0a9784d2c41a5e9baa76398388b62bd251909edb2b4cfbe175e8  packages/ui/sr
 57de3faac31c069f0e1a1e965e52caec891824a4c9812af9a65ba7567a7fc431  packages/ui/test/backup-screen.test.tsx
 351a5cadc388b1861463f1f30b9364195014224b83a93365e4228a77a6ca745c  packages/ui/test/child-seed-screen.test.tsx
 68308169c93ab025a868f93d6715eb9ee047180de7f51c11670c29211f394af1  packages/ui/test/device-name-screen.test.tsx
-83465f4047b394cf6351ad1ce72cbee6f46a3a76209c04987919d349124d517d  packages/ui/test/dice-screen.test.tsx
+9132410298b56e035faae122686da84516c8ec472e315b5e18ad3f0da9c1716a  packages/ui/test/dice-screen.test.tsx
 b2f5a544be9bd9b12f58c9785b793381f4d831da7e46bd9a3ad11c098c89c78b  packages/ui/test/finish-screen.test.tsx
 92cb6efc085947d5deb7c60c2da3d67294a4a3cce77964392d6a426ea821e621  packages/ui/test/fleet-screen.test.tsx
 42e83253890d39461f0d3c429cf6ff754e7e2c602b166147567bbcbb7b3d1cb2  packages/ui/test/hash.test.tsx
