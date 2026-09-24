@@ -44,6 +44,7 @@ import {
   StoreError,
   assertEnvelope,
   open,
+  seedFromHex,
   seal,
   type Envelope,
 } from './envelope.js'
@@ -608,7 +609,7 @@ export class WalletStore {
     }
 
     const network = networkById(payload.network)
-    const bytes = Uint8Array.from(Buffer.from(payload.seed, 'hex'))
+    const bytes = seedFromHex(payload.seed)
 
     // The sealed fingerprint is checked against the sealed seed before either
     // is handed out. Both were written by this code under one passphrase, so

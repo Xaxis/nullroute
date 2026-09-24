@@ -24,7 +24,7 @@
  */
 
 import { Secret, type Network, networkById } from '@nullroute/core'
-import { open, seal, StoreError, type Envelope, type KdfCost } from './envelope.js'
+import { open, seal, seedFromHex, StoreError, type Envelope, type KdfCost } from './envelope.js'
 
 /** Bumped when the payload shape changes in a way a reader must notice. */
 const BACKUP_VERSION = 1
@@ -215,9 +215,7 @@ export function restoreBackup(text: string, passphrase: string): RestoredBackup 
     label,
     hasSeed,
     createdWith,
-    ...(hasSeed
-      ? { seed: Secret.fromBytes(Uint8Array.from(Buffer.from(seedHex, 'hex')), 'restored-seed') }
-      : {}),
+    ...(hasSeed ? { seed: Secret.fromBytes(seedFromHex(seedHex), 'restored-seed') } : {}),
   }
 }
 

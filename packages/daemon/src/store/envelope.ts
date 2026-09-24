@@ -34,6 +34,7 @@
  */
 
 import { argon2id } from '@noble/hashes/argon2.js'
+import { hexToBytes } from '@noble/hashes/utils.js'
 import { createCipheriv, createDecipheriv, randomBytes, timingSafeEqual } from 'node:crypto'
 import { base64 } from '@scure/base'
 import { Secret } from '@nullroute/core'
@@ -43,6 +44,23 @@ export class StoreError extends Error {
     super(message)
     this.name = 'StoreError'
   }
+}
+
+/**
+ * A sealed seed's hex, as bytes that no pool shares (INV-KEY-2).
+ *
+ * `Buffer.from(hex, 'hex')` allocates a small result out of Node's shared
+ * pool, and copying it into a Uint8Array left the raw seed in the pool after
+ * the Secret holding the copy was disposed. hexToBytes allocates its own
+ * array, which becomes the Secret's buffer and is zeroed with it. It also
+ * refuses malformed hex, where Buffer.from silently stopped at the first bad
+ * character and returned a shorter seed.
+ */
+export function seedFromHex(hex: string): Uint8Array {
+  if (hex.length === 0 || hex.length % 2 !== 0 || !/^[0-9a-f]+$/iu.test(hex)) {
+    throw new StoreError('The sealed seed is not hex this build can read.')
+  }
+  return hexToBytes(hex)
 }
 
 /** Wrong passphrase, or a tampered file. Deliberately indistinguishable. */
@@ -196,15 +214,29 @@ export function open(envelope: Envelope, passphrase: string): Secret {
     )
     decipher.setAAD(header(envelope.kdf, envelope.cipher.nonce))
     decipher.setAuthTag(tag)
-    const plaintext = Buffer.concat([
-      decipher.update(base64.decode(envelope.ciphertext)),
+    /*
+     * EVERY INTERMEDIATE IS ZEROED (INV-KEY-2). update(), final() and
+     * Buffer.concat return Buffers, and small Buffers come out of Node's
+     * shared 8KB pool, which stays allocated after this returns. The
+     * plaintext was copied into the Secret and the pooled originals were left
+     * holding the decrypted payload, where they survived dispose(). Measured:
+     * the seed's hex was readable in the pool after the Secret was disposed.
+     */
+    const head = decipher.update(base64.decode(envelope.ciphertext))
+    try {
       // Throws when the tag does not verify. NOT caught and turned into a
       // "maybe" result: a failed authentication is the whole security property
       // of this function, and swallowing it would return attacker-chosen bytes
       // as a seed.
-      decipher.final(),
-    ])
-    return Secret.fromBytes(new Uint8Array(plaintext), 'store-plaintext')
+      const tail = decipher.final()
+      const plaintext = new Uint8Array(head.length + tail.length)
+      plaintext.set(head)
+      plaintext.set(tail, head.length)
+      tail.fill(0)
+      return Secret.fromBytes(plaintext, 'store-plaintext')
+    } finally {
+      head.fill(0)
+    }
   } catch {
     throw new BadPassphraseError()
   }

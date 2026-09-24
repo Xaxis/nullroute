@@ -41,6 +41,17 @@ algorithm: >
   wallet.
 
 invariants:
+  - id: INV-STORE-9
+    statement: >
+      A seed read out of a sealed store or a seeded backup leaves no copy, raw
+      or as hex, in Node's shared Buffer pool once its Secret is disposed, and
+      seed hex that is malformed is refused rather than truncated into a
+      different seed.
+    tests:
+      - packages/daemon/test/store.pool.test.ts::leaves-no-copy-of-a-stored-seed-after-dispose
+      - packages/daemon/test/store.pool.test.ts::leaves-no-copy-of-a-restored-seed-after-dispose
+      - packages/daemon/test/store.pool.test.ts::refuses-seed-hex-it-cannot-read-rather-than-truncating-it
+
   - id: INV-STORE-1
     statement: >
       A seed is never written to disk in a form that can be read without the
