@@ -59,6 +59,7 @@ export default defineConfig({
           // it. Asserting on props would test the test.
           environment: 'happy-dom',
           include: ['test/**/*.test.tsx'],
+          setupFiles: ['./test/setup.ts'],
           testTimeout: TEST_TIMEOUT,
         },
       },

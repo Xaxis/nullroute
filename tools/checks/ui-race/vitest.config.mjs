@@ -11,6 +11,7 @@ export default defineConfig({
     root: fileURLToPath(new URL('../../../packages/ui', import.meta.url)),
     environment: 'happy-dom',
     include: ['test/**/*.test.tsx'],
+    setupFiles: ['./test/setup.ts'],
     testTimeout: 15_000,
   },
 })
