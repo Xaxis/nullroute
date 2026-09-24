@@ -536,6 +536,26 @@ describe('ui.screens.psbt', () => {
     expect(screen.queryByTestId('psbt-sign')).toBeNull()
   })
 
+  /**
+   * INV-UI-14. A review that failed is titled as one. It was titled "Signing
+   * failed", which tells somebody holding a transaction the device could not
+   * even read that a signature was attempted.
+   */
+  it('says-a-failed-review-signed-nothing', async () => {
+    const onReview = vi.fn().mockRejectedValue(new Error('That PSBT could not be decoded.'))
+    render(<PsbtScreen onReview={onReview} onSign={vi.fn()} onBack={vi.fn()} />)
+
+    type(screen.getByTestId('psbt-input'), 'garbage')
+    fireEvent.click(screen.getByTestId('psbt-review'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('psbt-error')).toBeTruthy()
+    })
+    const said = screen.getByTestId('psbt-error').textContent
+    expect(said).toContain('nothing signed')
+    expect(said).not.toContain('Signing failed')
+  })
+
   it('reports-a-signing-failure-rather-than-appearing-to-succeed', async () => {
     const onReview = vi.fn().mockResolvedValue(review())
     const onSign = vi.fn().mockRejectedValue(new Error('Refusing to sign.'))
@@ -552,6 +572,7 @@ describe('ui.screens.psbt', () => {
     await waitFor(() => {
       expect(screen.getByTestId('psbt-error').textContent).toContain('Refusing to sign')
     })
+    expect(screen.getByTestId('psbt-error').textContent).toContain('Signing failed')
     // Still on the review screen, with nothing presented as signed.
     expect(screen.queryByTestId('psbt-signed')).toBeNull()
   })

@@ -209,10 +209,12 @@ invariants:
     statement: >
       A transaction with no inputs belonging to this wallet cannot be signed,
       and the screen says so. A failure to review or to sign is displayed and
-      never leaves a stale result on screen.
+      never leaves a stale result on screen, and a failed review is titled as
+      one that signed nothing rather than as a failed signature.
     tests:
       - packages/ui/test/psbt-screen.test.tsx::will-not-sign-a-transaction-it-does-not-own
       - packages/ui/test/psbt-screen.test.tsx::shows-an-error-and-clears-the-stale-review
+      - packages/ui/test/psbt-screen.test.tsx::says-a-failed-review-signed-nothing
       - packages/ui/test/psbt-screen.test.tsx::reports-a-signing-failure-rather-than-appearing-to-succeed
       - packages/ui/test/psbt-screen.test.tsx::shows-the-signed-psbt-and-the-paths-used
 

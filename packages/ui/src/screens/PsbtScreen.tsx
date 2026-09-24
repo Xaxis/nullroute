@@ -282,7 +282,16 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
   const [attribution, setAttribution] = useState<AttributionView | null>(null)
   const [override, setOverride] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  /*
+   * The last failure, and which step it came from. The step decides the title:
+   * a review that failed has signed nothing, and titling it "Signing failed"
+   * told somebody holding an unreadable transaction that a signature had been
+   * attempted.
+   */
+  const [error, setError] = useState<{
+    readonly during: 'review' | 'sign'
+    readonly message: string
+  } | null>(null)
 
   const blocking = review?.warnings.filter((w) => w.blocking) ?? []
   /* Split, because the two go in different places now. A blocking warning is
@@ -327,7 +336,7 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
       // Shown, never swallowed. A transaction that failed to load must not
       // leave a stale review from a previous one on screen.
       setReview(null)
-      setError((err as Error).message)
+      setError({ during: 'review', message: (err as Error).message })
     } finally {
       setBusy(false)
     }
@@ -345,7 +354,7 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
       setFinalised(result.finalised ?? null)
       setWasAlready(result.wasAlreadySigned === true)
     } catch (err) {
-      setError((err as Error).message)
+      setError({ during: 'sign', message: (err as Error).message })
     } finally {
       setBusy(false)
     }
@@ -691,10 +700,16 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
           signed" and "Will not sign" are not two sentences somebody separates
           while deciding what to do about them. They are different things: one is
           the device declining before it tried, the other is the attempt coming
-          back with an error. */}
+          back with an error.
+
+          And only for a signature. A review that failed never reached signing,
+          so it says that it was not read and that nothing was signed. */}
       {error !== null && (
-        <Refusal title="Signing failed" testId="psbt-error">
-          {error}
+        <Refusal
+          title={error.during === 'sign' ? 'Signing failed' : 'Not read, nothing signed'}
+          testId="psbt-error"
+        >
+          {error.message}
         </Refusal>
       )}
 
