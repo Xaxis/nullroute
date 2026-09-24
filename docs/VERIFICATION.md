@@ -66,14 +66,14 @@ Compute the root hash:
 
 ```console
 $ sha256sum MANIFEST.lock
-bdc939d42936f9ac7bcd76fd4b238e8250cab1f8ed689a1dc301051b8e397c2e  MANIFEST.lock
+0277c1dc7dec1c603b6a33f83c5dd160479b1e55bc065c83899179a60f59db5f  MANIFEST.lock
 ```
 
 Regenerate the manifest from scratch and confirm it matches what is committed:
 
 ```console
 $ git ls-files -z packages spec provisioning | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum
-bdc939d42936f9ac7bcd76fd4b238e8250cab1f8ed689a1dc301051b8e397c2e  -
+0277c1dc7dec1c603b6a33f83c5dd160479b1e55bc065c83899179a60f59db5f  -
 ```
 
 On macOS use `shasum -a 256` in place of `sha256sum`. The values are identical.
@@ -320,9 +320,9 @@ usual answer exists: `make image` builds a card from this repository, and CI
 builds the system partition and checks the unit hardening
 assertions (INV-PROV-18, INV-PROV-19) against it. The other half does not: no
 image has been published or signed, so there is nothing to check a signature
-on, and no image has run on a Raspberry Pi. That is the largest hole in what
-this document promises, and it is stated here rather than left to be
-discovered. Verification defends the application and cannot bootstrap trust in
+on, and hardware bring-up on a Raspberry Pi is the next milestone rather than a
+finished one. Until both are done, that is the largest gap in what this
+document promises, and it is stated here rather than left to be discovered. Verification defends the application and cannot bootstrap trust in
 the thing that runs it.
 
 **It does not verify the hardware.** We check the software supply chain. We
@@ -592,8 +592,9 @@ will not change materially.
 
 The image builds and boots under QEMU. `make image-boot-test` opens the
 dm-verity mapping, reads every block, starts the signing daemon, and requires a
-copy with one byte changed to fail. No Raspberry Pi has run it, so the firmware
-path from power-on to the kernel is untested. Signing and publishing are
+copy with one byte changed to fail. Its first run on a Raspberry Pi is the next
+milestone, and that is what exercises the firmware path from power-on to the
+kernel. Signing and publishing are
 planned and not built.
 
 **The contract that build has to satisfy is written and runs.** That half had to

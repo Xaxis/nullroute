@@ -20,8 +20,8 @@ import { REPO_URL } from '../lib/site'
  * is not thorough, it is a wall, and a reader who bounces off it has learned
  * nothing about the one thing worth knowing.
  *
- * The argument needs four beats and it has four: what it is, the check, why not
- * to use it, and where the detail lives. Everything cut is in docs/, which is
+ * The argument needs four beats and it has four: what it is, the check, where
+ * it stands, and where the detail lives. Everything cut is in docs/, which is
  * where a person who wants it will look.
  *
  * WHAT SURVIVED THE CUT AND WHY. The transcript, because it is real output and
@@ -32,8 +32,8 @@ import { REPO_URL } from '../lib/site'
  * not built. The paragraphs of detail under each row went; the gate did not.
  *
  * Nothing here tries to convert a reader into a user. There is no quickstart,
- * no roadmap promising future value, and the reasons not to use this are on the
- * page rather than in a footnote.
+ * and what it does not yet do is on the page, stated as status with what closes
+ * it, rather than in a footnote.
  */
 
 /**
@@ -75,52 +75,40 @@ const WORKING: readonly { term: string; specs: readonly string[] }[] = [
 ]
 
 /**
- * The reasons not to use this, as lines rather than as an essay.
+ * Where the project stands: what is built, what is next, and what it does not
+ * protect against.
  *
- * These were four paragraphs in a table, first on the page, before the reader
- * had been told what the thing was. They are still first among the sections,
- * because burying them would be the failure this project is about, and they are
- * now short enough to actually be read.
- */
-/**
- * Spelled, and counted rather than typed.
+ * THIS WAS A SECTION CALLED "DO NOT USE THIS", and it read as a verdict on the
+ * project rather than a status. Hardware bring-up on the Pi is the next
+ * milestone, not a reason to walk away, and saying "nothing has run on real
+ * hardware" in the voice of a disclaimer told a reader the opposite of the
+ * plan. The facts are the same and no less plain: it is unaudited, the first Pi
+ * boot is still ahead, and two gaps stay open until later phases. Each is
+ * stated as where it is and what closes it.
  *
- * The sentence under this heading said "Four specific reasons" while the list
- * below it held four, and then five, which is a number nobody would think to
- * change and nothing would notice. Deriving it costs one lookup and removes a
- * claim from the set of things that can quietly stop being true.
+ * Nothing here claims more than exists. A line moves only when the thing it
+ * describes has happened.
  */
-const COUNT_WORD: Record<number, string> = {
-  1: 'One',
-  2: 'Two',
-  3: 'Three',
-  4: 'Four',
-  5: 'Five',
-  6: 'Six',
-  7: 'Seven',
-  8: 'Eight',
-}
-
-const REFUSALS: readonly (readonly [string, string])[] = [
+const STANDING: readonly (readonly [string, string])[] = [
   [
-    'It is not audited',
-    'One person wrote it. No third party has reviewed the cryptography, and the code that holds keys has never been looked at by anyone but its author.',
+    'Not audited yet',
+    'One person wrote it. Before it holds real money, the code that holds keys needs to be read by somebody other than its author.',
   ],
   [
-    'Nothing has run on real hardware',
-    'The card boots under QEMU, opens its dm-verity mapping, refuses a partition with one byte changed, and starts the daemon. No Raspberry Pi has been switched on. The firmware path from power to kernel is carried and unexercised.',
+    'Hardware bring-up is next',
+    'The card boots under QEMU, opens its dm-verity mapping, refuses a partition with one byte changed, and starts the signing daemon. The next milestone is the same card on a Pi 4 with the 7 inch panel, which is the first run of the firmware path from power-on to the kernel and the first time the screens are drawn on the panel itself.',
   ],
   [
     'The boot partition is not covered',
-    'dm-verity detects modification of the system partition and does not prevent it. The boot partition holds the root hash and cannot be under the tree that hash describes, so an attacker who rewrites it supplies their own number. Only a signed boot chain closes that, and it burns one-time fuses.',
+    'dm-verity detects modification of the system partition and does not prevent it. The boot partition holds the root hash and cannot be under the tree that hash describes, so an attacker who rewrites it supplies their own number. A signed boot chain closes that in phase 7, last on purpose, because it burns one-time fuses.',
   ],
   [
     'The browser is the weakest part',
-    'The screens are a Chromium kiosk, and provisioning/HARDENING.md says in as many words that it is the weakest component on the device: its own sandbox needs unprivileged user namespaces, which the directives that make the daemon safe take away. The design response is to keep trust out of it rather than to harden it, so the daemon holds the keys and the frontend receives only xpubs, addresses, descriptors and transactions. It has also never had a display: the boot test runs without a virtual terminal, so it reports that component rather than judging it.',
+    'The screens are a Chromium kiosk, and its own sandbox needs the user namespaces that the directives protecting the daemon take away. So trust is kept out of it rather than hardened into it: the daemon holds the keys, and the screens receive only xpubs, addresses, descriptors and transactions.',
   ],
   [
     'It will not save you from a person',
-    'Hidden profiles and a wipe PIN are planned for phase 7 and not built. When they are, they buy time against somebody unsophisticated and nothing more: this codebase is public, so anyone who reads it knows exactly what they do.',
+    'Hidden profiles and a wipe PIN are planned for phase 7. When they exist, they buy time against somebody unsophisticated and nothing more: this codebase is public, so anyone who reads it knows exactly what they do.',
   ],
 ]
 
@@ -230,17 +218,17 @@ export default function HomePage() {
           )}
         </Section>
 
-        {/* --- 03 Reasons not to ------------------------------------------ */}
-        <Section index="03" label="Do not use this">
+        {/* --- 03 Where it stands ------------------------------------------ */}
+        <Section index="03" label="Where it stands">
           <p className="text-lg text-ink-200 max-w-2xl leading-relaxed">
-            Not modesty. {COUNT_WORD[REFUSALS.length] ?? String(REFUSALS.length)} specific reasons,
-            and any one of them is enough.
+            What is built, what comes next, and what it does not protect against yet. Keep real
+            money off it until the first two are done.
           </p>
 
           <dl className="mt-8 divide-y divide-ink-850 border-y border-ink-850">
-            {REFUSALS.map(([term, detail]) => (
+            {STANDING.map(([term, detail]) => (
               <div key={term} className="py-5 sm:grid sm:grid-cols-[15rem_minmax(0,1fr)] sm:gap-8">
-                <dt className="text-sm font-medium text-caution-300">{term}</dt>
+                <dt className="text-sm font-medium text-ink-100">{term}</dt>
                 <dd className="mt-1.5 sm:mt-0 text-sm text-ink-400 leading-relaxed">{detail}</dd>
               </div>
             ))}
@@ -261,17 +249,16 @@ export default function HomePage() {
         {/* --- 04 Leave ---------------------------------------------------- */}
         <Section index="04" label="Read it yourself">
           <p className="text-lg text-ink-200 max-w-2xl leading-relaxed">
-            The useful thing here is not the device. It is the method: specifications a machine can
-            check, invariants bound to named tests, and a build that fails when a claim stops being
-            true. Take that and build your own.
+            The device and the method behind it are both open: specifications a machine can check,
+            invariants bound to named tests, and a build that fails when a claim stops being true.
           </p>
 
           <p className="mt-5 text-base text-ink-400 max-w-2xl leading-relaxed">
-            There is no download and the source is the deliverable. It runs on a Mac or a Linux box
-            with no hardware at all, and a real one is about $100 in parts. A wallet here is a
-            BIP-39 mnemonic and a canonical BIP-380 descriptor, so Bitcoin Core restores it with
-            none of this code involved. No releases, no binaries, no support, no warranty. The most
-            valuable thing you can do with this is find where it is wrong.
+            There is no download: you build it, which is the point. It runs on a Mac or a Linux box
+            today, and the device is a Pi 4 and the official 7 inch touchscreen, about $100 in
+            parts. A wallet here is a BIP-39 mnemonic and a canonical BIP-380 descriptor, so Bitcoin
+            Core restores it with none of this code involved. The most valuable thing you can do
+            with it is find where it is wrong.
           </p>
 
           <div className="mt-9 divide-y divide-ink-850 border-y border-ink-850">

@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     template: '%s | nullroute',
   },
   description:
-    'An air-gapped Bitcoin signer built to be checked rather than trusted. Dice entropy you can reproduce by hand, byte-identical signatures, and a machine-checkable specification for every module. You should not use it; read it and build your own.',
+    'An air-gapped Bitcoin signer built to be checked rather than trusted. Dice entropy you can reproduce by hand, byte-identical signatures, and a machine-checkable specification for every module. Pre-1.0, with hardware bring-up on the Raspberry Pi next: read it, check it, build your own.',
   openGraph: {
     title: 'nullroute',
     description: 'An air-gapped Bitcoin signer built to be checked, not trusted.',

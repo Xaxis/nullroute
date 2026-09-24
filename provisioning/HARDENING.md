@@ -15,9 +15,9 @@ verifier is measuring the right thing. `MANIFEST.lock` covers this directory, so
 this file is inside the hash a user compares.
 
 Read it as a specification with a status. `make image` builds a card, and
-`make image-boot-test` boots it under QEMU. Nothing has been published and no
-image has run on a Raspberry Pi, so no row here has been observed on the target
-hardware. A row marked not applied is a control this image does not have.
+`make image-boot-test` boots it under QEMU. Nothing has been published yet, and
+the rows here are observed under QEMU; observing them on the Pi itself comes
+with hardware bring-up, which is next. A row marked not applied is a control this image does not have.
 `README.md` in this directory carries the status of the verifiers that judge
 it.
 

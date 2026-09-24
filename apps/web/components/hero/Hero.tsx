@@ -53,7 +53,7 @@ export function Hero({ facts }: { facts: Facts }) {
 
       <div className="relative mx-auto max-w-5xl px-5">
         <p className="font-mono text-xs uppercase tracking-[0.22em] text-ink-500">
-          Air-gapped Bitcoin signer
+          Air-gapped Bitcoin signer for the Raspberry Pi
         </p>
 
         {/* Both lines at full contrast. Dimming the second half would fade the
@@ -65,18 +65,36 @@ export function Hero({ facts }: { facts: Facts }) {
 
         <div className="mt-9 lg:mt-12 grid gap-10 lg:grid-cols-[minmax(0,1fr)_28rem] lg:gap-14 lg:items-start">
           <div className="min-w-0">
+            {/* WHAT IT IS, THEN WHY IT IS DIFFERENT, in two short paragraphs.
+                This was one paragraph of five sentences that reached the
+                specification system before it had said what a person does
+                with the thing. */}
             <p className="text-lg sm:text-xl text-ink-300 leading-relaxed">
-              A Raspberry Pi that turns dice into a seed and signs transactions with no network of
-              any kind: not for updates, not for fee estimation, not for fonts. Signatures are
-              deterministic, so there is nothing random inside one for a key to leak through. Every
-              module ships a machine-checkable specification, and the build fails when the code, the
-              specs and the tests stop agreeing.
+              A Raspberry Pi 4 and its 7 inch touchscreen, turned into a Bitcoin signing device with
+              no network of any kind. You roll dice for the seed, carry transactions across the gap
+              by camera, read each one on the device&rsquo;s own screen, and sign offline.
             </p>
 
             <p className="mt-5 text-lg text-ink-400 leading-relaxed">
-              It is one person&rsquo;s build, published because the method is worth arguing with.{' '}
-              <span className="text-ink-200">You should not use it.</span> Read it, disagree with
-              it, and go build your own.
+              Every module ships a specification the build checks, so the code, the specs and the
+              tests cannot quietly disagree. The source is the product: build it yourself and
+              compare the hash the device shows you.
+            </p>
+
+            {/* STATUS AS STATUS. This used to read "You should not use it",
+                which is a verdict rather than information. What a reader needs
+                is where the project is and what comes next, and the reason to
+                keep money off it follows from that. The detail is in "Where it
+                stands" below. */}
+            <p className="mt-6 border-l-2 border-signal-500 pl-4 text-base text-ink-300 leading-relaxed">
+              <span className="font-mono text-[0.7rem] uppercase tracking-[0.16em] text-signal-400">
+                Status
+              </span>
+              <span className="block mt-1">
+                Runs today on a Mac or Linux box, and as a card image that boots under QEMU.
+                Hardware bring-up on the Pi 4 is next, then an outside review. Keep real money off
+                it until both are done.
+              </span>
             </p>
 
             {/*

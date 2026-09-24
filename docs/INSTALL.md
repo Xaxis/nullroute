@@ -5,11 +5,12 @@
 There is a card you can build and flash. There is no download: you build it,
 which is the point, and `make image` prints the checksum you verify it with.
 
-**Nothing here has run on a Raspberry Pi.** The image boots under QEMU and the
-signing daemon starts on it, which is a real thing to have proven and is not the
-same as your board coming up. The firmware path from power-on to the kernel is
-carried on the card and has never been executed, and the kiosk browser has never
-had a display to draw on. Flash a spare card. Expect to debug.
+**Hardware bring-up is the next milestone.** The image boots under QEMU and the
+signing daemon starts on it, which is a real thing to have proven and is not yet
+the same as your board coming up. The firmware path from power-on to the kernel
+is on the card and gets its first run on a Pi 4, and so does the kiosk
+browser's display. If you flash a card now, use a spare and expect to be part of
+that bring-up.
 
 | What you can do | State |
 | --- | --- |

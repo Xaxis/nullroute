@@ -9,8 +9,8 @@ An air-gapped Bitcoin signing device you can check rather than trust. You roll
 100 dice, it turns them into a seed by a rule you can repeat with `sha256sum`,
 and it refuses to start unless its own code matches a published hash.
 
-> **Pre-1.0, unaudited, and never run on real hardware. Do not put money on
-> this.** See [Status](#status).
+> **Pre-1.0 and unaudited, with hardware bring-up on the Raspberry Pi 4 next.
+> Keep real money off it until both are done.** See [Status](#status).
 
 <img src="apps/web/public/device/lock.png" alt="The lock screen, showing the manifest root before a PIN is entered" width="800">
 
@@ -176,15 +176,16 @@ false pass, so instead the booted guest prints the kernel's own files to its
 console and the verdict is reached on the host, against the profile. The image
 does not grade itself.
 
-**What is not done.** No Raspberry Pi has been switched on. The firmware path
-from power-on to the kernel is carried and unexercised, and the kiosk browser
-has never had a display: `make image-boot-test` reports that component rather
-than judging it, because an emulator with no virtual terminal cannot. Tier 1
-boot attestation is built and proven under QEMU only. No image has been signed
-or published.
+**What is next: hardware bring-up.** The card boots under QEMU today, and the
+first boot on a Pi 4 with the 7 inch panel is the next milestone. That boot is
+what exercises the firmware path from power-on to the kernel, which is built and
+on the card, and what gives the kiosk browser its first display:
+`make image-boot-test` reports that component rather than judging it, because
+an emulator with no virtual terminal cannot. Tier 1 boot attestation is built
+and proven under QEMU. Signing and publishing images come after bring-up.
 
-**Not safe for funds** until somebody other than the author has read the
-cryptography, and until this has run on real hardware.
+**Not for funds yet.** It needs somebody other than the author to read the
+cryptography, and a finished hardware bring-up, first.
 
 ## Documentation
 
