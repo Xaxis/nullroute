@@ -23,7 +23,14 @@ import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
-import { chromeBinary, chromeProfile, finish, reap, waitForDebugEndpoint } from '../lib/browser.mjs'
+import {
+  chromeBinary,
+  chromeProfile,
+  finish,
+  reap,
+  waitForDebugEndpoint,
+  freePort,
+} from '../lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const OUT = join(ROOT, 'apps/web/out')
@@ -51,7 +58,7 @@ const VIEWPORTS = [
   { width: 1024, mobile: false },
   { width: 1440, mobile: false },
 ]
-const PORT = 8911
+const PORT = await freePort()
 
 if (!existsSync(OUT)) {
   console.error('check-responsive: no build output at apps/web/out. Run "make web-build" first.')

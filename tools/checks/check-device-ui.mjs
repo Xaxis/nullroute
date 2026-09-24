@@ -29,11 +29,18 @@ import { createServer } from 'node:http'
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { chromeBinary, chromeProfile, finish, reap, waitForDebugEndpoint } from '../lib/browser.mjs'
+import {
+  chromeBinary,
+  chromeProfile,
+  finish,
+  reap,
+  waitForDebugEndpoint,
+  freePort,
+} from '../lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const DIST = join(ROOT, 'packages/ui/dist-app')
-const PORT = 9327
+const PORT = await freePort()
 
 if (!existsSync(join(DIST, 'index.html'))) {
   console.error('check-device-ui: packages/ui/dist-app/index.html is missing.')

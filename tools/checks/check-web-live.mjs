@@ -38,7 +38,14 @@ import { existsSync, readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
-import { chromeBinary, chromeProfile, finish, reap, waitForDebugEndpoint } from '../lib/browser.mjs'
+import {
+  chromeBinary,
+  chromeProfile,
+  finish,
+  reap,
+  waitForDebugEndpoint,
+  freePort,
+} from '../lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const ORIGIN = process.argv[2] ?? process.env['NULLROUTE_SITE'] ?? 'https://nullroute.diy'
@@ -80,7 +87,7 @@ const sha256 = (text) => createHash('sha256').update(text).digest('hex')
 /** A doc page that renders its shell but not its body would still "load". */
 const MIN_CHARS = 5000
 
-const PORT = 9227
+const PORT = await freePort()
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 function send(ws, state, method, params = {}) {

@@ -29,14 +29,21 @@
 
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { chromeBinary, chromeProfile, finish, reap, waitForDebugEndpoint } from '../lib/browser.mjs'
+import {
+  chromeBinary,
+  chromeProfile,
+  finish,
+  reap,
+  waitForDebugEndpoint,
+  freePort,
+} from '../lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 
 // Not 5180. A developer running `make dev` in another terminal is the normal
 // case, and a check that refuses to run because of it would get switched off.
-const UI_PORT = 5187
-const DEBUG_PORT = 9414
+const UI_PORT = await freePort()
+const DEBUG_PORT = await freePort()
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 

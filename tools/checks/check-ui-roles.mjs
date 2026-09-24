@@ -37,12 +37,13 @@ import {
   unreachedBecause,
   waitForDebugEndpoint,
   walkReach,
+  freePort,
 } from '../lib/browser.mjs'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const DIST = join(ROOT, 'tools/screens/dist')
-const PORT = 8981
+const PORT = await freePort()
 const DEBUG = 9461
 const TYPES = {
   '.html': 'text/html',

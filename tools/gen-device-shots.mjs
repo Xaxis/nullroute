@@ -35,12 +35,13 @@ import {
   unreachedBecause,
   waitForDebugEndpoint,
   walkReach,
+  freePort,
 } from './lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const GALLERY = join(ROOT, 'tools/screens/dist')
 const OUT = join(ROOT, 'apps/web/public/device')
-const PORT = 8917
+const PORT = await freePort()
 const DEBUG = 9229
 const check = process.argv.includes('--check')
 

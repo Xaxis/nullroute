@@ -49,6 +49,7 @@ import {
   unreachedBecause,
   waitForDebugEndpoint,
   walkReach,
+  freePort,
 } from '../lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
@@ -108,8 +109,8 @@ const MIN_SCRIM_DELTA = 12
 const DIM = '\u001b[2m'
 const OFF = '\u001b[0m'
 
-const PORT = 8931
-const DEBUG_PORT = 9413
+const PORT = await freePort()
+const DEBUG_PORT = await freePort()
 
 /** The panel. Not a breakpoint, a fixed piece of hardware. */
 const WIDTH = 800

@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs'
+import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -45,6 +46,34 @@ import { join } from 'node:path'
  * The directory goes under the system temp dir with the check's name in it, so
  * a leftover is obvious. Chrome creates it; nothing here has to.
  */
+/**
+ * A port nothing is listening on, chosen by the operating system.
+ *
+ * Every harness here used to hard-code its own, 5188 or 9424 or 8931, which
+ * is fine for one session and wrong for two. Parallel sessions on one machine
+ * are normal for this repository, and two runs of the same check, or two
+ * worktrees running `make journeys`, took the same port and one died with
+ * EADDRINUSE: a failure that says nothing about the device. Asking the kernel
+ * for port 0 and releasing it leaves a moment in which something else could
+ * take it, which is far less likely than two runs of one script agreeing on a
+ * constant.
+ */
+export async function freePort() {
+  return new Promise((resolve, reject) => {
+    const probe = createServer()
+    probe.unref()
+    probe.on('error', reject)
+    probe.listen(0, '127.0.0.1', () => {
+      const address = probe.address()
+      const port = typeof address === 'object' && address !== null ? address.port : 0
+      probe.close(() => {
+        if (port === 0) reject(new Error('the operating system offered no free port'))
+        else resolve(port)
+      })
+    })
+  })
+}
+
 /**
  * The Chrome this machine has, or a refusal naming what to set.
  *

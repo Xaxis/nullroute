@@ -41,13 +41,14 @@ import {
   unreachedBecause,
   waitForDebugEndpoint,
   walkReach,
+  freePort,
 } from '../lib/browser.mjs'
 import { join, extname, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const DIST = join(ROOT, 'tools/screens/dist')
-const PORT = 8971
+const PORT = await freePort()
 const DEBUG = 9451
 /* AA. 4.5 for normal text, 3.0 where it is large enough that the eye needs
    less, which is what the `large` flag below decides. */
