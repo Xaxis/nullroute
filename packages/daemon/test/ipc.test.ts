@@ -25,6 +25,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { readFileSync, readdirSync, rmSync } from 'node:fs'
 import { bytesToHex } from '@noble/hashes/utils.js'
+import { base64, base64urlnopad } from '@scure/base'
 import { mnemonicToSeed, wordsToEntropy } from '@nullroute/core'
 import { startIpcServer, assertNoNetworkListeners } from '../src/ipc/socket.js'
 import { createHandler } from '../src/handler.js'
@@ -154,6 +155,22 @@ const attestation: BootAttestation = {
   checks: [],
 }
 
+/**
+ * Ways a JSON response can carry bytes: base64 with and without padding, the
+ * URL-safe alphabet, and the array and object shapes JSON.stringify gives a
+ * byte array. Twelve bytes of each is plenty to be unmistakable.
+ */
+function leakForms(bytes: Uint8Array): readonly (readonly [string, string])[] {
+  const head = bytes.subarray(0, 12)
+  const b64 = base64.encode(bytes)
+  return [
+    ['base64', b64.slice(0, 16)],
+    ['base64url', base64urlnopad.encode(bytes).slice(0, 16)],
+    ['a JSON array', JSON.stringify(Array.from(head)).slice(0, -1)],
+    ['a JSON object', JSON.stringify(Object.fromEntries(Array.from(head).entries())).slice(0, -1)],
+  ]
+}
+
 let server: Server
 let session: Session
 
@@ -253,6 +270,8 @@ describe('daemon.ipc.socket', () => {
     using entropy = wordsToEntropy(MNEMONIC)
     const seedHex = bytesToHex(seed.bytes)
     const entropyHex = bytesToHex(entropy.bytes)
+    const seedBytes = Uint8Array.from(seed.bytes)
+    const entropyBytes = Uint8Array.from(entropy.bytes)
 
     await call('wallet.import', { mnemonic: MNEMONIC, passphrase: PASSPHRASE })
 
@@ -293,11 +312,27 @@ describe('daemon.ipc.socket', () => {
     responses.push(await call('wallet.xpub', {}))
 
     const serialized = JSON.stringify(responses)
-    expect(serialized).not.toContain(seedHex)
-    expect(serialized).not.toContain(entropyHex)
+    /*
+     * EVERY ENCODING A LEAK COULD TAKE, not only hex. This searched for the
+     * seed as lowercase hex and nothing else, so a method returning the seed
+     * as base64 passed: measured, by making wallet.xpub add a field holding
+     * it. The forms below are the ones a JSON response can carry bytes in
+     * without anyone choosing an unusual encoding on purpose.
+     */
+    for (const [name, bytes] of [
+      ['seed', seedBytes],
+      ['entropy', entropyBytes],
+    ] as const) {
+      for (const [form, text] of leakForms(bytes)) {
+        expect(serialized, `the ${name} appears in a response as ${form}`).not.toContain(text)
+      }
+    }
+    expect(serialized.toLowerCase()).not.toContain(seedHex)
+    expect(serialized.toLowerCase()).not.toContain(entropyHex)
     expect(serialized).not.toContain(MNEMONIC)
     expect(serialized).not.toContain(PASSPHRASE)
     expect(serialized).not.toContain('xprv')
+    expect(serialized).not.toContain('tprv')
     // The words individually, not only the whole phrase: a response leaking
     // three of them in a list would pass a search for the joined string.
     for (const word of MNEMONIC.split(' ')) {
