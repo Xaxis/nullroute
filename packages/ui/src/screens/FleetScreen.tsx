@@ -62,8 +62,13 @@ export interface FleetScreenProps {
    * for the step the documentation calls dangerous. Confirmed by typing the
    * checksum, for the same reason erasing a wallet is confirmed by typing its
    * name: a second tap on a 7 inch panel lands where the last one did.
+   *
+   * `persisted` is whether the removal was written into the saved wallet. It
+   * is the daemon's answer and the list reports it, because a removal that
+   * was not written comes back at the next unlock (INV-UI-104).
    */
-  readonly onForget?: ((quorum: FleetQuorum) => Promise<void>) | undefined
+  readonly onForget?:
+    ((quorum: FleetQuorum) => Promise<{ readonly persisted: boolean }>) | undefined
   readonly onBack: () => void
   /** Who this device is and which wallet it has open. See `Identity`. */
   readonly identity?: ReactNode
@@ -79,6 +84,8 @@ export function FleetScreen(props: FleetScreenProps): ReactElement {
   const [typed, setTyped] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** What the daemon said about the last removal, or null before there is one. */
+  const [forgot, setForgot] = useState<{ readonly persisted: boolean } | null>(null)
 
   // --- Confirming a removal -------------------------------------------------
   if (forgetting !== null) {
@@ -124,7 +131,8 @@ export function FleetScreen(props: FleetScreenProps): ReactElement {
                   setBusy(true)
                   setError(null)
                   try {
-                    await onForget(forgetting)
+                    const outcome = await onForget(forgetting)
+                    setForgot({ persisted: outcome.persisted === true })
                     setForgetting(null)
                     setTyped('')
                   } catch (err) {
@@ -153,15 +161,15 @@ export function FleetScreen(props: FleetScreenProps): ReactElement {
           </Refusal>
         )}
 
-        {/* FORGETTING A QUORUM RESEALS THE WALLET, which is not what the word
-            suggests. It verifies the passphrase by opening the envelope and
-            then writes a new one, so this costs two key derivations, the same
-            as renaming. "Forgetting" sounds instant and takes the longest of
-            anything on this screen. */}
+        {/* Forgetting CAN reseal the wallet, given a passphrase: two key
+            derivations, the same as renaming. This panel sends none, because
+            the keyboard's budget is already spent on the checksum, so the
+            removal is held for the session and the list says so afterwards.
+            The message says only what is true either way; it said "the wallet
+            file is being rewritten", which it was not. INV-UI-104. */}
         {busy && (
           <Working label="Forgetting the quorum" testId="fleet-forget-working">
-            The wallet file is being rewritten without it, so leave the device alone until it is
-            finished.
+            Leave the device alone until it is finished.
           </Working>
         )}
 
@@ -212,7 +220,8 @@ export function FleetScreen(props: FleetScreenProps): ReactElement {
         <Info testId="fleet-forget-keep">
           Keep the descriptor somewhere if you might want it back. Registering it again is the only
           way this device recognises that quorum&rsquo;s change as its own, and nothing here can
-          reconstruct a descriptor it has forgotten.
+          reconstruct a descriptor it has forgotten. Forgetting it here does not remove it from a
+          saved wallet: it is gone until the device locks, and back at the next unlock.
         </Info>
       </Screen>
     )
@@ -236,6 +245,24 @@ export function FleetScreen(props: FleetScreenProps): ReactElement {
         </Button>
       }
     >
+      {/* THE DAEMON'S ANSWER, not an assumption about it. A removal that was
+          not written into the saved wallet comes back at the next unlock, and
+          a list that silently lost the quorum would read as permanent.
+          INV-UI-104. */}
+      {forgot !== null && (
+        <div
+          className={`nr-banner ${forgot.persisted === true ? 'nr-banner--ok' : 'nr-banner--caution'}`}
+          data-testid="fleet-forgot"
+        >
+          <strong>{forgot.persisted === true ? 'Forgotten' : 'Forgotten for this session'}</strong>
+          <span>
+            {forgot.persisted === true
+              ? 'It is removed from the saved wallet too.'
+              : 'Nothing was written to a saved wallet. If it was saved there, it is back at the next unlock.'}
+          </span>
+        </div>
+      )}
+
       {quorums.length === 0 && (
         <Info testId="fleet-empty">
           This device is not in any quorum yet. Registering one is what makes it recognise that

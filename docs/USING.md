@@ -255,6 +255,10 @@ the device stops recognising that quorum's change as its own, so change coming
 back from it reads as a payment to a stranger on the signing screen until you
 register the descriptor again. Keep the descriptor if you might want it back.
 
+Forgetting from this screen lasts for the session only. It does not ask for the
+passphrase, so a quorum saved with the wallet is still in the wallet file and is
+back the next time you unlock it. The list says so after you forget one.
+
 It ends by saying what the device **cannot** tell you: whether the other
 cosigners registered the same descriptor, and whether your coordinator ever
 imported it. Both are facts about other machines and this one has no network. An
@@ -328,6 +332,14 @@ therefore a round of exporting, then a round of registering.
    Registration refuses a quorum this device holds no key in. It will not let you
    register a wallet you cannot sign for, because that produces something you can
    receive into and never spend from.
+
+   With a saved wallet open, tap **Agree to it** after reading the review, then
+   type that wallet's passphrase. The quorum is sealed into the wallet file, so
+   it is still registered after the device locks. A wrong passphrase is refused
+   and registers nothing, and it does not count against the attempts that erase
+   the wallet. With a wallet that has not been saved, there is nowhere to write
+   the quorum: the review says so, and the quorum lasts until the device locks.
+   The finished screen tells you which of the two happened.
 
 5. **Compare the checksum on all three screens.** The eight characters after the
    `#` are a checksum over the whole descriptor. If they differ, one device has a
@@ -438,8 +450,9 @@ only this device's key. Backing that up does not back the quorum up.
 
 **Name the other cosigners too.** On the quorum review screen every other key
 gets a field: call one "the attic Pi" and another "Dad's Coldcard", and the
-quorum stops being a list of extended keys nobody can tell apart. The names are
-sealed with the wallet, so they survive a reboot and a rename.
+quorum stops being a list of extended keys nobody can tell apart. A name given
+there is held for the session and is not saved with the wallet, so it is gone
+at the next lock. The screen says so under the list of keys.
 
 They are yours and are never checked. A name says nothing about who controls
 that key: only the key does. The screen labels them as yours for that reason,
@@ -632,7 +645,9 @@ touch anywhere clears it.
 
 Nothing is lost but the screen you were on. A transaction you had loaded has to
 be scanned again, and a wallet you were browsing has to be unlocked again. No
-key, no registration and no name goes with it.
+key and nothing saved with the wallet goes with it. A registration, a removal or
+a cosigner name held for this session only does, and the screen that made the
+change said which it was.
 
 This protects you against leaving the device, and against nothing else. Somebody
 standing at it simply touches the screen. Somebody who takes an unlocked device

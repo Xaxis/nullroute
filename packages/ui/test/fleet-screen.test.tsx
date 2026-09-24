@@ -156,8 +156,8 @@ function tapOut(text: string): void {
 }
 
 describe('FleetScreen forgetting', () => {
-  function reachConfirm() {
-    const onForget = vi.fn().mockResolvedValue(undefined)
+  function reachConfirm(persisted = false) {
+    const onForget = vi.fn().mockResolvedValue({ persisted })
     render(<FleetScreen quorums={[quorum()]} onForget={onForget} onBack={vi.fn()} />)
     fireEvent.click(screen.getByTestId('fleet-forget-start'))
     return onForget
@@ -232,6 +232,31 @@ describe('FleetScreen forgetting', () => {
       expect(screen.getByTestId('fleet-forget-error').textContent).toContain('no registration')
     })
     expect(screen.getByTestId('fleet-forget')).toBeTruthy()
+  })
+
+  /**
+   * INV-UI-104. A removal the daemon held for the session is reported as that.
+   * The saved wallet still holds the quorum, so it is back at the next unlock,
+   * and a list that quietly lost it would read as permanent.
+   */
+  it('says-a-removal-lasts-for-the-session-when-the-daemon-did-not-save-it', async () => {
+    reachConfirm(false)
+    tapOut('q35wkfm7')
+    fireEvent.click(screen.getByTestId('fleet-forget-submit'))
+    await waitFor(() => {
+      expect(screen.getByTestId('fleet-forgot').textContent).toContain('back at the next unlock')
+    })
+    expect(screen.getByTestId('fleet-forgot').textContent).toContain('for this session')
+  })
+
+  it('says-a-removal-is-saved-only-when-the-daemon-said-so', async () => {
+    reachConfirm(true)
+    tapOut('q35wkfm7')
+    fireEvent.click(screen.getByTestId('fleet-forget-submit'))
+    await waitFor(() => {
+      expect(screen.getByTestId('fleet-forgot').textContent).toContain('removed from the saved')
+    })
+    expect(screen.getByTestId('fleet-forgot').textContent).not.toContain('next unlock')
   })
 
   it('offers-nothing-when-there-is-nowhere-to-send-it', () => {

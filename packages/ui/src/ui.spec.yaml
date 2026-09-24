@@ -999,6 +999,31 @@ invariants:
       - packages/ui/test/fleet-screen.test.tsx::reports-a-refusal-rather-than-claiming-it-went
       - packages/ui/test/fleet-screen.test.tsx::offers-nothing-when-there-is-nowhere-to-send-it
 
+  - id: INV-UI-104
+    statement: >
+      A change to this device's quorums is reported as saved only when the
+      daemon answered persisted true for it, and otherwise as lasting until the
+      next lock. With a saved wallet open, registering asks for that wallet's
+      passphrase on the device's own keyboard, cannot be submitted without one,
+      and sends it with the reviewed descriptor; a refused passphrase is shown
+      and registers nothing. With no saved wallet open, no passphrase is asked
+      for or sent, and the review says the quorum lasts until the lock before
+      it is agreed to. Cosigner names and forgotten quorums say the same from
+      the daemon's answer.
+    tests:
+      - packages/ui/test/multisig-screen.test.tsx::will-not-register-into-a-saved-wallet-without-its-passphrase
+      - packages/ui/test/multisig-screen.test.tsx::sends-the-typed-passphrase-with-the-reviewed-descriptor
+      - packages/ui/test/multisig-screen.test.tsx::says-saved-when-the-daemon-persisted-it
+      - packages/ui/test/multisig-screen.test.tsx::says-session-only-when-the-daemon-did-not-persist-it
+      - packages/ui/test/multisig-screen.test.tsx::shows-a-wrong-passphrase-and-registers-nothing
+      - packages/ui/test/multisig-screen.test.tsx::asks-no-passphrase-and-says-session-only-without-a-saved-wallet
+      - packages/ui/test/multisig-screen.test.tsx::says-a-name-lasts-until-the-lock-when-the-daemon-did-not-save-it
+      - packages/ui/test/multisig-screen.test.tsx::says-a-name-is-saved-only-when-the-daemon-said-so
+      - packages/ui/test/fleet-screen.test.tsx::says-a-removal-lasts-for-the-session-when-the-daemon-did-not-save-it
+      - packages/ui/test/fleet-screen.test.tsx::says-a-removal-is-saved-only-when-the-daemon-said-so
+      - packages/ui/test/app.test.tsx::sends-the-passphrase-for-a-saved-wallet-and-reports-what-the-daemon-said
+      - packages/ui/test/app.test.tsx::sends-no-passphrase-without-a-saved-wallet-and-says-session-only
+
   - id: INV-UI-85
     statement: >
       The wallet locking itself is announced before it happens, with the

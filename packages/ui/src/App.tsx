@@ -951,9 +951,29 @@ export function App() {
     []
   )
 
-  const registerQuorum = useCallback(async (descriptor: string) => {
-    await call(transport, 'multisig.register', { descriptor })
-  }, [])
+  /*
+   * The passphrase goes through when there is one, and `persisted` comes back.
+   *
+   * Neither did. The daemon writes a registration into the sealed wallet only
+   * when it is handed the passphrase, and otherwise holds it for the session
+   * and answers `persisted: false`. This sent none and dropped the answer, so
+   * every quorum registered on the device went at the next lock while the
+   * screen said it would be recognised from now on. INV-UI-104.
+   *
+   * Compared to true rather than read for truthiness, because call() casts
+   * JSON and an absent field must read as not saved (INV-UI-102).
+   */
+  const registerQuorum = useCallback(
+    async (descriptor: string, passphrase?: string): Promise<{ persisted: boolean }> => {
+      const answer = await call<{ persisted?: unknown }>(
+        transport,
+        'multisig.register',
+        passphrase === undefined ? { descriptor } : { descriptor, passphrase }
+      )
+      return { persisted: answer.persisted === true }
+    },
+    []
+  )
 
   const verifyAddress = useCallback(
     async (address: string) =>
@@ -1477,9 +1497,14 @@ export function App() {
           advance('multisig')
           return reviewed
         }}
-        onRegister={async (descriptor: string) => {
-          await registerQuorum(descriptor)
+        // A passphrase field only when there is a saved wallet to write to. An
+        // unsaved seed has none, and the daemon refuses a passphrase it has
+        // nowhere to use. INV-UI-104.
+        storedWallet={activeWallet !== null}
+        onRegister={async (descriptor: string, passphrase?: string) => {
+          const outcome = await registerQuorum(descriptor, passphrase)
           advance('multisig')
+          return outcome
         }}
         registeredCount={quorums.length}
         onAssemble={() => {
@@ -1488,8 +1513,15 @@ export function App() {
         onImportFile={async (contents: string) =>
           call<ImportedFileView>(transport, 'multisig.importFile', { contents })
         }
+        // No passphrase: the name field has no keyboard of its own to share
+        // with one. The daemon holds the name for the session and says so, and
+        // the screen repeats what it said. INV-UI-104.
         onNameCosigner={async (xpub: string, name: string) => {
-          await call(transport, 'multisig.labelCosigner', { xpub, label: name })
+          const answer = await call<{ persisted?: unknown }>(transport, 'multisig.labelCosigner', {
+            xpub,
+            label: name,
+          })
+          return { persisted: answer.persisted === true }
         }}
         onExportBundle={async () => {
           const written = await call<{ bundle: string }>(transport, 'multisig.exportBundle', {})
@@ -1515,7 +1547,11 @@ export function App() {
           setStage({ at: 'quorum', quorum: quorum as unknown as QuorumView })
         }}
         onForget={async (quorum: FleetQuorum) => {
-          await call(transport, 'multisig.forget', { descriptor: quorum.descriptor })
+          // No passphrase, so the removal holds for the session, and the
+          // answer goes back to the screen to say so. INV-UI-104.
+          const answer = await call<{ persisted?: unknown }>(transport, 'multisig.forget', {
+            descriptor: quorum.descriptor,
+          })
           // Refetched rather than filtered locally: the daemon holds the
           // session's registrations and a screen keeping its own copy is a
           // screen that disagrees with the device after the next change.
@@ -1525,6 +1561,7 @@ export function App() {
           )
           setQuorums(listed.quorums)
           setQuorumsUnread(false)
+          return { persisted: answer.persisted === true }
         }}
         onBack={() => {
           setStage({ at: 'wallet' })

@@ -743,6 +743,100 @@ describe('ui.app scanning', () => {
 })
 
 /**
+ * Registering a quorum, through the shell to the daemon.
+ *
+ * THE BUG THIS EXISTS FOR. `multisig.register` writes into the sealed wallet
+ * only when it is handed the wallet's passphrase. The shell sent the descriptor
+ * alone and dropped the `persisted` the daemon answered with, so every quorum
+ * registered on the device was held for the session and gone at the next lock,
+ * while the screen said the device would recognise it from now on.
+ */
+describe('ui.app registering a quorum', () => {
+  const DESCRIPTOR = 'wsh(sortedmulti(2,a,b,c))#checksum'
+
+  async function intoMultisig(activeWallet: Record<string, string> | null): Promise<void> {
+    replies.set('device.status', {
+      hasWallet: true,
+      network: { id: 'mainnet', label: 'Mainnet', isMainnet: true },
+      activeWallet,
+    })
+    replies.set('multisig.ourKey', {
+      xpub: 'xpub6E64',
+      path: "m/48'/0'/0'/2'",
+      masterFingerprint: '73c5da0a',
+      keyExpression: "[73c5da0a/48'/0'/0'/2']xpub6E64",
+    })
+    replies.set('multisig.review', {
+      descriptor: DESCRIPTOR,
+      threshold: 2,
+      total: 3,
+      sorted: true,
+      kind: 'wsh',
+      ourPosition: 1,
+      cosigners: [],
+      warnings: [],
+    })
+    await boot()
+    fireEvent.click(screen.getByTestId('unlock'))
+    await waitFor(() => {
+      expect(screen.getByTestId('wallet-screen')).toBeTruthy()
+    })
+    fireEvent.click(screen.getByTestId('nav-menu-button'))
+    fireEvent.click(screen.getByTestId('nav-more'))
+    await waitFor(() => {
+      expect(screen.getByTestId('more-screen')).toBeTruthy()
+    })
+    fireEvent.click(screen.getByTestId('wallet-multisig'))
+    await waitFor(() => {
+      expect(screen.getByTestId('multisig-screen')).toBeTruthy()
+    })
+    fireEvent.change(screen.getByTestId('multisig-input'), { target: { value: DESCRIPTOR } })
+    fireEvent.click(screen.getByTestId('multisig-review'))
+    await waitFor(() => {
+      expect(screen.getByTestId('multisig-quorum')).toBeTruthy()
+    })
+  }
+
+  /**
+   * INV-UI-104. With a saved wallet open, the passphrase typed on the device
+   * reaches `multisig.register`, and the finished panel says saved because the
+   * daemon said `persisted: true`.
+   */
+  it('sends-the-passphrase-for-a-saved-wallet-and-reports-what-the-daemon-said', async () => {
+    replies.set('multisig.register', { descriptor: DESCRIPTOR, persisted: true })
+    await intoMultisig({ id: 'w1', label: 'Cold storage', colour: 'teal' })
+
+    fireEvent.click(screen.getByTestId('multisig-agree'))
+    for (const key of 'abc') fireEvent.click(screen.getByTestId(`pk-key-${key}`))
+    fireEvent.click(screen.getByTestId('multisig-register'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('multisig-outcome-saved')).toBeTruthy()
+    })
+    expect(lastCall('multisig.register')?.params).toEqual({
+      descriptor: DESCRIPTOR,
+      passphrase: 'abc',
+    })
+  })
+
+  /**
+   * INV-UI-104. With no saved wallet open, no passphrase is sent, because the
+   * daemon refuses one it has nowhere to use, and an answer with no
+   * `persisted: true` in it reads as session only.
+   */
+  it('sends-no-passphrase-without-a-saved-wallet-and-says-session-only', async () => {
+    replies.set('multisig.register', { descriptor: DESCRIPTOR })
+    await intoMultisig(null)
+
+    fireEvent.click(screen.getByTestId('multisig-register'))
+    await waitFor(() => {
+      expect(screen.getByTestId('multisig-outcome-session')).toBeTruthy()
+    })
+    expect(lastCall('multisig.register')?.params).toEqual({ descriptor: DESCRIPTOR })
+  })
+})
+
+/**
  * A journey that operates on a wallet, started with none open.
  *
  * The hub used to disable the button and say "open a wallet first". That is a

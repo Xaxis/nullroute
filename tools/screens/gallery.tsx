@@ -1032,6 +1032,10 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       onImportFile={never}
       onExportBundle={never}
       registeredCount={1}
+      // A saved wallet open, because that is the device's ordinary case and
+      // the one that adds a panel with a keyboard on it. The unsaved case is
+      // its own state below.
+      storedWallet
       onBack={noop}
     />
   ),
@@ -1052,6 +1056,20 @@ const SCREENS: Record<string, () => React.ReactElement> = {
    * to push something under the fold.
    */
   'multisig-working': () => variant('multisig', { onRegister: pending }),
+  /*
+   * The two outcomes of registering, because the finished panel now says which
+   * one happened (INV-UI-104) and each is a banner of a different length above
+   * the descriptor. Saved comes through the passphrase panel; session-only is
+   * a seed that was never saved, which has no passphrase panel at all and says
+   * so on the review.
+   */
+  'multisig-saved': () =>
+    variant('multisig', { onRegister: async () => Promise.resolve({ persisted: true }) }),
+  'multisig-unsaved': () =>
+    variant('multisig', {
+      storedWallet: false,
+      onRegister: async () => Promise.resolve({ persisted: false }),
+    }),
   quorum: () => (
     <QuorumAddressesScreen
       identity={DEVICE}
@@ -1518,6 +1536,12 @@ const SCREENS: Record<string, () => React.ReactElement> = {
    * despite being the word on this device that sounds most instant.
    */
   'fleet-forget-working': () => variant('fleet', { onForget: pending }),
+  /*
+   * Forgotten for this session, which puts a banner above the list saying the
+   * quorum comes back at the next unlock (INV-UI-104).
+   */
+  'fleet-forgot': () =>
+    variant('fleet', { onForget: async () => Promise.resolve({ persisted: false }) }),
 }
 
 /**
@@ -1575,8 +1599,19 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   'verify-message': [['verify-tab-message'], ['verify-run']],
   'verify-message-failed': [['verify-run']],
   // The reviewed quorum, which is where cosigner names appear.
-  multisig: [['multisig-review']],
-  'multisig-working': [['multisig-review', 'multisig-register']],
+  // And the passphrase panel agreeing leads to, empty and then refused, which
+  // is a refusal above a keyboard.
+  multisig: [
+    ['multisig-review'],
+    ['multisig-review', 'multisig-agree'],
+    ['multisig-review', 'multisig-agree', 'keys:abc', 'multisig-register'],
+  ],
+  'multisig-working': [['multisig-review', 'multisig-agree', 'keys:abc', 'multisig-register']],
+  'multisig-saved': [['multisig-review', 'multisig-agree', 'keys:abc', 'multisig-register']],
+  'multisig-unsaved': [['multisig-review'], ['multisig-review', 'multisig-register']],
+  // The passphrase panel's subtitle beside the longest name the header holds.
+  'multisig-longest-name': [['multisig-review', 'multisig-agree']],
+  'fleet-forgot': [['fleet-forget-start', 'keys:8rf6pq2t', 'fleet-forget-submit']],
   // Verified, which adds a paragraph under a screen that already holds a QR
   // code, an address in large type and a warning banner.
   receive: [['receive-verify']],

@@ -64,7 +64,7 @@ function registration(overrides: Partial<RegistrationView> = {}): RegistrationVi
 function setup(overrides: Partial<RegistrationView> = {}) {
   const onOurKey = vi.fn().mockResolvedValue(OUR_KEY)
   const onReview = vi.fn().mockResolvedValue(registration(overrides))
-  const onRegister = vi.fn().mockResolvedValue(undefined)
+  const onRegister = vi.fn().mockResolvedValue({ persisted: false })
   const onBack = vi.fn()
   render(
     <MultisigScreen
@@ -208,7 +208,7 @@ describe('ui.screens.multisig coordinator files', () => {
   function mount(over: Partial<React.ComponentProps<typeof MultisigScreen>> = {}) {
     const onOurKey = vi.fn().mockResolvedValue(OUR_KEY)
     const onReview = vi.fn().mockResolvedValue(registration())
-    const onRegister = vi.fn().mockResolvedValue(undefined)
+    const onRegister = vi.fn().mockResolvedValue({ persisted: false })
     const onImportFile = vi.fn().mockResolvedValue(IMPORTED)
     const onExportBundle = vi.fn().mockResolvedValue({ bundle: '{"format":"bundle"}' })
     render(
@@ -344,7 +344,9 @@ describe('ui.screens.multisig cosigner names', () => {
     }
   }
 
-  async function reach(onNameCosigner?: (xpub: string, name: string) => Promise<void>) {
+  async function reach(
+    onNameCosigner?: (xpub: string, name: string) => Promise<{ persisted: boolean }>
+  ) {
     render(
       <MultisigScreen
         onOurKey={vi.fn().mockResolvedValue(OUR_KEY)}
@@ -384,7 +386,7 @@ describe('ui.screens.multisig cosigner names', () => {
    * characters, and a name attached to the wrong key is worse than no name.
    */
   it('names-a-key-by-its-full-value-not-the-abbreviation', async () => {
-    const onNameCosigner = vi.fn().mockResolvedValue(undefined)
+    const onNameCosigner = vi.fn().mockResolvedValue({ persisted: false })
     await reach(onNameCosigner)
 
     const field = screen.getByTestId('cosigner-rename-0')
@@ -393,6 +395,36 @@ describe('ui.screens.multisig cosigner names', () => {
 
     await waitFor(() => {
       expect(onNameCosigner).toHaveBeenCalledWith(FULL_XPUB, 'Office')
+    })
+  })
+
+  /**
+   * INV-UI-104. A name the daemon held for the session is not shown as saved.
+   * The screen sends no passphrase with a name, so the daemon answers
+   * `persisted: false`, and the line under the table repeats that answer
+   * rather than letting a name that goes at the next lock look kept.
+   */
+  it('says-a-name-lasts-until-the-lock-when-the-daemon-did-not-save-it', async () => {
+    await reach(vi.fn().mockResolvedValue({ persisted: false }))
+    const field = screen.getByTestId('cosigner-rename-0')
+    fireEvent.change(field, { target: { value: 'Office' } })
+    fireEvent.blur(field)
+    await waitFor(() => {
+      expect(screen.getByTestId('multisig-name-outcome').textContent).toContain(
+        'lasts until the device locks'
+      )
+    })
+  })
+
+  it('says-a-name-is-saved-only-when-the-daemon-said-so', async () => {
+    await reach(vi.fn().mockResolvedValue({ persisted: true }))
+    const field = screen.getByTestId('cosigner-rename-0')
+    fireEvent.change(field, { target: { value: 'Office' } })
+    fireEvent.blur(field)
+    await waitFor(() => {
+      expect(screen.getByTestId('multisig-name-outcome').textContent).toContain(
+        'saved with this wallet'
+      )
     })
   })
 
@@ -410,5 +442,158 @@ describe('ui.screens.multisig cosigner names', () => {
   it('shows-no-naming-field-when-there-is-nowhere-to-send-it', async () => {
     await reach()
     expect(screen.queryByTestId('cosigner-rename-0')).toBeNull()
+  })
+})
+
+/**
+ * Whether a registration outlives the next lock.
+ *
+ * The daemon writes a registration into the sealed wallet only when it is given
+ * the wallet's passphrase, and otherwise holds it for the session and answers
+ * `persisted: false`. The screen sent no passphrase and ignored the answer, and
+ * said the device would recognise the quorum from now on. Every quorum
+ * registered on the device went at the next lock, the idle one included.
+ */
+describe('ui.screens.multisig saving with the wallet', () => {
+  function mount(
+    storedWallet: boolean,
+    onRegister: (descriptor: string, passphrase?: string) => Promise<{ persisted: boolean }>
+  ) {
+    render(
+      <MultisigScreen
+        onOurKey={vi.fn().mockResolvedValue(OUR_KEY)}
+        onReview={vi.fn().mockResolvedValue(registration())}
+        onRegister={onRegister}
+        storedWallet={storedWallet}
+        onBack={vi.fn()}
+      />
+    )
+  }
+
+  function tap(text: string): void {
+    for (const character of text) fireEvent.click(screen.getByTestId(`pk-key-${character}`))
+  }
+
+  /**
+   * INV-UI-104. With a saved wallet open, registering asks for its passphrase
+   * on the device's own keyboard, and cannot be tapped until one is typed.
+   */
+  it('will-not-register-into-a-saved-wallet-without-its-passphrase', async () => {
+    const onRegister = vi.fn().mockResolvedValue({ persisted: true })
+    mount(true, onRegister)
+    await reachReview()
+    // No way to register straight from the review: agreeing leads to the field.
+    expect(screen.queryByTestId('multisig-register')).toBeNull()
+    fireEvent.click(screen.getByTestId('multisig-agree'))
+
+    expect(screen.getByTestId('multisig-save').textContent).toContain('Passphrase for this wallet')
+    expect(screen.getByTestId('multisig-passphrase-keyboard')).toBeTruthy()
+    const register = screen.getByTestId<HTMLButtonElement>('multisig-register')
+    expect(register.disabled).toBe(true)
+    fireEvent.click(register)
+    expect(onRegister).not.toHaveBeenCalled()
+
+    tap('abc')
+    // Masked, because it is the wallet's passphrase on a lit panel.
+    expect(screen.getByTestId('pk-hidden').textContent).toBe('•••')
+    expect(screen.queryByTestId('pk-plain')).toBeNull()
+    expect(screen.getByTestId<HTMLButtonElement>('multisig-register').disabled).toBe(false)
+  })
+
+  /** INV-UI-104. What was typed is what reaches the daemon, with the reviewed descriptor. */
+  it('sends-the-typed-passphrase-with-the-reviewed-descriptor', async () => {
+    const onRegister = vi.fn().mockResolvedValue({ persisted: true })
+    mount(true, onRegister)
+    await reachReview()
+    fireEvent.click(screen.getByTestId('multisig-agree'))
+    tap('abc')
+    fireEvent.click(screen.getByTestId('multisig-register'))
+    await waitFor(() => {
+      expect(onRegister).toHaveBeenCalledWith('wsh(sortedmulti(2,a,b,c))#checksum', 'abc')
+    })
+  })
+
+  /** INV-UI-104. Saved is said only when the daemon said it wrote it. */
+  it('says-saved-when-the-daemon-persisted-it', async () => {
+    mount(true, vi.fn().mockResolvedValue({ persisted: true }))
+    await reachReview()
+    fireEvent.click(screen.getByTestId('multisig-agree'))
+    tap('abc')
+    fireEvent.click(screen.getByTestId('multisig-register'))
+    await waitFor(() => {
+      expect(screen.getByTestId('multisig-registered')).toBeTruthy()
+    })
+    expect(screen.getByTestId('multisig-outcome-saved').textContent).toContain(
+      'after the device locks'
+    )
+    expect(screen.queryByTestId('multisig-outcome-session')).toBeNull()
+  })
+
+  /**
+   * INV-UI-104. The same path with the daemon answering `persisted: false`
+   * says session only. The panel follows the answer, not the route that led to
+   * it, so a passphrase having been typed is not taken as the quorum saved.
+   */
+  it('says-session-only-when-the-daemon-did-not-persist-it', async () => {
+    mount(true, vi.fn().mockResolvedValue({ persisted: false }))
+    await reachReview()
+    fireEvent.click(screen.getByTestId('multisig-agree'))
+    tap('abc')
+    fireEvent.click(screen.getByTestId('multisig-register'))
+    await waitFor(() => {
+      expect(screen.getByTestId('multisig-outcome-session').textContent).toContain(
+        'gone at the next lock'
+      )
+    })
+    expect(screen.queryByTestId('multisig-outcome-saved')).toBeNull()
+  })
+
+  /**
+   * INV-UI-104. A wrong passphrase is shown, not swallowed. The user stays on
+   * the panel with the field, nothing reads as registered, and the refused
+   * passphrase is not left in the field to be retried by accident.
+   */
+  it('shows-a-wrong-passphrase-and-registers-nothing', async () => {
+    const onRegister = vi.fn().mockRejectedValue(new Error('Wrong passphrase.'))
+    mount(true, onRegister)
+    await reachReview()
+    fireEvent.click(screen.getByTestId('multisig-agree'))
+    tap('abc')
+    fireEvent.click(screen.getByTestId('multisig-register'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('multisig-error').textContent).toContain('Wrong passphrase.')
+    })
+    expect(screen.queryByTestId('multisig-registered')).toBeNull()
+    expect(screen.getByTestId('multisig-save')).toBeTruthy()
+    expect(screen.getByTestId('pk-length').textContent).toBe('0')
+    expect(screen.getByTestId<HTMLButtonElement>('multisig-register').disabled).toBe(true)
+    // Retyping clears the refusal, so the keys are the whole panel again.
+    tap('a')
+    expect(screen.queryByTestId('multisig-error')).toBeNull()
+  })
+
+  /**
+   * INV-UI-104. With no saved wallet there is nowhere to write a
+   * registration: no passphrase is asked for or sent, the review says the
+   * quorum lasts until the lock before anybody agrees, and the finished panel
+   * says it again from the daemon's answer.
+   */
+  it('asks-no-passphrase-and-says-session-only-without-a-saved-wallet', async () => {
+    const onRegister = vi.fn().mockResolvedValue({ persisted: false })
+    mount(false, onRegister)
+    await reachReview()
+    expect(screen.queryByTestId('multisig-agree')).toBeNull()
+    expect(screen.queryByTestId('multisig-passphrase-keyboard')).toBeNull()
+    expect(screen.getByTestId('multisig-session-only').textContent).toContain(
+      'lasts until the device locks'
+    )
+
+    fireEvent.click(screen.getByTestId('multisig-register'))
+    await waitFor(() => {
+      expect(screen.getByTestId('multisig-outcome-session')).toBeTruthy()
+    })
+    expect(onRegister).toHaveBeenCalledWith('wsh(sortedmulti(2,a,b,c))#checksum')
+    expect(onRegister.mock.calls[0]).toHaveLength(1)
   })
 })

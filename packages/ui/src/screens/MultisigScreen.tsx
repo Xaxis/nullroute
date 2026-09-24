@@ -6,6 +6,7 @@ import { Button } from '../components/Button.js'
 import { Hash } from '../components/Hash.js'
 import { QrDisplay } from '../components/QrDisplay.js'
 import { Info } from '../components/Info.js'
+import { TextKeyboard } from '../components/TextKeyboard.js'
 
 /**
  * Registering a quorum.
@@ -88,7 +89,30 @@ export interface MultisigScreenProps {
   readonly nav?: ReactNode
   readonly onOurKey: () => Promise<OurKeyView>
   readonly onReview: (descriptor: string) => Promise<RegistrationView>
-  readonly onRegister: (descriptor: string) => Promise<void>
+  /**
+   * Agree to the reviewed quorum.
+   *
+   * The passphrase is present exactly when `storedWallet` is true, because the
+   * daemon writes a registration into the sealed wallet only when it is given
+   * one, and refuses one it is given with no stored wallet to write to.
+   *
+   * `persisted` is the daemon's answer to whether it was written, and the only
+   * thing the finished panel goes on. This used to return nothing, the panel
+   * said the device would recognise the quorum from now on, and the
+   * registration was gone at the next lock (INV-UI-104).
+   */
+  readonly onRegister: (
+    descriptor: string,
+    passphrase?: string
+  ) => Promise<{ readonly persisted: boolean }>
+  /**
+   * Whether a wallet saved on this device is open, which is the only case in
+   * which a registration can be written anywhere.
+   *
+   * False for a seed that has not been saved, and false by default, so a
+   * caller that says nothing gets the screen that promises least.
+   */
+  readonly storedWallet?: boolean
   /**
    * Read a file a coordinator exported.
    *
@@ -112,7 +136,8 @@ export interface MultisigScreenProps {
    * what it always was: on the second device of three you are looking at two
    * strings and trying to remember which physical object each one is.
    */
-  readonly onNameCosigner?: ((xpub: string, name: string) => Promise<void>) | undefined
+  readonly onNameCosigner?:
+    ((xpub: string, name: string) => Promise<{ readonly persisted: boolean }>) | undefined
   /** How many quorums are registered, so the export is offered only when it carries something. */
   readonly registeredCount?: number
   /**
@@ -148,6 +173,7 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
     onImportFile,
     onExportBundle,
     onNameCosigner,
+    storedWallet = false,
     registeredCount = 0,
     onAssemble,
     initialText,
@@ -163,7 +189,18 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
   const [ourKey, setOurKey] = useState<OurKeyView | null>(null)
   const [descriptor, setDescriptor] = useState(initialText ?? '')
   const [review, setReview] = useState<RegistrationView | null>(null)
-  const [registered, setRegistered] = useState(false)
+  /**
+   * What the daemon said about the registration, or null before there is one.
+   *
+   * Not a boolean "registered": the finished panel says whether the quorum
+   * outlives the next lock, and that is this value and nothing inferred.
+   */
+  const [registered, setRegistered] = useState<{ readonly persisted: boolean } | null>(null)
+  /** The passphrase panel, reached from the review when a stored wallet is open. */
+  const [saving, setSaving] = useState(false)
+  const [passphrase, setPassphrase] = useState('')
+  /** Whether the last cosigner name was written into the wallet, per the daemon. */
+  const [nameKept, setNameKept] = useState<boolean | null>(null)
   const [imported, setImported] = useState<ImportedFileView | null>(null)
   const [bundle, setBundle] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -192,6 +229,10 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
       await fn()
     } catch (err) {
       setError((err as Error).message)
+      // Cleared on failure, as the rename panel does, so a retry starts from
+      // nothing rather than from a passphrase the user has already seen
+      // refused.
+      setPassphrase('')
     } finally {
       setBusy(false)
     }
@@ -333,7 +374,7 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
     )
   }
 
-  if (registered && review !== null) {
+  if (registered !== null && review !== null) {
     return (
       <Screen
         title="Quorum registered"
@@ -364,11 +405,35 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
           </>
         }
       >
+        {/* FROM THE DAEMON'S ANSWER, NEVER FROM WHICH PATH GOT HERE.
+
+            This said the device "will now recognise the quorum's change as its
+            own" whatever had happened, while the UI never sent the passphrase
+            the daemon needs to write anything. Every quorum registered here
+            lasted until the next lock, the ten minute idle one included, and
+            after it that quorum's change read as a payment to a stranger.
+            INV-UI-104. */}
+        {registered.persisted === true ? (
+          <div className="nr-banner nr-banner--ok" data-testid="multisig-outcome-saved">
+            <strong>Saved with this wallet</strong>
+            <span>
+              It stays registered after the device locks. This device recognises the quorum&rsquo;s
+              change as its own and will sign for it.
+            </span>
+          </div>
+        ) : (
+          <div className="nr-banner nr-banner--caution" data-testid="multisig-outcome-session">
+            <strong>For this session only</strong>
+            <span>
+              Nothing was saved with a wallet, so this quorum is gone at the next lock. Until then
+              this device recognises its change as its own. After it, register the descriptor again.
+            </span>
+          </div>
+        )}
         <div className="nr-card nr-card--tight">
           <p className="nr-hint">
-            This device will now recognise the quorum&rsquo;s change as its own, and will sign for
-            it. Every other cosigner has to register the same descriptor, character for character,
-            or their addresses will not match yours.
+            Every other cosigner has to register the same descriptor, character for character, or
+            their addresses will not match yours.
           </p>
         </div>
         <div className="nr-field">
@@ -381,6 +446,109 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
             data-testid="multisig-descriptor-out"
           />
         </div>
+      </Screen>
+    )
+  }
+
+  // --- Saving it with the wallet -------------------------------------------
+  // A panel of its own rather than a field on the review, because the keyboard
+  // has to be whole on the panel when it arrives (check-screen-fit) and is
+  // 188px of a 287px body. On the review it would have pushed the quorum, the
+  // thing being agreed to, below the fold of the screen whose job is to make
+  // it legible. The review is read first, and this is what agreeing costs.
+  if (saving && review !== null) {
+    return (
+      <Screen
+        title="Save this quorum"
+        subtitle="Saving it needs the passphrase."
+        banner={banner}
+        nav={nav}
+        identity={identity}
+        steps={steps}
+        testId="multisig-save"
+        actions={
+          <>
+            <Button
+              onClick={() => {
+                setSaving(false)
+                setPassphrase('')
+                setError(null)
+              }}
+              testId="multisig-save-back"
+            >
+              Back
+            </Button>
+            <div className="nr-spacer" />
+            <Button
+              variant="primary"
+              disabled={passphrase.length === 0 || busy}
+              onClick={() =>
+                void run(async () => {
+                  const outcome = await onRegister(review.descriptor, passphrase)
+                  setPassphrase('')
+                  setRegistered(outcome)
+                  setSaving(false)
+                })
+              }
+              testId="multisig-register"
+            >
+              {busy ? 'Registering' : 'Register'}
+            </Button>
+          </>
+        }
+      >
+        {/* First, for the reason it is first on the review: a refusal under
+            the keys is a refusal nobody sees. A wrong passphrase lands here and
+            leaves the user on this panel with nothing registered. */}
+        {error !== null && (
+          <Refusal title="Not registered" testId="multisig-error">
+            {error}
+          </Refusal>
+        )}
+
+        {/* THE SLOWEST OF THE FOUR. Registering with a passphrase rewrites the
+            wallet, which OPENS the envelope and then SEALS it: two Argon2id
+            runs back to back. On a Pi that reads as a device that has stopped
+            responding unless it says otherwise. */}
+        {busy && (
+          <Working label="Rewriting the wallet" testId="multisig-working">
+            The wallet file is being rewritten with this quorum in it, so leave the device alone
+            until it is finished.
+          </Working>
+        )}
+
+        {/* THE KEYBOARD'S READOUT IS THE FIELD, under a label, the way the
+            backup screen asks for its passphrase. A labelled input above the
+            keys, as the rename panel has, measured 13px too tall here: this
+            panel is inside a journey, and the step counter in the header takes
+            room the rename panel still has. The readout shows dots, the same
+            value the input would have shown, and nothing else on this device
+            can type into an input anyway. */}
+        <span className="nr-field__label">Passphrase for this wallet</span>
+
+        {/* Hidden while it works, as on every screen that derives a key:
+            nothing can be typed, and keys that look tappable and do nothing
+            are the worst thing to show somebody wondering whether the device
+            is alive. */}
+        {!busy && (
+          <TextKeyboard
+            value={passphrase}
+            secret
+            onChange={(next) => {
+              // Cleared on the first key, so the state somebody types in has
+              // the whole keyboard on the panel (check-screen-fit).
+              setError(null)
+              setPassphrase(next)
+            }}
+            testId="multisig-passphrase-keyboard"
+          />
+        )}
+
+        <Info testId="multisig-save-why">
+          The quorum is sealed into the wallet file with this passphrase, so it is still registered
+          after the device locks. A wrong passphrase is refused and costs nothing: it does not count
+          against the attempts that erase this wallet.
+        </Info>
       </Screen>
     )
   }
@@ -419,14 +587,27 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
             >
               {busy ? 'Checking' : 'Check quorum'}
             </Button>
+          ) : storedWallet ? (
+            <Button
+              variant="primary"
+              disabled={busy}
+              onClick={() => {
+                setError(null)
+                setSaving(true)
+              }}
+              testId="multisig-agree"
+            >
+              Agree to it
+            </Button>
           ) : (
             <Button
               variant="primary"
               disabled={busy}
               onClick={() =>
                 void run(async () => {
-                  await onRegister(review.descriptor)
-                  setRegistered(true)
+                  // No passphrase, because there is no saved wallet to write
+                  // to and the daemon refuses one it cannot use.
+                  setRegistered(await onRegister(review.descriptor))
                 })
               }
               testId="multisig-register"
@@ -450,15 +631,24 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
         </Refusal>
       )}
 
-      {/* THE SLOWEST OF THE FOUR. Registering a quorum reseals the store, which
-          OPENS the envelope and then SEALS it, so it is two Argon2id runs back
-          to back rather than one. On a Pi that is long enough to read as a
-          device that has stopped responding, and the only sign of it was a
-          button reading "Registering". */}
+      {/* Nothing on this panel writes the wallet file any more. Registering
+          with a passphrase happens on the panel above, which says so; what is
+          left here (checking, reading a file, a session-only registration or
+          name) derives no key. This used to say "Rewriting the wallet" for all
+          of them, which was true of none. */}
       {busy && (
-        <Working label="Rewriting the wallet" testId="multisig-working">
-          The wallet file is being rewritten, so leave the device alone until it is finished.
+        <Working label="Working" testId="multisig-working">
+          Leave the device alone until it is finished.
         </Working>
+      )}
+
+      {/* Said before agreeing rather than only after. With no saved wallet
+          open there is nowhere to write a registration, and a user who learns
+          that on the finished panel has already decided. INV-UI-104. */}
+      {review !== null && !storedWallet && (
+        <Info testId="multisig-session-only">
+          No saved wallet is open, so a quorum registered now lasts until the device locks.
+        </Info>
       )}
 
       {/* THE KEY YOU HAND OVER AND THE ONE THAT COMES BACK, SIDE BY SIDE.
@@ -642,25 +832,31 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
                             // THROUGH run(), NOT `void`. Two things were wrong
                             // with firing this bare.
                             //
-                            // Naming a cosigner RESEALS THE WALLET: it verifies
-                            // the passphrase by opening the envelope and writes
-                            // a new one, which is two Argon2id runs and several
-                            // seconds on a Pi. Outside run() nothing set busy,
-                            // so the device went away for seconds with no
-                            // disabled control and no message, triggered by
-                            // tapping away from a text field.
+                            // Naming a cosigner can RESEAL THE WALLET, given a
+                            // passphrase: two Argon2id runs and several seconds
+                            // on a Pi. Outside run() nothing set busy, so the
+                            // device could go away for seconds with no disabled
+                            // control and no message.
                             //
-                            // And `void` DISCARDED THE REJECTION. A reseal that
+                            // And `void` DISCARDED THE REJECTION. A write that
                             // failed left the typed name sitting in the input
                             // looking saved. The name is not key material, but
                             // a silently dropped write is how somebody comes to
                             // trust a label that does not exist on the device.
+                            //
+                            // THE ANSWER IS KEPT, for the same reason. This
+                            // sends no passphrase, so the daemon holds the name
+                            // for the session and says `persisted: false`, and
+                            // the line under the table repeats that rather than
+                            // letting a name that goes at the next lock look
+                            // saved. INV-UI-104.
                             onBlur={(e) => {
                               const full = cosigner.fullXpub
                               if (full === undefined) return
                               const name = e.target.value
                               void run(async () => {
-                                await onNameCosigner(full, name)
+                                const outcome = await onNameCosigner(full, name)
+                                setNameKept(outcome.persisted === true)
                               })
                             }}
                             data-testid={`cosigner-rename-${String(cosigner.position)}`}
@@ -676,6 +872,13 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
               has been verified: a fingerprint is four bytes chosen by whoever wrote the descriptor,
               so it is shown and not believed.
             </p>
+            {nameKept !== null && (
+              <p className="nr-hint" data-testid="multisig-name-outcome">
+                {nameKept
+                  ? 'That name is saved with this wallet.'
+                  : 'That name is not saved with a wallet. It lasts until the device locks.'}
+              </p>
+            )}
           </div>
 
           {review.warnings.map((warning) => (
