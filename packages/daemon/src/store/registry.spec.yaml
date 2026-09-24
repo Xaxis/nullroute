@@ -94,8 +94,12 @@ invariants:
       One seed is one wallet. A seed already stored on a network cannot be
       stored again on that network under a second passphrase, and two wallets
       cannot share a name, including names that differ only by Unicode form.
+      While a stored wallet's fingerprint is unknown, as a migrated wallet's is
+      until it is first opened, no new wallet is stored at all.
     tests:
       - packages/daemon/test/registry.test.ts::refuses-a-second-wallet-holding-a-seed-it-already-has
+      - packages/daemon/test/migrated-duplicate.ipc.test.ts::asks-for-the-migrated-wallet-to-be-opened-before-adding-another
+      - packages/daemon/test/migrated-duplicate.ipc.test.ts::refuses-the-same-seed-and-allows-another-once-it-has-been-opened
       - packages/daemon/test/registry.test.ts::refuses-two-wallets-with-the-same-name
       - packages/daemon/test/registry.test.ts::normalises-so-two-identical-looking-names-collide
 

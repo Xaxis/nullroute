@@ -402,6 +402,20 @@ export class WalletRegistry {
     for (const entry of existing) {
       if (!entry.exists) continue
 
+      // A wallet whose hint carries no fingerprint cannot be compared, and a
+      // migrated one has none until it is first opened, because migration
+      // runs without a passphrase. The check below then passed for it, and
+      // the same seed was stored a second time under a second passphrase: two
+      // live wallets, one fingerprint (INV-MW-4). Opening it once fills the
+      // fingerprint in, so that is what the user is asked to do.
+      if (entry.hint.fingerprint === undefined) {
+        throw new StoreError(
+          `Open "${entry.hint.label}" once before adding another wallet. This device cannot ` +
+            `yet tell whether it holds the same seed, and one seed stored under two passphrases ` +
+            `means the weaker one controls the money.`
+        )
+      }
+
       // Same seed, same network, is the same wallet. Sealing it a second time
       // under a second passphrase means the weaker one governs the money, and
       // a picker showing two names gives the user no way to notice.
