@@ -719,6 +719,49 @@ export function descriptorKeys(node: ScriptNode): KeyExpression[] {
 }
 
 /**
+ * The SLIP-132 version bytes, and the BIP-32 standard each one stands in for.
+ *
+ * ypub, zpub, Ypub and Zpub are the same key as xpub under a different
+ * four-byte prefix, and likewise upub to Vpub for tpub. They are not valid in
+ * a descriptor: BIP-380 writes xpub and tpub, and Bitcoin Core refuses the
+ * others. Values from SLIP-0132's registry of HD version bytes.
+ */
+const STANDARD_VERSION: ReadonlyMap<number, number> = new Map([
+  // mainnet: xpub, ypub, zpub, Ypub, Zpub
+  [0x0488b21e, 0x0488b21e],
+  [0x049d7cb2, 0x0488b21e],
+  [0x04b24746, 0x0488b21e],
+  [0x0295b43f, 0x0488b21e],
+  [0x02aa7ed3, 0x0488b21e],
+  // test networks: tpub, upub, vpub, Upub, Vpub
+  [0x043587cf, 0x043587cf],
+  [0x044a5262, 0x043587cf],
+  [0x045f1cf6, 0x043587cf],
+  [0x024289ef, 0x043587cf],
+  [0x02575483, 0x043587cf],
+])
+
+/** An extended public key rewritten under its network's standard prefix. */
+function standardPrefix(extended: string): string {
+  const raw = base58.decode(extended)
+  const version =
+    ((raw[0] ?? 0) << 24) | ((raw[1] ?? 0) << 16) | ((raw[2] ?? 0) << 8) | (raw[3] ?? 0)
+  const standard = STANDARD_VERSION.get(version >>> 0)
+  if (standard === undefined || standard === version >>> 0) return extended
+  const body = raw.slice(0, 78)
+  body.set([
+    (standard >>> 24) & 0xff,
+    (standard >>> 16) & 0xff,
+    (standard >>> 8) & 0xff,
+    standard & 0xff,
+  ])
+  const out = new Uint8Array(82)
+  out.set(body)
+  out.set(sha256(sha256(body)).slice(0, 4), 78)
+  return base58.encode(out)
+}
+
+/**
  * One key expression, written the way every device would write it.
  *
  * WHY THIS EXISTS. BIP-380 says a hardened step may be spelled `'`, `h` or `H`,
@@ -751,7 +794,13 @@ export function canonicalKeyExpression(text: string): string {
   const origin =
     key.origin === undefined ? '' : `[${key.origin.fingerprint}${key.origin.path.slice(1)}]`
 
-  const material = key.kind === 'extended' ? key.xpub : key.hex
+  const typed = key.kind === 'extended' ? key.xpub : key.hex
+  // THE STANDARD PREFIX, not the one typed. The same three keys assembled
+  // with one written as Zpub gave a different checksum from the same keys as
+  // xpub, while deriving the same addresses, and docs/FLEET.md tells a user
+  // that a checksum difference means a different wallet. It also produced a
+  // descriptor Bitcoin Core refuses to import.
+  const material = key.kind === 'extended' ? standardPrefix(typed) : typed
   const afterOrigin = trimmed.startsWith('[') ? trimmed.slice(trimmed.indexOf(']') + 1) : trimmed
 
   /*
@@ -762,10 +811,13 @@ export function canonicalKeyExpression(text: string): string {
    * thing in a suffix that has three spellings. The round trip below is what
    * makes taking it from the text safe.
    */
-  const suffix = afterOrigin.slice(material.length).replace(/(\d)[hH](?=$|[/>;])/g, "$1'")
+  const suffix = afterOrigin.slice(typed.length).replace(/(\d)[hH](?=$|[/>;])/g, "$1'")
 
   const canonical = `${origin}${material}${suffix}`
-  if (JSON.stringify(parseKeyExpression(canonical)) !== JSON.stringify(key)) {
+  // The guard compares against the typed key with only its prefix replaced:
+  // the prefix is the one thing this is allowed to change.
+  const expected = key.kind === 'extended' ? { ...key, xpub: material } : key
+  if (JSON.stringify(parseKeyExpression(canonical)) !== JSON.stringify(expected)) {
     throw new DescriptorParseError(
       `Rewriting ${JSON.stringify(trimmed.slice(0, 32))} into canonical form changed what it ` +
         `means. Refusing to use it: a descriptor that derives different addresses under a ` +

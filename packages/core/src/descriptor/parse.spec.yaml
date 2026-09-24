@@ -110,6 +110,15 @@ invariants:
       - packages/core/test/descriptor.parse.test.ts::canonicalises-only-what-parses-back-to-the-same-key
       - packages/core/test/descriptor.assemble.test.ts::writes-one-checksum-however-the-keys-were-spelled
 
+  - id: INV-DPARSE-9
+    statement: >
+      A key's canonical form writes its extended key under the network's
+      standard BIP-32 prefix, xpub or tpub, whichever SLIP-132 prefix it was
+      given in, so an assembled quorum has one descriptor and one checksum
+      however its keys were spelled, and one Bitcoin Core will import.
+    tests:
+      - packages/core/test/descriptor.assemble.test.ts::writes-one-checksum-whichever-slip132-prefix-a-key-was-given-in
+
 threats:
   - INV-PSBT-1
   - INV-PSBT-2

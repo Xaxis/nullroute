@@ -19,6 +19,8 @@ import { AssembleError, assembleQuorum } from '../src/descriptor/assemble.js'
 import { parseDescriptor } from '../src/descriptor/parse.js'
 import { MAX_MULTISIG_KEYS, multisigShape } from '../src/descriptor/multisig.js'
 import { verifyChecksum } from '../src/descriptor/checksum.js'
+import { base58 } from '@scure/base'
+import { sha256 } from '@noble/hashes/sha2.js'
 
 const XPUB_A =
   'xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL'
@@ -249,6 +251,33 @@ describe('core.descriptor.assemble', () => {
     expect(one.descriptor).toContain("/48'/0'/0'/2'")
     expect(one.descriptor).not.toContain('48h')
     expect(verifyChecksum(one.descriptor).valid).toBe(true)
+  })
+
+  /**
+   * INV-DPARSE-9. A SLIP-132 prefix is a spelling too. The same three keys with
+   * one written as Zpub gave nnaal90l against nk79yu6n, deriving the same
+   * addresses, and a descriptor Bitcoin Core refuses to import. Both now write
+   * xpub, and the checksum is the one this device produced for these keys
+   * before, which is pinned so the fix cannot move existing output.
+   */
+  it('writes-one-checksum-whichever-slip132-prefix-a-key-was-given-in', () => {
+    const asZpub = (xpub: string): string => {
+      const raw = base58.decode(xpub).slice(0, 78)
+      raw.set([0x02, 0xaa, 0x7e, 0xd3])
+      const out = new Uint8Array(82)
+      out.set(raw)
+      out.set(sha256(sha256(raw)).slice(0, 4), 78)
+      return base58.encode(out)
+    }
+    const zpub = asZpub(XPUB_C)
+    expect(zpub.startsWith('Zpub')).toBe(true)
+
+    const plain = assembleQuorum({ threshold: 2, keys: [A, B, C] })
+    const mixed = assembleQuorum({ threshold: 2, keys: [A, B, key(zpub, 'cccccccc')] })
+
+    expect(plain.checksum).toBe('nk79yu6n')
+    expect(mixed.descriptor).toBe(plain.descriptor)
+    expect(mixed.descriptor).not.toContain('Zpub')
   })
 
   // Reordering already produced one descriptor. Kept beside the spelling case

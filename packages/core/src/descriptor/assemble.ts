@@ -226,12 +226,18 @@ export function assembleQuorum(options: AssembleOptions): AssembledQuorum {
    * different wallet, so the device was manufacturing exactly the false alarm
    * the header above says this design removes.
    */
+  //
+  // Sorted by the key as WRITTEN, under its standard prefix, rather than as
+  // typed: a key's text differs between xpub and Zpub, and so did its place in
+  // the order. For keys typed as xpub this is the order it always was, so a
+  // quorum assembled before keeps its checksum.
   const written = parsed
-    .map((key, index) => ({
-      xpub: key.xpub,
-      text: canonicalKeyExpression(keys[index]?.trim() ?? ''),
-    }))
-    .sort((left, right) => (left.xpub < right.xpub ? -1 : left.xpub > right.xpub ? 1 : 0))
+    .map((_, index) => {
+      const text = canonicalKeyExpression(keys[index]?.trim() ?? '')
+      const key = parseKeyExpression(text)
+      return { order: key.kind === 'extended' ? key.xpub : text, text }
+    })
+    .sort((left, right) => (left.order < right.order ? -1 : left.order > right.order ? 1 : 0))
     .map((entry) => entry.text)
 
   const inner = `sortedmulti(${String(threshold)},${written.join(',')})`
