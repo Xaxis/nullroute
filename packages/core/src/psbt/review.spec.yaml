@@ -85,6 +85,7 @@ invariants:
       Replaceability and any timelock are surfaced in human terms.
     tests:
       - packages/core/test/psbt.review.test.ts::reports-replaceability-and-locktime
+      - packages/core/test/psbt.review.test.ts::counts-one-signalling-input-as-replaceable
 
   - id: INV-PSBT-15
     statement: >
@@ -93,6 +94,7 @@ invariants:
     tests:
       - packages/core/test/psbt.review.test.ts::reports-fields-it-does-not-understand
       - packages/core/test/psbt.review.test.ts::preserves-fields-it-does-not-understand
+      - packages/core/test/psbt.review.test.ts::keeps-fields-it-does-not-understand-through-signing
       - packages/core/test/psbt.review.test.ts::says-nothing-when-every-field-is-understood
 
   - id: INV-PSBT-8

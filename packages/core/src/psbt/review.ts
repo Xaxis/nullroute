@@ -189,7 +189,7 @@ export interface Review {
   readonly sighash: SighashVerdict
   readonly warnings: readonly ReviewWarning[]
   readonly locktime: number
-  /** True when every input signals replaceability (BIP-125). */
+  /** True when any input signals replaceability, as BIP-125 defines it. */
   readonly replaceable: boolean
   readonly network: Network
   /** True when nothing blocking was found. */
@@ -244,7 +244,7 @@ export function reviewTransaction(tx: btc.Transaction, options: ReviewOptions): 
   let totalIn = 0n
   let sighashType: number | undefined
   let mixedSighash = false
-  let replaceable = true
+  let replaceable = false
 
   for (let i = 0; i < tx.inputsLength; i += 1) {
     const input = tx.getInput(i)
@@ -266,9 +266,12 @@ export function reviewTransaction(tx: btc.Transaction, options: ReviewOptions): 
     if (sighashType === undefined) sighashType = input.sighashType
     else if (input.sighashType !== sighashType) mixedSighash = true
 
-    // BIP-125: a sequence below 0xfffffffe signals replaceability.
+    // BIP-125: a transaction signals replaceability when ANY input has a
+    // sequence below 0xfffffffe. This required every input to, so a mixed
+    // transaction was reported as not replaceable while Core's mempool treats
+    // it as replaceable (INV-PSBT-7, SP-REV-9).
     const sequence = input.sequence ?? 0xffffffff
-    if (sequence >= 0xfffffffe) replaceable = false
+    if (sequence < 0xfffffffe) replaceable = true
 
     const txid = input.txid === undefined ? '' : Buffer.from(input.txid).toString('hex')
 

@@ -476,9 +476,9 @@ INV-SIG-1, INV-SIG-2 (differential against bitcoinjs-lib, 120 cases); manual:
 | SP-REV-6 | Met | INV-PSBT-2, INV-PSBT-12, INV-PSBT-16, INV-UI-12; search bound four script types, two branches, 100 addresses each (`packages/daemon/src/psbt.spec.yaml` lines 77-89) |
 | SP-REV-7 | Met; the SHOULD is met for `PSBT_OUT_BIP32_DERIVATION` only | INV-UI-12. A false `PSBT_OUT_TAP_BIP32_DERIVATION` claim is shown as a payment but not reported as claimed (`review-change.json`, advisory) |
 | SP-REV-8 | Met | INV-PSBT-6 |
-| SP-REV-9 | **Not met** for replaceability | INV-PSBT-7 covers the locktime. The review reports a transaction as replaceable only when every input signals, where BIP-125 signals when any input does (`review-timelocks.json`, two cases) |
+| SP-REV-9 | Met | INV-PSBT-7. A transaction is replaceable when any input signals, as BIP-125 defines it, checked by `review-timelocks.json` and `psbt.review.test.ts::counts-one-signalling-input-as-replaceable` |
 | SP-REV-10 | Met | INV-UI-3 |
-| SP-REV-11 | **Not met** for input pairs | Unknown pairs never block and are reported (INV-PSBT-15). An unknown pair in an input is dropped from the signed PSBT; global and output pairs survive (`review-unknown-fields.json`). INV-PSBT-15's preservation test round-trips a PSBT without signing it. Global-level pairs are not counted (`review.spec.yaml` lines 140-144) |
+| SP-REV-11 | Met | Unknown pairs never block and are reported (INV-PSBT-15), and survive parsing and signing in globals, inputs and outputs: `parsePsbt` keeps them for the signer, checked by `review-unknown-fields.json` and `psbt.review.test.ts::keeps-fields-it-does-not-understand-through-signing` |
 | SP-REV-12 | Met | INV-QUORUM-4, INV-QUORUM-8, INV-UI-37, INV-UI-63 |
 | SP-REV-13 | Met | `review.ts` warnings are non-blocking. `docs/THREAT-MODEL.md` line 62 describes "a hard warning threshold and a second confirmation", which the code does not have (see `research/handoff-C.md`) |
 | SP-REV-14 | Met | INV-PSBT-13 |

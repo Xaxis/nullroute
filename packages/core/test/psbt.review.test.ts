@@ -28,6 +28,8 @@ import {
   reviewTransaction,
 } from '../src/psbt/review.js'
 import { fundedBy } from './fixtures/funding.js'
+import { parsePsbt } from '../src/psbt/parse.js'
+import { signTransaction } from '../src/psbt/sign.js'
 
 const MNEMONIC =
   'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
@@ -288,6 +290,23 @@ describe('core.psbt.review', () => {
     expect(rbfReview.warnings.find((w) => w.kind === 'locktime')?.message).toContain('block 800000')
   })
 
+  /**
+   * INV-PSBT-7. BIP-125 signals replaceability when ANY input does. Requiring
+   * every input to called a mixed transaction not replaceable, and Core's
+   * mempool treats it as replaceable.
+   */
+  it('counts-one-signalling-input-as-replaceable', () => {
+    const { changePathOf } = ourAddresses()
+    const tx = build({ outputs: [{ address: STRANGER, amount: 90_000n }], sequence: 0xffffffff })
+    tx.addInput({
+      ...fundedBy(tx.getInput(0).witnessUtxo?.script ?? new Uint8Array(), 50_000n, 7),
+      sequence: 0xfffffffd,
+    })
+    const review = reviewTransaction(tx, { network: MAINNET, isChange: changePathOf })
+    expect(review.replaceable).toBe(true)
+    expect(review.warnings.some((w) => w.kind === 'not-replaceable')).toBe(false)
+  })
+
   // Amounts are bigint end to end. 21 million BTC exceeds what a double holds
   // exactly, and a fee is not a place to discover that.
   it('handles-amounts-without-floating-point', () => {
@@ -394,6 +413,32 @@ describe('core.psbt.review', () => {
     const roundTripped = btc.Transaction.fromPSBT(tx.toPSBT())
     const unknown: unknown = roundTripped.getInput(0).unknown
     expect(Array.isArray(unknown) ? unknown.length : 0).toBe(1)
+  })
+
+  /**
+   * INV-PSBT-15. Through parsing AND signing, which is where it failed. The
+   * test above round-trips with the library directly; the device parses with
+   * parsePsbt and then the signer updates the input, and the unknown pair was
+   * dropped at that update while the review said it would be passed through.
+   */
+  it('keeps-fields-it-does-not-understand-through-signing', () => {
+    const { changePathOf } = ourAddresses()
+    const built = withUnknownInputField(
+      build({ outputs: [{ address: STRANGER, amount: 90_000n }] })
+    )
+    const tx = parsePsbt(built.toPSBT())
+    const review = reviewTransaction(tx, { network: MAINNET, isChange: changePathOf })
+    using seed = mnemonicToSeed(MNEMONIC, '')
+    const result = signTransaction(tx, seed, {
+      network: MAINNET,
+      paths: ["m/84'/0'/0'/0/0"],
+      review,
+    })
+
+    const signed = btc.Transaction.fromPSBT(result.psbt, { allowUnknown: true }).getInput(0)
+    const unknown: unknown = signed.unknown
+    expect(Array.isArray(unknown) ? unknown.length : 0).toBe(1)
+    expect(signed.partialSig).toHaveLength(1)
   })
 
   it('says-nothing-when-every-field-is-understood', () => {

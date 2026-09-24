@@ -22,27 +22,6 @@
       "check": "qrMode",
       "requirement": "SP-TX-6",
       "reason": "G2: the QR encoder writes byte mode only"
-    },
-    {
-      "file": "review-timelocks.json",
-      "case": "one-of-two-inputs-signals",
-      "check": "replaceable",
-      "requirement": "SP-REV-9",
-      "reason": "review.ts reports replaceable only when every input signals; BIP-125 signals when any input does"
-    },
-    {
-      "file": "review-timelocks.json",
-      "case": "second-of-two-inputs-signals",
-      "check": "replaceable",
-      "requirement": "SP-REV-9",
-      "reason": "review.ts reports replaceable only when every input signals; BIP-125 signals when any input does"
-    },
-    {
-      "file": "review-unknown-fields.json",
-      "case": "unknown-pairs-survive-signing",
-      "check": "preserved.input.a00304",
-      "requirement": "SP-REV-11",
-      "reason": "@scure/btc-signer 2.3.0 drops unknown input pairs when signing updates the input, because parsePsbt does not pass allowUnknown"
     }
   ]
 }
