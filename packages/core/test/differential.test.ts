@@ -265,7 +265,16 @@ describe('core.psbt.sign differential', () => {
     tx.addOutputAddress(RECIPIENT, OUT_SATS, MAINNET)
 
     const review = reviewTransaction(tx, { network: MAINNET, isChange: () => undefined })
-    signTransaction(tx, seed, { network: MAINNET, paths: [SIGNING_PATH], review })
+    // Overridden on purpose. These cases carry their own txids, and the
+    // previous transaction that would let review check the input amount
+    // (SP-REV-3) cannot be built to match an arbitrary txid. What this test
+    // compares is the signature bytes, which the override does not touch.
+    signTransaction(tx, seed, {
+      network: MAINNET,
+      paths: [SIGNING_PATH],
+      review,
+      overrideBlockingWarnings: true,
+    })
 
     const ours = tx.getInput(0).partialSig
     expect(ours, 'our signature').toBeDefined()

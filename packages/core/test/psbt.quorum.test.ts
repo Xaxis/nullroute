@@ -29,6 +29,7 @@ import { parsePsbt } from '../src/psbt/parse.js'
 import { reviewTransaction } from '../src/psbt/review.js'
 import { signTransaction } from '../src/psbt/sign.js'
 import { alreadySignedBy, signatureProgress } from '../src/psbt/quorum.js'
+import { fundedBy } from './fixtures/funding.js'
 
 /** Three devices, three seeds. */
 const SEEDS = [
@@ -60,9 +61,7 @@ function unsignedPsbt(): Uint8Array {
   const payment = quorumPayment()
   const tx = new btc.Transaction()
   tx.addInput({
-    txid: hexToBytes('a'.repeat(64)),
-    index: 0,
-    witnessUtxo: { script: payment.script, amount: 100_000n },
+    ...fundedBy(payment.script, 100_000n),
     witnessScript: payment.witnessScript,
   })
   tx.addOutputAddress(STRANGER, 90_000n, MAINNET)
@@ -187,9 +186,7 @@ describe('core.psbt.quorum', () => {
 
     const tx = new btc.Transaction()
     tx.addInput({
-      txid: hexToBytes('b'.repeat(64)),
-      index: 0,
-      witnessUtxo: { script: payment.script, amount: 100_000n },
+      ...fundedBy(payment.script, 100_000n, 1),
     })
     tx.addOutputAddress(STRANGER, 90_000n, MAINNET)
 
@@ -246,9 +243,7 @@ describe('core.psbt.quorum', () => {
     // The output first: an input that arrives already signed seals them.
     tx.addOutputAddress(STRANGER, 90_000n, btc.NETWORK)
     tx.addInput({
-      txid: hexToBytes('c'.repeat(64)),
-      index: 0,
-      witnessUtxo: { script: payment.script, amount: 100_000n },
+      ...fundedBy(payment.script, 100_000n, 2),
       witnessScript: payment.witnessScript,
       partialSig: [[outsider, hexToBytes('300602010102010101')]],
     })
@@ -274,9 +269,7 @@ describe('core.psbt.quorum', () => {
     const payment = btc.p2tr(nums, btc.p2tr_ms(2, xOnly), btc.NETWORK, true)
     const tx = new btc.Transaction()
     tx.addInput({
-      txid: hexToBytes('b'.repeat(64)),
-      index: 0,
-      witnessUtxo: { script: payment.script, amount: 100_000n },
+      ...fundedBy(payment.script, 100_000n, 3),
       ...payment,
     })
     tx.addOutputAddress(STRANGER, 90_000n, btc.NETWORK)

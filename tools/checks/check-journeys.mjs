@@ -233,14 +233,22 @@ async function buildPsbt(rpc) {
     count: 2,
   })
   const [from, to] = listed.addresses
+  const script = btc.OutScript.encode(btc.Address(params).decode(from.address))
+  /*
+   * WITH THE TRANSACTION IT SPENDS, as a real coordinator sends it. Review
+   * blocks a segwit v0 input whose amount it cannot check against the previous
+   * transaction (INV-PSBT-17), which is the BIP-174 fee attack, so a fixture
+   * without one would walk into a refusal rather than a signature.
+   */
+  const previous = new btc.Transaction()
+  previous.addInput({ txid: hex.decode('11'.repeat(32)), index: 0 })
+  previous.addOutput({ script, amount: 100_000n })
   const tx = new btc.Transaction()
   tx.addInput({
-    txid: hex.decode('11'.repeat(32)),
+    txid: previous.id,
     index: 0,
-    witnessUtxo: {
-      script: btc.OutScript.encode(btc.Address(params).decode(from.address)),
-      amount: 100_000n,
-    },
+    witnessUtxo: { script, amount: 100_000n },
+    nonWitnessUtxo: previous.toBytes(true, false),
   })
   tx.addOutputAddress(to.address, 99_000n, params)
   return base64.encode(tx.toPSBT())

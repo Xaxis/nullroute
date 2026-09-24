@@ -176,6 +176,7 @@ export interface ReviewWarning {
     | 'not-replaceable'
     | 'locktime'
     | 'no-change-verified'
+    | 'unverified-amount'
   readonly message: string
   /** True when the device will refuse to sign rather than merely warn. */
   readonly blocking: boolean
@@ -455,6 +456,40 @@ export function reviewTransaction(tx: btc.Transaction, options: ReviewOptions): 
     })
   }
 
+  /*
+   * AN AMOUNT THE PSBT MERELY STATES, for a segwit v0 or legacy input.
+   *
+   * The fee shown is what the inputs add up to minus the outputs, and every
+   * input amount here came from the PSBT. For taproot that is safe: a BIP-341
+   * signature commits to the amount of every input, so a lie makes it invalid.
+   * A segwit v0 signature commits only to its own input's amount, so a
+   * coordinator can understate one input in one signing round and another in
+   * the next, and the fee this screen showed is not the fee that is paid:
+   * BIP-174 describes it, and it is the attack hardware wallets closed in 2020
+   * by requiring the full previous transaction. When the PSBT carries it, the
+   * library already refuses one whose txid or output disagrees, so only the
+   * missing case is left, and it blocks until the user overrides it (SP-REV-3).
+   */
+  const unverified: number[] = []
+  for (let i = 0; i < tx.inputsLength; i += 1) {
+    const input = tx.getInput(i)
+    if (input.nonWitnessUtxo !== undefined) continue
+    if (isTaproot(input.witnessUtxo?.script)) continue
+    unverified.push(i)
+  }
+  if (unverified.length > 0) {
+    warnings.push({
+      kind: 'unverified-amount',
+      message:
+        `The amount of ${unverified.length === 1 ? 'input' : 'inputs'} ${unverified.join(', ')} ` +
+        `is stated by this file and could not be checked, because it does not carry the ` +
+        `transaction ${unverified.length === 1 ? 'that input spends' : 'those inputs spend'}. ` +
+        `A coordinator that understates it can make the real fee larger than the one shown. ` +
+        `Ask it to include the previous transactions.`,
+      blocking: true,
+    })
+  }
+
   // An output that could not be checked at all is worth saying out loud.
   if (outputs.some((o) => o.address === undefined)) {
     warnings.push({
@@ -484,6 +519,16 @@ export function reviewTransaction(tx: btc.Transaction, options: ReviewOptions): 
     network,
     signable: !warnings.some((w) => w.blocking),
     signatures: signatureProgress(tx),
+  }
+}
+
+/** Whether a previous output script is a taproot output. */
+function isTaproot(script: Uint8Array | undefined): boolean {
+  if (script === undefined) return false
+  try {
+    return (btc.OutScript.decode(script) as { type: string }).type === 'tr'
+  } catch {
+    return false
   }
 }
 

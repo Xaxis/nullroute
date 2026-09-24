@@ -27,6 +27,7 @@ import {
   formatBtc,
   reviewTransaction,
 } from '../src/psbt/review.js'
+import { fundedBy } from './fixtures/funding.js'
 
 const MNEMONIC =
   'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
@@ -91,9 +92,7 @@ function build(options: BuildOptions): btc.Transaction {
   )
 
   tx.addInput({
-    txid: hexToBytes(FAKE_TXID),
-    index: 0,
-    witnessUtxo: { script: fundingScript, amount: options.inputAmount ?? 100_000n },
+    ...fundedBy(fundingScript, options.inputAmount ?? 100_000n),
     ...(options.sighashType === undefined ? {} : { sighashType: options.sighashType }),
     ...(options.sequence === undefined ? {} : { sequence: options.sequence }),
   })

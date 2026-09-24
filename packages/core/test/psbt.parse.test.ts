@@ -9,13 +9,13 @@
 
 import { describe, expect, it } from 'vitest'
 import * as btc from '@scure/btc-signer'
-import { hexToBytes } from '@noble/hashes/utils.js'
 import { mnemonicToSeed } from '../src/bip39/mnemonic.js'
 import { rootFromSeed } from '../src/derive/hd.js'
 import { MAINNET, TESTNET3 } from '../src/network/networks.js'
 import { deriveAddresses } from '../src/address/address.js'
 import { PsbtError } from '../src/psbt/review.js'
 import { addressFromScript, encodePsbt, parsePsbt } from '../src/psbt/parse.js'
+import { fundedBy } from './fixtures/funding.js'
 
 const MNEMONIC =
   'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
@@ -59,9 +59,7 @@ function samplePsbt(): { base64: string; script: Uint8Array } {
 
   const tx = new btc.Transaction()
   tx.addInput({
-    txid: hexToBytes('a'.repeat(64)),
-    index: 0,
-    witnessUtxo: { script, amount: 100_000n },
+    ...fundedBy(script, 100_000n),
   })
   tx.addOutputAddress(STRANGER, 90_000n, MAINNET)
   return { base64: encodePsbt(tx.toPSBT()), script }

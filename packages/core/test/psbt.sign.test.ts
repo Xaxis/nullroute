@@ -11,7 +11,7 @@
 
 import { describe, expect, it } from 'vitest'
 import * as btc from '@scure/btc-signer'
-import { bytesToHex, hexToBytes } from '@noble/hashes/utils.js'
+import { bytesToHex } from '@noble/hashes/utils.js'
 import { mnemonicToSeed } from '../src/bip39/mnemonic.js'
 import { rootFromSeed } from '../src/derive/hd.js'
 import { MAINNET } from '../src/network/networks.js'
@@ -19,6 +19,7 @@ import { deriveAddresses } from '../src/address/address.js'
 import { PsbtError } from '../src/psbt/review.js'
 import { reviewTransaction, SIGHASH_NONE } from '../src/psbt/review.js'
 import { AUX_RAND, signTransaction } from '../src/psbt/sign.js'
+import { fundedBy } from './fixtures/funding.js'
 
 const MNEMONIC =
   'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
@@ -64,9 +65,7 @@ function fundedTransaction(sighashType?: number): btc.Transaction {
 
   const tx = new btc.Transaction()
   tx.addInput({
-    txid: hexToBytes('a'.repeat(64)),
-    index: 0,
-    witnessUtxo: { script, amount: 100_000n },
+    ...fundedBy(script, 100_000n),
     ...(sighashType === undefined ? {} : { sighashType }),
   })
   tx.addOutputAddress(STRANGER, 90_000n, MAINNET)

@@ -21,6 +21,7 @@ import { Session } from '../src/session.js'
 import { WalletRegistry } from '../src/store/registry.js'
 import { WalletStore } from '../src/store/store.js'
 import type { BootAttestation } from '../src/boot/attestation.js'
+import { fundedBy } from './fixtures/funding.js'
 
 const FAST = { m: 8192, t: 1, p: 1 } as const
 const MNEMONIC =
@@ -445,9 +446,7 @@ describe('who still has to sign', () => {
 
     const tx = new btc.Transaction({ allowUnknownOutputs: true })
     tx.addInput({
-      txid: new Uint8Array(32).fill(3),
-      index: 0,
-      witnessUtxo: { script: payment.script, amount: 50_000n },
+      ...fundedBy(payment.script, 50_000n),
     })
     tx.addOutput({ script: Uint8Array.from([0x6a]), amount: 0n })
 
@@ -475,9 +474,7 @@ describe('who still has to sign', () => {
     const script = btc.OutScript.encode(btc.Address(btc.NETWORK).decode(address))
     const tx = new btc.Transaction({ allowUnknownOutputs: true })
     tx.addInput({
-      txid: new Uint8Array(32).fill(4),
-      index: 0,
-      witnessUtxo: { script, amount: 50_000n },
+      ...fundedBy(script, 50_000n, 1),
     })
     tx.addOutputAddress(address, 40_000n, btc.NETWORK)
 

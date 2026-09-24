@@ -102,6 +102,20 @@ invariants:
     tests:
       - packages/core/test/psbt.review.test.ts::handles-amounts-without-floating-point
 
+  - id: INV-PSBT-17
+    statement: >
+      A segwit v0 or legacy input whose PSBT does not carry the transaction it
+      spends has an amount the device cannot check, and the review blocks on it
+      until the user overrides, because an understated amount hides fee
+      (BIP-174). With the previous transaction the amount is checked against it
+      and a disagreement is refused. An all-taproot transaction needs neither,
+      since BIP-341 commits to every input amount.
+    tests:
+      - packages/core/test/psbt.fee-attack.test.ts::blocks-a-segwit-v0-input-whose-amount-it-cannot-check
+      - packages/core/test/psbt.fee-attack.test.ts::allows-it-once-the-previous-transaction-is-there
+      - packages/core/test/psbt.fee-attack.test.ts::refuses-a-previous-transaction-that-disagrees-with-the-stated-amount
+      - packages/core/test/psbt.fee-attack.test.ts::does-not-block-an-all-taproot-transaction
+
 threats:
   - INV-PSBT-1
   - INV-PSBT-2

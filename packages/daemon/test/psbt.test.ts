@@ -27,10 +27,10 @@ import {
   parseDescriptor,
   withChecksum,
 } from '@nullroute/core'
-import { hexToBytes } from '@noble/hashes/utils.js'
 import { reviewTransaction } from '@nullroute/core'
 import { buildOwnedIndex, changeLookup, signingPathsFor } from '../src/psbt.js'
 import { multisigAccountPath } from '../src/multisig.js'
+import { fundedBy } from './fixtures/funding.js'
 
 const MNEMONIC =
   'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
@@ -160,9 +160,7 @@ describe('daemon.psbt', () => {
 
     const tx = new btc.Transaction({ allowUnknownOutputs: true })
     tx.addInput({
-      txid: hexToBytes('a'.repeat(64)),
-      index: 0,
-      witnessUtxo: { script: fundingScript, amount: 200_000n },
+      ...fundedBy(fundingScript, 200_000n),
     })
     // The lie: the stranger's output, carrying a derivation record that names
     // this wallet's fingerprint at a change path. A coordinator that wanted
@@ -205,9 +203,7 @@ describe('daemon.psbt', () => {
     // with a warning about one.
     const plain = new btc.Transaction({ allowUnknownOutputs: true })
     plain.addInput({
-      txid: hexToBytes('a'.repeat(64)),
-      index: 0,
-      witnessUtxo: { script: fundingScript, amount: 200_000n },
+      ...fundedBy(fundingScript, 200_000n, 1),
     })
     plain.addOutputAddress(STRANGER, 150_000n, MAINNET)
     const ordinary = reviewTransaction(btc.Transaction.fromPSBT(plain.toPSBT()), {

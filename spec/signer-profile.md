@@ -470,7 +470,7 @@ INV-SIG-1, INV-SIG-2 (differential against bitcoinjs-lib, 120 cases); manual:
 | --- | --- | --- |
 | SP-REV-1 | Met | INV-PSBT-9 |
 | SP-REV-2 | Met | INV-PSBT-5 |
-| SP-REV-3 | **Not met** for segwit v0 inputs | `inputAmount` in `packages/core/src/psbt/review.ts` returns the witness UTXO amount when present and does not require or cross-check a non-witness UTXO; no warning is raised. The signing library refuses a legacy input with no non-witness UTXO and rejects a witness UTXO that contradicts one when both are present (`@scure/btc-signer` 2.3.0, `transaction.js` lines 305-345, run while parsing at line 613, and line 536), which covers part of the requirement |
+| SP-REV-3 | Met, more strictly than required | Review blocks, until the user overrides, whenever any input that is not taproot arrives without its previous transaction (INV-PSBT-17, `packages/core/test/psbt.fee-attack.test.ts`), including one this device does not sign, where the profile would permit a witness UTXO. With the previous transaction present, the signing library rejects one whose TXID or output contradicts the input while parsing (`@scure/btc-signer` 2.3.0, `transaction.js` lines 305-345, 536 and 613), and the test pins that. Bitcoin Core 31's `walletcreatefundedpsbt` includes the previous transaction for segwit v0 inputs, checked on regtest, so a Core-built PSBT passes without a warning |
 | SP-REV-4 | Met | INV-PSBT-4, INV-PSBT-8, INV-UI-12 |
 | SP-REV-5 | Met in the headless render; unverified on the panel | INV-PSBT-11; screens measured at 800x480 by `tools/checks/check-screen-fit.mjs` |
 | SP-REV-6 | Met | INV-PSBT-2, INV-PSBT-12, INV-PSBT-16, INV-UI-12; search bound four script types, two branches, 100 addresses each (`packages/daemon/src/psbt.spec.yaml` lines 77-89) |
