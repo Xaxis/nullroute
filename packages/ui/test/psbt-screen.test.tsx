@@ -470,8 +470,9 @@ describe('ui.screens.psbt', () => {
     expect(screen.getByTestId<HTMLInputElement>('psbt-override').checked).toBe(true)
     fireEvent.click(screen.getByTestId('psbt-sign'))
     await waitFor(() => {
-      expect(onSign).toHaveBeenCalledWith('cHNidP8B', true)
+      expect(screen.getByTestId('psbt-another')).toBeTruthy()
     })
+    expect(onSign).toHaveBeenCalledWith('cHNidP8B', true)
     onSign.mockClear()
 
     // "Sign another" is the route back to the input, and the only one: Review

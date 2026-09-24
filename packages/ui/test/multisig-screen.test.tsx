@@ -242,9 +242,9 @@ describe('ui.screens.multisig coordinator files', () => {
     fireEvent.click(screen.getByTestId('multisig-import'))
 
     await waitFor(() => {
-      expect(onImportFile).toHaveBeenCalledWith('Name: Family')
+      expect(screen.getByTestId('multisig-imported-name').textContent).toBe('Family Vault')
     })
-    expect(screen.getByTestId('multisig-imported-name').textContent).toBe('Family Vault')
+    expect(onImportFile).toHaveBeenCalledWith('Name: Family')
 
     const claims = screen.getByTestId('multisig-imported-claims').textContent
     expect(claims).toContain('does not check it')
@@ -273,12 +273,11 @@ describe('ui.screens.multisig coordinator files', () => {
 
     fireEvent.click(screen.getByTestId('multisig-export'))
     await waitFor(() => {
-      expect(onExportBundle).toHaveBeenCalledOnce()
+      expect(screen.getByTestId<HTMLTextAreaElement>('multisig-bundle-text').value).toContain(
+        'bundle'
+      )
     })
-
-    expect(screen.getByTestId<HTMLTextAreaElement>('multisig-bundle-text').value).toContain(
-      'bundle'
-    )
+    expect(onExportBundle).toHaveBeenCalledOnce()
     const note = screen.getByTestId('multisig-bundle-note').textContent
     expect(note).toContain('character for character')
     expect(note).toContain('invisible')

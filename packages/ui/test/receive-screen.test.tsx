@@ -69,8 +69,9 @@ describe('ReceiveScreen', () => {
 
     fireEvent.click(screen.getByTestId('receive-verify'))
     await waitFor(() => {
-      expect(onVerify).toHaveBeenCalledWith(`${ADDRESS}0`)
+      expect(screen.getByTestId('receive-verified')).toBeTruthy()
     })
+    expect(onVerify).toHaveBeenCalledWith(`${ADDRESS}0`)
 
     const said = screen.getByTestId('receive-verified').textContent
     expect(said).toContain('Re-derived from this device')
@@ -112,8 +113,9 @@ describe('ReceiveScreen', () => {
 
     fireEvent.click(screen.getByTestId('receive-next'))
     await waitFor(() => {
-      expect(onAddress).toHaveBeenCalledWith(1)
+      expect(screen.getByTestId('receive-path').textContent).toBe("m/84'/0'/0'/0/1")
     })
+    expect(onAddress).toHaveBeenCalledWith(1)
     expect(screen.queryByTestId('receive-verified')).toBeNull()
     expect(screen.getByTestId('receive-verify')).toBeTruthy()
     expect(screen.getByTestId('receive-path').textContent).toBe("m/84'/0'/0'/0/1")

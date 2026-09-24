@@ -802,7 +802,7 @@ describe('ui.app opening a wallet inside a journey', () => {
 
     // Step one is the picker, and the counter says so.
     await waitFor(() => {
-      expect(screen.getByTestId('wallets-screen')).toBeTruthy()
+      expect(screen.getByTestId(`wallet-row-${WALLET.id}`)).toBeTruthy()
     })
     const first = screen.getByTestId('journey-steps').textContent
     expect(first).toContain('Step 1 of 4')

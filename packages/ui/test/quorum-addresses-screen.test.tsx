@@ -52,10 +52,9 @@ describe('QuorumAddressesScreen', () => {
   it('derives-from-the-descriptor-and-says-what-a-match-proves', async () => {
     const { onAddresses } = setup()
     await waitFor(() => {
-      expect(onAddresses).toHaveBeenCalledWith(DESCRIPTOR, false, 0, 10)
+      expect(screen.getByTestId('quorum-rows').textContent).toContain('recv-0')
     })
-
-    expect(screen.getByTestId('quorum-rows').textContent).toContain('recv-0')
+    expect(onAddresses).toHaveBeenCalledWith(DESCRIPTOR, false, 0, 10)
     // Which cosigner this device is, in the header, because three devices in a
     // quorum all show the same wallet name.
     expect(document.querySelector('.nr-screen__subtitle')?.textContent).toContain('cosigner 2 of 3')
@@ -81,9 +80,9 @@ describe('QuorumAddressesScreen', () => {
     // disagree for a reason that has nothing to do with the descriptor.
     fireEvent.click(screen.getByTestId('quorum-branch-change'))
     await waitFor(() => {
-      expect(onAddresses).toHaveBeenCalledWith(DESCRIPTOR, true, 0, 10)
+      expect(screen.getByTestId('quorum-rows').textContent).toContain('change-0')
     })
-    expect(screen.getByTestId('quorum-rows').textContent).toContain('change-0')
+    expect(onAddresses).toHaveBeenCalledWith(DESCRIPTOR, true, 0, 10)
   })
 
   /**

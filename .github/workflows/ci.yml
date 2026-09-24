@@ -86,6 +86,11 @@ jobs:
       - name: Unit and property tests
         run: make test
 
+      # The same UI tests with every mocked answer arriving late, so a test
+      # that races its own fixture fails here rather than one run in several.
+      - name: UI tests do not race their fixtures
+        run: make ui-race
+
       # The static checks on the interface and the documents. None of these
       # needs a browser, and every one of them was in `make check` and absent
       # from this file: an nr- class with no rule, a screen that traps the

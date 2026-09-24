@@ -185,13 +185,12 @@ describe('ui.screens.wallet xpub', () => {
     expect(onXpub).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByTestId('xpub-show'))
-    await waitFor(() => {
-      expect(onXpub).toHaveBeenCalledWith('p2wpkh')
-    })
-
     // The origin, in the brackets a descriptor needs around it, because an
     // xpub pasted without one loses the derivation as well as the type.
-    expect(screen.getByTestId('xpub-origin').textContent).toBe("[73c5da0a/84'/0'/0']")
+    await waitFor(() => {
+      expect(screen.getByTestId('xpub-origin').textContent).toBe("[73c5da0a/84'/0'/0']")
+    })
+    expect(onXpub).toHaveBeenCalledWith('p2wpkh')
 
     const note = screen.getByTestId('xpub-note').textContent
     expect(note).toContain('does not say which kind of address')

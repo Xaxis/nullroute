@@ -23,7 +23,7 @@ MANIFEST_ROOTS := packages spec provisioning
         lint ui-classes type-check test test-report test-vectors test-differential test-repro \
         test-recovery-drill \
         prose links profiles sbom sbom-check repro-check clean dev-daemon build-app web web-build web-lint web-type-check \
-        screens screen-fit ui-constants dev-check verify-image docs-reachable no-dead-ends \
+        screens screen-fit ui-race ui-constants dev-check verify-image docs-reachable no-dead-ends \
         image-env image-shell image-system image-repro journeys \
         web-isolation web-csp web-responsive web-site-links device-shots device-shots-check \
         web-check web-root web-live-check deploy image image-boot-test verify-runtime slow-feedback typeable
@@ -296,6 +296,14 @@ format-check: ## The same, asserted rather than applied
 	  || { echo; echo '  Run `make format`. The configuration is .prettierrc, and it is'; \
 	       echo '  enforced rather than suggested: see the comment on this target.'; exit 1; }
 	@echo 'format-check: every file matches .prettierrc'
+
+ui-race: ## The UI tests pass with every mocked daemon answer arriving 50ms late
+	# A waitFor satisfied before the answer lands, followed by an assertion about
+	# the answer, passes on an idle machine and fails one run in several under
+	# load. Twenty-two tests had that shape and read as flakes for weeks. This
+	# makes every one of them fail every time instead. See
+	# tools/checks/ui-race/rtl-delay-shim.mjs.
+	@npx vitest run --config tools/checks/ui-race/vitest.config.mjs
 
 ui-classes: ## Every nr- class the device UI uses has a rule in styles.css
 	# The lock screen once shipped entirely unstyled: it used an nr-lock__*
@@ -870,6 +878,6 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 
 # --- aggregates --------------------------------------------------------------
 
-check-fast: lint shell format-check ci-parity ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims invariant-ids make-targets ipc-reachable slow-feedback typeable device-csp qr-readback test manifest-check manifest-recipe ## Everything except the slow suites
+check-fast: lint shell format-check ci-parity ui-race ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims invariant-ids make-targets ipc-reachable slow-feedback typeable device-csp qr-readback test manifest-check manifest-recipe ## Everything except the slow suites
 
 check: check-fast build verify badges test-vectors test-differential repro-check sbom device-ui screen-fit contrast ui-roles journeys dev-check device-shots-check web-check ## Everything CI runs

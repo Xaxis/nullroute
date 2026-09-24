@@ -238,7 +238,17 @@ describe('daemon.ipc.socket', () => {
    * cost of adding a method to the daemon is now a line in PARAMS, which is the
    * point.
    */
-  it('never-returns-key-material', async () => {
+  /*
+   * THIS TEST MUST NOT OUTLIVE ITSELF. It imports the wallet once per IPC
+   * method, about five seconds on an idle machine. Past the timeout vitest
+   * abandons it, but a loop in an abandoned async test keeps running: it went
+   * on locking and replacing the one shared session underneath every test that
+   * followed, and a single timeout under load failed ten tests in this file,
+   * among them "fingerprint-changes-with-passphrase" reading one wallet twice.
+   * The loop stops when the test is aborted, and the test asks for the time it
+   * needs rather than inheriting the default.
+   */
+  it('never-returns-key-material', { timeout: 60_000 }, async ({ signal }) => {
     using seed = mnemonicToSeed(MNEMONIC, PASSPHRASE)
     using entropy = wordsToEntropy(MNEMONIC)
     const seedHex = bytesToHex(seed.bytes)
@@ -261,6 +271,7 @@ describe('daemon.ipc.socket', () => {
      */
     const responses: unknown[] = []
     for (const method of declared) {
+      if (signal.aborted) return
       /*
        * The KNOWN seed reloaded before every call, which is not a nicety.
        *

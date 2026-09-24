@@ -57,9 +57,9 @@ describe('AssembleQuorumScreen', () => {
   it('fills-in-this-devices-own-key', async () => {
     const { onOurKey } = setup()
     await waitFor(() => {
-      expect(onOurKey).toHaveBeenCalled()
+      expect(screen.getByTestId('assemble-our-key').textContent).toContain('73c5da0a')
     })
-    expect(screen.getByTestId('assemble-our-key').textContent).toContain('73c5da0a')
+    expect(onOurKey).toHaveBeenCalled()
     // And it is not an editable field, so it cannot be replaced by accident.
     expect(screen.queryByTestId('assemble-key-0')).toBeNull()
   })
@@ -72,16 +72,16 @@ describe('AssembleQuorumScreen', () => {
   it('builds-from-the-collected-keys-and-shows-the-checksum', async () => {
     const { onAssemble } = setup()
     await waitFor(() => {
-      expect(screen.getByTestId('assemble-our-key')).toBeTruthy()
+      expect(screen.getByTestId('assemble-our-key').textContent).toContain('73c5da0a')
     })
 
     fireEvent.change(screen.getByTestId('assemble-key-1'), { target: { value: THEIRS } })
     fireEvent.click(screen.getByTestId('assemble-build'))
 
     await waitFor(() => {
-      expect(onAssemble).toHaveBeenCalledWith(2, [OURS, THEIRS])
+      expect(screen.getByTestId('assemble-checksum').textContent).toContain('Checksum')
     })
-    expect(screen.getByTestId('assemble-checksum').textContent).toContain('Checksum')
+    expect(onAssemble).toHaveBeenCalledWith(2, [OURS, THEIRS])
     // Chunked in fours by Hash, the same as the manifest root, because both
     // are values two people read to each other.
     expect(screen.getByTestId('assemble-checksum-value').textContent).toContain('q35w kfm7')
@@ -95,7 +95,7 @@ describe('AssembleQuorumScreen', () => {
   it('does-not-register-and-says-so', async () => {
     const { onReview } = setup()
     await waitFor(() => {
-      expect(screen.getByTestId('assemble-our-key')).toBeTruthy()
+      expect(screen.getByTestId('assemble-our-key').textContent).toContain('73c5da0a')
     })
     fireEvent.change(screen.getByTestId('assemble-key-1'), { target: { value: THEIRS } })
     fireEvent.click(screen.getByTestId('assemble-build'))
@@ -119,7 +119,7 @@ describe('AssembleQuorumScreen', () => {
   it('says-the-order-keys-were-collected-in-does-not-matter', async () => {
     setup()
     await waitFor(() => {
-      expect(screen.getByTestId('assemble-our-key')).toBeTruthy()
+      expect(screen.getByTestId('assemble-our-key').textContent).toContain('73c5da0a')
     })
     fireEvent.change(screen.getByTestId('assemble-key-1'), { target: { value: THEIRS } })
     fireEvent.click(screen.getByTestId('assemble-build'))
@@ -134,7 +134,7 @@ describe('AssembleQuorumScreen', () => {
   it('will-not-build-from-one-key', async () => {
     setup()
     await waitFor(() => {
-      expect(screen.getByTestId('assemble-our-key')).toBeTruthy()
+      expect(screen.getByTestId('assemble-our-key').textContent).toContain('73c5da0a')
     })
     // Only ours is filled.
     expect(screen.getByTestId<HTMLButtonElement>('assemble-build').disabled).toBe(true)
@@ -144,6 +144,7 @@ describe('AssembleQuorumScreen', () => {
     const { onAssemble } = setup({ scanned: THEIRS })
     await waitFor(() => {
       expect(screen.getByTestId<HTMLTextAreaElement>('assemble-key-1').value).toBe(THEIRS)
+      expect(screen.getByTestId('assemble-our-key').textContent).toContain('73c5da0a')
     })
 
     fireEvent.click(screen.getByTestId('assemble-add-slot'))
@@ -175,6 +176,7 @@ describe('AssembleQuorumScreen', () => {
     setup({ scanned: THEIRS, onScan })
     await waitFor(() => {
       expect(screen.getByTestId<HTMLTextAreaElement>('assemble-key-1').value).toBe(THEIRS)
+      expect(screen.getByTestId('assemble-our-key').textContent).toContain('73c5da0a')
     })
 
     // Room for a third, then off to the camera for it.
@@ -201,6 +203,7 @@ describe('AssembleQuorumScreen', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId<HTMLTextAreaElement>('assemble-key-2').value).toBe(third)
+      expect(screen.getByTestId('assemble-our-key').textContent).toContain('73c5da0a')
     })
     // Cosigner two survived, which is the whole point.
     expect(screen.getByTestId<HTMLTextAreaElement>('assemble-key-1').value).toBe(THEIRS)
@@ -219,7 +222,7 @@ describe('AssembleQuorumScreen', () => {
       .mockRejectedValue(new Error('Keys 1 and 2 are the same extended key.'))
     setup({ onAssemble })
     await waitFor(() => {
-      expect(screen.getByTestId('assemble-our-key')).toBeTruthy()
+      expect(screen.getByTestId('assemble-our-key').textContent).toContain('73c5da0a')
     })
     fireEvent.change(screen.getByTestId('assemble-key-1'), { target: { value: OURS } })
     fireEvent.click(screen.getByTestId('assemble-build'))
@@ -250,7 +253,7 @@ describe('AssembleQuorumScreen threshold', () => {
       />
     )
     await waitFor(() => {
-      expect(screen.getByTestId('assemble-our-key')).toBeTruthy()
+      expect(screen.getByTestId('assemble-our-key').textContent).toContain('73c5da0a')
     })
 
     // One key present, so one of one. Never "2 of 1".
@@ -282,7 +285,7 @@ describe('AssembleQuorumScreen threshold', () => {
       />
     )
     await waitFor(() => {
-      expect(screen.getByTestId('assemble-our-key')).toBeTruthy()
+      expect(screen.getByTestId('assemble-our-key').textContent).toContain('73c5da0a')
     })
     fireEvent.change(screen.getByTestId('assemble-key-1'), { target: { value: THEIRS } })
     fireEvent.click(screen.getByTestId('assemble-build'))

@@ -96,8 +96,9 @@ describe('ChildSeedScreen', () => {
 
     fireEvent.click(screen.getByTestId('child-derive'))
     await waitFor(() => {
-      expect(onDerive).toHaveBeenCalledWith('mnemonic', 0, 12)
+      expect(screen.getByTestId('child-done')).toBeTruthy()
     })
+    expect(onDerive).toHaveBeenCalledWith('mnemonic', 0, 12)
     fireEvent.click(screen.getByTestId('child-done'))
 
     fireEvent.click(screen.getByTestId('child-app-hex'))

@@ -95,14 +95,14 @@ describe('LabelsScreen', () => {
 
     fireEvent.click(screen.getByTestId('labels-export'))
     await waitFor(() => {
-      expect(onExport).toHaveBeenCalledWith([
-        { type: 'tx', ref: TXID, label: 'Rent' },
-        { type: 'output', ref: `${TXID}:0`, label: 'Cold storage', spendable: false },
-      ])
+      expect(screen.getByTestId<HTMLTextAreaElement>('labels-export-text').value).toBe(
+        '{"type":"tx"}\n'
+      )
     })
-    expect(screen.getByTestId<HTMLTextAreaElement>('labels-export-text').value).toBe(
-      '{"type":"tx"}\n'
-    )
+    expect(onExport).toHaveBeenCalledWith([
+      { type: 'tx', ref: TXID, label: 'Rent' },
+      { type: 'output', ref: `${TXID}:0`, label: 'Cold storage', spendable: false },
+    ])
   })
 
   /**

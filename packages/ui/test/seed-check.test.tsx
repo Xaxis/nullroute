@@ -61,6 +61,12 @@ function open(overrides: Record<string, unknown> = {}) {
  * which is why the letter keys are shared and the suggestion is the commit.
  */
 function typeWord(word: string): void {
+  // Committed when the counter moves. Matching the word in kb-words' text also
+  // matches its hints and counter, which contain "begin", "below", "enter",
+  // "letter" and "word".
+  const count = (): number =>
+    Number(/^\s*(\d+)/.exec(screen.getByTestId('kb-count').textContent)?.[1])
+  const before = count()
   for (const letter of word) {
     // The keyboard auto-commits as soon as one BIP-39 word is left, so the key
     // for a later letter may already be gone. That is the commit, not a
@@ -68,7 +74,7 @@ function typeWord(word: string): void {
     const key = screen.queryByTestId(`kb-key-${letter}`)
     if (key === null || key.hasAttribute('disabled')) break
     fireEvent.click(key)
-    if (screen.getByTestId('kb-words').textContent.includes(word)) return
+    if (count() === before + 1) return
   }
   // Not unique from the prefix alone: commit through the suggestion strip.
   const suggestion = screen.queryByTestId(`kb-suggest-${word}`)
@@ -104,6 +110,11 @@ describe('SeedScreen backup verification', () => {
     await waitFor(() => screen.getByTestId('seed-check'))
 
     for (const [answered, position] of [1, 4, 9].entries()) {
+      await waitFor(() => {
+        expect(screen.getByTestId('seed-check-ask').textContent).toContain(
+          `word ${String(position + 1)} off`
+        )
+      })
       expect(onConfirm).not.toHaveBeenCalled()
       typeWord(WORDS[position] ?? '')
       fireEvent.click(screen.getByTestId('seed-check-submit'))

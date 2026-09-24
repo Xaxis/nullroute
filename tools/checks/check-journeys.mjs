@@ -762,11 +762,21 @@ async function main() {
             )
           const entered = await counted()
 
+          /*
+           * COMMITTED MEANS THE COUNTER MOVED, not that the word appears in the
+           * text. kb-words also holds the keyboard's hints and its counter:
+           * "Tap letters to begin.", "Tap the word below to enter it" and "0 of
+           * 1 words". Five BIP-39 words are substrings of that, begin, below,
+           * enter, letter and word, so asking for "enter" read as committed
+           * after one letter and the rescue found no strip at the prefix "e".
+           * About one run in a hundred and fifty, never twice in a row.
+           */
           const state = async () =>
             String(
               await evaluate(`(() => {
-                const w = document.querySelector('[data-testid="kb-words"]')
-                if (w !== null && (w.textContent || '').includes(${JSON.stringify(want)})) return 'committed'
+                const c = document.querySelector('[data-testid="kb-count"]')
+                const n = c === null ? null : /^\\s*(\\d+)/.exec(c.textContent || '')
+                if (n !== null && Number(n[1]) === ${String(entered + 1)}) return 'committed'
                 if (document.querySelector('[data-testid="kb-suggest-' + ${JSON.stringify(want)} + '"]') !== null) {
                   return 'suggested'
                 }
@@ -896,12 +906,21 @@ async function main() {
         if (step.startsWith('mnemonic:')) {
           for (const want of step.slice(9).trim().split(/\s+/u)) {
             let entered = false
+            // By the counter, as in the word step above. This compared the
+            // last child of kb-words to the word, and the last child is always
+            // the counter itself, so "committed" could never be returned.
+            const before = Number(
+              await evaluate(`(() => {
+                const c = document.querySelector('[data-testid="kb-count"]')
+                const n = c === null ? null : /^\\s*(\\d+)/.exec(c.textContent || '')
+                return n === null ? -1 : Number(n[1])
+              })()`)
+            )
             for (const letter of want) {
               const status = await evaluate(`(() => {
-                const w = document.querySelector('[data-testid="kb-words"]')
-                const chips = w === null ? [] : [...w.children]
-                const last = chips.length === 0 ? '' : (chips[chips.length - 1].textContent || '').trim()
-                if (last === ${JSON.stringify(want)}) return 'committed'
+                const c = document.querySelector('[data-testid="kb-count"]')
+                const n = c === null ? null : /^\\s*(\\d+)/.exec(c.textContent || '')
+                if (n !== null && Number(n[1]) === ${String(before + 1)}) return 'committed'
                 return document.querySelector('[data-testid="kb-suggest-' + ${JSON.stringify(want)} + '"]') === null
                   ? 'typing' : 'suggested'
               })()`)

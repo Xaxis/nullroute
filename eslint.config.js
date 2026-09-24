@@ -10,6 +10,10 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/*.d.ts',
       '**/coverage/**',
+      // Parallel sessions work in git worktrees under .claude/worktrees, each a
+      // full second copy of this tree. Linted from here they have no type
+      // information and report every file twice.
+      '.claude/**',
       'apps/web/.next/**',
       'apps/web/.next-dev/**',
       'apps/web/out/**',

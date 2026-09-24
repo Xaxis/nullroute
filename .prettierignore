@@ -1,4 +1,6 @@
 node_modules/
+# Worktrees for parallel sessions: second copies of this tree.
+.claude/
 dist/
 .next/
 out/
