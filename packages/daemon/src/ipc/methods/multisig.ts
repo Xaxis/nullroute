@@ -93,9 +93,15 @@ export function multisigMethods(ctx: HandlerContext): MethodTable {
       // The list that WOULD be sealed, built without touching the session.
       // Persisting must be able to fail without leaving a registration live
       // for signing that the user was told had not been saved.
-      const next = session.registrations.includes(registration.descriptor)
-        ? [...session.registrations]
-        : [...session.registrations, registration.descriptor]
+      //
+      // FROM THE SEALED LIST, not the live one. A quorum registered earlier
+      // for this session only is in the live list and must not ride along
+      // into the ciphertext because a different one was saved.
+      const sealed = session.sealedRegistrations
+      const next = sealed.includes(registration.descriptor)
+        ? [...sealed]
+        : [...sealed, registration.descriptor]
+      const sealedCosigners = session.sealedCosigners
 
       let persisted = false
       if (passphrase.length > 0 && !session.ephemeral) {
@@ -117,7 +123,7 @@ export function multisigMethods(ctx: HandlerContext): MethodTable {
             passphrase,
             label: active.label,
             colour: active.colour as WalletColour,
-            cosigners: session.cosigners,
+            cosigners: sealedCosigners,
             registrations: next,
           })
           persisted = true
@@ -133,7 +139,9 @@ export function multisigMethods(ctx: HandlerContext): MethodTable {
       }
 
       // Only now. A registration reported as not saved must not be live.
+      if (!persisted) session.holdUnsaved()
       session.addRegistration(registration.descriptor)
+      if (persisted) session.recordSealed(next, sealedCosigners)
       return { ...registration, persisted }
     },
 
@@ -207,8 +215,17 @@ export function multisigMethods(ctx: HandlerContext): MethodTable {
        * clear stays cleared in the session and the next successful write makes
        * the clearing permanent.
        */
-      const without = session.cosigners.filter((entry) => entry.xpub !== xpub)
-      const next = cleaned.length === 0 ? without : [...without, { xpub, label: cleaned }]
+      const rename = (
+        list: readonly { readonly xpub: string; readonly label: string }[]
+      ): { xpub: string; label: string }[] => {
+        const without = list.filter((entry) => entry.xpub !== xpub)
+        return cleaned.length === 0 ? without : [...without, { xpub, label: cleaned }]
+      }
+      const next = rename(session.cosigners)
+      // What a save writes: this one name changed on top of what is SEALED,
+      // not on top of unsaved names made earlier this session.
+      const sealedNext = rename(session.sealedCosigners)
+      const sealedRegistrations = session.sealedRegistrations
 
       const passphrase = optionalString(request, 'passphrase')
       const active = session.active
@@ -225,15 +242,17 @@ export function multisigMethods(ctx: HandlerContext): MethodTable {
           passphrase,
           label: active.label,
           colour: active.colour as WalletColour,
-          registrations: session.registrations,
-          cosigners: next,
+          registrations: [...sealedRegistrations],
+          cosigners: sealedNext,
         })
         persisted = true
       }
 
       // Only now. A name reported as not saved must not be live for the next
-      // write to pick up.
+      // write to pick up, and the next write reads the sealed view.
+      if (!persisted) session.holdUnsaved()
       session.setCosigners(next)
+      if (persisted) session.recordSealed(sealedRegistrations, sealedNext)
 
       return {
         cosigners: session.cosigners,
@@ -288,6 +307,10 @@ export function multisigMethods(ctx: HandlerContext): MethodTable {
        * applies here with the words swapped.
        */
       const next = session.registrations.filter((entry) => entry !== descriptor)
+      // What a save writes: the sealed list without this quorum, so an
+      // unsaved registration made earlier is not sealed by forgetting another.
+      const sealedNext = session.sealedRegistrations.filter((entry) => entry !== descriptor)
+      const sealedCosigners = session.sealedCosigners
       if (next.length === session.registrations.length) {
         throw new Error(
           'This device has no registration matching that descriptor, so there is nothing to ' +
@@ -310,14 +333,16 @@ export function multisigMethods(ctx: HandlerContext): MethodTable {
           passphrase,
           label: active.label,
           colour: active.colour as WalletColour,
-          registrations: next,
-          cosigners: session.cosigners,
+          registrations: sealedNext,
+          cosigners: [...sealedCosigners],
         })
         persisted = true
       }
 
       // Only now. A removal that failed to persist must not have happened.
+      if (!persisted) session.holdUnsaved()
       session.setRegistrations(next)
+      if (persisted) session.recordSealed(sealedNext, sealedCosigners)
 
       return {
         forgotten: true,

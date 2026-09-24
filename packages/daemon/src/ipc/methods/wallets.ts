@@ -104,6 +104,8 @@ export function walletsMethods(ctx: HandlerContext): MethodTable {
         bip39Passphrase: session.bip39Passphrase,
       })
       session.attachTo({ id: created.id, label: created.label, colour })
+      // Saving a wallet is saving what it holds, so disk and session agree.
+      session.recordSealed(session.registrations, session.cosigners)
       return { id: created.id, active: activeWallet() }
     },
 
@@ -190,11 +192,14 @@ export function walletsMethods(ctx: HandlerContext): MethodTable {
         passphrase: requireString(request, 'passphrase'),
         label,
         colour,
-        registrations: session.registrations,
+        // THE SEALED LISTS, not the live ones. A quorum or cosigner name the
+        // user was told was for this session only must not become permanent
+        // because they changed the wallet's colour.
+        registrations: session.sealedRegistrations,
         // Carried through. Renaming a wallet reseals it, and forgetting these
         // would erase every cosigner name the user had assigned as a side
         // effect of changing a colour.
-        cosigners: session.cosigners,
+        cosigners: session.sealedCosigners,
       })
       session.relabel(hint.label, hint.colour)
       return { active: activeWallet() }
@@ -230,7 +235,8 @@ export function walletsMethods(ctx: HandlerContext): MethodTable {
         network: session.network,
         oldPassphrase: requireString(request, 'oldPassphrase'),
         newPassphrase: requireString(request, 'newPassphrase'),
-        registrations: session.registrations,
+        // Sealed lists only, for the reason wallets.rename gives.
+        registrations: session.sealedRegistrations,
         // FROM THE SESSION, WHICH GOT THEM OUT OF THE CIPHERTEXT at unlock,
         // and not from the hint beside the blob. The registry used to read the
         // hint itself and seal what it found, which turned an edit to an
@@ -242,7 +248,7 @@ export function walletsMethods(ctx: HandlerContext): MethodTable {
         // Carried through, for the reason renaming carries them: this
         // reseals, and forgetting them would erase every cosigner name as a
         // side effect of changing a passphrase.
-        cosigners: session.cosigners,
+        cosigners: session.sealedCosigners,
       })
 
       return { changed: true, active: activeWallet() }

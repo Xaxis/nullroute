@@ -136,6 +136,19 @@ invariants:
       - packages/daemon/test/cosigner-labels.ipc.test.ts::strips-a-name-that-could-render-as-something-else
       - packages/daemon/test/cosigner-labels.ipc.test.ts::does-not-keep-a-name-whose-passphrase-was-wrong
 
+  - id: INV-COSIGN-4
+    statement: >
+      A registration, a forgotten quorum or a cosigner name the user was told is
+      not saved stays out of the ciphertext through every later reseal: renaming
+      the wallet, changing its passphrase, or saving a different change. What
+      was saved survives those reseals untouched.
+    tests:
+      - packages/daemon/test/session-only.ipc.test.ts::does-not-seal-an-unsaved-registration-on-rename
+      - packages/daemon/test/session-only.ipc.test.ts::does-not-seal-an-unsaved-forget-on-a-passphrase-change
+      - packages/daemon/test/session-only.ipc.test.ts::does-not-seal-an-unsaved-cosigner-name-on-rename
+      - packages/daemon/test/session-only.ipc.test.ts::saves-only-the-quorum-it-was-asked-to-save
+      - packages/daemon/test/session-only.ipc.test.ts::keeps-what-was-saved-through-a-later-rename
+
   - id: INV-COSIGN-2
     statement: >
       Cosigner names survive every reseal, including one caused by renaming the

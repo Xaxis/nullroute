@@ -82,6 +82,27 @@ export interface WalletSession {
    */
   cosigners: { xpub: string; label: string }[]
   /**
+   * What the sealed wallet holds, while it differs from the two lists above.
+   *
+   * Undefined means the ciphertext and the session agree. It is set only by a
+   * change the user was told is NOT saved, a registration, a forgotten quorum
+   * or a cosigner name made without a passphrase, and every later reseal
+   * writes this instead of the live lists. Without it, renaming the wallet or
+   * changing its passphrase sealed whatever the session held, so a quorum the
+   * screen had called "for this session only" became permanent as a side
+   * effect of a colour change.
+   *
+   * Defined as a difference rather than kept for every wallet so that a load
+   * path which forgets to set it errs towards writing the live lists, which is
+   * the old behaviour, and never towards dropping what is already sealed.
+   */
+  sealed?:
+    | {
+        registrations: string[]
+        cosigners: { xpub: string; label: string }[]
+      }
+    | undefined
+  /**
    * BIP-329 labels loaded for this session.
    *
    * NOT sealed with the wallet, unlike cosigner names, and the difference is
@@ -376,6 +397,54 @@ export class Session {
     if (wallet === undefined) throw new SessionError('No wallet is loaded.')
     const without = wallet.cosigners.filter((entry) => entry.xpub !== xpub)
     wallet.cosigners = label.length === 0 ? without : [...without, { xpub, label }]
+  }
+
+  /** The registrations a reseal writes: the sealed ones, not unsaved changes. */
+  get sealedRegistrations(): readonly string[] {
+    return this.#wallet?.sealed?.registrations ?? this.registrations
+  }
+
+  /** The cosigner names a reseal writes, for the same reason. */
+  get sealedCosigners(): readonly { readonly xpub: string; readonly label: string }[] {
+    return this.#wallet?.sealed?.cosigners ?? this.cosigners
+  }
+
+  /**
+   * Remember what is sealed before a change the user was told is not saved.
+   *
+   * Called BEFORE the live lists change. Only the first unsaved change takes
+   * the snapshot; later ones leave it alone, because it records the disk.
+   */
+  holdUnsaved(): void {
+    const wallet = this.#wallet
+    if (wallet === undefined || wallet.sealed !== undefined) return
+    wallet.sealed = {
+      registrations: [...wallet.registrations],
+      cosigners: wallet.cosigners.map((entry) => ({ ...entry })),
+    }
+  }
+
+  /**
+   * Record exactly what a write just sealed.
+   *
+   * Called AFTER the live lists reflect the change that was saved. When disk
+   * and session now agree the difference is dropped.
+   */
+  recordSealed(
+    registrations: readonly string[],
+    cosigners: readonly { readonly xpub: string; readonly label: string }[]
+  ): void {
+    const wallet = this.#wallet
+    if (wallet === undefined) return
+    const same =
+      JSON.stringify(registrations) === JSON.stringify(wallet.registrations) &&
+      JSON.stringify(cosigners) === JSON.stringify(wallet.cosigners)
+    wallet.sealed = same
+      ? undefined
+      : {
+          registrations: [...registrations],
+          cosigners: cosigners.map((entry) => ({ ...entry })),
+        }
   }
 
   /** Labels loaded for this session. Empty is normal. */
