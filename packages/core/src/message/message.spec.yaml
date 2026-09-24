@@ -17,6 +17,7 @@ covers:
   - packages/core/src/message/bip322.ts::assertSignable
   - packages/core/src/message/bip322.ts::MessageError
   - packages/core/src/message/bip322.ts::MAX_MESSAGE_LENGTH
+  - packages/core/src/message/bip322.ts::SIMPLE_PREFIX
   - packages/core/src/message/sign.ts::buildToSpend
   - packages/core/src/message/sign.ts::toSpendTxidForBuilder
   - packages/core/src/message/sign.ts::signMessage
@@ -56,6 +57,12 @@ algorithm: >
   and signed directly, which is one fewer black box on the path that produces
   proofs.
 
+vectors:
+  - name: BIP-322 basic test vectors
+    file: spec/vectors/bip322-basic.json
+    sha256: a9184da5687b9cb7a1863807f4a8f4d743ec07d4f683f707cb85ce72f5b33f47
+    source: https://github.com/bitcoin/bips/blob/master/bip-0322/basic-test-vectors.json
+
 invariants:
   - id: INV-MSG-1
     statement: >
@@ -94,11 +101,15 @@ invariants:
   - id: INV-MSG-6
     statement: >
       A signature verifies against a BIP-143 digest computed by a different
-      library for a transaction that library rebuilt, is deterministic, and
-      carries the public key the address commits to.
+      library for a transaction that library rebuilt, is deterministic, carries
+      the public key the address commits to, and is written with the smp
+      variant prefix BIP-322 1.0.0 requires, matching the BIP's published
+      vectors byte for byte where the signature is deterministic.
     tests:
       - packages/core/test/message.sign.test.ts::produces-a-signature-that-verifies-against-an-independent-sighash
       - packages/core/test/message.sign.test.ts::reproduces-the-official-bip322-vector-byte-for-byte
+      - packages/core/test/message.bip322-vectors.test.ts::hashes-every-published-message-and-to-spend-transaction
+      - packages/core/test/message.bip322-vectors.test.ts::reproduces-a-published-signature-for-every-vector-it-can-sign
       - packages/core/test/message.sign.test.ts::signs-the-same-message-identically-every-time
       - packages/core/test/message.sign.test.ts::signs-wrapped-segwit-too
       - packages/core/test/message.sign.test.ts::signs-for-the-address-the-path-produces
@@ -141,6 +152,9 @@ invariants:
       - packages/core/test/message.verify.test.ts::accepts-every-kind-of-proof-this-device-produces
       - packages/core/test/message.verify.test.ts::accepts-a-taproot-proof-built-outside-this-module
       - packages/core/test/message.verify.test.ts::accepts-the-official-bip322-vectors
+      - packages/core/test/message.bip322-vectors.test.ts::accepts-every-published-signature-it-supports
+      - packages/core/test/message.bip322-vectors.test.ts::refuses-every-published-error-case
+      - packages/core/test/message.bip322-vectors.test.ts::does-not-call-a-p2wsh-proof-valid-when-it-cannot-check-one
       - packages/core/test/message.verify.test.ts::refuses-a-valid-signature-by-a-key-that-is-not-this-address
       - packages/core/test/message.verify.test.ts::refuses-a-proof-of-a-message-that-is-not-the-one-shown
 

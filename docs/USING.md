@@ -600,7 +600,10 @@ passphrase, and says that everything shown at that point is unverified.
 yours. Segwit, nested segwit and taproot produce a BIP-322 signature. A legacy
 address produces a signmessage signature instead, which is a different scheme
 committing to different bytes, and the screen says so where you pick the type.
-Almost everything accepts both, including Bitcoin Core. The BIP-322 commitment
+A BIP-322 signature starts with `smp`, the variant prefix BIP-322 1.0.0
+requires; a verifier written before that version may want it removed first.
+Bitcoin Core checks only the legacy signmessage kind: its BIP-322 pull request
+(bitcoin/bitcoin#24058) was closed without being merged. The BIP-322 commitment
 the review shows is hidden under Legacy, because no verifier of a signmessage
 signature recomputes it.
 

@@ -42,7 +42,7 @@ import { type Network } from '../network/networks.js'
 import { type ScriptType, toBtcNetwork } from '../address/address.js'
 import { rootFromSeed } from '../derive/hd.js'
 import { normalizePath } from '../derive/path.js'
-import { MessageError, assertSignable, messageHash } from './bip322.js'
+import { MessageError, SIMPLE_PREFIX, assertSignable, messageHash } from './bip322.js'
 
 /** A compact size integer, as Bitcoin serialises lengths. */
 function compactSize(value: number): Uint8Array {
@@ -252,7 +252,7 @@ function signTaproot(privateKey: Uint8Array, network: Network, message: string):
   return {
     address: payment.address,
     message,
-    signature: base64.encode(encoded),
+    signature: `${SIMPLE_PREFIX}${base64.encode(encoded)}`,
     scriptType: 'p2tr',
   }
 }
@@ -342,7 +342,12 @@ export function signMessageWithKey(
     pubkey,
   ])
 
-  return { address: payment.address, message, signature: base64.encode(encoded), scriptType }
+  return {
+    address: payment.address,
+    message,
+    signature: `${SIMPLE_PREFIX}${base64.encode(encoded)}`,
+    scriptType,
+  }
 }
 
 /**

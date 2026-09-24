@@ -34,7 +34,7 @@ import { base64 } from '@scure/base'
 import { type Network } from '../network/networks.js'
 import { toBtcNetwork } from '../address/address.js'
 import { buildToSpend, toSpendTxidForBuilder } from './sign.js'
-import { MAX_MESSAGE_LENGTH } from './bip322.js'
+import { MAX_MESSAGE_LENGTH, SIMPLE_PREFIX } from './bip322.js'
 
 /** The most a signature may decode to. A witness for these types is under 200 bytes. */
 const MAX_SIGNATURE_BYTES = 512
@@ -161,9 +161,23 @@ export function verifyMessage(
     )
   }
 
+  // The variant prefix BIP-322 1.0.0 requires. `smp` is what this checks;
+  // `ful` and `pof` are variants it does not, named rather than misread. A
+  // signature with no prefix is read as simple, which the BIP allows for proofs
+  // made before it was finalised: one always begins with the witness item
+  // count, so it cannot be mistaken for a prefix.
+  const trimmed = signature.trim()
+  if (trimmed.startsWith('ful') || trimmed.startsWith('pof')) {
+    return fail(
+      'unknown',
+      'That is a BIP-322 full or proof of funds signature. This device checks simple ones only.'
+    )
+  }
+  const body = trimmed.startsWith(SIMPLE_PREFIX) ? trimmed.slice(SIMPLE_PREFIX.length) : trimmed
+
   let raw: Uint8Array
   try {
-    raw = base64.decode(signature.trim())
+    raw = base64.decode(body)
   } catch {
     return fail('unknown', 'That signature is not valid base64.')
   }

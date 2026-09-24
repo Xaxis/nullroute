@@ -18,6 +18,7 @@ import { base64 } from '@scure/base'
 import { MAINNET } from '../src/network/networks.js'
 import { mnemonicToSeed } from '../src/bip39/mnemonic.js'
 import { buildToSpend, signMessage, signMessageWithKey } from '../src/message/sign.js'
+import { SIMPLE_PREFIX } from '../src/message/bip322.js'
 
 /** The address and to_spend txid BIP-322 publishes, verbatim. */
 const VECTOR_ADDRESS = 'bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l'
@@ -136,7 +137,7 @@ describe('core.message.bip322 signing', () => {
     const digest = toSign.hashForWitnessV0(0, scriptCode, 0n, bitcoin.Transaction.SIGHASH_ALL)
 
     // Pull the DER signature out of our witness and check it against that.
-    const raw = base64.decode(signed.signature)
+    const raw = base64.decode(signed.signature.slice(SIMPLE_PREFIX.length))
     expect(raw[0]).toBe(2)
     const sigLength = raw[1] ?? 0
     const der = raw.subarray(2, 2 + sigLength - 1)
@@ -165,7 +166,7 @@ describe('core.message.bip322 signing', () => {
     const signed = signMessageWithKey(key, MAINNET, 'p2wpkh', 'Hello World')
     expect(signed.address).toBe(VECTOR_ADDRESS)
     expect(signed.signature).toBe(
-      'AkgwRQIhAOzyynlqt93lOKJr+wmmxIens//zPzl9tqIOua93wO6MAiBi5n5EyAcPScOjf1lAqIUIQtr3zKNeavYabHyR8eGhowEhAsfxIAMZZEKUPYWI4BruhAQjzFT8FSFSajuFwrDL1Yhy'
+      'smpAkgwRQIhAOzyynlqt93lOKJr+wmmxIens//zPzl9tqIOua93wO6MAiBi5n5EyAcPScOjf1lAqIUIQtr3zKNeavYabHyR8eGhowEhAsfxIAMZZEKUPYWI4BruhAQjzFT8FSFSajuFwrDL1Yhy'
     )
   })
 
@@ -175,7 +176,7 @@ describe('core.message.bip322 signing', () => {
     const signed = signMessage(seed, MAINNET, 'p2sh-p2wpkh', "m/49'/0'/0'/0/0", 'Hello World')
 
     expect(signed.address.startsWith('3')).toBe(true)
-    const raw = base64.decode(signed.signature)
+    const raw = base64.decode(signed.signature.slice(SIMPLE_PREFIX.length))
     expect(raw[0]).toBe(2)
     void bitcoin
   })
@@ -253,7 +254,7 @@ describe('core.message.bip322 signing', () => {
     const digest = toSign.hashForWitnessV1(0, [Buffer.from(script)], [0n], 0x00)
 
     // One element of exactly 64 bytes: SIGHASH_DEFAULT carries no flag byte.
-    const raw = base64.decode(signed.signature)
+    const raw = base64.decode(signed.signature.slice(SIMPLE_PREFIX.length))
     expect(raw[0]).toBe(1)
     expect(raw[1]).toBe(64)
     const signature = raw.subarray(2)

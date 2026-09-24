@@ -50,6 +50,17 @@ export class MessageError extends Error {
 export const MAX_MESSAGE_LENGTH = 1024
 
 /**
+ * The prefix a BIP-322 simple signature carries.
+ *
+ * Added by BIP-322 1.0.0 (2026-04-15) as a breaking change: "Signers MUST
+ * prefix the signature with the variant that was used to create the
+ * signature." Before it this device wrote bare base64, which matched the
+ * earlier vectors and not the finished BIP. Verifiers may still accept a
+ * signature with no prefix as simple, for backward compatibility.
+ */
+export const SIMPLE_PREFIX = 'smp'
+
+/**
  * The BIP-340 style tagged hash BIP-322 uses to commit to a message.
  *
  * SHA256(SHA256(tag) || SHA256(tag) || message). The doubled tag hash is what

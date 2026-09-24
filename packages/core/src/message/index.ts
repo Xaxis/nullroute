@@ -1,6 +1,7 @@
 export {
   MessageError,
   MAX_MESSAGE_LENGTH,
+  SIMPLE_PREFIX,
   taggedHash,
   messageHash,
   reviewMessage,
