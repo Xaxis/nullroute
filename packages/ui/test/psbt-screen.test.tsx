@@ -602,12 +602,14 @@ describe('PsbtScreen quorum progress', () => {
     signProgress?: ReturnType<typeof progress>
     finalised?: { hex: string; txid: string }
     wasAlreadySigned?: boolean
+    thisDevice?: PsbtReviewView['thisDevice']
   }) {
-    const onReview = vi
-      .fn()
-      .mockResolvedValue(
-        review(options.reviewProgress === undefined ? {} : { signatures: options.reviewProgress })
-      )
+    const onReview = vi.fn().mockResolvedValue(
+      review({
+        ...(options.reviewProgress === undefined ? {} : { signatures: options.reviewProgress }),
+        ...(options.thisDevice === undefined ? {} : { thisDevice: options.thisDevice }),
+      })
+    )
     const onSign = vi.fn().mockResolvedValue({
       psbt: 'cHNidP8BSIGNED',
       inputsSigned: 1,
@@ -625,18 +627,55 @@ describe('PsbtScreen quorum progress', () => {
    * quorum and whether its signature would be the last.
    */
   it('says-before-signing-that-yours-is-not-the-last-signature', async () => {
-    quorumSetup({ reviewProgress: progress(0, 2) })
+    quorumSetup({
+      reviewProgress: progress(0, 2),
+      thisDevice: { completesIfSigned: false, stillNeeded: 1, adds: 1, alreadySigned: false },
+    })
     await reachReview()
 
     const shown = screen.getByTestId('psbt-quorum').textContent
     expect(shown).toContain('0 of 2 present')
     expect(shown).toContain('3 cosigners')
     expect(shown).toContain('would not be the last')
-    expect(shown).toContain('1 more cosigner')
+    expect(shown).toContain('1 more signature')
+  })
+
+  /**
+   * INV-UI-35. The sentence is the daemon's answer, not a sum. Two inputs each
+   * 1 of 2 read as "2 of 4 present", which the screen used to turn into "not
+   * the last" while this device's signature completes both.
+   */
+  it('takes-the-last-signature-answer-from-the-daemon-not-the-totals', async () => {
+    quorumSetup({
+      reviewProgress: { ...progress(2, 4), inputs: [] },
+      thisDevice: { completesIfSigned: true, stillNeeded: 0, adds: 2, alreadySigned: false },
+    })
+    await reachReview()
+    expect(screen.getByTestId('psbt-quorum-hint').textContent).toContain('last signature needed')
+  })
+
+  /** INV-UI-35. Signing again adds nothing, and the screen says so rather than "last". */
+  it('says-when-this-device-has-signed-already', async () => {
+    quorumSetup({
+      reviewProgress: progress(1, 2),
+      thisDevice: { completesIfSigned: false, stillNeeded: 1, adds: 0, alreadySigned: true },
+    })
+    await reachReview()
+    expect(screen.getByTestId('psbt-quorum-hint').textContent).toContain('already signed')
+  })
+
+  /** INV-UI-35. Where the daemon cannot tell, neither does the screen. */
+  it('says-it-cannot-tell-rather-than-guessing', async () => {
+    quorumSetup({ reviewProgress: progress(0, 2) })
+    await reachReview()
+    expect(screen.getByTestId('psbt-quorum-hint').textContent).toContain('cannot tell')
   })
 
   it('says-before-signing-when-yours-completes-it', async () => {
-    quorumSetup({ reviewProgress: progress(1, 2) })
+    quorumSetup({
+      reviewProgress: progress(1, 2),
+      thisDevice: { completesIfSigned: true, stillNeeded: 0, adds: 1, alreadySigned: false },
+    })
     await reachReview()
 
     const shown = screen.getByTestId('psbt-quorum').textContent

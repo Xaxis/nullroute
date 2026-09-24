@@ -188,6 +188,17 @@ export interface PsbtReviewView {
    */
   readonly unreadableRegistrations?: number
   readonly signatures?: SignatureProgressView
+  /**
+   * What signing here would do, worked out by the daemon per input. The
+   * screen used to add one to the summed totals, which is wrong whenever this
+   * device signs more than one input or has signed already.
+   */
+  readonly thisDevice?: {
+    readonly completesIfSigned: boolean | null
+    readonly stillNeeded: number | null
+    readonly adds: number
+    readonly alreadySigned: boolean
+  }
   readonly replaceable: boolean
   readonly locktime: number
   readonly ownedInputs: number
@@ -202,6 +213,28 @@ export interface PsbtReviewView {
   readonly inputs: readonly PsbtInputView[]
   readonly outputs: readonly PsbtOutputView[]
   readonly warnings: readonly PsbtWarningView[]
+}
+
+/**
+ * The sentence under the signature count, from the daemon's per-input answer.
+ *
+ * No arithmetic here on purpose: the totals this used to add one to count a
+ * single signature for this device however many inputs it signs, and could
+ * not see that it had already signed. Where the daemon cannot tell, neither
+ * does the screen.
+ */
+function lastSignatureHint(thisDevice: PsbtReviewView['thisDevice']): string {
+  if (thisDevice?.alreadySigned === true) {
+    return 'This device has already signed every input it can. Signing again adds nothing.'
+  }
+  if (thisDevice?.completesIfSigned == null) {
+    return 'This device cannot tell whether yours is the last signature needed.'
+  }
+  if (thisDevice.completesIfSigned) {
+    return 'Yours would be the last signature needed, so this becomes spendable.'
+  }
+  const more = thisDevice.stillNeeded ?? 1
+  return `Yours would not be the last. After signing, this still needs ${String(more)} more signature${more === 1 ? '' : 's'} from another cosigner.`
 }
 
 export interface PsbtScreenProps {
@@ -859,14 +892,8 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
                     `, ${String(review.signatures.inputs[0].cosigners)} cosigners`}
                 </span>
               </div>
-              <p className="nr-hint">
-                {review.signatures.present + 1 >= review.signatures.required
-                  ? 'Yours would be the last signature needed, so this becomes spendable.'
-                  : `Yours would not be the last. After signing, this still has to reach ${String(
-                      review.signatures.required - review.signatures.present - 1
-                    )} more cosigner${
-                      review.signatures.required - review.signatures.present - 1 === 1 ? '' : 's'
-                    }.`}
+              <p className="nr-hint" data-testid="psbt-quorum-hint">
+                {lastSignatureHint(review.thisDevice)}
               </p>
             </div>
           )}

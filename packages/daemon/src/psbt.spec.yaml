@@ -15,6 +15,7 @@ covers:
   - packages/daemon/src/psbt.ts::buildOwnedIndex
   - packages/daemon/src/psbt.ts::changeLookup
   - packages/daemon/src/psbt.ts::signingPathsFor
+  - packages/daemon/src/psbt.ts::thisDeviceProgress
 
 algorithm: >
   The index is built by deriving every address this wallet can produce within a

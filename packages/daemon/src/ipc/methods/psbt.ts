@@ -9,7 +9,7 @@
  * why they are tables rather than one switch.
  */
 
-import { buildOwnedIndex, changeLookup, signingPathsFor } from '../../psbt.js'
+import { buildOwnedIndex, changeLookup, signingPathsFor, thisDeviceProgress } from '../../psbt.js'
 import {
   encodePsbt,
   formatBtc,
@@ -71,6 +71,15 @@ export function psbtMethods(ctx: HandlerContext): MethodTable {
         // needs to know they are the last signature, or that they are not,
         // while deciding whether to sign at all.
         signatures: review.signatures,
+        // Worked out per input here rather than from the totals above, which
+        // count one signature for this device however many inputs it signs.
+        thisDevice: thisDeviceProgress(
+          Array.from({ length: tx.inputsLength }, (_, i) => inputScript(tx, i)),
+          index,
+          session.requireSeed(),
+          session.network,
+          review.signatures
+        ),
         network: {
           id: review.network.id,
           label: review.network.label,

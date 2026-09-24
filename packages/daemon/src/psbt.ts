@@ -30,7 +30,9 @@ import {
   taprootQuorum,
   parseDescriptor,
   rootFromSeed,
+  type SignatureProgress,
 } from '@nullroute/core'
+import { bytesToHex } from '@noble/hashes/utils.js'
 import { multisigAccountPath } from './multisig.js'
 
 /** Every script type the device derives. Order is display order. */
@@ -294,4 +296,86 @@ export function signingPathsFor(
     if (owned !== undefined) paths.add(owned.path)
   }
   return [...paths]
+}
+
+/** What signing on this device would do to a transaction's quorum. */
+export interface ThisDeviceProgress {
+  /**
+   * Whether signing here leaves every input with the signatures it needs.
+   * Null when any input's requirement cannot be read, because a screen that
+   * guessed would be telling somebody they are finished on a script this code
+   * did not understand.
+   */
+  readonly completesIfSigned: boolean | null
+  /**
+   * The most signatures any one input would still lack after this device
+   * signs, or null when that cannot be read. Zero exactly when
+   * `completesIfSigned` is true.
+   */
+  readonly stillNeeded: number | null
+  /** How many inputs this device would add a signature to. */
+  readonly adds: number
+  /** True when this device owns inputs and has already signed every one. */
+  readonly alreadySigned: boolean
+}
+
+/**
+ * Per input, whether this device can sign it and whether it already has.
+ *
+ * The signing screen said "yours would be the last signature" by comparing
+ * totals summed over every input: present plus one against required. This
+ * device adds one signature to EACH input it owns, not one in total, and none
+ * to an input it already signed, so a 2-of-3 with two inputs, both signed by
+ * cosigner one, read as "not the last" when this signature completes it, and
+ * a transaction scanned back after signing read as "the last" when signing
+ * again adds nothing. The answer is worked out here, per input, from the keys
+ * that signed and the key this device holds for that input.
+ */
+export function thisDeviceProgress(
+  scripts: readonly (Uint8Array | undefined)[],
+  index: Map<string, OwnedAddress>,
+  seed: Secret,
+  network: Network,
+  signatures: SignatureProgress
+): ThisDeviceProgress {
+  const root = rootFromSeed(seed, network)
+  try {
+    let adds = 0
+    let owned = 0
+    let signedByUs = 0
+    let completes: boolean | null = true
+    let shortfall = 0
+    for (const [position, input] of signatures.inputs.entries()) {
+      const script = scripts[position]
+      const address = script === undefined ? undefined : addressFromScript(script, network)
+      const mine = address === undefined ? undefined : index.get(address)
+      let signed = false
+      if (mine !== undefined) {
+        owned += 1
+        const key = root.derive(mine.path).publicKey
+        const compressed = key === null ? '' : bytesToHex(key)
+        signed =
+          input.signedBy.includes(compressed) ||
+          input.signedBy.includes(compressed.slice(2)) ||
+          (mine.scriptType === 'p2tr' && input.signedBy.includes('taproot-key-path'))
+        if (signed) signedByUs += 1
+        else adds += 1
+      }
+      if (input.required === undefined) {
+        completes = null
+        continue
+      }
+      const after = input.present + (mine !== undefined && !signed ? 1 : 0)
+      shortfall = Math.max(shortfall, input.required - after)
+      if (completes !== null && after < input.required) completes = false
+    }
+    return {
+      completesIfSigned: signatures.inputs.length === 0 ? null : completes,
+      stillNeeded: signatures.inputs.length === 0 || completes === null ? null : shortfall,
+      adds,
+      alreadySigned: owned > 0 && signedByUs === owned,
+    }
+  } finally {
+    root.wipePrivateData()
+  }
 }
