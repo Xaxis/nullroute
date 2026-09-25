@@ -167,7 +167,9 @@ against libsecp256k1. Multisig with cosigner registration that refuses a quorum
 this device holds no key in. An encrypted store, several named wallets, backup
 and restore, BIP-329 labels beside the outputs you read before signing, and a
 ten minute idle lock. BIP-322 proofs, and checking somebody else's with the
-wallet locked.
+wallet locked. Animated QR in both formats the air-gap world uses, BBQr and UR,
+each drawn by code in this repository and checked against its reference
+vectors.
 
 **The card boots.** Under QEMU: dm-verity opens, the root mounts through it,
 every block verifies, systemd starts, the state partition is created, and the
