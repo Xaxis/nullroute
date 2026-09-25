@@ -266,11 +266,14 @@ describe('core.psbt.quorum', () => {
     const xOnly = SEEDS.map(publicKeyOf).map((key) => key.slice(1))
     // BIP-341's provably unspendable internal key.
     const nums = hexToBytes('50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0')
-    const payment = btc.p2tr(nums, btc.p2tr_ms(2, xOnly), btc.NETWORK, true)
+    const payment = btc.p2tr(nums, { script: btc.p2tr_ms(2, xOnly).script }, btc.NETWORK, true)
+    const { tapLeafScript } = payment
+    if (tapLeafScript === undefined) throw new Error('a script tree gave no leaf script')
     const tx = new btc.Transaction()
     tx.addInput({
       ...fundedBy(payment.script, 100_000n, 3),
-      ...payment,
+      tapInternalKey: payment.tapInternalKey,
+      tapLeafScript,
     })
     tx.addOutputAddress(STRANGER, 90_000n, btc.NETWORK)
 

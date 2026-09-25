@@ -390,7 +390,7 @@ describe('daemon wallets IPC', () => {
 
     session.lock()
     const reopened = (await call('wallets.unlock', {
-      id: (await call('wallets.list')).wallets[0].id,
+      id: ((await call('wallets.list')) as { wallets: { id: string }[] }).wallets[0]?.id,
       passphrase: 'one',
     })) as { registrations: number }
     expect(reopened.registrations).toBe(0)

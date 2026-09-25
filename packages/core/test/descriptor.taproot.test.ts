@@ -52,7 +52,7 @@ describe('core.descriptor.taproot', () => {
     const sorted = [hex.decode(A), hex.decode(B)].sort((x, y) => Buffer.compare(x, y))
     const theirs = btc.p2tr(
       hex.decode(INTERNAL),
-      [btc.p2tr_pk(hex.decode(A)), btc.p2tr_ms(2, sorted)],
+      [{ script: btc.p2tr_pk(hex.decode(A)).script }, { script: btc.p2tr_ms(2, sorted).script }],
       MAINNET
     ).address
     expect(ours).toBe(theirs)

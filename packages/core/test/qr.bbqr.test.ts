@@ -16,6 +16,12 @@ import { createRequire } from 'node:module'
 import { base32nopad } from '@scure/base'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { prepareZXingModule, readBarcodes } from 'zxing-wasm/reader'
+
+/**
+ * What zxing reads, named through its own signature: core has no DOM types, so
+ * ImageData is not in scope here, and core must not gain them to satisfy a test.
+ */
+type Pixels = Parameters<typeof readBarcodes>[0]
 import {
   BbqrCollector,
   BbqrError,
@@ -58,7 +64,7 @@ async function decodeText(code: QrCode): Promise<string> {
     }
   }
   const results = await readBarcodes(
-    { data, width: dimension, height: dimension, colorSpace: 'srgb' } as ImageData,
+    { data, width: dimension, height: dimension, colorSpace: 'srgb' } as Pixels,
     { formats: ['QRCode'], tryHarder: true }
   )
   const first = results[0]

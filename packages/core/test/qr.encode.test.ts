@@ -22,6 +22,12 @@ import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { prepareZXingModule, readBarcodes } from 'zxing-wasm/reader'
+
+/**
+ * What zxing reads, named through its own signature: core has no DOM types, so
+ * ImageData is not in scope here, and core must not gain them to satisfy a test.
+ */
+type Pixels = Parameters<typeof readBarcodes>[0]
 import { encodeQr, encodeQrText, qrToSvgPath, QrError, type QrCode } from '../src/qr/encode.js'
 import { dataCapacity, moduleCount, type EcLevel } from '../src/qr/tables.js'
 
@@ -43,7 +49,7 @@ beforeAll(async () => {
  * produces an image that our own reasoning says is a valid code and that real
  * decoders refuse, so it is part of the render rather than the caller's problem.
  */
-function toImageData(code: QrCode, scale = 3, quiet = 4): ImageData {
+function toImageData(code: QrCode, scale = 3, quiet = 4): Pixels {
   const dimension = (code.size + quiet * 2) * scale
   const data = new Uint8ClampedArray(dimension * dimension * 4).fill(255)
 
@@ -60,7 +66,7 @@ function toImageData(code: QrCode, scale = 3, quiet = 4): ImageData {
       }
     }
   }
-  return { data, width: dimension, height: dimension, colorSpace: 'srgb' } as ImageData
+  return { data, width: dimension, height: dimension, colorSpace: 'srgb' } as Pixels
 }
 
 /**

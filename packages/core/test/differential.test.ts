@@ -252,6 +252,7 @@ describe('core.psbt.sign differential', () => {
     // Our side.
     const root = rootFromSeed(seed, MAINNET)
     const signingKey = root.derive(SIGNING_PATH)
+    if (signingKey.publicKey === null) throw new Error('no public key at SIGNING_PATH')
     const script = btc.p2wpkh(signingKey.publicKey, MAINNET).script
     root.wipePrivateData()
 

@@ -42,8 +42,14 @@ const PATH = "m/86'/0'/0'/0/0"
 const STRANGER = 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4'
 const AMOUNT = 100_000n
 
+/** A key-path payment: what btc.p2tr returns when given no script tree. */
+type KeyPath = ReturnType<typeof keyPath>
+function keyPath(internal: Uint8Array) {
+  return btc.p2tr(internal, undefined, btc.NETWORK)
+}
+
 /** The x-only internal key at PATH, and the payment it produces. */
-function ourTaproot(): { internal: Uint8Array; payment: ReturnType<typeof btc.p2tr> } {
+function ourTaproot(): { internal: Uint8Array; payment: KeyPath } {
   using seed = mnemonicToSeed(MNEMONIC, '')
   const root = rootFromSeed(seed, MAINNET)
   const child = root.derive(normalizePath(PATH))
@@ -51,10 +57,10 @@ function ourTaproot(): { internal: Uint8Array; payment: ReturnType<typeof btc.p2
   // x-only: the leading parity byte is dropped for taproot.
   const internal = child.publicKey.slice(1)
   root.wipePrivateData()
-  return { internal, payment: btc.p2tr(internal, undefined, btc.NETWORK) }
+  return { internal, payment: keyPath(internal) }
 }
 
-function fundedTaproot(): { tx: btc.Transaction; payment: ReturnType<typeof btc.p2tr> } {
+function fundedTaproot(): { tx: btc.Transaction; payment: KeyPath } {
   const { internal, payment } = ourTaproot()
   const tx = new btc.Transaction()
   tx.addInput({

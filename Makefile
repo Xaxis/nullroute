@@ -328,8 +328,16 @@ ui-classes: ## Every nr- class the device UI uses has a rule in styles.css
 	# name refers to something.
 	@node tools/checks/check-ui-classes.mjs
 
-type-check: ## TypeScript, no emit, across the whole monorepo
+type-check: ## TypeScript, no emit, across the whole monorepo, tests included
 	@npx tsc --build tsconfig.build.json --force
+	# THE TESTS TOO. The build configs cannot include test/, so for the life of
+	# the project no test file was type-checked: vitest strips types and runs,
+	# and type-aware lint does not report type errors. Thirteen had built up,
+	# one of them a test passing two different timeouts, and a library bump
+	# rearranged them unseen. Each package's tsconfig.json covers src and test.
+	@for config in packages/*/tsconfig.json; do \
+	  npx tsc --noEmit -p "$$config" || { echo "type-check: $$config"; exit 1; }; \
+	done
 
 # --- build -------------------------------------------------------------------
 
