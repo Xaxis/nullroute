@@ -2,8 +2,8 @@
 
 [![CI](https://github.com/Xaxis/nullroute/actions/workflows/ci.yml/badge.svg)](https://github.com/Xaxis/nullroute/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Specs](https://img.shields.io/badge/specs-38-informational)](packages/verify)
-[![Invariants](https://img.shields.io/badge/invariants-329-informational)](docs/THREAT-MODEL.md)
+[![Specs](https://img.shields.io/badge/specs-39-informational)](packages/verify)
+[![Invariants](https://img.shields.io/badge/invariants-336-informational)](docs/THREAT-MODEL.md)
 
 An air-gapped Bitcoin signing device you can check rather than trust. You roll
 100 dice, it turns them into a seed by a rule you can repeat with `sha256sum`,

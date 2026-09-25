@@ -17,7 +17,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
-import { splitBbqr } from '@nullroute/core'
+import { splitBbqr, urFramesForPsbt } from '@nullroute/core'
 import { ScanScreen, type ScanResult } from '../src/screens/ScanScreen.js'
 import { assertSameOrigin, ScannerError, wasmLocation } from '../src/lib/scanner.js'
 
@@ -61,6 +61,16 @@ function fakeCamera(): () => Promise<MediaStream> {
 function scriptedFrames(script: readonly (readonly string[])[]) {
   let tick = 0
   return () => Promise.resolve(script[tick++] ?? [])
+}
+
+/** The signer profile's 1-input 20-output PSBT, base64: a real PSBT. */
+function psbtVector(): string {
+  const vectors = JSON.parse(
+    readFileSync(resolve(process.cwd(), 'spec/vectors/signer-profile/bbqr-psbt.json'), 'utf8')
+  ) as { cases: { id: string; input: { psbtBase64?: string } }[] }
+  const text = vectors.cases.find((c) => c.id === 'write-1in20out')?.input.psbtBase64
+  if (text === undefined) throw new Error('vector missing')
+  return text
 }
 
 function mount(script: readonly (readonly string[])[], onResult = vi.fn()) {
@@ -235,6 +245,60 @@ describe('ScanScreen', () => {
     expect(onResult).not.toHaveBeenCalled()
     expect(screen.queryByTestId('scan-progress')).toBeNull()
   }, 15_000)
+
+  /**
+   * INV-UI-107. A PSBT sent as UR is read as a PSBT: joined late, out of
+   * order, from mixed frames, and handed back as binary with its UR type.
+   */
+  it('reads-a-psbt-sent-as-ur', async () => {
+    const text = psbtVector()
+    const binary = Uint8Array.from(atob(text), (char) => char.charCodeAt(0))
+    const frames = urFramesForPsbt(binary, 200)
+    expect(frames.length).toBeGreaterThan(4)
+    // Joined partway through the loop, backwards, then the loop comes round
+    // again as the display repeats it. Decoding from mixed frames alone is
+    // core's test (decodes-from-mixed-parts-alone); this one is the screen.
+    const script = [...frames.slice(2).reverse(), ...frames].map((frame) => [frame])
+    const onResult = vi.fn()
+    mount(script, onResult)
+
+    await waitFor(
+      () => {
+        expect(onResult).toHaveBeenCalled()
+      },
+      { timeout: 8000 }
+    )
+    const result = onResult.mock.calls[0]?.[0] as ScanResult
+    if (result.kind !== 'ur') throw new Error(`expected a ur result, got ${result.kind}`)
+    expect(result.type).toBe('crypto-psbt')
+    expect(Buffer.from(result.data).equals(Buffer.from(binary))).toBe(true)
+  }, 15_000)
+
+  /**
+   * INV-UI-107. A single-frame UR is a PSBT too, not text. Before UR was read
+   * it went to the review screen as the string "UR:CRYPTO-PSBT/...".
+   */
+  it('reads-a-single-frame-ur-as-a-psbt-not-text', async () => {
+    const text = psbtVector()
+    const binary = Uint8Array.from(atob(text), (char) => char.charCodeAt(0))
+    const [only] = urFramesForPsbt(binary, 100_000)
+    const onResult = vi.fn()
+    mount([[only ?? '']], onResult)
+    await waitFor(() => {
+      expect(onResult).toHaveBeenCalled()
+    })
+    expect((onResult.mock.calls[0]?.[0] as ScanResult).kind).toBe('ur')
+  })
+
+  /** INV-UI-107. A UR that is not a PSBT is refused by name. */
+  it('refuses-a-ur-that-is-not-a-psbt', async () => {
+    const onResult = vi.fn()
+    mount([['ur:seed/oyadgdstaslplabghydrpfmkbggufgludprfgmamdpwmox'.toUpperCase()]], onResult)
+    await waitFor(() => {
+      expect(screen.getByTestId('scan-error').textContent).toContain('not a PSBT')
+    })
+    expect(onResult).not.toHaveBeenCalled()
+  })
 
   it('reports-a-camera-that-will-not-open', async () => {
     render(

@@ -23,3 +23,15 @@ export type { BbqrPart, ParsedPart, FileType, SplitOptions } from './bbqr.js'
 
 export { EC_LEVELS, dataCapacity, moduleCount } from './tables.js'
 export type { EcLevel } from './tables.js'
+
+export {
+  UrDecoder,
+  UrEncoder,
+  UrError,
+  isUr,
+  parseUr,
+  psbtFromUr,
+  urFramesForPsbt,
+  PSBT_UR_TYPE,
+  PSBT_UR_TYPES_READ,
+} from './ur.js'

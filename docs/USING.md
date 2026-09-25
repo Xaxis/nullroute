@@ -801,8 +801,30 @@ it but has no way to receive a transaction.
 
 A single QR code holds a few kilobytes at a density a camera can read. An
 extended public key or an address fits in one. A signed transaction usually does
-not, and is split using **BBQr**, the convention the Bitcoin air-gap ecosystem
-already uses, and shown as an animated sequence.
+not, and is shown as an animated sequence in one of two formats, both used
+across the Bitcoin air-gap ecosystem:
+
+| Format | Read by | On this device |
+| --- | --- | --- |
+| **BBQr** | Sparrow, Coldcard, Nunchuk | The default for a signed PSBT |
+| **UR** (`crypto-psbt`) | SeedSigner, Jade, Keystone, Sparrow | Pick **UR** under the code |
+
+The scanner reads either without being told which. Frames of both are drawn in
+QR alphanumeric mode, and both stay under the same density cap.
+
+**UR is written as `crypto-psbt`, not `psbt`.** The UR registry recommends the
+newer name, but SeedSigner and Jade read only `crypto-psbt`, and every wallet
+checked writes it, so a signed PSBT under the newer name would reach a
+coordinator that cannot read it. The scanner accepts both.
+
+**A UR sequence keeps going past its length.** The first loop carries each
+piece once; later frames mix several pieces together, so a camera that missed
+a frame can finish from the ones after it instead of waiting for the loop to
+come round. The progress count is pieces known, not frames seen. UR carries a
+checksum of the whole transaction, so frames from two different UR transfers
+are always told apart.
+
+The rest of this section is about BBQr.
 
 Frames can arrive in any order and can be missed and picked up on the next pass.
 The scanner shows which frames it is still waiting for, by number, so you can

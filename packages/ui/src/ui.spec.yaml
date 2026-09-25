@@ -668,6 +668,26 @@ invariants:
       - packages/ui/test/wallet-screen.test.tsx::shows-no-descriptor-for-a-script-type-it-could-not-derive
       - packages/ui/test/wallet-screen.test.tsx::shows-no-addresses-from-the-branch-before-a-failed-one
 
+  - id: INV-UI-106
+    statement: >
+      A signed PSBT can be shown as UR as well as BBQr, chosen on the display
+      itself, for the signers and coordinators that read only UR. Every UR frame
+      stays inside the same density cap as BBQr, and the frames decode back to
+      the exact PSBT. Nothing but a PSBT is offered as UR.
+    tests:
+      - packages/ui/test/qr-display.test.tsx::offers-a-psbt-as-ur-frames-that-decode-back
+      - packages/ui/test/qr-display.test.tsx::offers-the-format-switch-for-a-psbt-only
+
+  - id: INV-UI-107
+    statement: >
+      The scanner reads a PSBT sent as UR, single frame or animated, joined
+      late and out of order, and hands it on as a PSBT rather than as text. A
+      UR holding anything else is refused by name.
+    tests:
+      - packages/ui/test/scan-screen.test.tsx::reads-a-psbt-sent-as-ur
+      - packages/ui/test/scan-screen.test.tsx::reads-a-single-frame-ur-as-a-psbt-not-text
+      - packages/ui/test/scan-screen.test.tsx::refuses-a-ur-that-is-not-a-psbt
+
   # --- The panel is fixed hardware --------------------------------------------
   # Held here as well as by tools/checks/check-screen-fit.mjs, which measures the real
   # layout in a browser. These tests hold the half jsdom can see.

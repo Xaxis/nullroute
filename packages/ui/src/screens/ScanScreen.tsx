@@ -1,5 +1,5 @@
 import { type ReactElement, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
-import { BbqrCollector, parseBbqrPart } from '@nullroute/core'
+import { BbqrCollector, UrDecoder, isUr, parseBbqrPart, psbtFromUr } from '@nullroute/core'
 import { Screen } from '../components/Screen.js'
 import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
@@ -27,6 +27,8 @@ import { decodeFrame } from '../lib/scanner.js'
 export type ScanResult =
   | { readonly kind: 'text'; readonly text: string }
   | { readonly kind: 'bbqr'; readonly fileType: string; readonly data: Uint8Array }
+  /** A PSBT that arrived as a UR (`crypto-psbt` or `psbt`), as binary. */
+  | { readonly kind: 'ur'; readonly type: string; readonly data: Uint8Array }
 
 export interface ScanScreenProps {
   /**
@@ -113,6 +115,7 @@ export function ScanScreen(props: ScanScreenProps): ReactElement {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const collectorRef = useRef(new BbqrCollector())
+  const urRef = useRef(new UrDecoder())
   const doneRef = useRef(false)
 
   const [status, setStatus] = useState<'starting' | 'scanning' | 'failed'>('starting')
@@ -157,6 +160,53 @@ export function ScanScreen(props: ScanScreenProps): ReactElement {
     async (text: string): Promise<void> => {
       if (doneRef.current) return
 
+      // A frame from another transfer, or the same index twice with different
+      // contents, or a full set that does not join into one document. Say so
+      // and start over rather than assembling a payload out of two.
+      const startOver = (err: unknown): void => {
+        setError((err as Error).message)
+        collectorRef.current.reset()
+        urRef.current = new UrDecoder()
+        setReceived(0)
+        setTotal(undefined)
+        setMissing([])
+      }
+
+      // UR before the BBQr check, because anything that is not a BBQr part
+      // is otherwise handed back as text, and a single-frame UR would reach
+      // the review screen as the string "UR:CRYPTO-PSBT/..." rather than a PSBT.
+      if (isUr(text)) {
+        if (collectorRef.current.received > 0) {
+          startOver(new Error('That QR code belongs to a different transfer. Start again.'))
+          return
+        }
+        let result: { readonly type: string; readonly data: Uint8Array } | undefined
+        try {
+          urRef.current.receive(text)
+          const { known, total: of } = urRef.current.progress
+          setError(null)
+          setReceived(known)
+          setTotal(of)
+          setMissing([])
+          if (urRef.current.complete === true) {
+            const ur = urRef.current.result()
+            result = { type: ur.type, data: psbtFromUr(ur) }
+          }
+        } catch (err) {
+          startOver(err)
+          return
+        }
+        if (result !== undefined) {
+          doneRef.current = true
+          onResult({ kind: 'ur', type: result.type, data: result.data })
+        }
+        return
+      }
+      if (urRef.current.type !== undefined) {
+        startOver(new Error('That QR code belongs to a different transfer. Start again.'))
+        return
+      }
+
       let isPart = true
       try {
         parseBbqrPart(text)
@@ -168,17 +218,6 @@ export function ScanScreen(props: ScanScreenProps): ReactElement {
         doneRef.current = true
         onResult({ kind: 'text', text })
         return
-      }
-
-      // A frame from another transfer, or the same index twice with different
-      // contents, or a full set that does not join into one document. Say so
-      // and start over rather than assembling a payload out of two.
-      const startOver = (err: unknown): void => {
-        setError((err as Error).message)
-        collectorRef.current.reset()
-        setReceived(0)
-        setTotal(undefined)
-        setMissing([])
       }
 
       try {

@@ -781,13 +781,16 @@ indices, which nullroute's collector would join: gap N5 in
 "Your QR **MUST** use the "alphanumeric" character encoding". Check: vector
 `bbqr-psbt.json` (mode indicator of every emitted frame).
 
-**UR is not supported.** Blockchain Commons UR (`ur:psbt`, `ur:crypto-psbt`,
-fountain-coded multipart) is not read or written by nullroute. SeedSigner
-writes PSBTs only as UR and Jade reads and writes only UR
-(`research/00-current-state.md`, 4.2), so neither shares an animated format
-with a signer that implements this section alone. Whether this profile should
-add UR as a MAY or a SHOULD is open question 2 in `research/handoff-A.md`, and
-is not decided here.
+**SP-TX-7.** A signer MAY also read and write Blockchain Commons UR
+(BCR-2020-005, multipart per BCR-2024-001). One that does MUST read a PSBT
+under both `crypto-psbt` and `psbt`, SHOULD write it as `crypto-psbt`, MUST
+refuse a part whose sequence length, message length, checksum or fragment
+length differs from the transfer in progress, and MUST NOT return a message
+whose CRC-32 does not match. The registry (BCR-2020-006) recommends writing
+`psbt`; this profile departs from it because SeedSigner and Jade read only
+`crypto-psbt` and every wallet checked writes it (`research/ur-notes.md`,
+"PSBT types"). Check: vector `spec/vectors/ur-bcr.json` (bc-ur's test suite
+and the BCR papers, pinned); nullroute INV-UR-1 to INV-UR-5.
 
 ### 6.2 nullroute conformance
 
@@ -799,6 +802,7 @@ is not decided here.
 | SP-TX-4 | Met | Writer emits `2` only (`bbqr-psbt.json`) |
 | SP-TX-5 | Met for PSBT and transaction frames | INV-QR-4 covers mismatched headers and conflicting repeats. INV-QR-10 refuses a PSBT or transaction set that does not join into exactly one (`bbqr-psbt.json`, `two-transfers-disjoint-indices`). A structural check, not a digest: other file types, and a splice that happens to parse, are not caught |
 | SP-TX-6 | Met | Every BBQr frame is drawn in QR alphanumeric mode (INV-QR-8, INV-QR-9); `bbqr-psbt.json`, both writer cases, read the mode indicator from the modules |
+| SP-TX-7 | Met | Reads `crypto-psbt` and `psbt`, writes `crypto-psbt`, and reproduces every value in `spec/vectors/ur-bcr.json` (INV-UR-1 to INV-UR-5). Stricter than the reference: dCBOR only, and a part from another transfer is refused with a message rather than dropped |
 
 ## 7. Normative dependencies
 

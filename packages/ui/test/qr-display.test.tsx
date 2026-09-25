@@ -11,8 +11,8 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { encodeQrText, joinBbqr, parseBbqrPart } from '@nullroute/core'
-import { QrDisplay, bbqrPayload } from '../src/components/QrDisplay.js'
+import { UrDecoder, encodeQrText, joinBbqr, parseBbqrPart, psbtFromUr } from '@nullroute/core'
+import { QrDisplay, bbqrPayload, qrFrames } from '../src/components/QrDisplay.js'
 
 /** What App does to a scanned P transfer before review. */
 function toBase64(bytes: Uint8Array): string {
@@ -196,5 +196,37 @@ describe('QrDisplay', () => {
     // room for, which would render nothing at all.
     rerender(<QrDisplay text={bigPayload(2000)} fileType="psbt" testId="qr" />)
     expect(screen.getByTestId('qr-count').textContent).toMatch(/^1 \//)
+  })
+
+  /**
+   * INV-UI-106. A PSBT can leave as UR, for the coordinators and signers that
+   * read nothing else. Every frame stays inside the same density cap as BBQr,
+   * and the frames decode back to the exact PSBT.
+   */
+  it('offers-a-psbt-as-ur-frames-that-decode-back', () => {
+    const text = realPsbt()
+    const binary = Uint8Array.from(atob(text), (char) => char.charCodeAt(0))
+    const frames = qrFrames(text, 'psbt', 'ur')
+    expect(frames.length).toBeGreaterThan(1)
+    for (const frame of frames) {
+      expect(frame.text.startsWith('UR:CRYPTO-PSBT/')).toBe(true)
+      expect(frame.code.version).toBeLessThanOrEqual(12)
+    }
+    const decoder = new UrDecoder()
+    for (const frame of frames) decoder.receive(frame.text)
+    expect(psbtFromUr(decoder.result())).toEqual(binary)
+
+    render(<QrDisplay text={text} fileType="psbt" testId="qr" />)
+    expect(screen.getByTestId('qr-format-bbqr').getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(screen.getByTestId('qr-format-ur'))
+    expect(screen.getByTestId('qr-format-ur').getAttribute('aria-pressed')).toBe('true')
+    expect(Number(svg('qr').getAttribute('data-frames'))).toBe(frames.length)
+  })
+
+  /** INV-UI-106. Only a PSBT is offered as UR; everything else has no switch. */
+  it('offers-the-format-switch-for-a-psbt-only', () => {
+    render(<QrDisplay text="bc1qexample" testId="qr" />)
+    expect(screen.queryByTestId('qr-format')).toBeNull()
+    expect(() => qrFrames('{}', 'json', 'ur')).toThrow(/PSBTs only/)
   })
 })

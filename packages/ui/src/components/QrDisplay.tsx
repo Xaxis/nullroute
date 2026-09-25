@@ -3,7 +3,9 @@ import {
   encodeQrAlphanumeric,
   encodeQrText,
   qrToSvgPath,
+  segmentCapacity,
   splitBbqr,
+  urFramesForPsbt,
   type QrCode,
 } from '@nullroute/core'
 
@@ -65,6 +67,20 @@ export function bbqrPayload(text: string, fileType: QrFileType): Uint8Array {
   return bytes
 }
 
+/**
+ * How a PSBT leaves: BBQr, which Sparrow, Coldcard and Nunchuk read, or UR,
+ * which SeedSigner, Jade, Keystone and Sparrow read (research/ur-notes.md).
+ */
+export type QrFormat = 'bbqr' | 'ur'
+
+/**
+ * The largest UR fragment whose frame fits the same cap as BBQr: version 12 at
+ * level M, in alphanumeric mode. 89 characters cover the worst case around the
+ * fragment: "UR:CRYPTO-PSBT/" (15), a sequence of two ten-digit numbers (22),
+ * and twice the part array's header and the Bytewords checksum (2 x 26).
+ */
+const UR_MAX_FRAGMENT = Math.floor((segmentCapacity('alphanumeric', 12, 'M') - 89) / 2)
+
 /** One frame of what the display animates, with the text it carries. */
 export interface QrFrame {
   readonly text: string
@@ -79,7 +95,18 @@ export interface QrFrame {
  * drawn bare in byte mode. Otherwise a BBQr sequence, every part in QR
  * alphanumeric mode as BBQr requires (SP-TX-6).
  */
-export function qrFrames(text: string, fileType: QrFileType): readonly QrFrame[] {
+export function qrFrames(
+  text: string,
+  fileType: QrFileType,
+  format: QrFormat = 'bbqr'
+): readonly QrFrame[] {
+  if (format === 'ur') {
+    if (fileType !== 'psbt') throw new Error('UR is offered for PSBTs only.')
+    return urFramesForPsbt(bbqrPayload(text, 'psbt'), UR_MAX_FRAGMENT).map((frame) => ({
+      text: frame,
+      code: encodeQrAlphanumeric(frame, { level: 'M' }),
+    }))
+  }
   try {
     return [{ text, code: encodeQrText(text, { level: 'M', version: 12 }) }]
   } catch {
@@ -92,6 +119,7 @@ export function qrFrames(text: string, fileType: QrFileType): readonly QrFrame[]
 
 export function QrDisplay(props: QrDisplayProps): ReactElement {
   const { text, fileType = 'unicode', interval = DEFAULT_INTERVAL, testId } = props
+  const [format, setFormat] = useState<QrFormat>('bbqr')
 
   const [frame, setFrame] = useState(0)
   const [playing, setPlaying] = useState(true)
@@ -100,12 +128,12 @@ export function QrDisplay(props: QrDisplayProps): ReactElement {
   const codes = useMemo<readonly QrCode[]>(() => {
     setError(null)
     try {
-      return qrFrames(text, fileType).map((frame) => frame.code)
+      return qrFrames(text, fileType, format).map((frame) => frame.code)
     } catch (err) {
       setError((err as Error).message)
       return []
     }
-  }, [text, fileType])
+  }, [text, fileType, format])
 
   // A new payload starts at the beginning. Without this a shorter sequence
   // would open on a frame index left over from a longer one and show nothing.
@@ -209,10 +237,36 @@ export function QrDisplay(props: QrDisplayProps): ReactElement {
         </div>
       )}
 
-      {codes.length > 1 && (
+      {fileType === 'psbt' && (
+        <div className="nr-qr__controls" data-testid="qr-format">
+          {(['bbqr', 'ur'] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              className="nr-qr__play"
+              aria-pressed={format === option}
+              onClick={() => {
+                setFormat(option)
+              }}
+              data-testid={`qr-format-${option}`}
+            >
+              {option === 'bbqr' ? 'BBQr' : 'UR'}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {codes.length > 1 && format === 'bbqr' && (
         <p className="nr-hint">
           This is a BBQr sequence. Keep the camera on it until your wallet has all {codes.length}{' '}
           frames. They can arrive in any order.
+        </p>
+      )}
+      {format === 'ur' && (
+        <p className="nr-hint">
+          {codes.length > 1
+            ? 'This is a UR sequence (crypto-psbt), for SeedSigner, Jade, Keystone and Sparrow. Keep the camera on it until your wallet says it is complete. Later frames mix earlier ones, so a missed frame does not mean waiting for the loop.'
+            : 'This is a UR (crypto-psbt), for SeedSigner, Jade, Keystone and Sparrow.'}
         </p>
       )}
     </div>

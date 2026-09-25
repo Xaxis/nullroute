@@ -1,0 +1,146 @@
+id: core.qr.ur
+version: 1
+title: UR, Blockchain Commons Uniform Resources for PSBTs
+assurance_tier: standard
+status: implemented
+
+purpose: >
+  Read and write PSBTs in the animated QR format SeedSigner, Jade, Keystone and
+  Sparrow use, beside BBQr, so this device shares a transport with signers and
+  coordinators that read nothing else. In the tree rather than as a dependency,
+  like the QR encoder, so the code that reads a PSBT off the camera and writes
+  the signed one back is inside the manifest.
+
+# What the package exports. The fountain code, Bytewords and CBOR underneath
+# are internal to it and are held by INV-UR-1 to INV-UR-3 directly.
+covers:
+  - packages/core/src/qr/ur.ts::isUr
+  - packages/core/src/qr/ur.ts::parseUr
+  - packages/core/src/qr/ur.ts::UrEncoder
+  - packages/core/src/qr/ur.ts::UrDecoder
+  - packages/core/src/qr/ur.ts::PSBT_UR_TYPE
+  - packages/core/src/qr/ur.ts::PSBT_UR_TYPES_READ
+  - packages/core/src/qr/ur.ts::psbtFromUr
+  - packages/core/src/qr/ur.ts::urFramesForPsbt
+  - packages/core/src/qr/ur-fountain.ts::UrError
+
+algorithm: >
+  A single-part UR is `ur:<type>/<body>` and a multipart one is
+  `ur:<type>/<seqNum>-<seqLen>/<part>`, where body and part are minimal
+  Bytewords (the first and last letter of each of 256 four-letter words, a
+  CRC-32 appended). The body of a PSBT is one CBOR byte string holding the
+  BIP-174 binary. A multipart part is the CBOR array [seqNum, seqLen,
+  messageLen, checksum, data], where the checksum is the CRC-32 of the whole
+  body.
+
+  The body is cut into equal fragments, the last zero padded. Parts up to
+  seqLen carry one fragment each. Past that, Xoshiro256** seeded from SHA-256
+  of the part number and the checksum draws a degree from a Walker-Vose sampler
+  over 1/i and a shuffle, and the part is the XOR of that many fragments. The
+  decoder reduces mixed parts by the ones it knows until every fragment is
+  known, joins them, truncates to messageLen, and checks the CRC-32.
+
+  This device writes `crypto-psbt` and reads `crypto-psbt` or `psbt`. The
+  registry recommends writing `psbt`; SeedSigner and Jade read only
+  `crypto-psbt`, and every wallet checked writes it (research/ur-notes.md).
+  Frames are uppercased for QR alphanumeric mode and read in any case.
+
+  Stricter than the reference in three places, each on purpose. CBOR must be
+  minimally encoded with nothing after it (dCBOR, as BCR-2020-005 asks). A
+  string with an empty path component or a padded number is refused. And a
+  part from another transfer, a part whose text and CBOR disagree about its
+  number, or a joined message whose checksum is wrong is refused with a
+  message rather than dropped, so the screen can say so and start over.
+
+invariants:
+  - id: INV-UR-1
+    statement: >
+      CRC-32, Xoshiro256**, the alias sampler, the shuffle, the degree and
+      fragment choosers, fragment length and partition agree with bc-ur's test
+      suite and the multipart paper on every listed value.
+    tests:
+      - packages/core/test/qr.ur.test.ts::matches-the-reference-crc32
+      - packages/core/test/qr.ur.test.ts::matches-the-reference-xoshiro256
+      - packages/core/test/qr.ur.test.ts::makes-the-reference-messages
+      - packages/core/test/qr.ur.test.ts::samples-shuffles-and-chooses-like-the-reference
+      - packages/core/test/qr.ur.test.ts::partitions-and-xors-like-the-reference
+
+  - id: INV-UR-2
+    statement: >
+      The Bytewords table is bc-ur's, pinned by hash; every style encodes as
+      the reference does and decodes back in any case; a bad checksum, a short
+      input and a word that only shares its ends with a real one are refused.
+    tests:
+      - packages/core/test/qr.ur.test.ts::carries-the-reference-word-table
+      - packages/core/test/qr.ur.test.ts::encodes-and-decodes-every-style
+      - packages/core/test/qr.ur.test.ts::refuses-what-the-reference-refuses
+
+  - id: INV-UR-3
+    statement: >
+      The fountain encoder's parts, the multipart UR strings and the
+      single-part URs from bc-ur and both papers are reproduced exactly, and
+      the part array is read back only when minimally encoded with nothing
+      after it.
+    tests:
+      - packages/core/test/qr.ur.test.ts::encodes-the-reference-fountain-parts
+      - packages/core/test/qr.ur.test.ts::reads-and-writes-the-part-array-strictly
+      - packages/core/test/qr.ur.test.ts::encodes-and-decodes-the-reference-single-part-urs
+      - packages/core/test/qr.ur.test.ts::encodes-the-reference-multipart-ur
+
+  - id: INV-UR-4
+    statement: >
+      A message is recovered from mixed parts alone, as bc-ur's own decoder
+      test requires. Frames from two transfers, a frame of another type, a part
+      numbered differently in its text and its CBOR, a malformed string, and a
+      message whose checksum is wrong are each refused, never merged or
+      returned (SP-TX-5).
+    tests:
+      - packages/core/test/qr.ur.test.ts::decodes-from-mixed-parts-alone
+      - packages/core/test/qr.ur.test.ts::decodes-a-multipart-ur-joined-late
+      - packages/core/test/qr.ur.test.ts::refuses-frames-from-two-transfers
+      - packages/core/test/qr.ur.test.ts::refuses-a-part-numbered-differently-inside
+      - packages/core/test/qr.ur.test.ts::refuses-malformed-ur-strings
+      - packages/core/test/qr.ur.test.ts::refuses-a-message-whose-checksum-is-wrong
+
+  - id: INV-UR-5
+    statement: >
+      A PSBT is read under either registered name, including the registry's
+      own `psbt` vector, and anything else is refused by name. A PSBT is
+      written as uppercase `crypto-psbt` frames, every character in the QR
+      alphanumeric set, that decode back to the same bytes.
+    tests:
+      - packages/core/test/qr.ur.test.ts::reads-a-psbt-under-either-registered-name
+      - packages/core/test/qr.ur.test.ts::writes-a-psbt-as-uppercase-crypto-psbt-frames
+
+vectors:
+  - name: Blockchain Commons UR, bc-ur test suite and BCR papers
+    file: spec/vectors/ur-bcr.json
+    sha256: 1191af44b1a8788da8c5378814248cf68ee34cbe1bb8b972c67ec68a2487e70f
+    source: https://github.com/BlockchainCommons/bc-ur/blob/4479fb81b2350ae8bafa042a5572b9c64c2c32ca/test/test.cpp
+
+threats:
+  - INV-UR-4
+
+security_notes: >
+  Standard tier, like BBQr. UR moves public data: the PSBT a coordinator sends
+  and the signed one this device returns, both reviewed on screen before
+  anything is signed. A frame that decodes wrongly fails its Bytewords
+  checksum, and a message that joins wrongly fails its CRC-32.
+
+  None of this is cryptography. Xoshiro256** is a deterministic generator both
+  ends run to agree on which fragments a part mixes; it produces nothing
+  secret and nothing a signature depends on. It is bit exact rather than
+  strong, which is why the reference's double that can round to exactly 1.0 is
+  reproduced rather than fixed: a fix would disagree with every other
+  implementation on which fragments to XOR.
+
+  Unlike BBQr, UR carries a checksum of the whole message, so two transfers
+  are told apart exactly rather than structurally (compare INV-QR-10).
+
+references:
+  - BCR-2020-005 Uniform Resources, BlockchainCommons/Research at e4a4fbb186e2e7625ccdf7149aec4f0a5adaf850
+  - BCR-2024-001 Multipart UR implementation guide
+  - BCR-2020-012 Bytewords
+  - BCR-2020-006 UR type registry
+  - bc-ur at 4479fb81b2350ae8bafa042a5572b9c64c2c32ca, test/test.cpp
+  - research/ur-notes.md

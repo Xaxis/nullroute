@@ -222,17 +222,16 @@ is empty. Three failures and one advisory were listed here and are fixed:
 
 ### Not met in the profile's own tables
 
-- **UR is not supported**, read or write. SeedSigner writes PSBTs only as UR and
-  Jade reads and writes only UR, so a user pairing nullroute with either has no
-  shared animated QR format. Adding UR means new parsing surface and possibly a
-  new dependency, and the decision is pending with the owner
-  ([handoff-A, open question 2](handoff-A.md#open-questions-for-the-owner)).
+None now. UR was listed here as unsupported. It is read and written in the
+tree with no new dependency (SP-TX-7, INV-UR-1 to INV-UR-5), and written as
+`crypto-psbt` rather than the registry's recommended `psbt`, because SeedSigner
+and Jade read only `crypto-psbt` ([ur-notes](ur-notes.md)).
 
 ### Open items from workstreams C and D
 
 | Item | State |
 | --- | --- |
-| SP-TX-5 cannot be fully met from BBQr frames alone | Needs a decision: validate the assembled payload, require a digest BBQr has no field for, or weaken the requirement |
+| SP-TX-5 cannot be fully met from BBQr frames alone | Decided: the assembled payload is validated structurally (INV-QR-10). A digest would need a field BBQr lacks; UR has one, so a UR transfer is told apart exactly |
 | BIP-322 variant prefix | Closed. BIP-322 1.0.0 says signers MUST prefix the signature with its variant (`smp`). nullroute now writes it and reproduces the published p2wpkh vector byte for byte, prefix included, against `bip-0322/basic-test-vectors.json` pinned in `spec/vectors/` |
 | The override path | Every vector signs with `override: false`. No case checks that a blocked transaction signs only with the override and that it does not persist (SP-REV-22) |
 | Locktime when every input is final | The review still says the transaction cannot confirm before the locktime, which is not enforced in that case. The profile does not say what to show |

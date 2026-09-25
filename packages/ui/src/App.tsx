@@ -2103,10 +2103,12 @@ export function App() {
           // to begin with (a descriptor, a JSON backup, a JSON Lines label
           // file), and base64-encoding it would hand the screen something it
           // cannot parse and the user something they cannot check.
+          // A UR is only ever read as a PSBT, so it is base64 whatever screen
+          // asked; a screen expecting something else refuses it by name.
           const text =
             result.kind === 'text'
               ? result.text.trim()
-              : stage.forStage === 'psbt'
+              : result.kind === 'ur' || stage.forStage === 'psbt'
                 ? toBase64(result.data)
                 : new TextDecoder().decode(result.data).trim()
           setStage(
