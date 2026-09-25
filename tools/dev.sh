@@ -77,7 +77,7 @@ fi
 # NOT --jitless, and the reason is measured rather than assumed.
 #
 # This used to pass --jitless "matching the production systemd unit". There is
-# no such unit, and docs/PROVISIONING.md says plainly that
+# no such unit, and provisioning/HARDENING.md says plainly that
 # MemoryDenyWriteExecute is absent because it crashes Node. So the flag was
 # matching a thing that does not exist.
 #
@@ -85,7 +85,7 @@ fi
 # and the wallet store derives its key at 64 MiB with three passes. Measured on
 # this machine: 643 ms with the JIT, 34424 ms without it. That is 53x, and on a
 # Raspberry Pi it would be minutes per unlock attempt. The claim in
-# PROVISIONING.md that jitless is "an acceptable trade for a workload that is
+# HARDENING.md that jitless is "an acceptable trade for a workload that is
 # not throughput bound" was true before there was a memory-hard KDF in the
 # daemon and is not true now.
 NULLROUTE_SOCKET="$SOCKET" node "$ROOT/packages/daemon/dist/main.js" &

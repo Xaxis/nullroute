@@ -92,8 +92,10 @@ security_notes: >
   Private material is best-effort wiped after derivation with the library's own
   wipePrivateData. That is genuinely best effort: the library holds key bytes in
   arrays this module does not own, and a managed runtime may have copied them
-  already. The real mitigations are at the system level, in no swap and a
-  short-lived process. See docs/PROVISIONING.md.
+  already. What limits a copy's life is outside this module: no swap and scratch
+  in RAM (provisioning/HARDENING.md, INV-PROV-11), and the seed disposed at lock
+  and on the idle timeout (INV-IDLE-2). The daemon process itself runs until
+  the device powers off, so it is not one of them.
 
   deriveAccountXpub returns only public material by construction rather than by
   filtering, which is why it is the function the daemon exposes toward the UI.

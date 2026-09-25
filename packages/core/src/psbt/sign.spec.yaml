@@ -178,9 +178,10 @@ security_notes: >
 
   Key material lifetime is best effort. `wipePrivateData` runs in a `finally`,
   but the signing library holds key bytes in arrays this module does not own and
-  a garbage-collected runtime makes no promises about copies. The real
-  mitigations are architectural: no swap, tmpfs only, and a short-lived process.
-  See docs/PROVISIONING.md.
+  a garbage-collected runtime makes no promises about copies. What limits them
+  is architectural: no swap and scratch in RAM (provisioning/HARDENING.md), and
+  the seed disposed at lock and on the idle timeout (INV-IDLE-2). The daemon is
+  a long-running process, so a short-lived one is not among them.
 
   The override exists because a knowledgeable user occasionally has a real
   reason to sign a SIGHASH_SINGLE input. It applies to one call, is never

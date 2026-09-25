@@ -112,4 +112,4 @@ security_notes: >
 
 references:
   - BIP-329, Wallet Labels Export Format
-  - docs/AIR-GAP.md
+  - docs/USING.md

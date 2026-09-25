@@ -195,4 +195,4 @@ security_notes: >
 references:
   - BIP-174, Partially Signed Bitcoin Transaction Format
   - BIP-67, Deterministic Key Ordering
-  - docs/FLEET.md
+  - docs/USING.md ("Multisig")

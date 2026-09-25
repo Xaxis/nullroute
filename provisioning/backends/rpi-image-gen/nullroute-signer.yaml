@@ -11,8 +11,13 @@
 # is judged by provisioning/checks/, unchanged.
 
 device:
-  # The 5 and the CM5 share this. A 4 build changes this line and nothing else,
-  # which is the whole reason the profile lists three boards rather than one.
+  # WRONG FOR THE PROFILE, AND LEFT AS WRITTEN UNTIL THIS BACKEND IS RUN. The
+  # signer profile claims raspberrypi-4 only (see `boards:` in
+  # provisioning/profiles/os-signer.yaml, and the 7 inch DSI overlay, which has
+  # nothing to attach to on a Pi 5). This line was written when the profile
+  # listed the 5 and the CM5. The upstream layer name for a Pi 4 has not been
+  # checked against rpi-image-gen, so it is not guessed here: whoever first runs
+  # this backend sets it and records where the name came from.
   layer: rpi5
 
 image:

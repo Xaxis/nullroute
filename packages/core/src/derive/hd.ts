@@ -82,7 +82,7 @@ export function deriveAccountXpub(seed: Secret, network: Network, path: string):
 
   // Wiping the private material we no longer need. The library holds it in
   // plain arrays that we do not own, so this is best effort and is not a
-  // substitute for the process-level mitigations in docs/PROVISIONING.md.
+  // substitute for the system-level ones in provisioning/HARDENING.md.
   root.wipePrivateData()
 
   return {

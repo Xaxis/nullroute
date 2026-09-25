@@ -175,8 +175,8 @@ export function signTransaction(
     }
   } finally {
     // Best effort: the library holds key bytes in arrays this module does not
-    // own. The real mitigations are no swap and a short-lived process. See
-    // docs/PROVISIONING.md.
+    // own. What limits a copy's life is no swap, scratch in RAM and the seed
+    // disposed at lock (provisioning/HARDENING.md, INV-IDLE-2).
     root.wipePrivateData()
   }
 

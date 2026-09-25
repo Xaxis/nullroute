@@ -18,12 +18,24 @@
  *   1. Every file in docs/ is registered in apps/web/lib/docs.ts.
  *   2. Every registered document points at a file that exists.
  *   3. Every file in docs/ is linked from README.md.
+ *   4. Every docs/NAME.md cited anywhere in the tracked tree exists.
+ *
+ * THE FOURTH IS THE OTHER DIRECTION, and it was missing for months. Seven
+ * documents became four in one commit, and the three that went away,
+ * docs/AIR-GAP.md, docs/FLEET.md and docs/PROVISIONING.md, stayed cited in
+ * thirty places: spec references, security comments ("the real mitigations are
+ * in docs/PROVISIONING.md"), test headers. A reader following a citation into
+ * a file that does not exist is the first thing a hostile review finds, and
+ * one of those citations was propping up a mitigation the device does not
+ * have. research/ is excluded: it is a dated record of what was found,
+ * including these files' absence.
  *
  * Deliberately NOT checked: whether a document is any good, or current. A tool
  * cannot see that. What it can see is the mechanical half, which is the half
  * that keeps failing.
  */
 
+import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -75,6 +87,37 @@ for (const doc of registered) {
   if (!existsSync(join(ROOT, doc))) {
     failures.push(`  apps/web/lib/docs.ts registers ${doc}, which does not exist`)
   }
+}
+
+// Rule 4. Tracked files only, through git, so build output and worktrees are
+// not read. Document names are upper case by this repository's convention, so
+// that is what is matched; write a placeholder in lower case, as docs/<name>.md.
+const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: ROOT, encoding: 'utf8' })
+  .split('\0')
+  .filter((file) => file !== '' && !file.startsWith('research/'))
+  .filter((file) => file !== 'tools/checks/check-docs-reachable.mjs')
+  .filter((file) => /\.(md|ts|tsx|mjs|js|yaml|yml|sh|json)$|^Makefile$/.test(file))
+const cited = new Map()
+for (const file of tracked) {
+  let text
+  try {
+    text = readFileSync(join(ROOT, file), 'utf8')
+  } catch {
+    continue
+  }
+  for (const match of text.matchAll(/docs\/([A-Z][A-Z0-9-]+)\.md/g)) {
+    const doc = `docs/${match[1] ?? ''}.md`
+    if (existsSync(join(ROOT, doc))) continue
+    cited.set(doc, [...(cited.get(doc) ?? []), file])
+  }
+}
+for (const [doc, files] of cited) {
+  const where = [...new Set(files)]
+  failures.push(
+    `  ${doc} does not exist and is cited by ${String(where.length)} file(s): ${where
+      .slice(0, 4)
+      .join(', ')}${where.length > 4 ? ', ...' : ''}`
+  )
 }
 
 if (failures.length > 0) {

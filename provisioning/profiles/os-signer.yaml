@@ -738,5 +738,6 @@ references:
   - ANSSI-BP-028 v2.0, Recommandations de configuration d'un systeme GNU/Linux
   - CIS Debian Linux Benchmark, cited by control id where genuinely applicable
   - Reproducible Builds, https://reproducible-builds.org
-  - docs/PROVISIONING.md
+  - provisioning/HARDENING.md
+  - docs/VERIFICATION.md
   - docs/THREAT-MODEL.md

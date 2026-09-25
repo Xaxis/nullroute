@@ -42,7 +42,7 @@
  * the keys were typed in; it does nothing about the descriptor STRING, which
  * still differs, and therefore about the checksum.
  *
- * That matters because docs/FLEET.md tells people to compare the eight
+ * That matters because docs/USING.md ("Multisig") tells people to compare the eight
  * characters after the `#` on every device and treat a difference as proof that
  * one of them has a different wallet. Without canonical ordering that advice
  * fires on three devices that agree perfectly, purely because somebody scanned
@@ -222,7 +222,7 @@ export function assembleQuorum(options: AssembleOptions): AssembledQuorum {
    * `48h` and one who writes `48'` assembled the same 2-of-3 into two
    * descriptors with two checksums. Measured: jjr083g6 against ywnhl0n9, and
    * 9dpw2jny again for an uppercase fingerprint. All three derive the same
-   * addresses, and docs/FLEET.md tells the user a checksum difference means a
+   * addresses, and docs/USING.md ("Multisig") tells the user a checksum difference means a
    * different wallet, so the device was manufacturing exactly the false alarm
    * the header above says this design removes.
    */

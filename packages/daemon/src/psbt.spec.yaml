@@ -101,8 +101,9 @@ security_notes: >
 
   This module holds the seed only for the duration of the derivation and wipes
   the root key in a `finally`. That is best effort in a garbage-collected
-  runtime, and the real mitigations are architectural: no swap and a short-lived
-  process. See docs/PROVISIONING.md.
+  runtime, and the real mitigations are architectural: no swap and scratch in RAM
+  (provisioning/HARDENING.md), and the seed disposed at lock and on the idle
+  timeout (INV-IDLE-2). The daemon itself is long-running.
 
   Nothing here validates the transaction. Amounts, fees and sighash policy are
   review's job, and keeping ownership separate from policy means neither can

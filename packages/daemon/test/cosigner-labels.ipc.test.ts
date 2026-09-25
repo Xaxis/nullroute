@@ -216,7 +216,7 @@ describe('multisig.labelCosigner', () => {
  * Tests for forgetting a quorum.
  *
  * A quorum registered by mistake was permanent, which is a strange property for
- * the step docs/FLEET.md calls the dangerous one.
+ * the step docs/USING.md ("Multisig") calls the dangerous one.
  */
 describe('multisig.forget', () => {
   const DESCRIPTOR = 'wsh(sortedmulti(2,a,b,c))#checksum'

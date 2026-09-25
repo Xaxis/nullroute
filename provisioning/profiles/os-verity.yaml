@@ -82,5 +82,6 @@ assertions:
 references:
   - cryptsetup, veritysetup(8)
   - Linux kernel, Documentation/admin-guide/device-mapper/verity.rst
-  - docs/PROVISIONING.md
+  - provisioning/HARDENING.md
+  - docs/VERIFICATION.md
   - docs/THREAT-MODEL.md

@@ -16,7 +16,7 @@
  * stretches a passphrase with Argon2id in pure JavaScript, which an interpreter
  * with no JIT runs about fifty times slower: 643 ms against 34.4 seconds at the
  * shipped parameters, on hardware faster than a Pi. Turning the JIT off would
- * make unlocking take minutes. See docs/PROVISIONING.md.
+ * make unlocking take minutes. See provisioning/HARDENING.md.
  */
 
 import { readFileSync } from 'node:fs'

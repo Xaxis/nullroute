@@ -43,7 +43,7 @@ security_notes: >
   layer that opened several together would trade that away for organisation.
 
 references:
-  - docs/FLEET.md
+  - docs/USING.md ("Multisig")
 
 invariants:
   - id: INV-IDENT-1

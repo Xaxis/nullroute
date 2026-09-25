@@ -374,7 +374,7 @@ build-app: ## Production build of the device UI
 # machine, and a better one than a borrowed VM: a stranger reproduces it from a
 # digest rather than from a description of somebody's laptop.
 #
-# arm64 on purpose. The target is a Raspberry Pi 5 and cross-building a rootfs
+# arm64 on purpose. The target is a Raspberry Pi 4 and cross-building a rootfs
 # is a different exercise with different failure modes; on Apple silicon this
 # runs natively.
 IMAGE_ENV := nullroute-build:local

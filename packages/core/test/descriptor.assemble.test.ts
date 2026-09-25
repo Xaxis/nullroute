@@ -80,7 +80,7 @@ describe('core.descriptor.assemble', () => {
    * This is separate from sortedmulti and was found by writing the test above.
    * Sorting at derivation makes the addresses agree; it does nothing about the
    * descriptor text, which still differs, and therefore nothing about the
-   * checksum. docs/FLEET.md tells people to compare those eight characters
+   * checksum. docs/USING.md ("Multisig") tells people to compare those eight characters
    * across devices and treat a difference as proof that one has a different
    * wallet. Without this, that advice fires on three devices that agree
    * perfectly, purely because somebody scanned the keys in a different
@@ -226,7 +226,7 @@ describe('core.descriptor.assemble', () => {
    * typed it, so three co-signers who spell their paths differently got
    * jjr083g6, ywnhl0n9 and 9dpw2jny for one wallet.
    *
-   * That is not a cosmetic difference. docs/FLEET.md tells the user to treat a
+   * That is not a cosmetic difference. docs/USING.md ("Multisig") tells the user to treat a
    * checksum difference as proof of a different wallet and to stop, which is
    * the right instruction and the reason this had to be wrong in the direction
    * of a false alarm rather than a false match.

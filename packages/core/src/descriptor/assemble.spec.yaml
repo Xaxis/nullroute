@@ -41,7 +41,7 @@ security_notes: >
   recognises its own change.
 
   Canonical written order is a security property rather than tidiness.
-  docs/FLEET.md instructs people to compare the eight checksum characters across
+  docs/USING.md ("Multisig") instructs people to compare the eight checksum characters across
   devices and treat a difference as proof that one has a different wallet.
   Without it, that check fires on three devices that agree perfectly because
   somebody scanned the keys in a different sequence, and a check that cries wolf
@@ -51,7 +51,7 @@ security_notes: >
 references:
   - https://github.com/bitcoin/bips/blob/master/bip-0067.mediawiki
   - https://github.com/bitcoin/bips/blob/master/bip-0380.mediawiki
-  - docs/FLEET.md
+  - docs/USING.md ("Multisig")
 
 invariants:
   - id: INV-ASM-1

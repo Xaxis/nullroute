@@ -27,7 +27,7 @@
  * rather than from entropy costs nothing, because the salt's job in dm-verity
  * is domain separation between images rather than unpredictability. Anyone who
  * thinks a predictable salt is a weakness here should read
- * `docs/PROVISIONING.md`: the root hash is published, the image is public, and
+ * `docs/VERIFICATION.md` ("Verifying an image"): the root hash is compared, the image is public, and
  * there is nothing for a salt to hide.
  */
 

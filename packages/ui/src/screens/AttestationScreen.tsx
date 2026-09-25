@@ -28,7 +28,7 @@ import { judge } from '../lib/verdict.js'
  * screen uses: these numbers are reported by the software you are looking at.
  * They catch an accident or a crude substitution. They do not catch an attacker
  * who replaced the code that draws them, which is the whole subject of the tier
- * model in docs/PROVISIONING.md.
+ * model in docs/VERIFICATION.md ("The three tiers").
  */
 
 export interface AttestationScreenProps {

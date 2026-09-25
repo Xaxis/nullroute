@@ -56,7 +56,7 @@ function rehypeRepoLinks(publishedSlugs: ReadonlySet<string>) {
       const href = node.properties.href
       if (typeof href !== 'string') return
 
-      // docs/FOO.md and ../SECURITY.md style links.
+      // docs/<name>.md and ../SECURITY.md style links.
       const docMatch = /^(?:\.\.\/)?(docs\/)?([A-Z][A-Z0-9-]*)\.md(#.*)?$/.exec(href)
       if (docMatch) {
         const [, inDocs, name, fragment] = docMatch

@@ -773,7 +773,7 @@ function standardPrefix(extended: string): string {
  * assembleQuorum did not use it. It sorted the keys canonically and then wrote
  * each one out as the user had TYPED it, so the same 2-of-3 assembled on three
  * devices produced three descriptors and three checksums: jjr083g6, ywnhl0n9
- * and 9dpw2jny, measured. docs/FLEET.md tells people a checksum difference
+ * and 9dpw2jny, measured. docs/USING.md ("Multisig") tells people a checksum difference
  * means a different wallet, so two co-signers who spell their paths differently
  * are told to stop, and they are looking at the same wallet.
  *
@@ -797,7 +797,7 @@ export function canonicalKeyExpression(text: string): string {
   const typed = key.kind === 'extended' ? key.xpub : key.hex
   // THE STANDARD PREFIX, not the one typed. The same three keys assembled
   // with one written as Zpub gave a different checksum from the same keys as
-  // xpub, while deriving the same addresses, and docs/FLEET.md tells a user
+  // xpub, while deriving the same addresses, and docs/USING.md ("Multisig") tells a user
   // that a checksum difference means a different wallet. It also produced a
   // descriptor Bitcoin Core refuses to import.
   const material = key.kind === 'extended' ? standardPrefix(typed) : typed

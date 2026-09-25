@@ -398,7 +398,7 @@ jobs:
           cache: npm
       - run: npm ci
 
-      # arm64 on purpose: the target is a Raspberry Pi 5, and cross-building a
+      # arm64 on purpose: the target is a Raspberry Pi 4, and cross-building a
       # rootfs is a different exercise with different failure modes. The runner
       # is x86_64, so the arm64 container needs binfmt.
       - uses: docker/setup-qemu-action@v3

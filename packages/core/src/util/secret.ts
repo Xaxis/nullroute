@@ -32,8 +32,10 @@
  *     they can do that while the process is live, the secret is in use and
  *     therefore in memory regardless.
  *
- * The mitigation for the first point is at the system level, not here: no swap,
- * tmpfs for scratch, and a short-lived process. See docs/PROVISIONING.md.
+ * The mitigation for the first point is at the system level, not here: no swap
+ * and tmpfs for scratch (provisioning/HARDENING.md), and the seed disposed at
+ * lock and on the idle timeout (INV-IDLE-2). The daemon runs until power-off,
+ * so a short-lived process is not one of them.
  */
 
 import { clean } from '@noble/hashes/utils.js'
