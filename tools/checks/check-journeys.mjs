@@ -53,11 +53,17 @@ import {
 import { tmpdir } from 'node:os'
 import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import * as btc from '@scure/btc-signer'
-import { base64, hex } from '@scure/base'
+import { createRequire } from 'node:module'
 import { chromeBinary, finish, reap, waitForDebugEndpoint, freePort } from '../lib/browser.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
+
+// Resolved from packages/core, which declares both, rather than from the root,
+// which declares neither and found them only because npm hoisted them there.
+// tools/checks/check-backends.mjs lost `yaml` exactly that way.
+const fromCore = createRequire(join(ROOT, 'packages/core/package.json'))
+const btc = fromCore('@scure/btc-signer')
+const { base64, hex } = fromCore('@scure/base')
 const DIST = join(ROOT, 'packages/ui/dist-app')
 const DAEMON = join(ROOT, 'packages/daemon/dist/main.js')
 

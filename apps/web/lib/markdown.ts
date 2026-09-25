@@ -69,7 +69,7 @@ function rehypeRepoLinks(publishedSlugs: ReadonlySet<string>) {
         // heading in the markdown, and GitHub's own slugs are its business.
         node.properties.href = repoBlobUrl(`${inDocs ?? ''}${name ?? ''}.md`)
         node.properties.target = '_blank'
-        node.properties.rel = 'noopener noreferrer'
+        node.properties.rel = ['noopener', 'noreferrer']
         return
       }
       // Any other file above docs/, such as ../research/pi-boards.md. The site
@@ -80,12 +80,12 @@ function rehypeRepoLinks(publishedSlugs: ReadonlySet<string>) {
       if (repoMatch) {
         node.properties.href = repoBlobUrl(repoMatch[1] ?? '')
         node.properties.target = '_blank'
-        node.properties.rel = 'noopener noreferrer'
+        node.properties.rel = ['noopener', 'noreferrer']
         return
       }
       if (href.startsWith('http')) {
         node.properties.target = '_blank'
-        node.properties.rel = 'noopener noreferrer'
+        node.properties.rel = ['noopener', 'noreferrer']
       }
     })
   }

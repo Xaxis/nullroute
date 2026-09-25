@@ -40,9 +40,18 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { parse } from 'yaml'
+import { createRequire } from 'node:module'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
+
+// js-yaml with the spec system's hardened options, resolved from packages/verify
+// where it is declared. This imported `yaml`, which no package.json here names
+// (it arrived only as an optional peer of vite, and a dependency bump removed
+// it) and which packages/verify/src/specs.ts rejects on purpose: it resolves an
+// unknown tag to its value with a warning, where js-yaml refuses the file.
+const { load, JSON_SCHEMA } = createRequire(join(ROOT, 'packages/verify/package.json'))('js-yaml')
+const parse = (text) =>
+  load(text, { schema: JSON_SCHEMA, maxAliases: 0, maxDepth: 20, json: false })
 const BACKENDS = join(ROOT, 'provisioning/backends')
 const PROFILES = join(ROOT, 'provisioning/profiles')
 
