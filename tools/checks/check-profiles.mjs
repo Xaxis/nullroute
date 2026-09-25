@@ -367,8 +367,10 @@ for (const where of DOCS) {
   }
 }
 
-// Debian trixie's 6.12 kernel ships these four and no more, which is the same
-// fact that took raspberrypi-cm5 out of `boards:`.
+// The Pi device trees this project has a board id for. The pinned 6.12.94
+// kernel also ships five bcm2837 trees (Pi 3, Zero 2 W, CM3), which go in here
+// with their board ids when one is brought up. It ships no CM5 tree, which is
+// the fact that took raspberrypi-cm5 out of `boards:`.
 const BOARD_DTB = {
   'raspberrypi-4': 'bcm2711-rpi-4-b.dtb',
   'raspberrypi-400': 'bcm2711-rpi-400.dtb',

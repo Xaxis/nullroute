@@ -72,6 +72,17 @@ function rehypeRepoLinks(publishedSlugs: ReadonlySet<string>) {
         node.properties.rel = 'noopener noreferrer'
         return
       }
+      // Any other file above docs/, such as ../research/pi-boards.md. The site
+      // publishes none of these, so a relative link would resolve against the
+      // page URL and 404. The file is on GitHub; the anchor goes the same way
+      // as above.
+      const repoMatch = /^\.\.\/([\w./-]+?)(#.*)?$/.exec(href)
+      if (repoMatch) {
+        node.properties.href = repoBlobUrl(repoMatch[1] ?? '')
+        node.properties.target = '_blank'
+        node.properties.rel = 'noopener noreferrer'
+        return
+      }
       if (href.startsWith('http')) {
         node.properties.target = '_blank'
         node.properties.rel = 'noopener noreferrer'

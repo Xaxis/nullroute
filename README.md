@@ -99,6 +99,14 @@ The full procedure, written for someone who does not trust this project, is in
 
 ## What you need to build one
 
+The design needs capabilities, not one model: a 64-bit Raspberry Pi, enough
+memory for Argon2id and a browser with no swap, an 800x480 touchscreen, and a
+camera the kernel has a driver for. The card built today targets the Pi 4 and
+the official 7 inch panel, because that is the board whose device tree in the
+pinned Debian kernel describes both the display and the SoC. Other boards follow
+as each one is brought up and boots this image;
+[research/pi-boards.md](research/pi-boards.md) says what each one needs first.
+
 Roughly $100 to $120.
 
 | Part | What to get | Notes |
@@ -107,7 +115,7 @@ Roughly $100 to $120.
 | Screen | Official Raspberry Pi 7 inch touchscreen | The DSI panel. Every screen is measured at exactly 800x480 and no other size. |
 | Storage | 16GB+ A2 SD card | The image is about 1.6GB. |
 | Dice | One d6 | Casino grade if you care. Any die works. |
-| Camera | Pi Camera Module 3 | How transactions reach the device today. Without one it can still show codes, but receives nothing: an SD card transport is planned and not built. |
+| Camera | Pi Camera Module 3, or a USB webcam | How transactions reach the device. The pinned Debian kernel has no driver for the Camera Module 3's sensor, so on the card a USB (UVC) camera is the path with a driver; which camera the first Pi 4 boot uses is part of bring-up. Without a camera it can still show codes, but receives nothing: an SD card transport is planned and not built. |
 | Case, PSU | Anything, official PSU | An underpowered supply causes strange slowness. |
 
 You do **not** need a network connection on the device, ever. That is the point.

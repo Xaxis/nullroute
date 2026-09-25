@@ -66,14 +66,14 @@ Compute the root hash:
 
 ```console
 $ sha256sum MANIFEST.lock
-84cb9ec2f51aebfb3456231ce70ed6e989c9b64fb9e9cf25224de1caf9049fa3  MANIFEST.lock
+cf02570ceeece31e6489104eabbe3afbd94a78d455c4c085a2906085994e3396  MANIFEST.lock
 ```
 
 Regenerate the manifest from scratch and confirm it matches what is committed:
 
 ```console
 $ git ls-files -z packages spec provisioning | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum
-84cb9ec2f51aebfb3456231ce70ed6e989c9b64fb9e9cf25224de1caf9049fa3  -
+cf02570ceeece31e6489104eabbe3afbd94a78d455c4c085a2906085994e3396  -
 ```
 
 On macOS use `shasum -a 256` in place of `sha256sum`. The values are identical.
@@ -353,13 +353,19 @@ end: the image has to be something a stranger can check.
 
 ### Hardware
 
+The design asks for capabilities rather than a model: arm64, enough memory for
+Argon2id at the shipped cost plus a Chromium kiosk with no swap, an 800x480
+touchscreen and a camera. The image built today targets the board below, and
+other boards follow as each boots it. What each one needs first is in
+[research/pi-boards.md](../research/pi-boards.md).
+
 Target build is under $120.
 
 | Part | Choice | Notes |
 | --- | --- | --- |
 | Board | Raspberry Pi 4 (4GB) | The only board this image supports, and the only device tree on the card. |
 | Display | Official Raspberry Pi 7 inch touchscreen | The DSI panel, described by `provisioning/build/overlays/nullroute-7inch-dsi.dts`. INV-PROV-25 says config.txt names the overlay, INV-PROV-26 says the overlay is on the card and is a device tree blob, and the build refuses to finish unless merging it into this image's `bcm2711-rpi-4-b.dtb` leaves `dsi@7e700000` enabled with the panel and its touch controller present. Whether the panel lights up is answered only by a boot with it attached. Every screen is measured at exactly 800x480 and no other size. |
-| Camera | Pi Camera Module 3 | Optional. Without it, use SD card transport and build in camera-less mode. |
+| Camera | Pi Camera Module 3, or a USB webcam | The pinned kernel (`linux-image-6.12.94+deb13-arm64`) builds no IMX708 sensor driver, since it is not in mainline, and leaves the Pi 4's CSI receiver (`VIDEO_BCM2835_UNICAM`) unset, so on the card only a USB (UVC) camera has a driver. Which one the first boot uses is part of bring-up. Without a camera the device shows codes and receives nothing: an SD card transport is planned and not built. |
 | Storage | 16GB+ SD card, A2 class | The image is small; the class rating matters for Argon2id-adjacent I/O, not capacity. |
 | Case | Any | Consider one that makes tampering visible rather than one that looks nice. |
 | Power | Official PSU | An underpowered supply causes undervoltage throttling, which shows up as inexplicable slowness. |

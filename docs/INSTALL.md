@@ -12,6 +12,11 @@ is on the card and gets its first run on a Pi 4, and so does the kiosk
 browser's display. If you flash a card now, use a spare and expect to be part of
 that bring-up.
 
+The Pi 4 is where bring-up starts, not a limit of the design. The device needs a
+64-bit Pi with enough memory, an 800x480 touchscreen and a camera, and the card
+built today carries the device tree and panel overlay for a Pi 4 with the
+official 7 inch panel. Other boards are added once the image boots on them.
+
 | What you can do | State |
 | --- | --- |
 | Run the whole device on your computer | Works today. `make dev`. |

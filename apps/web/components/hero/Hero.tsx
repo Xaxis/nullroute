@@ -70,7 +70,7 @@ export function Hero({ facts }: { facts: Facts }) {
                 specification system before it had said what a person does
                 with the thing. */}
             <p className="text-lg sm:text-xl text-ink-300 leading-relaxed">
-              A Raspberry Pi 4 and its 7 inch touchscreen, turned into a Bitcoin signing device with
+              A Raspberry Pi and an 800x480 touchscreen, turned into a Bitcoin signing device with
               no network of any kind. You roll dice for the seed, carry transactions across the gap
               by camera, read each one on the device&rsquo;s own screen, and sign offline.
             </p>
@@ -138,7 +138,7 @@ export function Hero({ facts }: { facts: Facts }) {
             <figure className="m-0 rounded-lg border border-ink-800 bg-ink-950 overflow-hidden">
               <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-4 py-2.5 border-b border-ink-800 font-mono text-[0.7rem] uppercase tracking-[0.16em]">
                 <span className="text-ink-300">On the device</span>
-                <span className="text-ink-500">Raspberry Pi 4 &middot; 7 inch touchscreen</span>
+                <span className="text-ink-500">800x480 touchscreen &middot; Pi 4 first</span>
               </div>
               <img
                 src="/device/lock.png"

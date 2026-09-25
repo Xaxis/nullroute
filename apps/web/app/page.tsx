@@ -255,10 +255,12 @@ export default function HomePage() {
 
           <p className="mt-5 text-base text-ink-400 max-w-2xl leading-relaxed">
             There is no download: you build it, which is the point. It runs on a Mac or a Linux box
-            today, and the device is a Pi 4 and the official 7 inch touchscreen, about $100 in
-            parts. A wallet here is a BIP-39 mnemonic and a canonical BIP-380 descriptor, so Bitcoin
-            Core restores it with none of this code involved. The most valuable thing you can do
-            with it is find where it is wrong.
+            today. The device needs a 64-bit Raspberry Pi with enough memory, an 800x480 touchscreen
+            and a camera. The card built today targets a Pi 4 and the official 7 inch touchscreen,
+            about $100 in parts, and other boards follow as each one is brought up. A wallet here is
+            a BIP-39 mnemonic and a canonical BIP-380 descriptor, so Bitcoin Core restores it with
+            none of this code involved. The most valuable thing you can do with it is find where it
+            is wrong.
           </p>
 
           <div className="mt-9 divide-y divide-ink-850 border-y border-ink-850">
