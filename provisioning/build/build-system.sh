@@ -680,6 +680,13 @@ if [ "${NULLROUTE_EXPORT_ROOTFS:-0}" = "1" ]; then
   # defect. INV-PROV-24's verifier detects it and says it cannot answer.
   setuid_count=$(find "$OUT/rootfs" -perm -4000 2>/dev/null | wc -l | tr -d ' ')
   echo "  rootfs exported  $OUT/rootfs (without /dev, ${setuid_count} setuid files preserved)"
+elif [ -d "$OUT/rootfs" ]; then
+  # A tree exported by an earlier build would sit beside this image and answer
+  # `make verify-image ROOT=` for it. It did: an export from 14 September was
+  # checked in place of a 25 September image, and failed camera assertions that
+  # image passes. No tree is better than a tree from a different build.
+  rm -rf "$OUT/rootfs"
+  echo "  rootfs removed   $OUT/rootfs was from an earlier build; set NULLROUTE_EXPORT_ROOTFS=1 to export this one"
 fi
 
 echo "  system image     $(wc -c < "$OUT/system.erofs") bytes"
