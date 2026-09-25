@@ -62,8 +62,8 @@ f4517f2446bab96d0a16e82d88cf38cb3af31675f4bf58c60ae46340929382a8  packages/core/
 3d62409167620be42228632cc7dbb2767bde3d232832f6e1579c3fca8b273cc9  packages/core/src/psbt/review.ts
 3dc24df8fa7b21767547139c4eb05def335704d5e15361c3029d65264dc2ac6c  packages/core/src/psbt/sign.spec.yaml
 fb689fe7da7f09d4d79f2269c78c89f42c23ea64c658fadde629dac7f874e98f  packages/core/src/psbt/sign.ts
-1703fa22ca407b8d9d34c37f7750d0ee1d7e487909b860995c981702d8fc9f00  packages/core/src/qr/bbqr.spec.yaml
-c6f3b6d799a09bb6ac3ace69dec7563c783835ba3db247c31658d4e5e3c4e477  packages/core/src/qr/bbqr.ts
+636f7c00b7971687a0a2091a8fc673d275c15cf6117866fdabb71170a08f2d4a  packages/core/src/qr/bbqr.spec.yaml
+ff77362a92fecc4bf93718ca2ae6bc5e6449028431b2cb90f605710939fc162a  packages/core/src/qr/bbqr.ts
 cd43469d23e5aad39e815da726b1fa49ca318cb43dda2a611ef48b72b6a81c33  packages/core/src/qr/encode.spec.yaml
 796bc6c0e0877a5662d21a5a3aa9b15b4455fbea9e5326315942f2194fe665e5  packages/core/src/qr/encode.ts
 a8eb200f83120884fc26e6c5427547ed6f473bc9cb04d9c75aca0f3d5e845380  packages/core/src/qr/index.ts
@@ -104,7 +104,7 @@ cd62679334ae3c88bc5e174707b0f4e6c7f45cf787be5064e13949a89a287c7b  packages/core/
 52601fc9c1456060174f8df9234bc23789f4ca71baad2f5d26e9f5621e261d9c  packages/core/test/psbt.review.test.ts
 713f8a44748fdedf03c17b9bb9a8afd12dc02bebfc3baa5ccc56821ac6fd7a46  packages/core/test/psbt.sign.taproot.test.ts
 ebee2b01962508fe470d2f47dd19afa26155e37d553f27206e2b607f93e1e248  packages/core/test/psbt.sign.test.ts
-1970e7034d403d7faa18b37aad4dfe2502ea2337a11576ef11e66485277afb98  packages/core/test/qr.bbqr.test.ts
+f3a10670cd012c0bb38b6b5fbc202b332d98bcfed107ec0fd9ba36b8e0c15ad4  packages/core/test/qr.bbqr.test.ts
 01098d2986d7bd3f9c664eae1c054008a352e15c6410ee08e7497ac5b923f099  packages/core/test/qr.encode.test.ts
 e9c0e584017e984efe6e76d45d23134e78d039cfac6ac7d57d92ec3efd487cd0  packages/core/test/qr.ur.test.ts
 52953f842310f89402ba92d03ba5dee48d7cb6d670ff1fc2de94eea42d98d9dc  packages/core/test/util.secret.test.ts

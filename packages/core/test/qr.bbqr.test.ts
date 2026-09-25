@@ -374,4 +374,31 @@ describe('core.qr.bbqr', () => {
     const mixed = [...a.slice(0, half), ...b.slice(half)].map((part) => part.text)
     await expect(joinBbqr(mixed)).rejects.toThrow(/do not join into one transaction/)
   })
+
+  /**
+   * INV-QR-11. A compressed transfer cannot inflate past what any screen here
+   * reads. Five megabytes of zeros deflates to a few kilobytes, a handful of
+   * frames, and used to inflate in full before anything looked at its size.
+   */
+  it('refuses-a-compressed-transfer-that-inflates-past-the-cap', async () => {
+    const bomb = new Uint8Array(5 * 1024 * 1024)
+    const source = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(bomb)
+        controller.close()
+      },
+    })
+    const reader = source.pipeThrough<Uint8Array>(new CompressionStream('deflate-raw')).getReader()
+    const chunks: Uint8Array[] = []
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      chunks.push(value)
+    }
+    const deflated = new Uint8Array(Buffer.concat(chunks.map((c) => Buffer.from(c))))
+    expect(deflated.length).toBeLessThan(20_000)
+    await expect(joinBbqr([`B$ZB0100${base32nopad.encode(deflated)}`])).rejects.toThrow(
+      /larger than/
+    )
+  })
 })

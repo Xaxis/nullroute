@@ -113,6 +113,17 @@ invariants:
       - packages/core/test/qr.bbqr.test.ts::refuses-a-transaction-joined-from-two-transfers
       - packages/ui/test/scan-screen.test.tsx::says-so-when-a-full-set-does-not-join-and-starts-over
 
+  - id: INV-QR-11
+    statement: >
+      A compressed (`Z`) transfer that inflates past 4 MiB, the daemon's own
+      request cap and more than any screen here reads, is refused while it
+      streams, so the cap is the most that is ever held. Deflate compresses a
+      run about a thousand to one; a few frames could otherwise expand to
+      gigabytes.
+    tests:
+      - packages/core/test/qr.bbqr.test.ts::refuses-a-compressed-transfer-that-inflates-past-the-cap
+      - packages/core/test/qr.bbqr.test.ts::reads-compressed-parts-it-does-not-write
+
 vectors:
   - name: Signer profile SP-TX-2 to SP-TX-6, BBQr PSBT transport
     file: spec/vectors/signer-profile/bbqr-psbt.json
@@ -121,6 +132,7 @@ vectors:
 
 threats:
   - INV-QR-4
+  - INV-QR-11
 
 security_notes: >
   The dangerous failure here is not a corrupt payload, which the QR error

@@ -76,6 +76,16 @@ export class BbqrError extends Error {
  */
 export const MAX_PARTS = 1295
 
+/**
+ * The most a `Z` transfer may inflate to. Deflate compresses runs about a
+ * thousand to one, so a handful of frames could otherwise expand to gigabytes
+ * on a board with one. 4 MiB is the daemon's own request cap
+ * (MAX_REQUEST_BYTES in packages/daemon/src/ipc/socket.ts): nothing larger
+ * could be handed on anyway, and every screen that reads a transfer caps
+ * lower, a PSBT or a label file at 1,000,000 bytes.
+ */
+export const MAX_INFLATED_BYTES = 4 * 1024 * 1024
+
 const MAGIC = 'B$'
 const HEADER_LENGTH = 8
 
@@ -418,8 +428,16 @@ async function inflateRaw(data: Uint8Array): Promise<Uint8Array> {
     for (;;) {
       const { done, value } = await reader.read()
       if (done) break
-      chunks.push(value)
       length += value.length
+      // Counted as it streams, so the cap is what is ever held (INV-QR-11).
+      if (length > MAX_INFLATED_BYTES) {
+        await reader.cancel()
+        throw new BbqrError(
+          `Those compressed QR codes inflate to larger than ${String(MAX_INFLATED_BYTES)} bytes, ` +
+            'more than anything this device reads. Refused before inflating the rest.'
+        )
+      }
+      chunks.push(value)
     }
     const out = new Uint8Array(length)
     let offset = 0
@@ -429,6 +447,7 @@ async function inflateRaw(data: Uint8Array): Promise<Uint8Array> {
     }
     return out
   } catch (err) {
+    if (err instanceof BbqrError) throw err
     throw new BbqrError(`Those compressed QR codes did not decompress: ${(err as Error).message}`)
   }
 }
