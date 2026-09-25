@@ -71,6 +71,7 @@ invariants:
       - packages/core/test/differential.test.ts::agrees-byte-for-byte-on-every-p2wpkh-signature
       - packages/core/test/vectors.bip340.test.ts::reproduces-the-zero-aux-rand-vectors-with-the-devices-own-constant
       - packages/core/test/vectors.bip341.test.ts::signs-every-published-key-path-input-with-zero-aux-rand
+      - packages/core/test/vectors.bip143.test.ts::signs-every-published-bip143-signature-with-rfc6979
 
   - id: INV-SIG-2
     statement: >
@@ -138,6 +139,42 @@ invariants:
       - packages/core/test/vectors.bip174.test.ts::reproduces-both-published-signer-steps
       - packages/core/test/vectors.bip174.test.ts::signs-nothing-on-an-input-the-bip-says-a-signer-must-refuse
 
+  - id: INV-SIG-9
+    statement: >
+      For all 14 sighashes in the BIP-143 worked examples, the segwit v0
+      sighash call every ECDSA signing path makes (preimageWitnessV0 in
+      @scure/btc-signer) returns the published hash byte for byte, across all
+      six hash types, out-of-range SIGHASH_SINGLE and both OP_CODESEPARATOR
+      scripts; the published input swap leaves both SINGLE|ANYONECANPAY hashes
+      unchanged. The ECDSA primitive (secp256k1.sign in @noble/curves, prehash
+      false) reproduces all 12 published signatures that come with a key, DER
+      and hash type byte, which shows they are RFC 6979 signatures. The 3
+      published signatures without a key are verified. The call is given the
+      BIP's scriptCode, so OP_CODESEPARATOR is checked as arithmetic on a script
+      already cut, not as script execution.
+    tests:
+      - packages/core/test/vectors.bip143.test.ts::reads-every-published-bip143-example
+      - packages/core/test/vectors.bip143.test.ts::computes-every-published-bip143-sighash
+      - packages/core/test/vectors.bip143.test.ts::gives-the-same-hash-after-the-published-input-swap
+      - packages/core/test/vectors.bip143.test.ts::signs-every-published-bip143-signature-with-rfc6979
+      - packages/core/test/vectors.bip143.test.ts::verifies-the-published-signatures-that-come-without-a-key
+
+  - id: INV-SIG-10
+    statement: >
+      For every BIP-143 input whose script nullroute can own, p2wpkh, sh(wpkh)
+      and the sh(wsh(multi)) 6-of-6, a PSBT carried through parsePsbt and signed
+      with the call signTransaction makes (Transaction.sign with the allowed
+      sighash list it passes, and AUX_RAND) produces the published signature
+      byte for byte: 8 signatures across all six hash types. The sh(wpkh) input
+      then finalises to the published signed transaction. The same call signs
+      nothing for either key of the published OP_CODESEPARATOR script. The
+      examples give raw keys rather than a seed, so the seed derivation in
+      signTransaction is not part of this check.
+    tests:
+      - packages/core/test/vectors.bip143.test.ts::signs-the-published-single-key-inputs-through-the-signing-call
+      - packages/core/test/vectors.bip143.test.ts::signs-every-published-multisig-hash-type-through-the-signing-call
+      - packages/core/test/vectors.bip143.test.ts::signs-nothing-for-the-published-codeseparator-script
+
 vectors:
   - name: BIP-340 test vectors
     file: spec/vectors/bip340-test-vectors.csv
@@ -151,6 +188,10 @@ vectors:
     file: spec/vectors/bip174-psbt.json
     sha256: cc13f846f8a81bfab738d43d985e14547b4cc3ad57766e430e880578406ce911
     source: https://github.com/bitcoin/bips/blob/d1d2042c857f337c147785c1d02cfd9f9d3c84fb/bip-0174.mediawiki
+  - name: BIP-143 worked examples, extracted from the BIP text
+    file: spec/vectors/bip143-sighash.json
+    sha256: 463d6f8dbcfa85fe8b281e75a41786406b14f1aebbe37a79fc7e300d40307ea4
+    source: https://github.com/bitcoin/bips/blob/d1d2042c857f337c147785c1d02cfd9f9d3c84fb/bip-0143.mediawiki
 
 threats:
   - INV-SIG-1
@@ -193,4 +234,5 @@ references:
   - BIP-340, Schnorr Signatures for secp256k1
   - BIP-341, Taproot SegWit version 1 spending rules
   - BIP-174, Partially Signed Bitcoin Transaction Format
+  - BIP-143, Transaction Signature Verification for Version 0 Witness Program
   - docs/THREAT-MODEL.md

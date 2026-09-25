@@ -166,7 +166,7 @@ means values copied into a test; **none** means no published value is checked.
 | 86 | Keys, internal and output keys, three addresses | Vendored: the three addresses | Keys, internal key, output key, scriptPubKey |
 | 125 | No | Not applicable | |
 | 129 | Four modes | None; own BSMS strings | All |
-| 143 | Five worked sighashes | None | All |
+| 143 | Five example sections: 7 transactions, 14 sighashes with preimages, 15 signatures | Vendored as an extraction (`spec/vectors/bip143-sighash.json`, bips `d1d2042c`, by `tools/extract-bip143-vectors.mjs`): all 14 sighashes through `preimageWitnessV0`, and the input swap; the 12 keyed signatures through `secp256k1.sign`, the 3 unkeyed ones verified (INV-SIG-9); the 8 p2wpkh, sh(wpkh) and sh(wsh(multi)) signatures through `parsePsbt` and `Transaction.sign`, and the sh(wpkh) signed transaction reproduced (INV-SIG-10) | The preimages and intermediate hashes, which the library does not expose (each is checked only to hash to the published sighash); OP_CODESEPARATOR execution, since the call is handed the BIP's cut scriptCode; the legacy P2PK inputs and the other signed transactions |
 | 173, 350 | Valid and invalid strings and addresses | None (one BIP-173 address appears only as a stranger's address) | All |
 | 174 | 47 PSBTs: 20 invalid, 10 valid, 4 that fail signer checks, 13 in a role walk-through | Vendored as an extraction (`spec/vectors/bip174-psbt.json`, bips `d1d2042c`, by `tools/extract-bip174-vectors.mjs`): all 47 run through `parsePsbt` (INV-PSBT-9, INV-PSBT-18); both signer steps reproduced and the 3 keyed signer-check cases refused through the signing call (INV-SIG-8) | Combiner, finalizer and extractor outputs are parsed but not reproduced, since nullroute does not play those roles; the first signer-check case has no published keys |
 | 370, 371 | Yes | None | All |
@@ -183,14 +183,14 @@ means values copied into a test; **none** means no published value is checked.
 The largest gaps against SP-DEP-1's own list (BIP-32, BIP-39, BIP-174 and the
 descriptor documents): no invalid-input vector for BIP-32 or BIP-380, and no
 descriptor-to-script vector for BIPs 381 to 387. BIP-174 is now covered, as
-above. For signing, the BIP-340 and BIP-341 vectors now run; no BIP-143 vector
-is checked yet, so segwit v0 signatures are still checked only for
-determinism, against bitcoinjs-lib, and by the two BIP-174 signer steps.
+above. For signing, the BIP-340, BIP-341 and BIP-143 vectors now run, so
+segwit v0 signatures are checked against published values and not only for
+determinism and against bitcoinjs-lib.
 
-The BIP-174, 340 and 341 rows were updated after this survey, from files
+The BIP-143, 174, 340 and 341 rows were updated after this survey, from files
 fetched at bips `d1d2042c857f337c147785c1d02cfd9f9d3c84fb`, not `7c7cb232`.
-No case failed; the BIP-174 test keeps an empty known-exception list for any
-future one.
+No case failed; the BIP-143 and BIP-174 tests keep an empty known-exception
+list for any future one.
 
 ## Manifest
 
