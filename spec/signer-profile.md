@@ -789,8 +789,9 @@ length differs from the transfer in progress, and MUST NOT return a message
 whose CRC-32 does not match. The registry (BCR-2020-006) recommends writing
 `psbt`; this profile departs from it because SeedSigner and Jade read only
 `crypto-psbt` and every wallet checked writes it (`research/ur-notes.md`,
-"PSBT types"). Check: vector `spec/vectors/ur-bcr.json` (bc-ur's test suite
-and the BCR papers, pinned); nullroute INV-UR-1 to INV-UR-5.
+"PSBT types"). Check: vector `ur-psbt.json` (frames written by SeedSigner's own
+encoder); vector `spec/vectors/ur-bcr.json` (bc-ur's test suite and the BCR
+papers, pinned); nullroute INV-UR-1 to INV-UR-6.
 
 ### 6.2 nullroute conformance
 
@@ -802,7 +803,7 @@ and the BCR papers, pinned); nullroute INV-UR-1 to INV-UR-5.
 | SP-TX-4 | Met | Writer emits `2` only (`bbqr-psbt.json`) |
 | SP-TX-5 | Met for PSBT and transaction frames | INV-QR-4 covers mismatched headers and conflicting repeats. INV-QR-10 refuses a PSBT or transaction set that does not join into exactly one (`bbqr-psbt.json`, `two-transfers-disjoint-indices`). A structural check, not a digest: other file types, and a splice that happens to parse, are not caught |
 | SP-TX-6 | Met | Every BBQr frame is drawn in QR alphanumeric mode (INV-QR-8, INV-QR-9); `bbqr-psbt.json`, both writer cases, read the mode indicator from the modules |
-| SP-TX-7 | Met | Reads `crypto-psbt` and `psbt`, writes `crypto-psbt`, and reproduces every value in `spec/vectors/ur-bcr.json` (INV-UR-1 to INV-UR-5). Stricter than the reference: dCBOR only, and a part from another transfer is refused with a message rather than dropped |
+| SP-TX-7 | Met | Reads `crypto-psbt` and `psbt`, writes `crypto-psbt`, and reproduces every value in `spec/vectors/ur-bcr.json` (INV-UR-1 to INV-UR-6). Reads every case in `ur-psbt.json`, written by SeedSigner's own encoder, and SeedSigner's own decoder reads what it writes (`make interop-ur`). Stricter than the reference: dCBOR only, and a part from another transfer is refused with a message rather than dropped |
 
 ## 7. Normative dependencies
 

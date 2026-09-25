@@ -153,12 +153,13 @@ UNTESTABLE with the reason.
 [`conformance/`](../conformance/README.md) turns the testable part into
 something a second implementation can run:
 
-- **Vectors.** Eleven JSON files, 107 cases, in
+- **Vectors.** Twelve JSON files, 112 cases, in
   [`spec/vectors/signer-profile/`](../spec/vectors/signer-profile/SHA256SUMS),
   pinned by a `SHA256SUMS` file that coreutils can check.
 - **Expected values from outside nullroute.** Bitcoin Core 31.1 on regtest, the
-  BIP texts, `printf | sha256sum`, and Coinkite's reference BBQr code plus a real
-  Coldcard scan. None was produced by running nullroute.
+  BIP texts, `printf | sha256sum`, Coinkite's reference BBQr code plus a real
+  Coldcard scan, and SeedSigner's own UR encoder. None was produced by running
+  nullroute.
 - **A runner.** [`conformance/run.mjs`](../conformance/run.mjs) uses Node
   built-ins only. The signer under test is reached through a small adapter
   module that reports what the signer did; the runner does every comparison and
@@ -183,7 +184,7 @@ Raspberry Pi, and it does not mean reviewed by anyone but the author.
 | BIP-32, BIP-39, BIP-84, BIP-86, BIP-380 checksums | `make test-vectors`; `make verify` checks the pins | Vectors from the BIPs, vendored in [`spec/vectors/`](../spec/vectors/bip32.json) (BIP-32 vectors 1 to 4, all 24 English BIP-39 vectors, the BIP-84 and BIP-86 addresses, all 8 BIP-380 checksums) |
 | Derivation, addresses and signatures agree with a second implementation | `make test-differential` | `bitcoinjs-lib` |
 | Signatures are deterministic | `make test-repro` signs one PSBT 100 times | Byte comparison against libsecp256k1 |
-| The signer profile's testable requirements | `make conformance`: all 107 cases pass, no SHOULD is missed | Bitcoin Core 31.1 regtest, BIP texts, coreutils, Coinkite's BBQr code |
+| The signer profile's testable requirements | `make conformance`: all 112 cases pass, no SHOULD is missed | Bitcoin Core 31.1 regtest, BIP texts, coreutils, Coinkite's BBQr code |
 | A wallet can be recovered and spent without nullroute | `make test-recovery-drill` (INV-INTEROP-1) | Bitcoin Core on regtest |
 | The manifest root is recomputable | The three commands above | coreutils (`shasum` on macOS) |
 | Dice to seed | INV-DICE-1 to INV-DICE-8, and `dice-to-entropy.json` | `printf \| sha256sum`; BIP-39 checked against the Trezor vectors |

@@ -541,6 +541,20 @@ async function runJoin(adapter, c, o) {
   }
 }
 
+async function runUrJoin(adapter, c, o) {
+  const r = await adapter.urJoin(c.input.frames)
+  const e = c.expected
+  checkVerdict(o, e, r)
+  if (e.verdict !== 'complete' || r?.verdict !== 'complete') return
+  o.expect('type', r.type === e.type, `UR type ${show(r.type)}, expected ${e.type}`)
+  const data = Buffer.from(r.data ?? [])
+  o.expect(
+    'data',
+    data.toString('base64') === e.dataBase64,
+    `assembled ${String(data.length)} bytes that differ from the expected PSBT`
+  )
+}
+
 async function runEncode(adapter, c, o) {
   const r = await adapter.bbqrEncodePsbt(c.input.psbtBase64)
   const e = c.expected
@@ -612,6 +626,7 @@ const OPERATIONS = {
   buildManifest: { needs: ['buildManifest'], run: (a, c, _, o) => runManifest(a, c, o) },
   bbqrJoin: { needs: ['bbqrJoin'], run: (a, c, _, o) => runJoin(a, c, o) },
   bbqrEncodePsbt: { needs: ['bbqrEncodePsbt'], run: (a, c, _, o) => runEncode(a, c, o) },
+  urJoin: { needs: ['urJoin'], run: (a, c, _, o) => runUrJoin(a, c, o) },
 }
 
 // --- main ----------------------------------------------------------------------

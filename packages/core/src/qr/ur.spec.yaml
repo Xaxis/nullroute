@@ -128,6 +128,10 @@ vectors:
     file: spec/vectors/ur-bcr.json
     sha256: 1191af44b1a8788da8c5378814248cf68ee34cbe1bb8b972c67ec68a2487e70f
     source: https://github.com/BlockchainCommons/bc-ur/blob/4479fb81b2350ae8bafa042a5572b9c64c2c32ca/test/test.cpp
+  - name: Signer profile SP-TX-7, PSBTs written as UR by SeedSigner
+    file: spec/vectors/signer-profile/ur-psbt.json
+    sha256: 691f49f37f18bfeb427e002cee1bb8a7282a3ff9a6bc4e1c9a6c47d22df8df6a
+    source: conformance/generate/gen_ur.py; run by make conformance
 
 threats:
   - INV-UR-4

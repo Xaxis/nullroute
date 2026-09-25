@@ -71,6 +71,12 @@ HEADERS = {
         'Reading BBQr sequences produced by Coinkite\'s reference implementation and by a Coldcard, refusing '
         'frames from mixed transfers, and writing a PSBT as binary type P in encoding 2 or H, in QR '
         'alphanumeric mode.'),
+    'ur-psbt.json': (
+        ['SP-TX-7'],
+        'urJoin',
+        'Reading PSBTs written as UR by SeedSigner\'s own encoder: in order, from mixed parts alone, under '
+        'either registered type name, and refusing frames from two transfers or a message whose checksum '
+        'fails. Only for a signer that implements UR, which SP-TX-7 makes optional.'),
 }
 
 for name, (reqs, op, desc) in HEADERS.items():

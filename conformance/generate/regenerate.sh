@@ -28,6 +28,8 @@ P2PPORT=${P2PPORT:-28444}
 
 BIPS=7c7cb232c228b258616ef64a3a079aa82996da8c
 BBQR=8dc7ef07d0d520763cc0001a885ca8d29ac8719a
+SEEDSIGNER=088b144eaebc79d12d6336030e943510d7a14f54
+URTYPES=7fb280eab3b3563dfc57d2733b0bf5cbc0a96a6a
 BECH32=7a7d7ab158db7078a333384e0e918c90dbc42917
 RAW=https://raw.githubusercontent.com
 
@@ -47,6 +49,17 @@ for f in python/bbqr/split.py python/bbqr/join.py python/bbqr/utils.py python/bb
 done
 # pyqrcode supplies the QR capacity table the BBQr reference splitter reads.
 pip3 install --quiet --target "$WORK/py" pyqrcode==1.2.1
+# SeedSigner's UR code, vendored in its tree, and the urtypes archive its
+# requirements.txt pins, so ur-psbt.json is written the way SeedSigner writes.
+mkdir -p "$WORK/src/seedsigner/ur2"
+for f in __init__.py bytewords.py cbor_lite.py constants.py crc32.py fountain_decoder.py \
+  fountain_encoder.py fountain_utils.py random_sampler.py ur.py ur_decoder.py ur_encoder.py \
+  utils.py xoshiro256.py; do
+  curl -sfL -o "$WORK/src/seedsigner/ur2/$f" \
+    "$RAW/SeedSigner/seedsigner/$SEEDSIGNER/src/seedsigner/helpers/ur2/$f"
+done
+pip3 install --quiet --target "$WORK/py" \
+  "https://github.com/selfcustody/urtypes/archive/$URTYPES.tar.gz"
 
 CLI="$BITCOIN_CLI -regtest -datadir=$WORK/regtest -rpcport=$RPCPORT -rpcuser=u -rpcpassword=p"
 stop() {
@@ -73,6 +86,7 @@ python3 "$HERE/gen_review.py" "$OUT"
 python3 "$HERE/gen_dice.py" "$OUT" "$ROOT"
 python3 "$HERE/gen_manifest.py" "$OUT"
 python3 "$HERE/gen_bbqr.py" "$OUT" "$BBQR"
+python3 "$HERE/gen_ur.py" "$OUT" "$SEEDSIGNER" "$URTYPES"
 python3 "$HERE/gen_qr_fixture.py" "$ROOT/conformance/fixtures/qr-mode.json"
 
 cd "$OUT"

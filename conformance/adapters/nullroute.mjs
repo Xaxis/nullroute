@@ -19,6 +19,8 @@ import { fileURLToPath } from 'node:url'
 
 import {
   BbqrCollector,
+  UrDecoder,
+  psbtFromUr,
   diceToEntropy,
   accountEntropy,
   encodePsbt,
@@ -239,6 +241,25 @@ export function buildManifest(files) {
 }
 
 // --- QR transport ------------------------------------------------------------
+
+/**
+ * The scanner's UR path, as packages/ui/src/screens/ScanScreen.tsx drives it:
+ * frames into UrDecoder, and a PSBT out of the completed body.
+ */
+export function urJoin(frames) {
+  const decoder = new UrDecoder()
+  try {
+    for (const frame of frames) {
+      decoder.receive(frame)
+      if (decoder.complete === true) break
+    }
+    if (decoder.complete !== true) return { verdict: 'incomplete' }
+    const result = decoder.result()
+    return { verdict: 'complete', type: result.type, data: psbtFromUr(result) }
+  } catch (err) {
+    return { verdict: 'refuse', reason: err.message }
+  }
+}
 
 /** The scanner's collector, as packages/ui/src/screens/ScanScreen.tsx drives it. */
 export async function bbqrJoin(frames) {

@@ -248,6 +248,14 @@ test-vectors: ## Official BIP test vectors from spec/vectors/
 test-differential: ## Cross-check against bitcoinjs-lib, an independent implementation
 	@npx vitest run --project core -t 'differential'
 
+interop-ur: build ## SeedSigner's own UR decoder reads the frames this device writes (needs the network)
+	# The reverse of ur-psbt.json, which cannot be a vector: the frames come from
+	# nullroute, so a vector made from them would be nullroute agreeing with
+	# itself. See conformance/interop/seedsigner-reads-nullroute.sh.
+	@dir=$$(mktemp -d); status=0; \
+	conformance/interop/seedsigner-reads-nullroute.sh "$$dir" || status=$$?; \
+	rm -rf "$$dir"; exit $$status
+
 conformance: build ## The signer profile vectors in spec/vectors/signer-profile/, run against this build
 	# spec/signer-profile.md is a draft any signer can be checked against, and
 	# nullroute is one implementation of it. The expected values come from

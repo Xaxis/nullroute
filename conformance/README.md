@@ -80,6 +80,7 @@ Adapter functions must not throw for input the signer rejects. A rejection is a
 | `reviewPsbt(psbt, context)` | `psbt`: base64 PSBT; `context`: see below | A review result, see below. |
 | `signPsbt(psbt, context, options)` | as above; `options.override` is always `false` in this version | `{ verdict: 'signed', psbtBase64 }` or `{ verdict: 'refuse' }`. |
 | `buildManifest(files)` | `files`: `[{ path, bytes }]`, `bytes` a `Uint8Array`, in no particular order | `{ manifest, root }`: the manifest text exactly, and its root as lowercase hex. |
+| `urJoin(frames)` | `frames`: scanned UR strings, in scan order | `{ verdict: 'complete', type, data }` with `type` the UR type (`crypto-psbt` or `psbt`) and `data` the binary PSBT, or `{ verdict: 'refuse' }`, or `{ verdict: 'incomplete' }`. Optional: only for a signer that implements UR (SP-TX-7). |
 | `bbqrJoin(frames)` | `frames`: the scanned strings, in scan order | `{ verdict: 'complete', fileType, data }` with `fileType` the BBQr letter and `data` a `Uint8Array`, or `{ verdict: 'refuse' }`, or `{ verdict: 'incomplete' }`. |
 | `bbqrEncodePsbt(psbt)` | `psbt`: base64 PSBT | `{ frames: [{ text, modules }] }`: every frame the signer would display, in order. `modules` is the QR symbol as an array of strings of `1` (dark) and `0`, one per row, without the quiet zone. |
 
@@ -231,7 +232,7 @@ for them.
 
 ## nullroute's results
 
-`make conformance` today: all 107 cases pass, with no SHOULD missed, and
+`make conformance` today: all 112 cases pass, with no SHOULD missed, and
 [`known-failures/nullroute.json`](known-failures/nullroute.json) is empty.
 Four requirements have failed and been fixed, which is what the list is for:
 
