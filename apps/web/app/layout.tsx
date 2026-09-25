@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import Link from 'next/link'
+import { Mark } from '@/components/Mark'
 import { DOCS } from '@/lib/docs'
-import { REPO_URL } from '@/lib/site'
+import { OG_IMAGE, REPO_URL } from '@/lib/site'
 import '../styles/globals.css'
 
 export const metadata: Metadata = {
@@ -18,6 +19,13 @@ export const metadata: Metadata = {
     url: 'https://nullroute.diy',
     siteName: 'nullroute',
     type: 'website',
+    images: [OG_IMAGE],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'nullroute',
+    description: 'An air-gapped Bitcoin signer built to be checked, not trusted.',
+    images: [OG_IMAGE],
   },
   robots: { index: true, follow: true },
 }
@@ -49,10 +57,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             every check passed because the document itself did not scroll. */}
         <header className="border-b border-ink-800 sticky top-0 z-20 bg-ink-950/95 backdrop-blur-sm">
           <div className="mx-auto max-w-5xl px-5 py-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+            {/* The mark takes the accent and the word keeps the ink, so the
+                orange on this bar is one small shape rather than a word. On
+                hover both go to the link colour together, as one link. */}
             <Link
               href="/"
-              className="font-mono text-ink-100 font-semibold tracking-tight shrink-0 hover:text-signal-400 transition-colors"
+              className="group inline-flex items-center gap-2 font-mono text-ink-100 font-semibold tracking-tight shrink-0 hover:text-signal-400 transition-colors"
             >
+              <Mark className="size-[1.125rem] shrink-0 text-signal-500 group-hover:text-signal-400 transition-colors" />
               nullroute
             </Link>
             <a
@@ -86,7 +98,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               put money on this.
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-ink-500">
-              <span className="font-mono text-ink-400">nullroute</span>
+              <span className="inline-flex items-center gap-2 font-mono text-ink-400">
+                <Mark className="size-3.5 shrink-0 text-signal-500" />
+                nullroute
+              </span>
               <span>MIT licensed</span>
               <a
                 href={REPO_URL}

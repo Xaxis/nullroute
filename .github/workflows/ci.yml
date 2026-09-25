@@ -442,6 +442,12 @@ jobs:
       - run: npm ci
       - run: make web-lint
       - run: make web-type-check
+
+      # The favicon, touch icon and social card are committed images drawn from
+      # apps/web/lib/mark.ts. If the mark changes and they are not re-rendered,
+      # the tab and every link preview show a different mark from the header.
+      - name: The icons and social card match the mark
+        run: make brand-check
       - run: make web-build
 
       # The site documents a device whose premise is that it has no network

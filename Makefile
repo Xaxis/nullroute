@@ -25,7 +25,7 @@ MANIFEST_ROOTS := packages spec provisioning
         prose links profiles sbom sbom-check repro-check clean dev-daemon build-app web web-build web-lint web-type-check \
         screens screen-fit ui-race ui-constants dev-check verify-image docs-reachable no-dead-ends \
         image-env image-shell image-system image-repro journeys \
-        web-isolation web-csp web-responsive web-site-links device-shots device-shots-check \
+        web-isolation web-csp web-responsive web-site-links device-shots device-shots-check brand brand-check \
         web-check web-root web-live-check deploy image image-boot-test verify-runtime slow-feedback typeable
 
 help: ## List available targets
@@ -859,6 +859,15 @@ device-shots: screens ## Render real device screens into the website's public di
 device-shots-check: screens ## The committed screenshots still match the frontend
 	@node tools/gen-device-shots.mjs --check
 
+# One mark, drawn from apps/web/lib/mark.ts: the header and footer import it,
+# and this renders it into icon.svg, the touch icon, favicon.ico and the social
+# card. The check needs no browser, so it runs anywhere.
+brand: ## Render the site's mark into its favicon, touch icon and social card
+	@node tools/gen-brand.mjs
+
+brand-check: ## The committed icons and social card match the mark they are drawn from
+	@node tools/gen-brand.mjs --check
+
 web-site-links: ## Every link in the BUILT site resolves, routes and anchors both
 	@node tools/checks/check-site-links.mjs
 
@@ -891,4 +900,4 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 
 check-fast: lint shell format-check ci-parity ui-race ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims invariant-ids make-targets ipc-reachable slow-feedback typeable device-csp qr-readback test manifest-check manifest-recipe ## Everything except the slow suites
 
-check: check-fast build verify badges test-vectors test-differential conformance repro-check sbom device-ui screen-fit contrast ui-roles journeys dev-check device-shots-check web-check ## Everything CI runs
+check: check-fast build verify badges test-vectors test-differential conformance repro-check sbom device-ui screen-fit contrast ui-roles journeys dev-check device-shots-check brand-check web-check ## Everything CI runs

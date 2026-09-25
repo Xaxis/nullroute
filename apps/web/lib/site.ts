@@ -13,3 +13,17 @@ export const REPO_URL = 'https://github.com/Xaxis/nullroute'
 export function repoBlobUrl(path: string): string {
   return `${REPO_URL}/blob/main/${path}`
 }
+
+/**
+ * The social card, shared by every page. Rendered by `make brand` from the same
+ * mark as the favicon. Declared once because a page that sets its own
+ * `openGraph` replaces the layout's object whole rather than merging into it,
+ * and a document page that forgot the image would share as a bare link.
+ */
+export const OG_IMAGE = {
+  url: '/brand/og.png',
+  width: 1200,
+  height: 630,
+  alt: 'nullroute. Built to be checked, not to be trusted. Air-gapped Bitcoin signer for the Raspberry Pi.',
+  type: 'image/png',
+} as const

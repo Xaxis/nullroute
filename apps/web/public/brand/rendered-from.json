@@ -1,0 +1,9 @@
+{
+  "source": "691b0dbcca622e2b6ff878b30c89996f0249f77d14c394d6d671762dd8aa36e2",
+  "platform": "darwin-arm64",
+  "files": {
+    "app/apple-icon.png": "e71d50ec91ffe3ab9e235c50ad7e3ccbcb62635e6de00227183a226e79a3d21c",
+    "public/brand/og.png": "e1a5b3a73d210194b36a52d3e6656a1862cef58adae8ab78712ecebbb7800d57",
+    "public/favicon.ico": "38d49355be8a84c38f1d2e4c4caf57cfe5a13c95dcea75eaa1ba7bcb1d3e6385"
+  }
+}

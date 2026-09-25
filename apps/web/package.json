@@ -2,6 +2,7 @@
   "name": "@nullroute/web",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "nullroute.diy. The public website. Never ships to the device.",
   "license": "MIT",
   "scripts": {
