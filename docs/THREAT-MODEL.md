@@ -184,7 +184,7 @@ raises the bar considerably.
 
 It used to credit removable media being mounted `noexec,nosuid,nodev` as well.
 Nothing in this repository mounts removable media: there is no automount, no
-udev rule and no mount unit, the daemon contains no mount call and is forbidden
+udev rule that mounts removable media and no mount unit, the daemon contains no mount call and is forbidden
 the syscall group, and the only filesystems carrying those options are the
 `/tmp`, `/var/tmp` and `/run` tmpfs mounts, which are not where a payload
 arrives. Claiming a control the tree does not implement is the failure this

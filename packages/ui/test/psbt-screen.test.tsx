@@ -566,7 +566,11 @@ describe('ui.screens.psbt', () => {
     await waitFor(() => {
       expect(screen.getByTestId('psbt-sign')).toBeTruthy()
     })
-    await settle()
+    // Wait for the read gate itself, not a guess at when its effect runs: under
+    // load one microtask was not enough and the click landed on a disabled Sign.
+    await waitFor(() => {
+      expect(screen.getByTestId<HTMLButtonElement>('psbt-sign').disabled).toBe(false)
+    })
     fireEvent.click(screen.getByTestId('psbt-sign'))
 
     await waitFor(() => {
@@ -913,7 +917,11 @@ describe('ui.screens.psbt what to do next', () => {
     await waitFor(() => {
       expect(screen.getByTestId('psbt-sign')).toBeTruthy()
     })
-    await settle()
+    // Wait for the read gate itself, not a guess at when its effect runs: under
+    // load one microtask was not enough and the click landed on a disabled Sign.
+    await waitFor(() => {
+      expect(screen.getByTestId<HTMLButtonElement>('psbt-sign').disabled).toBe(false)
+    })
     fireEvent.click(screen.getByTestId('psbt-sign'))
     await waitFor(() => {
       expect(screen.getByTestId('psbt-signed')).toBeTruthy()

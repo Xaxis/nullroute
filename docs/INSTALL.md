@@ -19,9 +19,9 @@ official 7 inch panel. Other boards are added once the image boots on them.
 
 The camera is a USB (UVC) webcam. A Raspberry Pi camera module on the CSI
 connector does not work on this image, because the pinned kernel has no driver
-for its receiver or its sensor. The card does not yet carry udev, which loads
-the webcam's driver when it is plugged in, so expect the camera to be part of
-bring-up: none has streamed on a Pi yet.
+for its receiver or its sensor. The card carries udev, which loads the
+webcam's driver when it is plugged in. Expect the camera to be part of
+bring-up all the same: none has streamed on a Pi yet.
 
 | What you can do | State |
 | --- | --- |

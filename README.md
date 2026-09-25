@@ -115,7 +115,7 @@ Roughly $100 to $120.
 | Screen | Official Raspberry Pi 7 inch touchscreen | The DSI panel. Every screen is measured at exactly 800x480 and no other size. |
 | Storage | 16GB+ A2 SD card | The image is about 1.6GB. |
 | Dice | One d6 | Casino grade if you care. Any die works. |
-| Camera | A USB (UVC) webcam | How transactions reach the device. Raspberry Pi CSI camera modules come later: the pinned Debian kernel builds neither the Pi's CSI receiver nor a driver for their sensors. The card carries the UVC driver, the kiosk's permission for video devices and a browser policy that grants the camera to the device's own page only. It does not yet carry udev, which loads that driver when a camera is plugged in, so no camera works on the card until it does, and none has streamed on a Pi yet. Without a camera it can still show codes, but receives nothing: an SD card transport is planned and not built. |
+| Camera | A USB (UVC) webcam | How transactions reach the device. Raspberry Pi CSI camera modules come later: the pinned Debian kernel builds neither the Pi's CSI receiver nor a driver for their sensors. The card carries the UVC driver, the kiosk's permission for video devices and a browser policy that grants the camera to the device's own page only. It carries udev, which loads that driver when a camera is plugged in and gives the video node its group. None has streamed on a Pi yet. Without a camera it can still show codes, but receives nothing: an SD card transport is planned and not built. |
 | Case, PSU | Anything, official PSU | An underpowered supply causes strange slowness. |
 
 You do **not** need a network connection on the device, ever. That is the point.

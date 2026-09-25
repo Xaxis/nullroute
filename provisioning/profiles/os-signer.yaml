@@ -667,10 +667,10 @@ assertions:
       It also says nothing about whether anything loads the module on hotplug,
       which is INV-PROV-30.
 
-  # EXPECTED TO FAIL until the image carries udev. It is written anyway, and
-  # before the fix, for the same reason INV-PROV-25 was: a camera path that is
-  # right in every other respect is still dead without it, and an assertion
-  # nobody writes cannot fail.
+  # Written before the fix and seen to fail against the image built without
+  # udev, for the same reason INV-PROV-25 was: a camera path that is right in
+  # every other respect is still dead without it, and an assertion nobody writes
+  # cannot fail. build-system.sh now includes udev.
   - id: INV-PROV-30
     statement: >
       The device manager is in the image, and its rules give video4linux device

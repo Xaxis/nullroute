@@ -179,8 +179,8 @@ The four newest are the camera, a USB (UVC) webcam, and they follow a frame
 from the plug to the page: udev loads the driver and gives the node its group,
 the driver and its dependencies are on the card, the kiosk's device cgroup
 admits the video4linux class, and the browser's managed policy grants the
-camera to the device's own origin and nothing else. The first of them fails
-today, because the image has no udev. None of the four can say a camera
+camera to the device's own origin and nothing else. The first of them failed
+against the image built before udev was added. None of the four can say a camera
 streams; only a Pi with one plugged in can.
 
 Those last three used to be unwritten on purpose, because reading any of them

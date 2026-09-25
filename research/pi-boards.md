@@ -295,10 +295,11 @@ Stay on Debian's kernel, and widen by capability in this order:
    and the browser, each with an assertion: `char-video4linux` in the kiosk's
    device allow list with `videodev` loaded first (INV-PROV-27), a Chromium
    managed policy granting the camera to `http://127.0.0.1:5180` only
-   (INV-PROV-28), and `uvcvideo` with its dependencies (INV-PROV-29). Still
-   open: the image has no udev (built with `--variant=essential`, and `udev`
-   is not in the include list), so nothing loads `uvcvideo` on hotplug and
-   `/dev/video0` is created root only. INV-PROV-30 fails until that changes.
+   (INV-PROV-28), and `uvcvideo` with its dependencies (INV-PROV-29). The
+   image was built with `--variant=essential` and no `udev`, so nothing
+   loaded `uvcvideo` on hotplug and `/dev/video0` would have been root only.
+   INV-PROV-30 was written first and failed; `udev` is now in the include
+   list and it passes on a built rootfs.
    Bring-up should try a webcam alongside the panel; none has streamed yet.
 2. **Bring up the Pi 4 as planned**, with the DSI panel, and measure memory
    with the kiosk running. That number decides whether 1 and 2 GB boards are

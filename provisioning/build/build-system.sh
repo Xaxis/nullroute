@@ -109,12 +109,20 @@ echo "  SOURCE_DATE_EPOCH $SOURCE_DATE_EPOCH"
 # a future chromium that stops recommending them fails the build rather than
 # silently reflowing every screen on the device.
 #
+# UDEV, BECAUSE THE ESSENTIAL VARIANT DOES NOT CARRY IT AND NOTHING ELSE PULLED
+# IT IN. Without systemd-udevd nothing loads a driver when hardware appears and
+# nothing applies a device node's group or logind's seat tags: a plugged-in USB
+# camera got no uvcvideo and a /dev/video0 only root could open, and the
+# panel's /dev/dri and the touchscreen's input nodes depend on the same rules
+# on real hardware. The QEMU boot stops before the kiosk, so nothing had shown
+# it. Checked by INV-PROV-30. Same Debian systemd source as `systemd` above.
+#
 # THE COMMENT GOES ABOVE THE COMMAND AND NOT INSIDE IT. Put between a line
 # ending in a backslash and the line it continues onto, it ends the command:
 # mmdebstrap ran with no suite and no target and said so, in a job nobody had
 # been able to run for three days.
 mmdebstrap --variant="$VARIANT" --mode=root --format=directory \
-  --include=systemd,systemd-sysv,dbus,chromium,chromium-sandbox,cage,cryptsetup-bin,e2fsprogs,kmod,iproute2,fonts-dejavu-core,fonts-dejavu-mono \
+  --include=systemd,systemd-sysv,udev,dbus,chromium,chromium-sandbox,cage,cryptsetup-bin,e2fsprogs,kmod,iproute2,fonts-dejavu-core,fonts-dejavu-mono \
   --aptopt='APT::Install-Recommends "false"' \
   "$SUITE" "$ROOTFS" "$MIRROR" >/dev/null 2>&1
 

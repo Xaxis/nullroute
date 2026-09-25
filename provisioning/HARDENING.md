@@ -51,7 +51,7 @@ suggest the weaker one was the real defence.
 | State partition | A separate plain ext4 partition holds the wallet store. It is not encrypted at the partition level: LUKS2 is planned and not built. The wallet is protected by the application's own Argon2id and AES-256-GCM envelope, which is one layer, not two |
 | No swap | No swap device or file, confirmed on the running device (INV-PROV-11). Swap is how a seed reaches persistent storage in plaintext without anyone deciding it should |
 | Scratch in RAM | `/tmp` on tmpfs, mounted `noexec,nosuid,nodev` |
-| Removable media | Not applied. Nothing in the image mounts removable media: no automount, no udev rule, no mount unit. See the threat model's section on malicious QR or SD payloads |
+| Removable media | Not applied. Nothing in the image mounts removable media: no automount, no udev rule that mounts removable media, no mount unit. See the threat model's section on malicious QR or SD payloads |
 
 ## Kernel and process isolation
 
