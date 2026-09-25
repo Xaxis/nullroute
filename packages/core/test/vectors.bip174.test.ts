@@ -58,12 +58,27 @@ const VECTORS = JSON.parse(
 /**
  * Published vectors whose outcome here differs from what the BIP says.
  *
- * EMPTY, and it is meant to stay that way. If a future library or parser
- * change makes a valid vector fail or an invalid one parse, the case goes here
- * with the reason, and it is reported, rather than the expected result being
- * changed to match. The expected results are the BIP's, not ours.
+ * If a library or parser change makes a valid vector fail or an invalid one
+ * parse, the case goes here with the reason rather than the expected result
+ * being changed to match. The expected results are the BIP's, not ours. Each
+ * entry is asserted to still differ, so one that stops applying fails the
+ * suite instead of lingering.
+ *
+ * The three below are from the BIP's "Fails Signer checks" list, which it
+ * calls well formed and says a signer must refuse to sign. @scure/btc-signer
+ * 2.4 checks each script against the hash it claims when it decodes, so these
+ * are refused whole at parse instead of parsed and refused at the defective
+ * input. Nothing is signed either way (INV-SIG-8); the difference is that the
+ * intact input beside the bad one is not signed either, which is the louder
+ * failure CLAUDE.md asks for in a signing path.
  */
-const KNOWN_EXCEPTIONS: ReadonlyMap<string, string> = new Map<string, string>()
+const REFUSED_AT_PARSE =
+  'Refused at parse by @scure/btc-signer 2.4 (script does not match its hash); the BIP expects a parse and a refusal at signing'
+const KNOWN_EXCEPTIONS: ReadonlyMap<string, string> = new Map<string, string>([
+  ['redeemScript with non-witness UTXO does not match the scriptPubKey', REFUSED_AT_PARSE],
+  ['redeemScript with witness UTXO does not match the scriptPubKey', REFUSED_AT_PARSE],
+  ['witnessScript with witness UTXO does not match the redeemScript', REFUSED_AT_PARSE],
+])
 
 function refuses(input: string | Uint8Array): boolean {
   try {
@@ -154,9 +169,9 @@ describe('core.psbt.parse published BIP-174 vectors', () => {
       ...VECTORS.roles.map((c, i) => ({ name: `role step ${String(i)}: ${c.step}`, ...c })),
     ]
     for (const c of valid) {
-      if (KNOWN_EXCEPTIONS.has(c.name)) continue
-      expect(refuses(c.base64), `base64: ${c.name}`).toBe(false)
-      expect(refuses(hexToBytes(c.hex)), `bytes: ${c.name}`).toBe(false)
+      const differs = KNOWN_EXCEPTIONS.has(c.name)
+      expect(refuses(c.base64), `base64: ${c.name}`).toBe(differs)
+      expect(refuses(hexToBytes(c.hex)), `bytes: ${c.name}`).toBe(differs)
     }
   })
 })
@@ -211,6 +226,11 @@ describe('core.psbt.sign published BIP-174 vectors', () => {
     const reference = parsePsbt(intact.base64)
 
     for (const c of keyed) {
+      if (KNOWN_EXCEPTIONS.has(c.description)) {
+        // Refused whole, so nothing can be signed on any input of it.
+        expect(refuses(c.base64), c.description).toBe(true)
+        continue
+      }
       const tx = parsePsbt(c.base64)
       // Which input was corrupted: the one that differs from the intact PSBT.
       const defective: number[] = []

@@ -132,9 +132,10 @@ invariants:
     statement: >
       The same signing call reproduces both signer steps of the BIP-174 role
       walk-through byte for byte, and puts no signature on an input the BIP
-      lists under "Fails Signer checks" while still signing the intact input
-      beside it. The first of those four cases has no published keys and is
-      only checked to parse.
+      lists under "Fails Signer checks". The three with published keys are
+      refused whole when parsed (INV-PSBT-18), so the intact input beside the
+      defective one is not signed either. The first of the four cases has no
+      published keys and is only checked to parse.
     tests:
       - packages/core/test/vectors.bip174.test.ts::reproduces-both-published-signer-steps
       - packages/core/test/vectors.bip174.test.ts::signs-nothing-on-an-input-the-bip-says-a-signer-must-refuse

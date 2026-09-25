@@ -64,10 +64,13 @@ invariants:
   - id: INV-PSBT-18
     statement: >
       Every PSBT that BIP-174 publishes as valid parses, from base64 text and
-      from raw bytes, and so does every PSBT in its role walk-through and its
-      "Fails Signer checks" list, which are well formed and are refused at
-      signing rather than at parsing. The extraction of those vectors from the
-      BIP text is checked by re-encoding each hex and base64 pair.
+      from raw bytes, and so does every PSBT in its role walk-through and the
+      first case of its "Fails Signer checks" list. The other three of those
+      carry a script that does not match the hash it claims, and are refused
+      at parsing rather than at signing: a documented departure from the BIP's
+      expected result, asserted case by case so that it cannot widen. The
+      extraction of those vectors from the BIP text is checked by re-encoding
+      each hex and base64 pair.
     tests:
       - packages/core/test/vectors.bip174.test.ts::extraction-is-faithful
       - packages/core/test/vectors.bip174.test.ts::parses-every-published-valid-psbt

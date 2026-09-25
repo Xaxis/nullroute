@@ -68,11 +68,13 @@ export function parsePsbt(input: string | Uint8Array): btc.Transaction {
   }
 
   try {
-    // allowUnknown keeps key-value pairs this build does not recognise through
+    // 'ignore' keeps key-value pairs this build does not recognise through
     // signing (INV-PSBT-15). Without it they survived parsing and were dropped
     // when the signer updated the input, while the review said they would be
     // passed through, and BIP-174 says a signer must not remove them.
-    return btc.Transaction.fromPSBT(bytes, { allowUnknown: true })
+    // @scure/btc-signer 2.4 made 'strip' the default and deprecated the
+    // allowUnknown flag this used to pass; proprietary pairs follow this policy.
+    return btc.Transaction.fromPSBT(bytes, { unknown: 'ignore' })
   } catch (err) {
     // Not swallowed: the library's message names the field it choked on, which
     // is the only useful thing to show someone holding a PSBT that will not load.

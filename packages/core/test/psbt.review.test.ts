@@ -364,7 +364,9 @@ describe('core.psbt.review', () => {
 
     const spliced = [...bytes]
     spliced.splice(i, 0, 0x01, type, 0x02, 0xde, 0xad)
-    const parsed = btc.Transaction.fromPSBT(Uint8Array.from(spliced))
+    // 'ignore', as parsePsbt passes: @scure/btc-signer 2.4 strips unknown
+    // pairs by default, which would remove the one this just added.
+    const parsed = btc.Transaction.fromPSBT(Uint8Array.from(spliced), { unknown: 'ignore' })
 
     // The fixture checks itself. Byte surgery that lands one position early
     // puts the pair in the global map instead, where it parses cleanly and is
@@ -410,7 +412,7 @@ describe('core.psbt.review', () => {
   // its coordinator put there and BIP-174 asks it to preserve.
   it('preserves-fields-it-does-not-understand', () => {
     const tx = withUnknownInputField(build({ outputs: [{ address: STRANGER, amount: 90_000n }] }))
-    const roundTripped = btc.Transaction.fromPSBT(tx.toPSBT())
+    const roundTripped = parsePsbt(tx.toPSBT())
     const unknown: unknown = roundTripped.getInput(0).unknown
     expect(Array.isArray(unknown) ? unknown.length : 0).toBe(1)
   })
@@ -435,7 +437,7 @@ describe('core.psbt.review', () => {
       review,
     })
 
-    const signed = btc.Transaction.fromPSBT(result.psbt, { allowUnknown: true }).getInput(0)
+    const signed = btc.Transaction.fromPSBT(result.psbt, { unknown: 'ignore' }).getInput(0)
     const unknown: unknown = signed.unknown
     expect(Array.isArray(unknown) ? unknown.length : 0).toBe(1)
     expect(signed.partialSig).toHaveLength(1)

@@ -67,10 +67,27 @@ describe('core.psbt.review input amounts', () => {
     const script = btc.p2wpkh(secp256k1.getPublicKey(KEY, true)).script
     const honest = fundedBy(script, 100_000n)
     const tx = new btc.Transaction()
-    tx.addInput({ ...honest, witnessUtxo: { script, amount: 50_000n } })
+    tx.addInput({ ...honest, witnessUtxo: { script, amount: 100_000n } })
     tx.addOutputAddress(STRANGER, 40_000n, MAINNET)
+
+    // Forged in the bytes, as an attacker's coordinator would. @scure/btc-signer
+    // 2.4 refuses to build the mismatched input, so the lie is written into the
+    // serialized witnessUtxo pair (key 0x01 0x01, then its length, then the
+    // amount) and nowhere else: the previous transaction still says 100,000.
+    const bytes = tx.toPSBT()
+    const amountLE = (sats: bigint) => {
+      const out = new Uint8Array(8)
+      new DataView(out.buffer).setBigUint64(0, sats, true)
+      return out
+    }
+    const entry = [0x01, 0x01, 8 + 1 + script.length, ...amountLE(100_000n)]
+    const at = bytes.findIndex((_, i) => entry.every((b, j) => bytes[i + j] === b))
+    expect(at, 'the witnessUtxo pair in the serialized PSBT').toBeGreaterThan(0)
+    const forged = Uint8Array.from(bytes)
+    forged.set(amountLE(50_000n), at + 3)
+
     // Refused where a PSBT arrives: parsing the file the coordinator sent.
-    expect(() => parsePsbt(tx.toPSBT())).toThrow(/different from nonWitnessUtxo/)
+    expect(() => parsePsbt(forged)).toThrow(/different from nonWitnessUtxo/)
   })
 
   /** INV-PSBT-17. Taproot commits to every amount, so it needs no previous transaction. */
