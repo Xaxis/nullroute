@@ -42,7 +42,8 @@ export function backupMethods(ctx: HandlerContext): MethodTable {
               : {}),
           },
           passphrase,
-          state.attestation.version
+          state.attestation.version,
+          state.backupKdf
         ),
         includesSeed: includeSeed,
       }

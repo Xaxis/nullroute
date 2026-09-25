@@ -19,6 +19,7 @@
  * calls the underlying module, so the call graph stays visible.
  */
 
+import { type KdfCost } from '../store/envelope.js'
 import { type WalletStore } from '../store/store.js'
 import { type WalletColour, WalletRegistry } from '../store/registry.js'
 import { type BootAttestation } from '../boot/attestation.js'
@@ -70,7 +71,15 @@ export interface DaemonState {
    * calling a single method wants. Absent means no idle lock, and the status
    * method says so rather than reporting a window that does not exist.
    */
-  readonly idle?: IdleClock
+  readonly idle?: IdleClock /**
+   * The key derivation cost a new backup is sealed with. Unset on a device,
+   * where backups take the production cost. Tests set a low one, as they do
+   * for the store: at the production cost, pure-JS Argon2id blocks the thread
+   * for seconds per backup, and several test workers doing it at once on a
+   * busy machine stalled one test for five minutes. Restoring reads the cost
+   * from the file, where it is authenticated, so only creation takes it here.
+   */
+  readonly backupKdf?: KdfCost
 }
 
 /**

@@ -23,6 +23,9 @@ import { WalletStore } from '../src/store/store.js'
 import type { BootAttestation } from '../src/boot/attestation.js'
 import { fundedBy } from './fixtures/funding.js'
 
+// Backups sealed at a test cost; see DaemonState.backupKdf.
+const FAST_BACKUP = { m: 8192, t: 1, p: 1 } as const
+
 const FAST = { m: 8192, t: 1, p: 1 } as const
 const MNEMONIC =
   'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
@@ -37,6 +40,7 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'nullroute-phase4-'))
   session = new Session()
   const handler = createHandler({
+    backupKdf: FAST_BACKUP,
     attestation,
     session,
     store: new WalletStore(dir, FAST),

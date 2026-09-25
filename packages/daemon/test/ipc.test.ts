@@ -32,6 +32,9 @@ import { createHandler } from '../src/handler.js'
 import { Session } from '../src/session.js'
 import type { BootAttestation } from '../src/boot/attestation.js'
 
+// Backups sealed at a test cost; see DaemonState.backupKdf.
+const FAST_BACKUP = { m: 8192, t: 1, p: 1 } as const
+
 const SOCKET = join(tmpdir(), `nullroute-test-${String(process.pid)}.sock`)
 const MNEMONIC = 'legal winner thank year wave sausage worth useful legal winner thank yellow'
 const PASSPHRASE = 'TREZOR'
@@ -196,7 +199,11 @@ beforeAll(async () => {
   session = new Session()
   server = await startIpcServer({
     socketPath: SOCKET,
-    handler: createHandler({ attestation, session }),
+    handler: createHandler({
+      backupKdf: FAST_BACKUP,
+      attestation,
+      session,
+    }),
   })
 })
 

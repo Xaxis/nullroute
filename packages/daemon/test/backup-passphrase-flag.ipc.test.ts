@@ -21,6 +21,9 @@ import { WalletRegistry } from '../src/store/registry.js'
 import { WalletStore } from '../src/store/store.js'
 import type { BootAttestation } from '../src/boot/attestation.js'
 
+// Backups sealed at a test cost; see DaemonState.backupKdf.
+const FAST_BACKUP = { m: 8192, t: 1, p: 1 } as const
+
 const FAST = { m: 8192, t: 1, p: 1 } as const
 const MNEMONIC =
   'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about'
@@ -38,6 +41,7 @@ function device(): Device {
   const session = new Session()
   const registry = new WalletRegistry(dir, FAST)
   const handler = createHandler({
+    backupKdf: FAST_BACKUP,
     attestation,
     session,
     store: new WalletStore(dir, FAST),
