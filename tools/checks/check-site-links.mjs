@@ -91,12 +91,21 @@ for (const file of pages) {
     // Off-site, or a scheme this check has no opinion about.
     if (/^[a-z][a-z0-9+.-]*:/i.test(href)) continue
     // Build output: hashed asset paths, verified by the build itself.
-    if (href.startsWith('/_next/') || href.startsWith('/icon.svg')) continue
+    if (href.startsWith('/_next/')) continue
 
     checked += 1
 
     const hash = href.indexOf('#')
-    const path = hash === -1 ? href : href.slice(0, hash)
+    /*
+     * THE QUERY IS NOT PART OF THE FILE. Next links its metadata icons as
+     * `/apple-icon.png?apple-icon.<hash>.png`, a cache key on a real file, and
+     * this read the whole string as the path. icon.svg had been waved through
+     * by name for exactly that reason, which covered one icon and not the next
+     * one added. Stripping the query checks both against the files they name.
+     */
+    const withoutFragment = hash === -1 ? href : href.slice(0, hash)
+    const query = withoutFragment.indexOf('?')
+    const path = query === -1 ? withoutFragment : withoutFragment.slice(0, query)
     const fragment = hash === -1 ? '' : decodeURIComponent(href.slice(hash + 1))
 
     // A bare fragment addresses the page it is on.
