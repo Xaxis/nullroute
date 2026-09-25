@@ -146,6 +146,29 @@ export const VERIFIERS = {
     describes:
       'every overlay config.txt tells the firmware to load is on the card and is a device tree blob, because a missing one is ignored in silence and the panel simply stays dark',
   },
+  // The camera, a USB (UVC) webcam. Four links in one chain, each able to
+  // break it silently: the cgroup, the browser's permission, the driver and
+  // the device manager that loads it and sets the node's group.
+  'unit-device-allow': {
+    status: 'implemented',
+    describes:
+      'a unit declares a closed device policy with exactly the named allow list, and loads the module behind every device class it names before it starts',
+  },
+  'browser-policy-exact': {
+    status: 'implemented',
+    describes:
+      'the browser managed policy directory holds exactly the named files with exactly the named policies',
+  },
+  'kernel-modules-present': {
+    status: 'implemented',
+    describes:
+      'the named kernel modules and every module modules.dep says they need are in the image',
+  },
+  'udev-rules': {
+    status: 'implemented',
+    describes:
+      'the device manager is in the image and its rules include the named ones, such as the group for camera nodes',
+  },
   'verity-salt-pinned': {
     status: 'implemented',
     describes: 'the dm-verity salt is pinned, not generated per build',
@@ -240,6 +263,10 @@ export const NEEDS_ROOTFS = new Set([
   // set at all, and the summary counts by subtraction, so it was reported as
   // running on every commit while it actually needs --root to do anything.
   'boot-config-display',
+  'unit-device-allow',
+  'browser-policy-exact',
+  'kernel-modules-present',
+  'udev-rules',
   'absent-packages',
   'unit-executables',
   'file-modes',

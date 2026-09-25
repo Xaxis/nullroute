@@ -786,7 +786,9 @@ do](THREAT-MODEL.md#what-the-air-gap-does-and-does-not-do) for what it stops.
 ### The two transports
 
 QR codes, and only QR codes today. The device draws them on screen and reads
-them with a camera. This is the transport that needs no shared hardware, which
+them with a camera, which is a USB (UVC) webcam; a Raspberry Pi camera module
+on the CSI connector has no driver in the pinned kernel. No camera has read a
+code on a Pi yet. This is the transport that needs no shared hardware, which
 matters because a USB stick or an SD card that has been in both machines is a
 channel in its own right.
 

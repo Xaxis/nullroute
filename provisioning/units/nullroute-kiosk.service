@@ -22,6 +22,15 @@ Documentation=https://nullroute.diy/docs/verification
 # itself in front of nullrouted.service.
 After=nullrouted.service
 Requires=nullrouted.service
+# THE CAMERA'S DEVICE CLASS HAS TO EXIST WHEN THIS UNIT STARTS.
+# systemd.resource-control(5): a device group not listed in /proc/devices at
+# start is silently left out of the allow list. "video4linux" is registered
+# there by the videodev module, and with no camera plugged at boot nothing
+# loads it, so without these two lines DeviceAllow=char-video4linux below would
+# be dropped and the camera refused by the cgroup for the life of the session.
+# The man page's own answer is this pair. INV-PROV-27 checks both.
+Wants=modprobe@videodev.service
+After=modprobe@videodev.service
 
 [Service]
 Type=simple
@@ -117,7 +126,7 @@ RestartSec=2
 
 User=nullroute-ui
 Group=nullroute-ui
-# `video` for /dev/dri. DeviceAllow is the cgroup half of that permission and
+# `video` for /dev/dri and for the camera's /dev/video* node. DeviceAllow is the cgroup half of that permission and
 # the file mode is the other half: without the group the browser is refused by
 # the filesystem after systemd has already allowed it, which reads as a DRM bug
 # rather than a permissions one.
@@ -165,12 +174,22 @@ UMask=0077
 IPAddressDeny=any
 IPAddressAllow=localhost
 
-# The panel and the input devices, and nothing else. No hardware random number
-# generator here: entropy is the daemon's business.
+# The panel, the input devices and the camera, and nothing else. No hardware
+# random number generator here: entropy is the daemon's business.
 DevicePolicy=closed
 DeviceAllow=/dev/dri/card0 rw
 DeviceAllow=/dev/dri/renderD128 rw
 DeviceAllow=char-input r
+# THE CAMERA, WHICH IS A USB (UVC) WEBCAM. The browser reads QR codes through
+# getUserMedia, so it needs /dev/video*, and under DevicePolicy=closed the
+# cgroup refuses every node not listed here whatever the file mode says. A
+# class rather than a path, because the node a webcam gets depends on what
+# else is plugged in. INV-PROV-27 pins this list: this line and nothing else
+# was added for the camera.
+#
+# It only takes effect if videodev is loaded before this unit starts, which is
+# what the modprobe@videodev.service pair in [Unit] is for. See there.
+DeviceAllow=char-video4linux rw
 
 # --- What Chromium's sandbox does not need ----------------------------------
 # Its sandbox works by entering a user namespace and dropping into it. It does

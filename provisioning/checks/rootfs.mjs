@@ -938,7 +938,368 @@ export function bootConfigDisplay(root, params) {
       )
 }
 
+/** The text of one shipped unit file with line continuations joined, or null. */
+function unitText(root, unit) {
+  for (const directory of ['etc/systemd/system', 'usr/lib/systemd/system', 'lib/systemd/system']) {
+    const path = join(root, directory, unit)
+    let stats
+    try {
+      stats = statSync(path)
+    } catch {
+      continue
+    }
+    if (stats.isFile()) return readFileSync(path, 'utf8').replace(/\\\n\s*/g, ' ')
+  }
+  return null
+}
+
+/** Every value a directive is given in a unit's text, in order. */
+function directiveValues(text, directive) {
+  return [...text.matchAll(new RegExp(`^\\s*${directive}\\s*=(.*)$`, 'gm'))].map((m) =>
+    (m[1] ?? '').trim().split(/\s+/).filter(Boolean).join(' ')
+  )
+}
+
+/**
+ * INV-PROV-27. A unit's device cgroup is closed and allows exactly the named
+ * nodes and classes, and every class it names is loaded before the unit starts.
+ *
+ * EXACTLY, NOT "CONTAINS". The camera needed one line added to the kiosk's
+ * allow list, and the risk in adding a line is adding two. A check that only
+ * confirmed char-video4linux was present would pass a list that had also
+ * picked up char-* or /dev/mem on the way.
+ *
+ * THE MODULE HALF. systemd.resource-control(5) says a device group that is not
+ * in /proc/devices when the unit starts is silently left out of the allow list.
+ * So `DeviceAllow=char-video4linux rw` is inert unless videodev is loaded
+ * first, and a unit that declares the line and not the load looks correct and
+ * refuses the camera. For each class named in `modules`, the unit must both
+ * Want and be After modprobe@<module>.service, which is the man page's own
+ * remedy.
+ */
+export function unitDeviceAllow(root, params) {
+  const unit = params.unit
+  const policy = params.policy
+  const allow = params.allow ?? []
+  const modules = params.modules ?? {}
+  if (typeof unit !== 'string' || typeof policy !== 'string' || allow.length === 0) {
+    return verdict(
+      'unit-device-allow',
+      false,
+      'the assertion gave no unit, no DevicePolicy or no allow list, and an empty list ' +
+        'compared exactly against anything is not a check anybody asked for'
+    )
+  }
+
+  const text = unitText(root, unit)
+  if (text === null) return unavailable('unit-device-allow', `${unit} is not in the rootfs`)
+
+  const limits = [
+    'reads what the unit DECLARES. Whether the kernel enforced it is visible only in the running cgroup, and a device group not in /proc/devices at start is dropped by systemd without an error.',
+    'reads the unit file that ships. A drop-in under systemd/system/<unit>.d/ that adds a DeviceAllow is not followed.',
+  ]
+
+  const problems = []
+  const policies = directiveValues(text, 'DevicePolicy')
+  if (policies.length === 0 || policies[policies.length - 1] !== policy) {
+    problems.push(
+      `DevicePolicy is ${policies.length === 0 ? 'not set' : policies[policies.length - 1]}, not ${policy}`
+    )
+  }
+
+  const normalise = (entry) => entry.trim().split(/\s+/).filter(Boolean).join(' ')
+  const declared = directiveValues(text, 'DeviceAllow').filter((v) => v !== '')
+  const wanted = allow.map(normalise)
+  const extra = declared.filter((entry) => !wanted.includes(entry))
+  const missing = wanted.filter((entry) => !declared.includes(entry))
+  if (extra.length > 0) problems.push(`allows what the profile does not: ${extra.join(', ')}`)
+  if (missing.length > 0) problems.push(`does not allow: ${missing.join(', ')}`)
+  // An empty DeviceAllow= RESETS the list in systemd, which would make every
+  // entry above it meaningless. Refused rather than modelled.
+  if (directiveValues(text, 'DeviceAllow').includes('')) {
+    problems.push('has an empty DeviceAllow=, which resets the list above it')
+  }
+
+  const wants = directiveValues(text, 'Wants').flatMap((v) => v.split(' '))
+  const after = directiveValues(text, 'After').flatMap((v) => v.split(' '))
+  for (const [klass, module] of Object.entries(modules)) {
+    const loader = `modprobe@${module}.service`
+    if (!wanted.some((entry) => entry.split(' ')[0] === klass)) {
+      problems.push(`names a module for ${klass}, which the allow list does not contain`)
+      continue
+    }
+    // Not declared at all is already reported above as missing.
+    if (!declared.some((entry) => entry.split(' ')[0] === klass)) continue
+    if (!wants.includes(loader) || !after.includes(loader)) {
+      problems.push(
+        `allows ${klass} without both Wants= and After=${loader}, so the class may not exist ` +
+          `when the unit starts and systemd drops it from the allow list without a word`
+      )
+    }
+  }
+
+  return problems.length === 0
+    ? verdict(
+        'unit-device-allow',
+        true,
+        `${unit} is DevicePolicy=${policy} and allows exactly ${String(wanted.length)} ` +
+          `entr${wanted.length === 1 ? 'y' : 'ies'}: ${wanted.join(', ')}`,
+        limits
+      )
+    : verdict('unit-device-allow', false, `${unit} ${problems.join('; ')}`, limits)
+}
+
+/** Structural equality over parsed JSON, where key order does not matter. */
+function sameJson(a, b) {
+  if (Array.isArray(a) || Array.isArray(b)) {
+    return (
+      Array.isArray(a) &&
+      Array.isArray(b) &&
+      a.length === b.length &&
+      a.every((item, i) => sameJson(item, b[i]))
+    )
+  }
+  if (a !== null && b !== null && typeof a === 'object' && typeof b === 'object') {
+    const keys = Object.keys(a).sort()
+    const other = Object.keys(b).sort()
+    return (
+      keys.length === other.length &&
+      keys.every((key, i) => key === other[i] && sameJson(a[key], b[key]))
+    )
+  }
+  return a === b
+}
+
+/**
+ * INV-PROV-28. A browser policy directory holds exactly the named files, and
+ * each says exactly the named policies.
+ *
+ * THE WHOLE DIRECTORY, because that is how Chromium reads it: every .json file
+ * in the managed directory is merged. A second file setting
+ * VideoCaptureAllowedUrls to a wildcard would widen the camera to any origin
+ * while the file this project wrote still said the right thing, and a check
+ * that opened only that file would pass.
+ *
+ * EXACT CONTENT, NOT A SUBSET. The policy exists to grant one origin the camera
+ * without a prompt. A policy file that also carried, say, a remote extension
+ * install list would still contain the three keys and would be a different
+ * device.
+ */
+export function browserPolicyExact(root, params) {
+  const directory = params.directory
+  const files = params.files ?? {}
+  const names = Object.keys(files)
+  if (typeof directory !== 'string' || names.length === 0) {
+    return verdict('browser-policy-exact', false, 'the assertion named no directory or no files')
+  }
+
+  const base = join(root, directory.replace(/^\/+/, ''))
+  let present
+  try {
+    present = readdirSync(base)
+  } catch {
+    return verdict(
+      'browser-policy-exact',
+      false,
+      `${directory} is not in the rootfs, so the browser has no managed policy and will ` +
+        `prompt for the camera, which nothing on the device can answer`
+    )
+  }
+
+  const limits = [
+    'reads the files. That the browser loaded them is visible only at chrome://policy on a running device.',
+    'the managed directory only. A recommended policy is overridden by a managed one for the same key, and keys this assertion does not name are not examined there.',
+  ]
+
+  const problems = []
+  const unexpected = present.filter((name) => !names.includes(name)).sort()
+  if (unexpected.length > 0) {
+    problems.push(`also holds ${unexpected.join(', ')}, which the browser merges in`)
+  }
+  for (const name of names) {
+    if (!present.includes(name)) {
+      problems.push(`has no ${name}`)
+      continue
+    }
+    let parsed
+    try {
+      parsed = JSON.parse(readFileSync(join(base, name), 'utf8'))
+    } catch (err) {
+      problems.push(`${name} is not JSON: ${err instanceof Error ? err.message : String(err)}`)
+      continue
+    }
+    if (!sameJson(parsed, files[name])) {
+      problems.push(`${name} says ${JSON.stringify(parsed)}, not ${JSON.stringify(files[name])}`)
+    }
+  }
+
+  return problems.length === 0
+    ? verdict(
+        'browser-policy-exact',
+        true,
+        `${directory} holds exactly ${names.join(', ')}, each with exactly the pinned policies`,
+        limits
+      )
+    : verdict('browser-policy-exact', false, `${directory} ${problems.join('; ')}`, limits)
+}
+
+/**
+ * INV-PROV-29. The named kernel modules are loadable from the rootfs, and so is
+ * every module each one depends on.
+ *
+ * THE DEPENDENCY CHAIN IS READ, NOT LISTED. uvcvideo on the pinned kernel needs
+ * nine other modules (videobuf2 in four parts, uvc, videodev, mc, usbcore and
+ * usb-common), and a hand-kept list of them would be right for one kernel. The
+ * image's own modules.dep says what modprobe will try to load, so that is what
+ * is checked: the module is there, and every file modprobe would load before it
+ * is there too.
+ *
+ * A module built into the kernel is listed in modules.builtin instead and has
+ * no file. That counts as present, because it is.
+ */
+export function kernelModulesPresent(root, params) {
+  const modules = params.modules ?? []
+  if (modules.length === 0) {
+    return verdict('kernel-modules-present', false, 'no modules were named to check')
+  }
+
+  // Merged /usr: usr/lib/modules is the real directory and lib/modules a link.
+  const base = ['usr/lib/modules', 'lib/modules']
+    .map((dir) => join(root, dir))
+    .find((dir) => existsSync(dir))
+  const versions = base === undefined ? [] : readdirSync(base).sort()
+  if (base === undefined || versions.length === 0) {
+    // Could-not-run, never a pass. A tree with no module directory at all is
+    // more likely an export that left it out than an image with no kernel
+    // modules, and a FAIL would describe the export rather than the image.
+    return unavailable('kernel-modules-present', 'the rootfs has no lib/modules to look in')
+  }
+
+  const stem = (path) => (path.split('/').pop() ?? '').replace(/\.ko(\.(xz|zst|gz))?$/u, '')
+  // modprobe treats - and _ in a module name as the same character.
+  const same = (a, b) => a.replace(/-/gu, '_') === b.replace(/-/gu, '_')
+
+  const problems = []
+  const found = []
+  for (const version of versions) {
+    const dir = join(base, version)
+    const depPath = join(dir, 'modules.dep')
+    if (!existsSync(depPath)) {
+      problems.push(`${version} has no modules.dep, so modprobe cannot load anything`)
+      continue
+    }
+    const deps = new Map()
+    for (const line of readFileSync(depPath, 'utf8').split('\n')) {
+      const [module, rest] = line.split(':')
+      if (module === undefined || rest === undefined) continue
+      deps.set(module.trim(), rest.trim().split(/\s+/).filter(Boolean))
+    }
+    const builtinPath = join(dir, 'modules.builtin')
+    const builtin = existsSync(builtinPath)
+      ? readFileSync(builtinPath, 'utf8').split('\n').filter(Boolean)
+      : []
+
+    for (const name of modules) {
+      if (builtin.some((path) => same(stem(path), name))) {
+        found.push(`${name} (built in)`)
+        continue
+      }
+      const entry = [...deps.keys()].find((path) => same(stem(path), name))
+      if (entry === undefined) {
+        problems.push(`${version} has no ${name}: modules.dep does not list it`)
+        continue
+      }
+      const missing = [entry, ...(deps.get(entry) ?? [])].filter(
+        (path) => !existsSync(join(dir, path))
+      )
+      if (missing.length > 0) {
+        problems.push(`${version} ${name} cannot load, missing: ${missing.join(', ')}`)
+        continue
+      }
+      found.push(`${name} and ${String(deps.get(entry)?.length ?? 0)} dependencies`)
+    }
+  }
+
+  return verdict(
+    'kernel-modules-present',
+    problems.length === 0,
+    problems.length === 0
+      ? `every named module is loadable in ${versions.join(', ')}: ${found.join(', ')}`
+      : problems.join('; '),
+    [
+      'checks that the files modprobe would load are there, not that they load. A module built for another kernel passes here.',
+      'says nothing about whether anything loads the module when a device is plugged in. That is udev, and INV-PROV-30.',
+    ]
+  )
+}
+
+/**
+ * INV-PROV-30. The device manager is in the image, and its rules give the named
+ * device class the named group and load drivers for hotplugged hardware.
+ *
+ * WRITTEN BECAUSE THE IMAGE HAD NO udev when the camera was chosen. The root
+ * filesystem is built with mmdebstrap --variant=essential and `udev` was not in
+ * its --include list, so there was no systemd-udevd, no 50-udev-default.rules
+ * and no 80-drivers.rules.
+ * The kernel's devtmpfs then creates /dev/video0 as root:root 0600, and the
+ * kiosk's `video` group opens nothing; and nothing acts on the MODALIAS a
+ * webcam announces, so uvcvideo is never loaded for it. Every other part of
+ * the camera path can be correct and the camera still does not work.
+ *
+ * A RULE IS A LINE CONTAINING BOTH HALVES. That is a match on text rather than
+ * an evaluation of udev's rule language, and the limit says so.
+ */
+export function udevRules(root, params) {
+  const daemon = params.daemon
+  const rules = params.rules ?? []
+  if (typeof daemon !== 'string' || rules.length === 0) {
+    return verdict('udev-rules', false, 'the assertion named no daemon or no rules')
+  }
+
+  const problems = []
+  if (!existsSync(join(root, daemon.replace(/^\/+/, '')))) {
+    problems.push(`${daemon} is not in the image, so no rule below would ever run`)
+  }
+
+  const lines = []
+  for (const dir of ['usr/lib/udev/rules.d', 'lib/udev/rules.d', 'etc/udev/rules.d']) {
+    let names = []
+    try {
+      names = readdirSync(join(root, dir))
+    } catch {
+      continue
+    }
+    for (const name of names.filter((n) => n.endsWith('.rules'))) {
+      for (const line of readFileSync(join(root, dir, name), 'utf8').split('\n')) {
+        if (!line.trim().startsWith('#')) lines.push(line)
+      }
+    }
+  }
+
+  for (const rule of rules) {
+    if (!lines.some((line) => line.includes(rule.match) && line.includes(rule.assigns))) {
+      problems.push(`no rule says ${rule.match} ... ${rule.assigns}`)
+    }
+  }
+
+  return verdict(
+    'udev-rules',
+    problems.length === 0,
+    problems.length === 0
+      ? `${daemon} is present and ${String(rules.length)} rule(s) are in place`
+      : problems.join('; '),
+    [
+      'matches rule text, not udev semantics. A later rule that reassigns the group, or a GOTO that skips the line, is not seen.',
+      'the rules existing is not the device node having that group. Only a running device with the hardware plugged in shows that.',
+    ]
+  )
+}
+
 export const ROOTFS_VERIFIERS = {
+  'unit-device-allow': unitDeviceAllow,
+  'browser-policy-exact': browserPolicyExact,
+  'kernel-modules-present': kernelModulesPresent,
+  'udev-rules': udevRules,
   'boot-config-display': bootConfigDisplay,
   'absent-paths': absentPaths,
   'unit-executables': unitExecutables,

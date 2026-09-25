@@ -154,6 +154,22 @@ cp /work/provisioning/units/nullroute-bridge.service "$ROOTFS/usr/lib/systemd/sy
 cp /work/provisioning/units/nullroute-attest.service "$ROOTFS/usr/lib/systemd/system/"
 cp /work/provisioning/units/nullroute-runtime-facts.service "$ROOTFS/usr/lib/systemd/system/"
 
+# THE CAMERA WITHOUT A PERMISSION PROMPT, AND ONLY FOR THE FRONTEND'S ORIGIN.
+# The camera is a USB (UVC) webcam and the frontend reads QR codes through
+# getUserMedia, which in kiosk mode raises a prompt nothing on the device can
+# reliably answer. A managed policy settles it: VideoCaptureAllowed=false turns
+# the prompt off and leaves capture available only to the origins in
+# VideoCaptureAllowedUrls, which is the loopback origin the kiosk loads and
+# nothing else. Audio is refused outright, since nothing here listens.
+#
+# /etc/chromium/policies/managed is where Chromium-branded Linux builds read
+# managed policy (kPolicyPath in components/policy/core/common/policy_paths.cc).
+# Chromium merges every .json file in that directory, so INV-PROV-28 checks
+# that this is the only one and that it says exactly these three things.
+mkdir -p "$ROOTFS/etc/chromium/policies/managed"
+cp /work/provisioning/chromium/nullroute.json "$ROOTFS/etc/chromium/policies/managed/"
+chmod 0644 "$ROOTFS/etc/chromium/policies/managed/nullroute.json"
+
 # ENABLED, WHICH IS NOT THE SAME AS INSTALLED. A unit file under
 # usr/lib/systemd/system is a file systemd knows how to run and will never run
 # on its own; it starts when something wants it. Both of these declared

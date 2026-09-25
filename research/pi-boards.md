@@ -100,12 +100,16 @@ match on every line except where noted.
 | `USB_VIDEO_CLASS` | m | m | USB (UVC) cameras |
 
 The image prunes only wireless and Bluetooth modules (`build-system.sh`, the
-module prune loop), so `uvcvideo` is on the card.
+module prune loop), so `uvcvideo` is on the card. Checked against an exported
+root filesystem: `modules.dep` lists it with nine dependencies (four videobuf2
+parts, `uvc`, `videodev`, `mc`, `usbcore`, `usb-common`) and all ten files are
+present. INV-PROV-29 asserts it.
 
 ## The camera gap applies to the Pi 4 too
 
-README.md names the Pi Camera Module 3 as how transactions reach the device.
-On the kernel this image pins, no CSI camera can work on any Pi:
+README.md named the Pi Camera Module 3 as how transactions reach the device
+when this was written; it names a USB (UVC) webcam now, after the decision
+recorded under Recommendation. On the kernel this image pins, no CSI camera can work on any Pi:
 
 - Camera Module 3 uses the IMX708 sensor, whose driver is in Raspberry Pi's
   kernel only ([rpi-6.12.y imx708.c](https://github.com/raspberrypi/linux/blob/rpi-6.12.y/drivers/media/i2c/imx708.c)).
@@ -283,11 +287,19 @@ extend to a Pi 5, because there is no driver for an overlay to bind.
 
 Stay on Debian's kernel, and widen by capability in this order:
 
-1. **Fix the camera on the Pi 4 first.** On the pinned kernel the working path
-   is a USB (UVC) camera. Bring-up should try one alongside the panel. Getting
+1. **Fix the camera on the Pi 4 first.** DECIDED (2026-09-25): the supported
+   camera is a USB (UVC) webcam, and CSI camera modules come later. Getting
    Camera Module 3 working needs either Raspberry Pi's kernel or Debian
    enabling unicam plus an IMX708 driver that is not upstream; neither is
-   close. That makes the camera a decision for the owner, not a wording fix.
+   close. The image now carries what the webcam path needs from the kiosk
+   and the browser, each with an assertion: `char-video4linux` in the kiosk's
+   device allow list with `videodev` loaded first (INV-PROV-27), a Chromium
+   managed policy granting the camera to `http://127.0.0.1:5180` only
+   (INV-PROV-28), and `uvcvideo` with its dependencies (INV-PROV-29). Still
+   open: the image has no udev (built with `--variant=essential`, and `udev`
+   is not in the include list), so nothing loads `uvcvideo` on hotplug and
+   `/dev/video0` is created root only. INV-PROV-30 fails until that changes.
+   Bring-up should try a webcam alongside the panel; none has streamed yet.
 2. **Bring up the Pi 4 as planned**, with the DSI panel, and measure memory
    with the kiosk running. That number decides whether 1 and 2 GB boards are
    claimed.

@@ -15,12 +15,17 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { chmodSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import {
   absentPackages,
   absentPaths,
+  browserPolicyExact,
+  kernelModulesPresent,
+  udevRules,
+  unitDeviceAllow,
   cmdlineExact,
   matchesGlob,
   bootConfigDisplay,
@@ -659,5 +664,289 @@ describe('provisioning.unit-executables', () => {
     const result = unitExecutables(root, { units: ['nullroute.service'] })
     expect(result.ok).toBe(false)
     expect(result.unavailable).toBe(true)
+  })
+})
+
+/** A file from this repository, read as the build copies it into the image. */
+function fromRepo(path: string): string {
+  return readFileSync(fileURLToPath(new URL(`../../${path}`, import.meta.url)), 'utf8')
+}
+
+describe('provisioning.unit-device-allow', () => {
+  // The profile's parameters for INV-PROV-27, written out.
+  const params = {
+    unit: 'nullroute-kiosk.service',
+    policy: 'closed',
+    allow: ['/dev/dri/card0 rw', '/dev/dri/renderD128 rw', 'char-input r', 'char-video4linux rw'],
+    modules: { 'char-video4linux': 'videodev' },
+  }
+
+  function kiosk(text: string): void {
+    put('usr/lib/systemd/system/nullroute-kiosk.service', text)
+  }
+
+  const good = [
+    '[Unit]',
+    'Wants=modprobe@videodev.service',
+    'After=nullrouted.service modprobe@videodev.service',
+    '[Service]',
+    'DevicePolicy=closed',
+    'DeviceAllow=/dev/dri/card0 rw',
+    'DeviceAllow=/dev/dri/renderD128   rw',
+    'DeviceAllow=char-input r',
+    'DeviceAllow=char-video4linux rw',
+    '',
+  ].join('\n')
+
+  /** The unit file this repository ships is the one INV-PROV-27 is about. */
+  it('passes-the-kiosk-unit-this-repository-ships', () => {
+    kiosk(fromRepo('provisioning/units/nullroute-kiosk.service'))
+    const result = unitDeviceAllow(root, params)
+    expect(result.detail).toContain('char-video4linux rw')
+    expect(result.ok).toBe(true)
+  })
+
+  it('passes-an-exact-list-with-its-loader', () => {
+    kiosk(good)
+    expect(unitDeviceAllow(root, params).ok).toBe(true)
+  })
+
+  /** Exact, not contains: the risk in adding a line is adding two. */
+  it('fails-an-entry-beyond-the-list', () => {
+    kiosk(`${good}DeviceAllow=char-* rw\n`)
+    const result = unitDeviceAllow(root, params)
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('char-* rw')
+  })
+
+  it('fails-when-the-camera-class-is-missing', () => {
+    kiosk(good.replace('DeviceAllow=char-video4linux rw\n', ''))
+    const result = unitDeviceAllow(root, params)
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('does not allow: char-video4linux rw')
+  })
+
+  /**
+   * systemd.resource-control(5): a class not in /proc/devices at start is
+   * dropped silently. Declaring it without loading videodev looks correct and
+   * refuses the camera.
+   */
+  it('fails-a-class-allowed-without-loading-its-module', () => {
+    kiosk(good.replace('Wants=modprobe@videodev.service\n', ''))
+    const result = unitDeviceAllow(root, params)
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('modprobe@videodev.service')
+  })
+
+  it('fails-a-policy-that-is-not-closed', () => {
+    kiosk(good.replace('DevicePolicy=closed', 'DevicePolicy=auto'))
+    const result = unitDeviceAllow(root, params)
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('DevicePolicy is auto')
+  })
+
+  /** An empty assignment resets the list in systemd; refused, not modelled. */
+  it('fails-an-empty-deviceallow-that-resets-the-list', () => {
+    kiosk(good.replace('DeviceAllow=char-input r', 'DeviceAllow=\nDeviceAllow=char-input r'))
+    const result = unitDeviceAllow(root, params)
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('resets the list')
+  })
+
+  it('reports-unavailable-when-the-unit-is-not-in-the-rootfs', () => {
+    const result = unitDeviceAllow(root, params)
+    expect(result.ok).toBe(false)
+    expect(result.unavailable).toBe(true)
+  })
+
+  it('refuses-to-run-without-an-allow-list', () => {
+    kiosk(good)
+    const result = unitDeviceAllow(root, { unit: params.unit, policy: 'closed' })
+    expect(result.ok).toBe(false)
+    expect(result.unavailable).toBeUndefined()
+  })
+})
+
+describe('provisioning.browser-policy-exact', () => {
+  // The profile's parameters for INV-PROV-28, written out.
+  const policy = {
+    VideoCaptureAllowed: false,
+    VideoCaptureAllowedUrls: ['http://127.0.0.1:5180'],
+    AudioCaptureAllowed: false,
+  }
+  const params = {
+    directory: '/etc/chromium/policies/managed',
+    files: { 'nullroute.json': policy },
+  }
+  const at = 'etc/chromium/policies/managed'
+
+  /** The file the build copies into the image is the one INV-PROV-28 pins. */
+  it('passes-the-policy-this-repository-ships', () => {
+    put(`${at}/nullroute.json`, fromRepo('provisioning/chromium/nullroute.json'))
+    expect(browserPolicyExact(root, params).ok).toBe(true)
+  })
+
+  it('passes-the-same-policies-in-another-key-order', () => {
+    put(
+      `${at}/nullroute.json`,
+      JSON.stringify({
+        AudioCaptureAllowed: false,
+        VideoCaptureAllowedUrls: ['http://127.0.0.1:5180'],
+        VideoCaptureAllowed: false,
+      })
+    )
+    expect(browserPolicyExact(root, params).ok).toBe(true)
+  })
+
+  /** Chromium merges the directory, so a second file can widen the camera. */
+  it('fails-a-second-file-in-the-directory', () => {
+    put(`${at}/nullroute.json`, JSON.stringify(policy))
+    put(`${at}/extra.json`, JSON.stringify({ VideoCaptureAllowedUrls: ['*'] }))
+    const result = browserPolicyExact(root, params)
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('extra.json')
+  })
+
+  it('fails-a-second-allowed-origin', () => {
+    put(
+      `${at}/nullroute.json`,
+      JSON.stringify({ ...policy, VideoCaptureAllowedUrls: ['http://127.0.0.1:5180', '*'] })
+    )
+    expect(browserPolicyExact(root, params).ok).toBe(false)
+  })
+
+  it('fails-audio-left-on', () => {
+    put(`${at}/nullroute.json`, JSON.stringify({ ...policy, AudioCaptureAllowed: true }))
+    expect(browserPolicyExact(root, params).ok).toBe(false)
+  })
+
+  it('fails-a-policy-beyond-the-three', () => {
+    put(`${at}/nullroute.json`, JSON.stringify({ ...policy, ExtensionInstallForcelist: ['x'] }))
+    expect(browserPolicyExact(root, params).ok).toBe(false)
+  })
+
+  it('fails-a-file-that-is-not-json', () => {
+    put(`${at}/nullroute.json`, '{ VideoCaptureAllowed: false')
+    const result = browserPolicyExact(root, params)
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('not JSON')
+  })
+
+  /**
+   * FAIL, not could-not-run. The directory missing is a fact about the image,
+   * and it means a camera prompt nothing on the device can answer.
+   */
+  it('fails-when-the-directory-is-absent', () => {
+    put('etc/chromium/master_preferences', '{}')
+    const result = browserPolicyExact(root, params)
+    expect(result.ok).toBe(false)
+    expect(result.unavailable).toBeUndefined()
+  })
+})
+
+describe('provisioning.kernel-modules-present', () => {
+  const v = 'usr/lib/modules/6.12.94+deb13-arm64'
+  const uvc = 'kernel/drivers/media/usb/uvc/uvcvideo.ko.xz'
+  const vmalloc = 'kernel/drivers/media/common/videobuf2/videobuf2-vmalloc.ko.xz'
+  const videodev = 'kernel/drivers/media/v4l2-core/videodev.ko.xz'
+  const mc = 'kernel/drivers/media/mc/mc.ko.xz'
+  const deps = [vmalloc, videodev, mc]
+
+  function tree(files: readonly string[]): void {
+    put(`${v}/modules.dep`, `${uvc}: ${deps.join(' ')}\n${deps.map((d) => `${d}:`).join('\n')}\n`)
+    put(`${v}/modules.builtin`, 'kernel/drivers/usb/core/usbcore.ko\n')
+    for (const file of files) put(`${v}/${file}`, 'x')
+  }
+
+  it('passes-uvcvideo-with-every-dependency-present', () => {
+    tree([uvc, ...deps])
+    const result = kernelModulesPresent(root, { modules: ['uvcvideo'] })
+    expect(result.ok).toBe(true)
+    expect(result.detail).toContain('3 dependencies')
+  })
+
+  /** A prune that reached drivers/media would take a dependency with it. */
+  it('fails-when-a-dependency-was-pruned', () => {
+    tree([uvc, vmalloc, mc])
+    const result = kernelModulesPresent(root, { modules: ['uvcvideo'] })
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('videodev.ko.xz')
+  })
+
+  it('fails-when-the-module-file-is-gone-though-listed', () => {
+    tree(deps)
+    expect(kernelModulesPresent(root, { modules: ['uvcvideo'] }).ok).toBe(false)
+  })
+
+  it('fails-a-module-modules-dep-does-not-list', () => {
+    tree([uvc, ...deps])
+    const result = kernelModulesPresent(root, { modules: ['imx708'] })
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('no imx708')
+  })
+
+  it('counts-a-built-in-module-as-present', () => {
+    tree([])
+    expect(kernelModulesPresent(root, { modules: ['usbcore'] }).ok).toBe(true)
+  })
+
+  it('fails-a-kernel-with-no-modules-dep', () => {
+    put(`${v}/${uvc}`, 'x')
+    const result = kernelModulesPresent(root, { modules: ['uvcvideo'] })
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('no modules.dep')
+  })
+
+  it('reports-unavailable-with-no-module-directory', () => {
+    put('etc/hostname', 'nullroute\n')
+    const result = kernelModulesPresent(root, { modules: ['uvcvideo'] })
+    expect(result.ok).toBe(false)
+    expect(result.unavailable).toBe(true)
+  })
+})
+
+describe('provisioning.udev-rules', () => {
+  // The profile's parameters for INV-PROV-30, written out.
+  const params = {
+    daemon: '/usr/lib/systemd/systemd-udevd',
+    rules: [
+      { match: 'SUBSYSTEM=="video4linux"', assigns: 'GROUP="video"' },
+      { match: 'ENV{MODALIAS}=="?*"', assigns: 'RUN{builtin}+="kmod load"' },
+    ],
+  }
+
+  function udev(): void {
+    put('usr/lib/systemd/systemd-udevd', 'x')
+    put('usr/lib/udev/rules.d/50-udev-default.rules', 'SUBSYSTEM=="video4linux", GROUP="video"\n')
+    put('usr/lib/udev/rules.d/80-drivers.rules', 'ENV{MODALIAS}=="?*", RUN{builtin}+="kmod load"\n')
+  }
+
+  it('passes-an-image-with-udev-and-both-rules', () => {
+    udev()
+    expect(udevRules(root, params).ok).toBe(true)
+  })
+
+  /**
+   * The shape the image had when the camera was chosen: systemd's own
+   * 70-uaccess.rules mentions video4linux, and there is no udevd to act on it.
+   */
+  it('fails-the-image-without-udev', () => {
+    put('usr/lib/udev/rules.d/70-uaccess.rules', 'SUBSYSTEM=="video4linux", TAG+="uaccess"\n')
+    const result = udevRules(root, params)
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('systemd-udevd is not in the image')
+    expect(result.detail).toContain('GROUP="video"')
+  })
+
+  it('fails-when-the-group-rule-is-missing', () => {
+    udev()
+    put('usr/lib/udev/rules.d/50-udev-default.rules', 'SUBSYSTEM=="input", GROUP="input"\n')
+    expect(udevRules(root, params).ok).toBe(false)
+  })
+
+  it('ignores-a-commented-out-rule', () => {
+    udev()
+    put('usr/lib/udev/rules.d/50-udev-default.rules', '# SUBSYSTEM=="video4linux", GROUP="video"\n')
+    expect(udevRules(root, params).ok).toBe(false)
   })
 })

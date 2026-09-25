@@ -17,6 +17,12 @@ The Pi 4 is where bring-up starts, not a limit of the design. The device needs a
 built today carries the device tree and panel overlay for a Pi 4 with the
 official 7 inch panel. Other boards are added once the image boots on them.
 
+The camera is a USB (UVC) webcam. A Raspberry Pi camera module on the CSI
+connector does not work on this image, because the pinned kernel has no driver
+for its receiver or its sensor. The card does not yet carry udev, which loads
+the webcam's driver when it is plugged in, so expect the camera to be part of
+bring-up: none has streamed on a Pi yet.
+
 | What you can do | State |
 | --- | --- |
 | Run the whole device on your computer | Works today. `make dev`. |

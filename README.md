@@ -115,7 +115,7 @@ Roughly $100 to $120.
 | Screen | Official Raspberry Pi 7 inch touchscreen | The DSI panel. Every screen is measured at exactly 800x480 and no other size. |
 | Storage | 16GB+ A2 SD card | The image is about 1.6GB. |
 | Dice | One d6 | Casino grade if you care. Any die works. |
-| Camera | Pi Camera Module 3, or a USB webcam | How transactions reach the device. The pinned Debian kernel has no driver for the Camera Module 3's sensor, so on the card a USB (UVC) camera is the path with a driver; which camera the first Pi 4 boot uses is part of bring-up. Without a camera it can still show codes, but receives nothing: an SD card transport is planned and not built. |
+| Camera | A USB (UVC) webcam | How transactions reach the device. Raspberry Pi CSI camera modules come later: the pinned Debian kernel builds neither the Pi's CSI receiver nor a driver for their sensors. The card carries the UVC driver, the kiosk's permission for video devices and a browser policy that grants the camera to the device's own page only. It does not yet carry udev, which loads that driver when a camera is plugged in, so no camera works on the card until it does, and none has streamed on a Pi yet. Without a camera it can still show codes, but receives nothing: an SD card transport is planned and not built. |
 | Case, PSU | Anything, official PSU | An underpowered supply causes strange slowness. |
 
 You do **not** need a network connection on the device, ever. That is the point.
@@ -176,7 +176,7 @@ refused. The lock screen shows two numbers now: the manifest root, which attests
 the application, and the dm-verity root hash the running kernel is checking every
 block of the root filesystem against, read from the live device-mapper table
 rather than from the card. The image is judged against a profile of assertions
-rather than a recipe, and twenty-one of the twenty-one verifiers are written.
+rather than a recipe, and twenty-five of the twenty-five verifiers are written.
 The last
 three answer questions no artifact at rest can: mount flags in force, swap in
 use, sockets listening. Reading those from an unbooted image is a confident

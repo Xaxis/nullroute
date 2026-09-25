@@ -59,7 +59,9 @@ suggest the weaker one was the real defence.
 | --- | --- |
 | Memory hygiene | Not applied. `init_on_alloc=1 init_on_free=1` are not on the pinned kernel command line (INV-PROV-21), so secrets are zeroed only by application code (INV-KEY-2) |
 | Daemon sandbox | The signer runs under systemd with `ProtectSystem=strict`, `ProtectHome=true`, `PrivateTmp=true`, `PrivateUsers=true`, `PrivateNetwork=true`, `NoNewPrivileges=true`, an empty `CapabilityBoundingSet`, `RestrictAddressFamilies=AF_UNIX`, `IPAddressDeny=any`, and a `@system-service` syscall filter |
-| Device access | `DevicePolicy=closed` with `DeviceAllow=/dev/hwrng r` and nothing else |
+| Device access, signer | `DevicePolicy=closed` with `DeviceAllow=/dev/hwrng r` and nothing else |
+| Device access, kiosk | `DevicePolicy=closed` with the panel (`/dev/dri/card0`, `/dev/dri/renderD128`), `char-input r` and `char-video4linux rw` for the USB (UVC) camera, and nothing else (INV-PROV-27). The unit loads `videodev` first, because systemd drops a device class that does not exist yet from the allow list without an error |
+| Camera permission | A Chromium managed policy turns capture prompts off and allows video capture only for `http://127.0.0.1:5180`, and turns audio capture off (INV-PROV-28). Not yet applied end to end: the image has no udev, so nothing loads `uvcvideo` when a camera is plugged in and the node is not given the `video` group (INV-PROV-30 fails until it does). No camera has streamed on a Pi yet |
 | No shell on the console | The device boots into the kiosk, not into a login prompt |
 
 `RestrictAddressFamilies=AF_UNIX` and `IPAddressDeny=any` are worth calling out:

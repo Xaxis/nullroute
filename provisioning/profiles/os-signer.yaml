@@ -570,6 +570,134 @@ assertions:
       answered only by a boot with the panel attached, and nothing in this
       repository can do it.
 
+  # --- The camera ------------------------------------------------------------
+  # A USB (UVC) webcam, and not a Raspberry Pi CSI camera module. The pinned
+  # kernel, linux-image-6.12.94+deb13-arm64, has CONFIG_VIDEO_BCM2835_UNICAM
+  # and CONFIG_VIDEO_IMX219 not set and no IMX708 driver at all, so no CSI
+  # camera can work on this image; CONFIG_USB_VIDEO_CLASS=m (uvcvideo) is
+  # built. research/pi-boards.md has the detail.
+  #
+  # The four assertions below are the four links a camera frame passes through
+  # before the frontend sees it, each of which fails quietly: the device
+  # manager that loads the driver and sets the node's group, the driver, the
+  # kiosk's device cgroup, and the browser's permission. What none of them can
+  # establish, and what ONLY HARDWARE ANSWERS, is a camera plugged into a Pi
+  # actually streaming frames into the scan screen. That has not happened yet.
+  - id: INV-PROV-27
+    statement: >
+      The kiosk unit's device cgroup is closed and allows exactly the panel, the
+      input devices and the video4linux class, and it loads videodev before it
+      starts so that the video4linux class exists to be allowed.
+    stage: image
+    verify:
+      - check: unit-device-allow
+        params:
+          unit: nullroute-kiosk.service
+          policy: closed
+          # The whole list, so an entry added beside the camera's is a failure
+          # rather than a pass.
+          allow:
+            - /dev/dri/card0 rw
+            - /dev/dri/renderD128 rw
+            - char-input r
+            - char-video4linux rw
+          modules:
+            char-video4linux: videodev
+    rationale: >
+      The browser reads QR codes from the camera, and DevicePolicy=closed
+      refuses every device node the unit does not list, whatever its file mode.
+      One class was added for the camera and the check is exact so that nothing
+      else came with it. systemd.resource-control(5) says a device group absent
+      from /proc/devices when the unit starts is silently left out of the allow
+      list, and video4linux is only there once videodev is loaded, so the unit
+      loads it with modprobe@videodev.service first.
+    does_not_cover: >
+      What the kernel enforced. This reads declared directives; whether the
+      running cgroup lets the browser open /dev/video0 is only visible on a
+      device with a camera plugged in, and that has not been observed. Drop-ins
+      under systemd/system/<unit>.d/ are not followed.
+
+  - id: INV-PROV-28
+    statement: >
+      Chromium's managed policy directory holds exactly one file, and it grants
+      video capture without a prompt to http://127.0.0.1:5180 alone and turns
+      audio capture off.
+    stage: image
+    verify:
+      - check: browser-policy-exact
+        params:
+          directory: /etc/chromium/policies/managed
+          files:
+            nullroute.json:
+              VideoCaptureAllowed: false
+              VideoCaptureAllowedUrls: ['http://127.0.0.1:5180']
+              AudioCaptureAllowed: false
+    rationale: >
+      In kiosk mode getUserMedia raises a permission prompt that nothing on the
+      device can reliably answer. VideoCaptureAllowed false turns prompts off and
+      leaves capture available only to the origins in VideoCaptureAllowedUrls,
+      which is the loopback origin the kiosk loads. Chromium merges every file in
+      the directory, so a second file could widen the list while this one still
+      read correctly, which is why the directory is checked whole.
+    does_not_cover: >
+      That Chromium read the policy. Whether it is in force shows at
+      chrome://policy on a running device, which has not been looked at. The
+      recommended policy directory is not examined, though a managed value wins
+      over a recommended one for the same key.
+
+  - id: INV-PROV-29
+    statement: >
+      The uvcvideo kernel module, and every module the image's modules.dep says
+      it depends on, is present in the root filesystem.
+    stage: image
+    verify:
+      - check: kernel-modules-present
+        params:
+          modules: [uvcvideo]
+    rationale: >
+      uvcvideo is the driver for every USB Video Class webcam, which is the
+      camera this device supports. The build deletes whole module trees to
+      remove the radios, and a prune that reached drivers/media or drivers/usb
+      would take the camera with it and nothing else would say so. Reading the
+      dependency list from modules.dep checks what modprobe will actually try to
+      load, rather than a list that is right for one kernel.
+    does_not_cover: >
+      That the module loads, binds to a particular webcam, or produces frames.
+      Only a Pi with a camera plugged in answers that, and none has been tried.
+      It also says nothing about whether anything loads the module on hotplug,
+      which is INV-PROV-30.
+
+  # EXPECTED TO FAIL until the image carries udev. It is written anyway, and
+  # before the fix, for the same reason INV-PROV-25 was: a camera path that is
+  # right in every other respect is still dead without it, and an assertion
+  # nobody writes cannot fail.
+  - id: INV-PROV-30
+    statement: >
+      The device manager is in the image, and its rules give video4linux device
+      nodes the video group and load drivers for hardware that announces a
+      modalias, so a webcam plugged in gets uvcvideo and a node the kiosk can
+      open.
+    stage: image
+    verify:
+      - check: udev-rules
+        params:
+          daemon: /usr/lib/systemd/systemd-udevd
+          rules:
+            - { match: 'SUBSYSTEM=="video4linux"', assigns: 'GROUP="video"' }
+            - { match: 'ENV{MODALIAS}=="?*"', assigns: 'RUN{builtin}+="kmod load"' }
+    rationale: >
+      Without a device manager the kernel's devtmpfs creates /dev/video0 owned by
+      root with mode 0600, so the kiosk's membership of the video group opens
+      nothing, and nothing acts on the modalias a webcam announces, so uvcvideo
+      is never loaded for it. The two rule lines are the ones systemd's udev
+      ships for exactly these jobs, in 50-udev-default.rules and
+      80-drivers.rules.
+    does_not_cover: >
+      udev's rule semantics. It matches rule text, so a later rule reassigning
+      the group, or a GOTO skipping the line, is not seen. It does not show that
+      a node on a running device has the group; only a Pi with a camera plugged
+      in shows that.
+
   - id: INV-PROV-22
     statement: >
       The boot partition holds exactly the pinned set of files and no others.

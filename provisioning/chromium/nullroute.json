@@ -1,0 +1,5 @@
+{
+  "VideoCaptureAllowed": false,
+  "VideoCaptureAllowedUrls": ["http://127.0.0.1:5180"],
+  "AudioCaptureAllowed": false
+}

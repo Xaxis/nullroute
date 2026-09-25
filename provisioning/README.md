@@ -161,8 +161,8 @@ backend, so that the first backend is written against a contract rather than the
 contract being reverse-engineered from whatever the first backend happened to
 do.
 
-Twenty-one of the twenty-one verifiers are written. Four inspect the profiles
-and the documents they cite, and run on every commit. Eight read a root filesystem, six read a
+Twenty-five of the twenty-five verifiers are written. Four inspect the profiles
+and the documents they cite, and run on every commit. Twelve read a root filesystem, six read a
 whole image (two builds to compare, a partition table, a verity superblock, the
 boot partition's file list, and the overlays config.txt loads), and the
 remaining three need a booted device: mount options, listening sockets and swap.
@@ -174,6 +174,14 @@ carries, which is the whole product failing quietly in the one place no
 assertion was looking. The twentieth closes what the nineteenth left open:
 config.txt can name an overlay that is not on the card, the firmware ignores it
 without a word, and the panel stays exactly as dark.
+
+The four newest are the camera, a USB (UVC) webcam, and they follow a frame
+from the plug to the page: udev loads the driver and gives the node its group,
+the driver and its dependencies are on the card, the kiosk's device cgroup
+admits the video4linux class, and the browser's managed policy grants the
+camera to the device's own origin and nothing else. The first of them fails
+today, because the image has no udev. None of the four can say a camera
+streams; only a Pi with one plugged in can.
 
 Those last three used to be unwritten on purpose, because reading any of them
 from an unbooted rootfs is the false pass described above. They are written now,
