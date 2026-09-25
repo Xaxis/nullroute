@@ -1,4 +1,5 @@
-import { existsSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { existsSync, rmSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -159,8 +160,13 @@ export async function waitForDebugEndpoint(chrome, port, attempts = 200) {
   throw new Error(`Chrome never exposed a debugging endpoint on ${String(port)}: ${why} ${tail}`)
 }
 
+/** Every profile this process handed out, so reap can clear them. */
+const profiles = new Set()
+
 export function chromeProfile(name) {
-  return `--user-data-dir=${join(tmpdir(), `nullroute-${name}-${String(process.pid)}`)}`
+  const dir = join(tmpdir(), `nullroute-${name}-${String(process.pid)}`)
+  profiles.add(dir)
+  return `--user-data-dir=${dir}`
 }
 
 export function reap(...children) {
@@ -180,6 +186,20 @@ export function reap(...children) {
       }
     }
   }
+  /*
+   * AND EVERYTHING ELSE THE BROWSER STARTED, AND ITS PROFILE. Chrome is not
+   * spawned detached, so the group kill above misses it and only the main
+   * process gets the signal: renderer and GPU helpers could outlive it, and one
+   * hung check left a whole browser running for forty minutes. Every helper
+   * carries the profile directory on its command line, which makes it the one
+   * handle that finds them all. The directory itself was never removed either,
+   * and eight hundred of them had collected in the temp folder.
+   */
+  for (const dir of profiles) {
+    spawnSync('pkill', ['-KILL', '-f', dir])
+    rmSync(dir, { recursive: true, force: true })
+  }
+  profiles.clear()
 }
 
 /**

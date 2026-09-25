@@ -90,12 +90,27 @@ const MIN_CHARS = 5000
 const PORT = await freePort()
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
+/*
+ * EVERY WAIT HAS AN END. A command whose reply never came waited forever, and
+ * one deploy sat in this check for forty minutes with Chrome open and nothing
+ * printed. A check that can hang is a check nobody can tell apart from one
+ * still working, so each command gets thirty seconds and names itself when it
+ * runs out, and the whole run gets a ceiling below.
+ */
+const COMMAND_MS = 30_000
+const RUN_MS = 5 * 60_000
+
 function send(ws, state, method, params = {}) {
   return new Promise((resolve, reject) => {
     const id = ++state.seq
+    const timer = setTimeout(() => {
+      ws.removeEventListener('message', onMessage)
+      reject(new Error(`${method} had no reply in ${String(COMMAND_MS / 1000)}s`))
+    }, COMMAND_MS)
     const onMessage = (event) => {
       const msg = JSON.parse(event.data)
       if (msg.id !== id) return
+      clearTimeout(timer)
       ws.removeEventListener('message', onMessage)
       if (msg.error) reject(new Error(`${method}: ${msg.error.message}`))
       else resolve(msg.result)
@@ -105,8 +120,19 @@ function send(ws, state, method, params = {}) {
   })
 }
 
+/** The browser, where the watchdog and the failure path can reach it. */
+let chrome
+
 async function main() {
-  const chrome = spawn(
+  const watchdog = setTimeout(() => {
+    console.error(
+      `check-web-live: no result after ${String(RUN_MS / 60_000)} minutes, stopping. The ` +
+        'deploy itself finished; this is the check that reads it back.'
+    )
+    reap(chrome)
+    process.exit(1)
+  }, RUN_MS)
+  chrome = spawn(
     chromeBinary('check-web-live'),
     [
       '--headless',
@@ -221,6 +247,7 @@ async function main() {
     }
   }
 
+  clearTimeout(watchdog)
   page.close()
   browser.close()
   reap(chrome)
@@ -239,5 +266,7 @@ async function main() {
 
 main().catch((err) => {
   console.error(`check-web-live: ${err.message}`)
+  // Chrome goes with the failure, or it outlives the check holding its port.
+  if (chrome !== undefined) reap(chrome)
   process.exit(1)
 })
