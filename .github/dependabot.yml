@@ -46,6 +46,11 @@ updates:
       # so npm ci refuses the install. Lift this when typescript-eslint does.
       - dependency-name: typescript
         update-types: ['version-update:semver-major']
+      # The types describe the runtime, and the runtime is pinned: package.json
+      # says node 24.x and so does the image. @types/node 26 would type APIs
+      # the device's Node does not have. Its major moves with the engines field.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
     commit-message:
       prefix: deps
     # Every workspace resolves through the one lockfile at the root, so a single
