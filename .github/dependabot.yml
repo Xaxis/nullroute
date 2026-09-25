@@ -51,6 +51,14 @@ updates:
       # the device's Node does not have. Its major moves with the engines field.
       - dependency-name: '@types/node'
         update-types: ['version-update:semver-major']
+      # vitest 5 cannot be installed: npm 11.4.2's arborist throws "Cannot read
+      # properties of null (reading 'edgesOut')" in #loadPeerSet while resolving
+      # its optional browser peers, locally and in CI (#8). --legacy-peer-deps
+      # would get past it by changing how the whole lockfile resolves, which is
+      # not a trade to make for a test runner. Lift this when a plain npm
+      # install of vitest 5 succeeds.
+      - dependency-name: 'vitest'
+        update-types: ['version-update:semver-major']
     commit-message:
       prefix: deps
     # Every workspace resolves through the one lockfile at the root, so a single
