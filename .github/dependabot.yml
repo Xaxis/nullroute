@@ -13,19 +13,39 @@
 # docs/THREAT-MODEL.md lists "dependency review on every lockfile change" as the
 # supply chain defence, and a notice nobody reads is not review.
 #
-# Grouped into one pull request per ecosystem on purpose. Twelve separate
-# branches a week is how a repository learns to close these unread, which is the
-# failure this is meant to fix rather than reproduce.
+# Grouped, but not into one pull request per ecosystem. That was tried: #4 put
+# TypeScript 7, ESLint 10 and vitest 5 in the same branch as @noble/hashes and
+# @scure/btc-signer, `npm ci` could not resolve typescript-eslint against
+# TypeScript 7, and so the code that holds keys could not take a minor release
+# until four unrelated majors all worked. Now:
+#
+#   device-crypto   @noble and @scure alone, every update type. These run on
+#                   the device and sign; they get a pull request nobody has to
+#                   read around, and the BIP vectors are what review it.
+#   minor-and-patch everything else that should not break anything.
+#   majors          one pull request each, since each is its own migration.
+#
+# MANIFEST.lock covers package-lock.json (SP-ATT-5), so every one of these fails
+# manifest-check until `make manifest` is run on the branch. That is the point:
+# the root hash moves only when somebody takes the change.
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 6
     groups:
-      npm:
+      device-crypto:
+        patterns: ['@noble/*', '@scure/*']
+      minor-and-patch:
         patterns: ['*']
+        update-types: ['minor', 'patch']
+    ignore:
+      # typescript-eslint 8.70 declares a TypeScript peer range that excludes 7,
+      # so npm ci refuses the install. Lift this when typescript-eslint does.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
     commit-message:
       prefix: deps
     # Every workspace resolves through the one lockfile at the root, so a single
