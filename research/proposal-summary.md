@@ -104,13 +104,14 @@ That takes a human reviewer ([docs/VERIFICATION.md](../docs/VERIFICATION.md#what
 
 Before the PIN is entered, the lock screen shows the manifest root: SHA-256 of
 `MANIFEST.lock`, which is plain `sha256sum` output for every tracked file under
-`packages/`, `spec/` and `provisioning/`, sorted under `LC_ALL=C`. Anyone can
+`packages/`, `spec/` and `provisioning/` plus the root `package.json` and
+`package-lock.json`, sorted under `LC_ALL=C`. Anyone can
 recompute it without this project's tools:
 
 ```console
 $ sha256sum -c MANIFEST.lock
 $ sha256sum MANIFEST.lock
-$ git ls-files -z packages spec provisioning | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum
+$ git ls-files -z package.json package-lock.json packages spec provisioning | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum
 ```
 
 For this summary the three were run with macOS `shasum -a 256`. All 346 files
@@ -222,11 +223,6 @@ transaction claimed it (SP-REV-7). The same claim made through
 
 ### Not met in the profile's own tables
 
-- **The lockfile is outside the manifest (SP-ATT-5).** `package-lock.json` and
-  the root `package.json` are not under `packages spec provisioning`, so a
-  changed dependency does not move the number on the lock screen. Only the
-  image checksum covers them. Whether to add them is the owner's decision
-  ([handoff-C, open question 2](handoff-C.md#open-questions-for-the-owner)).
 - **BBQr byte mode against alphanumeric (SP-TX-6)**, above. The profile keeps
   BBQr's requirement rather than writing nullroute's behaviour into it.
 - **UR is not supported**, read or write. SeedSigner writes PSBTs only as UR and

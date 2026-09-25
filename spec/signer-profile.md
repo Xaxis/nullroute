@@ -529,7 +529,7 @@ For nullroute they are (`docs/VERIFICATION.md`, "Checking it"):
 ```console
 $ sha256sum -c MANIFEST.lock
 $ sha256sum MANIFEST.lock
-$ git ls-files -z packages spec provisioning | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum
+$ git ls-files -z package.json package-lock.json packages spec provisioning | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum
 ```
 
 Check: manual: run the three commands on a clean checkout of the release
@@ -600,11 +600,13 @@ Stated as plainly as the requirements, because a reviewer will look here first.
    file (`packages/daemon/src/boot/attestation.ts`, comment above the staleness
    check). File contents are checked by `sha256sum -c` when the report is
    written, and by dm-verity block by block on a tier 1 build.
-4. **Dependencies are outside the root.** nullroute's manifest covers tracked
-   files under `packages/`, `spec/` and `provisioning/`. `package-lock.json`,
-   the root `package.json` and `node_modules` are not in it, so a changed
-   dependency does not move the displayed value (SP-ATT-5). The image checksum
-   of tier 0 covers them.
+4. **Dependencies are in the root by reference, not by content.** nullroute's
+   manifest covers tracked files under `packages/`, `spec/` and
+   `provisioning/`, and the root `package.json` and `package-lock.json`
+   (SP-ATT-5), so a changed dependency version or integrity hash moves the
+   displayed value. The installed `node_modules` is not hashed into it: npm
+   checks each package against the lock file's integrity hash when it
+   installs, and the image checksum of tier 0 covers the result.
 5. **The boot partition is covered by nothing below tier 2.** Neither the
    manifest nor dm-verity covers the boot partition, the kernel command line or
    the initramfs. An attacker who rewrites it supplies their own verity root and
@@ -637,7 +639,7 @@ does not require it.
 | SP-ATT-2 | Met | `Makefile` target `manifest`; INV-BUILD-1 |
 | SP-ATT-3 | Met | `docs/VERIFICATION.md` recipe, `make manifest-recipe` |
 | SP-ATT-4 | Met | `docs/VERIFICATION.md` |
-| SP-ATT-5 | **Not met** | `MANIFEST_ROOTS := packages spec provisioning` in `Makefile`; `package-lock.json` is at the repository root |
+| SP-ATT-5 | Met | `MANIFEST_ROOTS := package.json package-lock.json packages spec provisioning` in `Makefile`; `package-lock.json` is the first line of `MANIFEST.lock` |
 | SP-ATT-6 | Met | Screen half: INV-UI-2, INV-UI-70. Daemon half: `requirePassingVerification`, now INV-BUILD-1 with five tests in `packages/daemon/test/verification-gate.test.ts`, which also refuses a report that records no checks |
 | SP-ATT-7 | Met | INV-UI-5, INV-UI-69 |
 | SP-ATT-8 | Met | INV-UI-1, INV-UI-6 |

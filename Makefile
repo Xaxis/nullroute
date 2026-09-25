@@ -14,7 +14,11 @@ SHELL := /bin/bash
 
 # The manifest covers what ships to the device. apps/web is the public website
 # and is deliberately excluded: see docs/VERIFICATION.md.
-MANIFEST_ROOTS := packages spec provisioning
+#
+# The two root package files are in it so that the value on the lock screen
+# moves when a dependency does (SP-ATT-5). Before they were, a changed
+# dependency left that value alone and only the image checksum noticed.
+MANIFEST_ROOTS := package.json package-lock.json packages spec provisioning
 
 .PHONY: help install dev build check check-fast verify manifest manifest-check \
 	contrast ui-roles \

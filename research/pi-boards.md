@@ -256,7 +256,7 @@ Pi 500 trees, IMX708, Touch Display 2. Costs, measured against CLAUDE.md:
   be. Debian's kernel comes from the same archive as the rest of the image.
 - The kernel pin, its SHA-256, the `KERNEL_DIR` path and the overlay are all in
   `provisioning/build/`, which is a `MANIFEST.lock` root
-  (`make print-manifest-roots` prints `packages spec provisioning`). The change
+  (`make print-manifest-roots` lists it). The change
   alters the root hash, as it should, and invalidates the module pruning list,
   the initramfs, the verity chain and the QEMU boot test, which were all built
   and checked against Debian's kernel. `nullroute-7inch-dsi.dts` would be

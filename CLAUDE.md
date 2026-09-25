@@ -89,7 +89,8 @@ make web         # the website, locally
 
 **The website is not the device, and the boundary is enforced.** `apps/web` is
 a Next.js site that obviously uses the network. It never ships to the Pi,
-`MANIFEST.lock` covers `packages/`, `spec/` and `provisioning/` only, and the no-network lint
+`MANIFEST.lock` covers `packages/`, `spec/`, `provisioning/` and the root
+`package.json` and `package-lock.json` only, and the no-network lint
 rule does not apply to it. `apps/web` must never import from `packages/daemon`.
 If you want to show device behaviour on the site, generate a static artifact
 into `docs/`, do not import the code.

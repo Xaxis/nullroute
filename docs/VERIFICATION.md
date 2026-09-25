@@ -66,14 +66,14 @@ Compute the root hash:
 
 ```console
 $ sha256sum MANIFEST.lock
-e55a9f73d80b0e5dd354a965d3b42384f0ee601c9a61193a8ddba2ebdcf83533  MANIFEST.lock
+46717fdec465ef7593dc0046dea863f35b0f05343f3e443a245620fad4541525  MANIFEST.lock
 ```
 
 Regenerate the manifest from scratch and confirm it matches what is committed:
 
 ```console
-$ git ls-files -z packages spec provisioning | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum
-e55a9f73d80b0e5dd354a965d3b42384f0ee601c9a61193a8ddba2ebdcf83533  -
+$ git ls-files -z package.json package-lock.json packages spec provisioning | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum
+46717fdec465ef7593dc0046dea863f35b0f05343f3e443a245620fad4541525  -
 ```
 
 On macOS use `shasum -a 256` in place of `sha256sum`. The values are identical.
@@ -99,11 +99,12 @@ system's language settings.
 
 ### What the manifest deliberately excludes
 
-The manifest covers `packages/`, `spec/` and `provisioning/`. It does not
-cover:
+The manifest covers `packages/`, `spec/` and `provisioning/`, and the root
+`package.json` and `package-lock.json`, so the root hash moves when a
+dependency does. It does not cover:
 
 - `apps/web`, the public website, which never ships to the device
-- `node_modules`, which is covered separately by the lockfile's integrity hashes
+- `node_modules`, which the lockfile pins by integrity hash, and the lockfile is covered
 - `.tsbuildinfo` and other incremental build caches, which are not reproducible
   and are not shipped
 - `docs/`, which is prose and does not execute

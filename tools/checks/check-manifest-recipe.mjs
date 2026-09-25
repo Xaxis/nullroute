@@ -27,7 +27,7 @@
  *   --write updates the example hashes in place, and is what `make manifest`
  *   calls so nobody has to hand-copy a hash into prose ever again.
  */
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
@@ -165,11 +165,20 @@ for (const test of cases) {
 const roots = execFileSync('make', ['-s', 'print-manifest-roots'], { cwd: ROOT, encoding: 'utf8' })
   .trim()
   .split(/\s+/)
+/*
+ * How a root is written in prose: a directory with its trailing slash, a file
+ * as its name. The roots were all directories until the lock file joined them
+ * (SP-ATT-5), and this wrote `package.json/`, which no document should say.
+ */
+const cited = (root) =>
+  existsSync(join(ROOT, root)) && statSync(join(ROOT, root)).isDirectory()
+    ? `\`${root}/\``
+    : `\`${root}\``
 for (const root of roots) {
-  if (!source.includes(`\`${root}/\``)) {
+  if (!source.includes(cited(root))) {
     fail(
       'docs/VERIFICATION.md',
-      `never mentions \`${root}/\`, which the manifest covers. A reader cannot tell what an ` +
+      `never mentions ${cited(root)}, which the manifest covers. A reader cannot tell what an ` +
         `unchanged root hash proves if the document does not list what went into it.`
     )
   }
@@ -207,9 +216,9 @@ for (const relative of ALSO_DESCRIBE) {
   const paragraphs = text
     .split(/\n\s*\n/)
     .filter((block) => /MANIFEST\.lock|manifest root/.test(block))
-  const claim = paragraphs.find((block) => roots.some((root) => block.includes(`\`${root}/\``)))
+  const claim = paragraphs.find((block) => roots.some((root) => block.includes(cited(root))))
   if (claim === undefined) continue
-  const named = roots.filter((root) => claim.includes(`\`${root}/\``))
+  const named = roots.filter((root) => claim.includes(cited(root)))
   const missing = roots.filter((root) => !named.includes(root))
   if (missing.length === 0) continue
   fail(
