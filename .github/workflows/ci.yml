@@ -232,6 +232,13 @@ jobs:
       - name: Signer profile conformance
         run: make conformance
 
+      # The other direction of ur-psbt.json: SeedSigner's own UR decoder, at a
+      # pinned commit, reads the frames this device writes, including mixed
+      # parts alone, which decode only if both sides pick the same fragments.
+      # Not in make check because it fetches SeedSigner; here it has the network.
+      - name: SeedSigner reads this device's UR
+        run: make interop-ur
+
   # ---------------------------------------------------------------------------
   # Supply chain and reproducibility. The manifest root hash is worthless if a
   # third party cannot arrive at the same number.
