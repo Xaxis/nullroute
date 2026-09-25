@@ -13,6 +13,8 @@
  * transaction, and is not the one anybody meant to sign.
  */
 
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { splitBbqr } from '@nullroute/core'
@@ -132,8 +134,10 @@ describe('ScanScreen', () => {
   it('assembles-a-sequence-arriving-out-of-order', async () => {
     // Small enough that the polling loop gets through it quickly, large
     // enough to need several frames.
+    // Labelled binary: arbitrary bytes are not a PSBT, and a psbt label now
+    // makes the join check that they are (INV-QR-10).
     const data = new Uint8Array(700).map((_, i) => (i * 31) & 0xff)
-    const parts = splitBbqr(data, 'psbt')
+    const parts = splitBbqr(data, 'binary')
     expect(parts.length).toBeGreaterThan(2)
 
     // Backwards, with a repeat, as a camera pointed at a loop would see it.
@@ -155,7 +159,7 @@ describe('ScanScreen', () => {
     const result = onResult.mock.calls[0]?.[0] as ScanResult
     expect(result.kind).toBe('bbqr')
     if (result.kind !== 'bbqr') throw new Error('expected a bbqr result')
-    expect(result.fileType).toBe('psbt')
+    expect(result.fileType).toBe('binary')
     expect(Buffer.from(result.data).equals(Buffer.from(data))).toBe(true)
   }, 15_000)
 
@@ -197,6 +201,40 @@ describe('ScanScreen', () => {
     // And nothing was handed back.
     expect(onResult).not.toHaveBeenCalled()
   })
+
+  /**
+   * INV-QR-10 at the screen level. A full set of frames that does not join
+   * into one PSBT is refused with the reason, and the count starts over.
+   *
+   * The refusal used to be thrown into the polling loop, which discards what
+   * it awaits: the screen sat on a full count with nothing to say, and every
+   * later frame retried the same failed join.
+   */
+  it('says-so-when-a-full-set-does-not-join-and-starts-over', async () => {
+    const vectors = JSON.parse(
+      // From the repository root, as theme.test.tsx reads styles.css: under
+      // jsdom import.meta.url is not a file URL.
+      readFileSync(resolve(process.cwd(), 'spec/vectors/signer-profile/bbqr-psbt.json'), 'utf8')
+    ) as { cases: { id: string; input: { frames: string[] } }[] }
+    const frames = vectors.cases.find((c) => c.id === 'two-transfers-disjoint-indices')?.input
+      .frames
+    if (frames === undefined) throw new Error('vector missing')
+    const onResult = vi.fn()
+
+    mount(
+      frames.map((frame) => [frame]),
+      onResult
+    )
+
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('scan-error').textContent).toContain('do not join into one PSBT')
+      },
+      { timeout: 8000 }
+    )
+    expect(onResult).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('scan-progress')).toBeNull()
+  }, 15_000)
 
   it('reports-a-camera-that-will-not-open', async () => {
     render(

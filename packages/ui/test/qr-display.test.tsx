@@ -7,6 +7,8 @@
  * scanner missed frame 3 of 7 needs to get back to frame 3.
  */
 
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { encodeQrText, joinBbqr, parseBbqrPart } from '@nullroute/core'
@@ -27,6 +29,19 @@ function bigPayload(length: number): string {
   let out = ''
   for (let i = 0; i < length; i += 1) out += alphabet[(i * 7 + (i >> 6)) % alphabet.length] ?? 'A'
   return out
+}
+
+/**
+ * The signer profile's 1-input 20-output PSBT, 1342 bytes: too large for one
+ * frame, and a real PSBT, which the join now requires of type P.
+ */
+function realPsbt(): string {
+  const vectors = JSON.parse(
+    readFileSync(resolve(process.cwd(), 'spec/vectors/signer-profile/bbqr-psbt.json'), 'utf8')
+  ) as { cases: { id: string; input: { psbtBase64?: string } }[] }
+  const text = vectors.cases.find((c) => c.id === 'write-1in20out')?.input.psbtBase64
+  if (text === undefined) throw new Error('vector missing')
+  return text
 }
 
 function svg(testId: string): SVGElement {
@@ -106,7 +121,9 @@ describe('QrDisplay', () => {
    * the property that makes the display correct rather than merely present.
    */
   it('shows-frames-that-reassemble-into-the-payload', async () => {
-    const text = bigPayload(6000)
+    // A real PSBT: the join checks that type P frames make exactly one
+    // (INV-QR-10), so made-up base64 labelled psbt is refused there.
+    const text = realPsbt()
     const { container } = render(<QrDisplay text={text} fileType="psbt" testId="qr" />)
 
     const element = container.querySelector('svg')
@@ -142,10 +159,9 @@ describe('QrDisplay', () => {
    * text through the same mistake twice and passed.
    */
   it('sends-a-psbt-as-the-binary-file-bbqr-defines', async () => {
-    const binary = new Uint8Array(4000)
-    binary.set([0x70, 0x73, 0x62, 0x74, 0xff])
-    for (let i = 5; i < binary.length; i += 1) binary[i] = (i * 31) % 256
-    const text = toBase64(binary)
+    const text = realPsbt()
+    const binary = Uint8Array.from(atob(text), (char) => char.charCodeAt(0))
+    expect(Array.from(binary.subarray(0, 5))).toEqual([0x70, 0x73, 0x62, 0x74, 0xff])
 
     const { splitBbqr } = await import('@nullroute/core')
     const joined = await joinBbqr(splitBbqr(bbqrPayload(text, 'psbt'), 'psbt').map((p) => p.text))

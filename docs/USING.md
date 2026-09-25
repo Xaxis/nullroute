@@ -821,12 +821,14 @@ signed transactions, and the only thing bought is a few fewer frames.
 
 **Frames from two transfers are not merged when their headers differ.** If a
 second sequence with a different frame count, file type or encoding comes into
-shot, the scanner stops and says so, because assembling the two would give you a
-transaction that parses, looks plausible, and is not the one either screen was
-showing. Two sequences whose headers match exactly cannot be told apart by
-BBQr, which has no field that names the transfer, so show one sequence at a
-time. The review screen is the backstop: it shows what was assembled, not what
-you meant to send.
+shot, the scanner stops and says so. Two sequences whose headers match exactly
+cannot be told apart by their headers, because BBQr has no field that names the
+transfer and no checksum of the whole. For a PSBT or a transaction, a full set
+of frames that does not join into exactly one is refused, the count starts
+over, and the screen tells you to scan one sequence again. That catches the
+usual mix-up, but it is a check that the result is well formed, not that it
+came from one screen, so show one sequence at a time. The review screen is the
+backstop: it shows what was assembled, not what you meant to send.
 
 ### The decoder is the one dependency that reads
 

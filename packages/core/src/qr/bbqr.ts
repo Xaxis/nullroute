@@ -47,6 +47,8 @@
  */
 
 import { base32nopad, hex } from '@scure/base'
+import * as btc from '@scure/btc-signer'
+import { parsePsbt } from '../psbt/parse.js'
 import { encodeQrAlphanumeric, segmentCapacity, type QrCode } from './encode.js'
 import type { EcLevel } from './tables.js'
 
@@ -336,10 +338,38 @@ export class BbqrCollector {
       if (part === undefined) throw new BbqrError(`Part ${String(i + 1)} is missing.`)
       ordered.push(part)
     }
-    return {
-      data: await joinParts(ordered),
-      fileType: this.#fileType ?? 'binary',
-    }
+    const fileType = this.#fileType ?? 'binary'
+    const data = await joinParts(ordered)
+    checkWhole(data, fileType)
+    return { data, fileType }
+  }
+}
+
+/**
+ * The joined payload must be one whole document of the type the headers name
+ * (SP-TX-5).
+ *
+ * BBQr carries no transfer id and no checksum of the payload, so frames from
+ * two transfers that agree on count, type and encoding, with no index in
+ * common, pass every header check above. Bytes spliced from two PSBTs or two
+ * transactions do not decode as exactly one, so for those two types the
+ * splice is caught here, at the transport, with a message that says what to
+ * do. It is a structural check, not a digest: it cannot catch a splice that
+ * happens to parse, and other file types have no structure to check. A
+ * sender able to craft such a splice could send any PSBT it liked anyway, and
+ * the review that follows describes whatever arrived.
+ */
+function checkWhole(data: Uint8Array, fileType: FileType): void {
+  try {
+    if (fileType === 'psbt') parsePsbt(data)
+    else if (fileType === 'transaction')
+      btc.Transaction.fromRaw(data, { allowUnknownOutputs: true })
+    else return
+  } catch (err) {
+    throw new BbqrError(
+      `These frames do not join into one ${fileType === 'psbt' ? 'PSBT' : 'transaction'}: ` +
+        `${(err as Error).message} If two sequences were in view, scan one again from the start.`
+    )
   }
 }
 

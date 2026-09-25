@@ -13,7 +13,8 @@
 
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { base32nopad } from '@scure/base'
+import { base32nopad, base64 } from '@scure/base'
+import * as btc from '@scure/btc-signer'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { prepareZXingModule, readBarcodes } from 'zxing-wasm/reader'
 
@@ -78,13 +79,13 @@ describe('core.qr.bbqr', () => {
   it('round-trips-payloads-of-every-size', async () => {
     for (const length of [0, 1, 5, 6, 100, 1000, 4321, 20_000]) {
       const data = payload(length)
-      const parts = splitBbqr(data, 'psbt')
+      const parts = splitBbqr(data, 'binary')
       const joined = await joinBbqr(parts.map((part) => part.text))
 
       expect(Buffer.from(joined.data).equals(Buffer.from(data)), `length ${String(length)}`).toBe(
         true
       )
-      expect(joined.fileType).toBe('psbt')
+      expect(joined.fileType).toBe('binary')
     }
   })
 
@@ -112,7 +113,7 @@ describe('core.qr.bbqr', () => {
    */
   it('makes-every-part-independently-decodable', () => {
     for (const length of [37, 1000, 9999]) {
-      for (const part of splitBbqr(payload(length), 'psbt')) {
+      for (const part of splitBbqr(payload(length), 'binary')) {
         const parsed = parseBbqrPart(part.text)
         expect(() => base32nopad.decode(parsed.payload)).not.toThrow()
       }
@@ -121,7 +122,7 @@ describe('core.qr.bbqr', () => {
 
   it('accepts-parts-in-any-order-and-tolerates-repeats', async () => {
     const data = payload(3000)
-    const parts = splitBbqr(data, 'psbt')
+    const parts = splitBbqr(data, 'binary')
     expect(parts.length).toBeGreaterThan(2)
 
     const collector = new BbqrCollector()
@@ -137,7 +138,7 @@ describe('core.qr.bbqr', () => {
   })
 
   it('reports-what-it-is-still-waiting-for', async () => {
-    const parts = splitBbqr(payload(3000), 'psbt')
+    const parts = splitBbqr(payload(3000), 'binary')
     const collector = new BbqrCollector()
     for (const part of parts) if (part.index !== 1) collector.add(part.text)
 
@@ -160,8 +161,8 @@ describe('core.qr.bbqr', () => {
    * transaction assembled from two documents.
    */
   it('refuses-parts-that-belong-to-a-different-transfer', () => {
-    const a = splitBbqr(payload(3000), 'psbt')
-    const b = splitBbqr(payload(9000), 'psbt')
+    const a = splitBbqr(payload(3000), 'binary')
+    const b = splitBbqr(payload(9000), 'binary')
     const c = splitBbqr(payload(3000), 'json')
 
     const collector = new BbqrCollector()
@@ -173,8 +174,8 @@ describe('core.qr.bbqr', () => {
   })
 
   it('refuses-the-same-index-arriving-with-different-contents', () => {
-    const a = splitBbqr(payload(3000), 'psbt')
-    const b = splitBbqr(payload(3000).fill(9), 'psbt')
+    const a = splitBbqr(payload(3000), 'binary')
+    const b = splitBbqr(payload(3000).fill(9), 'binary')
     expect(a.length).toBe(b.length)
 
     const collector = new BbqrCollector()
@@ -196,7 +197,7 @@ describe('core.qr.bbqr', () => {
   it('refuses-a-payload-that-needs-more-parts-than-the-format-allows', () => {
     // Version 10 at level H carries 65 bytes a frame, so this needs some three
     // thousand of them and the format has room for 1295.
-    expect(() => splitBbqr(payload(200_000), 'psbt', { maxVersion: 10, level: 'H' })).toThrow(
+    expect(() => splitBbqr(payload(200_000), 'binary', { maxVersion: 10, level: 'H' })).toThrow(
       /BBQr allows/
     )
     /*
@@ -218,13 +219,13 @@ describe('core.qr.bbqr', () => {
 
     // And a density cap with no room for even one base32 group says so, rather
     // than dividing by zero and reporting an impossible number of parts.
-    expect(() => splitBbqr(payload(100), 'psbt', { maxVersion: 1, level: 'H' })).toThrow(
+    expect(() => splitBbqr(payload(100), 'binary', { maxVersion: 1, level: 'H' })).toThrow(
       /no room for a BBQr payload/
     )
   })
 
   it('reports-an-undecodable-payload-against-the-part-that-carried-it', async () => {
-    const parts = splitBbqr(payload(200), 'psbt')
+    const parts = splitBbqr(payload(200), 'binary')
     const broken = parts.map((part, i) => (i === 0 ? `${part.text.slice(0, -1)}1` : part.text))
     // 1 is not in the base32 alphabet, so this is a misread rather than a
     // different payload, and the message has to say which frame to try again.
@@ -253,7 +254,7 @@ describe('core.qr.bbqr', () => {
     const deflated = new Uint8Array(Buffer.concat(chunks.map((c) => Buffer.from(c))))
 
     // Compression happens before the split, so it inflates once at the join.
-    const text = `B$ZP0100${base32nopad.encode(deflated)}`
+    const text = `B$ZB0100${base32nopad.encode(deflated)}`
     const joined = await joinBbqr([text])
     expect(Buffer.from(joined.data).equals(Buffer.from(data))).toBe(true)
   })
@@ -267,8 +268,8 @@ describe('core.qr.bbqr', () => {
    */
   it('emits-frames-an-independent-decoder-reads-back', async () => {
     const data = payload(2400)
-    const parts = splitBbqr(data, 'psbt')
-    const codes = splitBbqrToQr(data, 'psbt')
+    const parts = splitBbqr(data, 'binary')
+    const codes = splitBbqrToQr(data, 'binary')
 
     expect(codes).toHaveLength(parts.length)
     for (const code of codes) {
@@ -286,8 +287,8 @@ describe('core.qr.bbqr', () => {
 
   it('honours-a-lower-density-cap-by-using-more-frames', () => {
     const data = payload(4000)
-    const dense = splitBbqr(data, 'psbt', { maxVersion: 20 })
-    const sparse = splitBbqr(data, 'psbt', { maxVersion: 8 })
+    const dense = splitBbqr(data, 'binary', { maxVersion: 20 })
+    const sparse = splitBbqr(data, 'binary', { maxVersion: 8 })
     expect(sparse.length).toBeGreaterThan(dense.length)
   })
 
@@ -301,11 +302,11 @@ describe('core.qr.bbqr', () => {
    */
   it('writes-every-frame-in-alphanumeric-mode', () => {
     const data = payload(2400)
-    const parts = splitBbqr(data, 'psbt')
+    const parts = splitBbqr(data, 'binary')
     for (const part of parts) {
       for (const char of part.text) expect(QR_ALPHANUMERIC).toContain(char)
     }
-    const codes = splitBbqrToQr(data, 'psbt')
+    const codes = splitBbqrToQr(data, 'binary')
     expect(codes).toHaveLength(parts.length)
 
     // What byte mode at version 12, level M would have needed: eight header
@@ -313,5 +314,64 @@ describe('core.qr.bbqr', () => {
     const byteGroups = Math.floor((segmentCapacity('byte', 12, 'M') - 8) / 8)
     const byteParts = Math.ceil(data.length / (byteGroups * 5))
     expect(parts.length).toBeLessThan(byteParts)
+  })
+
+  /**
+   * INV-QR-10 (SP-TX-5). Frames from two transfers with the same count, type
+   * and encoding and no index in common pass every header check, because BBQr
+   * carries no transfer id. The payload they join into is not one PSBT, and
+   * that is refused at the join. These frames are the signer profile's own
+   * vector, written by Coinkite's reference implementation from two different
+   * PSBTs.
+   */
+  it('refuses-a-psbt-joined-from-two-transfers', async () => {
+    const vectors = JSON.parse(
+      readFileSync(
+        new URL('../../../spec/vectors/signer-profile/bbqr-psbt.json', import.meta.url),
+        'utf8'
+      )
+    ) as { cases: { id: string; input: { frames: string[] } }[] }
+    const spliced = vectors.cases.find((c) => c.id === 'two-transfers-disjoint-indices')
+    if (spliced === undefined) throw new Error('vector missing')
+    await expect(joinBbqr(spliced.input.frames)).rejects.toThrow(/do not join into one PSBT/)
+  })
+
+  /** INV-QR-10. A real PSBT across several frames still joins. */
+  it('joins-a-whole-psbt-across-frames', async () => {
+    const vectors = JSON.parse(
+      readFileSync(new URL('../../../spec/vectors/bip174-psbt.json', import.meta.url), 'utf8')
+    ) as { roles: { base64: string }[] }
+    const psbt = base64.decode(vectors.roles[4]?.base64 ?? '')
+    const parts = splitBbqr(psbt, 'psbt', { maxVersion: 5 })
+    expect(parts.length).toBeGreaterThan(1)
+    const joined = await joinBbqr(parts.map((part) => part.text))
+    expect(joined.fileType).toBe('psbt')
+    expect(Buffer.from(joined.data).equals(Buffer.from(psbt))).toBe(true)
+  })
+
+  /**
+   * INV-QR-10. The same for a transaction: halves of two different ones, each
+   * split into the same number of frames, do not join into one.
+   */
+  it('refuses-a-transaction-joined-from-two-transfers', async () => {
+    const raw = (outputs: number): Uint8Array => {
+      const tx = new btc.Transaction()
+      tx.addInput({ txid: new Uint8Array(32).fill(outputs), index: 0 })
+      for (let i = 0; i < outputs; i += 1) {
+        tx.addOutputAddress('bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4', 1000n + BigInt(i))
+      }
+      return tx.unsignedTx
+    }
+    const a = splitBbqr(raw(12), 'transaction', { maxVersion: 5 })
+    const b = splitBbqr(raw(13), 'transaction', { maxVersion: 5 })
+    expect(a.length).toBe(b.length)
+    expect(a.length).toBeGreaterThan(1)
+
+    // Each on its own is whole.
+    expect((await joinBbqr(a.map((part) => part.text))).fileType).toBe('transaction')
+    // The first half of one and the rest of the other is not.
+    const half = Math.ceil(a.length / 2)
+    const mixed = [...a.slice(0, half), ...b.slice(half)].map((part) => part.text)
+    await expect(joinBbqr(mixed)).rejects.toThrow(/do not join into one transaction/)
   })
 })

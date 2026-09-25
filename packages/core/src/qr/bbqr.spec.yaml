@@ -97,6 +97,22 @@ invariants:
       - packages/core/test/qr.bbqr.test.ts::writes-every-frame-in-alphanumeric-mode
       - packages/core/test/qr.bbqr.test.ts::emits-frames-an-independent-decoder-reads-back
 
+  - id: INV-QR-10
+    statement: >
+      A complete set of PSBT or transaction frames that does not join into
+      exactly one document of that type is refused at the join (SP-TX-5), so
+      frames from two transfers that agree on count, type and encoding with no
+      index in common are not handed on as one. It is a structural check, not a
+      digest: BBQr carries neither a transfer id nor a payload checksum, other
+      file types have no structure to check, and a splice that happens to parse
+      is not caught. The scan screen reports the refusal and starts the count
+      over rather than losing it in its polling loop.
+    tests:
+      - packages/core/test/qr.bbqr.test.ts::refuses-a-psbt-joined-from-two-transfers
+      - packages/core/test/qr.bbqr.test.ts::joins-a-whole-psbt-across-frames
+      - packages/core/test/qr.bbqr.test.ts::refuses-a-transaction-joined-from-two-transfers
+      - packages/ui/test/scan-screen.test.tsx::says-so-when-a-full-set-does-not-join-and-starts-over
+
 vectors:
   - name: Signer profile SP-TX-2 to SP-TX-6, BBQr PSBT transport
     file: spec/vectors/signer-profile/bbqr-psbt.json

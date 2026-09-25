@@ -797,7 +797,7 @@ is not decided here.
 | SP-TX-2 | Met | INV-UI-21; reads sequences from Coinkite's reference splitter, and the frames it writes join to the binary PSBT (`bbqr-psbt.json`) |
 | SP-TX-3 | Met | Reads reference sequences in `2`, `H` and `Z` and a real Coldcard scan (`bbqr-psbt.json`) |
 | SP-TX-4 | Met | Writer emits `2` only (`bbqr-psbt.json`) |
-| SP-TX-5 | Partly met | INV-QR-4 covers mismatched headers and conflicting repeats. Two transfers with disjoint indices are joined (N5; `bbqr-psbt.json`, `two-transfers-disjoint-indices`) |
+| SP-TX-5 | Met for PSBT and transaction frames | INV-QR-4 covers mismatched headers and conflicting repeats. INV-QR-10 refuses a PSBT or transaction set that does not join into exactly one (`bbqr-psbt.json`, `two-transfers-disjoint-indices`). A structural check, not a digest: other file types, and a splice that happens to parse, are not caught |
 | SP-TX-6 | Met | Every BBQr frame is drawn in QR alphanumeric mode (INV-QR-8, INV-QR-9); `bbqr-psbt.json`, both writer cases, read the mode indicator from the modules |
 
 ## 7. Normative dependencies

@@ -183,7 +183,7 @@ Raspberry Pi, and it does not mean reviewed by anyone but the author.
 | BIP-32, BIP-39, BIP-84, BIP-86, BIP-380 checksums | `make test-vectors`; `make verify` checks the pins | Vectors from the BIPs, vendored in [`spec/vectors/`](../spec/vectors/bip32.json) (BIP-32 vectors 1 to 4, all 24 English BIP-39 vectors, the BIP-84 and BIP-86 addresses, all 8 BIP-380 checksums) |
 | Derivation, addresses and signatures agree with a second implementation | `make test-differential` | `bitcoinjs-lib` |
 | Signatures are deterministic | `make test-repro` signs one PSBT 100 times | Byte comparison against libsecp256k1 |
-| The signer profile's testable requirements | `make conformance`: 106 cases pass, 1 is a known failure (SP-TX-5), no SHOULD is missed | Bitcoin Core 31.1 regtest, BIP texts, coreutils, Coinkite's BBQr code |
+| The signer profile's testable requirements | `make conformance`: all 107 cases pass, no SHOULD is missed | Bitcoin Core 31.1 regtest, BIP texts, coreutils, Coinkite's BBQr code |
 | A wallet can be recovered and spent without nullroute | `make test-recovery-drill` (INV-INTEROP-1) | Bitcoin Core on regtest |
 | The manifest root is recomputable | The three commands above | coreutils (`shasum` on macOS) |
 | Dice to seed | INV-DICE-1 to INV-DICE-8, and `dice-to-entropy.json` | `printf \| sha256sum`; BIP-39 checked against the Trezor vectors |
@@ -207,17 +207,18 @@ signing until the user overrides, because its amount could be understated
 
 ### Known failures in the conformance run
 
-Every entry in
-[`conformance/known-failures/nullroute.json`](../conformance/known-failures/nullroute.json):
+None. [`conformance/known-failures/nullroute.json`](../conformance/known-failures/nullroute.json)
+is empty. Three failures and one advisory were listed here and are fixed:
 
-| Requirement | Case | Reason |
-| --- | --- | --- |
-| SP-TX-5 | `two-transfers-disjoint-indices` | The QR collector compares total, file type and encoding only, so two transfers with disjoint frame indices are joined into one payload (gap N5). BBQr has no whole-payload checksum to tell them apart |
-
-SP-TX-6 (BBQr frames in QR alphanumeric mode) and the SP-REV-7 advisory (a
-false taproot derivation claim not reported) were listed here and are fixed:
-the encoder has an alphanumeric path every BBQr frame uses (INV-QR-9), and the
-review reports the taproot claim as it does the BIP-32 one.
+- **SP-TX-6**, BBQr frames in QR alphanumeric mode: the encoder has an
+  alphanumeric path every BBQr frame uses (INV-QR-9).
+- **SP-TX-5**, two transfers with disjoint indices joined: a PSBT or
+  transaction set that does not join into exactly one is refused (INV-QR-10).
+  This is a structural check, not a digest, because BBQr carries no payload
+  checksum. Other file types, and a splice that happens to parse, are not
+  caught.
+- **SP-REV-7** (advisory), a false taproot derivation claim not reported: the
+  review reports it as it does the BIP-32 one.
 
 ### Not met in the profile's own tables
 

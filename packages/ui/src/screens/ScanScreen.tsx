@@ -170,17 +170,21 @@ export function ScanScreen(props: ScanScreenProps): ReactElement {
         return
       }
 
-      try {
-        collectorRef.current.add(text)
-      } catch (err) {
-        // A frame from another transfer, or the same index twice with different
-        // contents. Say so and start over rather than assembling a payload out
-        // of two documents.
+      // A frame from another transfer, or the same index twice with different
+      // contents, or a full set that does not join into one document. Say so
+      // and start over rather than assembling a payload out of two.
+      const startOver = (err: unknown): void => {
         setError((err as Error).message)
         collectorRef.current.reset()
         setReceived(0)
         setTotal(undefined)
         setMissing([])
+      }
+
+      try {
+        collectorRef.current.add(text)
+      } catch (err) {
+        startOver(err)
         return
       }
 
@@ -194,7 +198,17 @@ export function ScanScreen(props: ScanScreenProps): ReactElement {
       // case, and assembling a sequence that is not complete would hand the
       // review screen a truncated transaction.
       if (collectorRef.current.complete === true) {
-        const assembled = await collectorRef.current.assemble()
+        // Caught here, not left to the polling loop. That loop discards what
+        // it awaits, so a refusal from assemble vanished, the collector stayed
+        // complete, and every later frame retried the same failed join while
+        // the screen sat on a full progress count with nothing to say.
+        let assembled: Awaited<ReturnType<BbqrCollector['assemble']>>
+        try {
+          assembled = await collectorRef.current.assemble()
+        } catch (err) {
+          startOver(err)
+          return
+        }
         doneRef.current = true
         onResult({ kind: 'bbqr', fileType: assembled.fileType, data: assembled.data })
       }

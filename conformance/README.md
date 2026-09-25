@@ -231,16 +231,17 @@ for them.
 
 ## nullroute's results
 
-`make conformance` today: 104 cases pass and 3 fail, with no SHOULD missed.
-The three failures are listed in
-[`known-failures/nullroute.json`](known-failures/nullroute.json). Two more,
-SP-REV-9 and SP-REV-11, failed when this directory was added and were fixed in
-the next commit, and SP-TX-6 (frames in QR byte mode, both writer cases) was
-fixed when the encoder gained alphanumeric mode. That is what the list is for.
+`make conformance` today: all 107 cases pass, with no SHOULD missed, and
+[`known-failures/nullroute.json`](known-failures/nullroute.json) is empty.
+Four requirements have failed and been fixed, which is what the list is for:
 
-| Requirement | Case | What happens |
-| --- | --- | --- |
-| SP-TX-5 | `two-transfers-disjoint-indices` | Two transfers that agree on total, type and encoding are joined. |
+- SP-REV-9 and SP-REV-11 failed when this directory was added and were fixed
+  in the next commit.
+- SP-TX-6 (frames in QR byte mode, both writer cases) was fixed when the
+  encoder gained alphanumeric mode.
+- SP-TX-5 (two transfers with disjoint indices joined) was fixed when the join
+  began checking that PSBT and transaction frames make exactly one document.
+  That check is structural, not a digest, and says so in INV-QR-10.
 
 A false `PSBT_OUT_TAP_BIP32_DERIVATION` claim used to be shown as a payment
 without being reported as claimed, while the same claim made with
