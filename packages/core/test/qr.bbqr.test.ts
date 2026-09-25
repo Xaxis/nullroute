@@ -17,11 +17,6 @@ import { base32nopad } from '@scure/base'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { prepareZXingModule, readBarcodes } from 'zxing-wasm/reader'
 
-/**
- * What zxing reads, named through its own signature: core has no DOM types, so
- * ImageData is not in scope here, and core must not gain them to satisfy a test.
- */
-type Pixels = Parameters<typeof readBarcodes>[0]
 import {
   BbqrCollector,
   BbqrError,
@@ -31,7 +26,13 @@ import {
   splitBbqrToQr,
   MAX_PARTS,
 } from '../src/qr/bbqr.js'
-import { type QrCode } from '../src/qr/encode.js'
+import { QR_ALPHANUMERIC, segmentCapacity, type QrCode } from '../src/qr/encode.js'
+
+/**
+ * What zxing reads, named through its own signature: core has no DOM types, so
+ * ImageData is not in scope here, and core must not gain them to satisfy a test.
+ */
+type Pixels = Parameters<typeof readBarcodes>[0]
 
 beforeAll(async () => {
   const require = createRequire(import.meta.url)
@@ -288,5 +289,29 @@ describe('core.qr.bbqr', () => {
     const dense = splitBbqr(data, 'psbt', { maxVersion: 20 })
     const sparse = splitBbqr(data, 'psbt', { maxVersion: 8 })
     expect(sparse.length).toBeGreaterThan(dense.length)
+  })
+
+  /**
+   * INV-QR-9. Every frame is written in QR alphanumeric mode, which BBQr
+   * requires (SP-TX-6). The encoder refuses a character outside the set, so
+   * each part is checked against it here, and the frame count shows the parts
+   * were sized for alphanumeric capacity rather than byte capacity at the same
+   * density cap. The mode indicator itself is read back from the modules by the
+   * conformance runner (bbqr-psbt.json, write-1in20out and write-1in2out).
+   */
+  it('writes-every-frame-in-alphanumeric-mode', () => {
+    const data = payload(2400)
+    const parts = splitBbqr(data, 'psbt')
+    for (const part of parts) {
+      for (const char of part.text) expect(QR_ALPHANUMERIC).toContain(char)
+    }
+    const codes = splitBbqrToQr(data, 'psbt')
+    expect(codes).toHaveLength(parts.length)
+
+    // What byte mode at version 12, level M would have needed: eight header
+    // characters, then whole five-byte groups of base32.
+    const byteGroups = Math.floor((segmentCapacity('byte', 12, 'M') - 8) / 8)
+    const byteParts = Math.ceil(data.length / (byteGroups * 5))
+    expect(parts.length).toBeLessThan(byteParts)
   })
 })

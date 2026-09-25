@@ -798,7 +798,7 @@ is not decided here.
 | SP-TX-3 | Met | Reads reference sequences in `2`, `H` and `Z` and a real Coldcard scan (`bbqr-psbt.json`) |
 | SP-TX-4 | Met | Writer emits `2` only (`bbqr-psbt.json`) |
 | SP-TX-5 | Partly met | INV-QR-4 covers mismatched headers and conflicting repeats. Two transfers with disjoint indices are joined (N5; `bbqr-psbt.json`, `two-transfers-disjoint-indices`) |
-| SP-TX-6 | **Not met** | The encoder writes byte mode only (`packages/core/src/qr/encode.spec.yaml` lines 22-25; gap G2; `bbqr-psbt.json`, both writer cases) |
+| SP-TX-6 | Met | Every BBQr frame is drawn in QR alphanumeric mode (INV-QR-8, INV-QR-9); `bbqr-psbt.json`, both writer cases, read the mode indicator from the modules |
 
 ## 7. Normative dependencies
 

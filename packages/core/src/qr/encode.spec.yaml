@@ -1,6 +1,6 @@
 id: core.qr.encode
 version: 1
-title: QR encoding, byte mode, versions 1 to 40
+title: QR encoding, byte and alphanumeric modes, versions 1 to 40
 assurance_tier: standard
 status: implemented
 
@@ -13,6 +13,9 @@ purpose: >
 covers:
   - packages/core/src/qr/encode.ts::encodeQr
   - packages/core/src/qr/encode.ts::encodeQrText
+  - packages/core/src/qr/encode.ts::encodeQrAlphanumeric
+  - packages/core/src/qr/encode.ts::segmentCapacity
+  - packages/core/src/qr/encode.ts::QR_ALPHANUMERIC
   - packages/core/src/qr/encode.ts::qrToSvgPath
   - packages/core/src/qr/encode.ts::QrError
   - packages/core/src/qr/tables.ts::dataCapacity
@@ -20,13 +23,18 @@ covers:
   - packages/core/src/qr/tables.ts::EC_LEVELS
 
 algorithm: >
-  Byte mode only. Everything this device emits is base64, hex or a descriptor,
-  and alphanumeric mode would save a little room on the descriptor case at the
-  price of a second encoder path and a second set of bugs.
+  Two modes, one segment each. Byte mode carries anything. Alphanumeric mode
+  carries the standard's 45 characters (digits, capitals, space and $%*+-./:)
+  and is what BBQr frames use, because BBQr requires it (SP-TX-6).
 
-  Data is a four bit mode indicator, a character count (eight bits below version
-  10, sixteen above), the bytes, a terminator of up to four bits, then the
-  standard's alternating pad bytes to fill the version.
+  Data is a four bit mode indicator (0100 byte, 0010 alphanumeric), a character
+  count, the data, a terminator of up to four bits, then the standard's
+  alternating pad bytes to fill the version. The count is 8 bits below version
+  10 and 16 above in byte mode, and 9, 11 and 13 bits across versions 1 to 9,
+  10 to 26 and 27 to 40 in alphanumeric. Byte mode writes each byte in 8 bits.
+  Alphanumeric writes each pair of characters as 45 times the first value plus
+  the second in 11 bits, and a trailing single character in 6. A character
+  outside the set is refused, never drawn in byte mode instead.
 
   Those codewords are split into blocks per the layout table, each block gets its
   Reed-Solomon remainder over GF(256) with primitive polynomial 0x11D, and the
@@ -77,6 +85,18 @@ invariants:
       - packages/core/test/qr.encode.test.ts::is-deterministic
       - packages/core/test/qr.encode.test.ts::chooses-a-mask-by-score-rather-than-always-the-same-one
       - packages/core/test/qr.encode.test.ts::renders-an-svg-path-with-one-rect-per-dark-module
+
+  - id: INV-QR-8
+    statement: >
+      Alphanumeric mode round-trips through an independent decoder at every
+      version and level, filled to the capacity segmentCapacity reports, which
+      exceeds what byte mode holds at the same version; one character more is
+      refused; an odd final character reads back; and a character outside the
+      45 is refused rather than drawn in byte mode.
+    tests:
+      - packages/core/test/qr.encode.test.ts::round-trips-alphanumeric-mode-at-every-version-and-level
+      - packages/core/test/qr.encode.test.ts::encodes-an-odd-trailing-alphanumeric-character
+      - packages/core/test/qr.encode.test.ts::refuses-a-character-outside-the-alphanumeric-set
 
 threats:
   - INV-QR-1

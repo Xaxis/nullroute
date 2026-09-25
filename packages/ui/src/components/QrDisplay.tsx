@@ -1,5 +1,11 @@
 import { type ReactElement, useCallback, useEffect, useMemo, useState } from 'react'
-import { encodeQrText, qrToSvgPath, splitBbqr, type QrCode } from '@nullroute/core'
+import {
+  encodeQrAlphanumeric,
+  encodeQrText,
+  qrToSvgPath,
+  splitBbqr,
+  type QrCode,
+} from '@nullroute/core'
 
 /**
  * A QR code, or a sequence of them, on a 7 inch panel.
@@ -59,6 +65,31 @@ export function bbqrPayload(text: string, fileType: QrFileType): Uint8Array {
   return bytes
 }
 
+/** One frame of what the display animates, with the text it carries. */
+export interface QrFrame {
+  readonly text: string
+  readonly code: QrCode
+}
+
+/**
+ * Every frame the display shows for this payload. Exported so the conformance
+ * adapter checks the frames this screen draws rather than a copy of the logic.
+ *
+ * One frame if it fits, which is the common case for an xpub or an address,
+ * drawn bare in byte mode. Otherwise a BBQr sequence, every part in QR
+ * alphanumeric mode as BBQr requires (SP-TX-6).
+ */
+export function qrFrames(text: string, fileType: QrFileType): readonly QrFrame[] {
+  try {
+    return [{ text, code: encodeQrText(text, { level: 'M', version: 12 }) }]
+  } catch {
+    return splitBbqr(bbqrPayload(text, fileType), fileType).map((part) => ({
+      text: part.text,
+      code: encodeQrAlphanumeric(part.text, { level: 'M' }),
+    }))
+  }
+}
+
 export function QrDisplay(props: QrDisplayProps): ReactElement {
   const { text, fileType = 'unicode', interval = DEFAULT_INTERVAL, testId } = props
 
@@ -69,18 +100,10 @@ export function QrDisplay(props: QrDisplayProps): ReactElement {
   const codes = useMemo<readonly QrCode[]>(() => {
     setError(null)
     try {
-      // One frame if it fits, which is the common case for an xpub or an
-      // address, and a BBQr sequence when it does not.
-      return [encodeQrText(text, { level: 'M', version: 12 })]
-    } catch {
-      try {
-        return splitBbqr(bbqrPayload(text, fileType), fileType).map((part) =>
-          encodeQrText(part.text, { level: 'M' })
-        )
-      } catch (err) {
-        setError((err as Error).message)
-        return []
-      }
+      return qrFrames(text, fileType).map((frame) => frame.code)
+    } catch (err) {
+      setError((err as Error).message)
+      return []
     }
   }, [text, fileType])
 

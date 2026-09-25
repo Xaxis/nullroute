@@ -30,6 +30,11 @@ algorithm: >
   those groups and decodes on its own. A receiver that had to hold every frame
   before it could check any of them could not tell a user which frame to rescan.
 
+  Every frame is drawn in QR alphanumeric mode, because BBQr says "Your QR MUST
+  use the alphanumeric character encoding". Every character a part can hold is
+  in that set, and a part is sized by the alphanumeric capacity of the version
+  cap, 5.5 bits a character against byte mode's 8.
+
   Part sizes are rebalanced so frames are near equal rather than several full
   ones and a sliver, which animates evenly and makes a dropped frame cost less.
 
@@ -81,6 +86,16 @@ invariants:
       - packages/core/test/qr.bbqr.test.ts::emits-frames-an-independent-decoder-reads-back
       - packages/core/test/qr.bbqr.test.ts::honours-a-lower-density-cap-by-using-more-frames
       - packages/core/test/qr.bbqr.test.ts::reads-compressed-parts-it-does-not-write
+
+  - id: INV-QR-9
+    statement: >
+      Every emitted frame is in QR alphanumeric mode, as BBQr requires
+      (SP-TX-6), and frames are sized by alphanumeric capacity at the density
+      cap, so a transfer takes fewer frames than byte mode would. The
+      conformance runner reads each frame's mode indicator from its modules.
+    tests:
+      - packages/core/test/qr.bbqr.test.ts::writes-every-frame-in-alphanumeric-mode
+      - packages/core/test/qr.bbqr.test.ts::emits-frames-an-independent-decoder-reads-back
 
 vectors:
   - name: Signer profile SP-TX-2 to SP-TX-6, BBQr PSBT transport

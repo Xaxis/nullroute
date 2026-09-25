@@ -24,6 +24,13 @@
  * Two characters of base36 cap a transfer at 1295 parts, which is the format's
  * limit and not ours.
  *
+ * ALPHANUMERIC MODE, ALWAYS. BBQr says "Your QR MUST use the alphanumeric
+ * character encoding" (SP-TX-6), and every character a part can hold is in
+ * that set: the magic, base36 in capitals, base32 in capitals, hex in capitals.
+ * It also packs 5.5 bits a character where byte mode spends 8, so a transfer
+ * takes fewer frames. The encoder refuses anything outside the set rather than
+ * falling back to byte mode, so a part that could not comply fails here.
+ *
  * THE SPLIT IS ON DECODED BYTES, NOT ENCODED CHARACTERS. Each part has to decode
  * on its own, because a receiver may get part 7 before part 2 and should not
  * have to buffer the whole sequence to know part 7 was garbage. Base32 turns
@@ -40,8 +47,8 @@
  */
 
 import { base32nopad, hex } from '@scure/base'
-import { encodeQr, type QrCode } from './encode.js'
-import { dataCapacity, type EcLevel } from './tables.js'
+import { encodeQrAlphanumeric, segmentCapacity, type QrCode } from './encode.js'
+import type { EcLevel } from './tables.js'
 
 export class BbqrError extends Error {
   constructor(message: string) {
@@ -113,11 +120,9 @@ export interface BbqrPart {
 const DEFAULT_MAX_VERSION = 12
 const DEFAULT_LEVEL: EcLevel = 'M'
 
-/** Payload characters that fit in one code, after the eight header characters. */
+/** Payload characters that fit in one alphanumeric code, after the header. */
 function payloadCapacity(version: number, level: EcLevel): number {
-  const countBits = version < 10 ? 8 : 16
-  const bytes = dataCapacity(version, level) - Math.ceil((4 + countBits) / 8)
-  return bytes - HEADER_LENGTH
+  return segmentCapacity('alphanumeric', version, level) - HEADER_LENGTH
 }
 
 function base36(value: number, width: number): string {
@@ -184,7 +189,7 @@ export function splitBbqrToQr(
 ): readonly QrCode[] {
   const level = options.level ?? DEFAULT_LEVEL
   return splitBbqr(data, fileType, options).map((part) =>
-    encodeQr(new TextEncoder().encode(part.text), { level })
+    encodeQrAlphanumeric(part.text, { level })
   )
 }
 

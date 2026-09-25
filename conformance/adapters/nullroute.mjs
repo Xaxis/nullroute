@@ -22,19 +22,17 @@ import {
   diceToEntropy,
   accountEntropy,
   encodePsbt,
-  encodeQrText,
   entropyToWords,
   mnemonicToSeed,
   networkById,
   parsePsbt,
   reviewTransaction,
   signTransaction,
-  splitBbqr,
 } from '../../packages/core/dist/index.js'
 import { buildOwnedIndex, changeLookup, signingPathsFor } from '../../packages/daemon/dist/psbt.js'
 import { inputScript } from '../../packages/daemon/dist/ipc/input-script.js'
 import { manifestRootHash } from '../../packages/daemon/dist/boot/attestation.js'
-import { bbqrPayload } from '../../packages/ui/dist/components/QrDisplay.js'
+import { qrFrames } from '../../packages/ui/dist/components/QrDisplay.js'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
@@ -266,21 +264,12 @@ const rows = (code) =>
       .join('')
   )
 
-/**
- * What the display shows for a PSBT: the `codes` memo in
- * packages/ui/src/components/QrDisplay.tsx, which is not exported, so its
- * three lines are repeated here with the exported `bbqrPayload` it calls.
- */
+/** What the display shows for a PSBT: QrDisplay's own frames, not a copy. */
 export function bbqrEncodePsbt(psbtBase64) {
-  try {
-    const code = encodeQrText(psbtBase64, { level: 'M', version: 12 })
-    return { frames: [{ text: psbtBase64, modules: rows(code) }] }
-  } catch {
-    return {
-      frames: splitBbqr(bbqrPayload(psbtBase64, 'psbt'), 'psbt').map((part) => ({
-        text: part.text,
-        modules: rows(encodeQrText(part.text, { level: 'M' })),
-      })),
-    }
+  return {
+    frames: qrFrames(psbtBase64, 'psbt').map((frame) => ({
+      text: frame.text,
+      modules: rows(frame.code),
+    })),
   }
 }

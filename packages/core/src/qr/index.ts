@@ -1,4 +1,12 @@
-export { encodeQr, encodeQrText, qrToSvgPath, QrError } from './encode.js'
+export {
+  encodeQr,
+  encodeQrAlphanumeric,
+  encodeQrText,
+  qrToSvgPath,
+  QrError,
+  QR_ALPHANUMERIC,
+  segmentCapacity,
+} from './encode.js'
 export type { QrCode, EncodeOptions } from './encode.js'
 
 export {

@@ -235,12 +235,12 @@ for them.
 The three failures are listed in
 [`known-failures/nullroute.json`](known-failures/nullroute.json). Two more,
 SP-REV-9 and SP-REV-11, failed when this directory was added and were fixed in
-the next commit, which is what the list is for.
+the next commit, and SP-TX-6 (frames in QR byte mode, both writer cases) was
+fixed when the encoder gained alphanumeric mode. That is what the list is for.
 
 | Requirement | Case | What happens |
 | --- | --- | --- |
 | SP-TX-5 | `two-transfers-disjoint-indices` | Two transfers that agree on total, type and encoding are joined. |
-| SP-TX-6 | `write-1in20out`, `write-1in2out` | Frames are written in QR byte mode. |
 
 A false `PSBT_OUT_TAP_BIP32_DERIVATION` claim used to be shown as a payment
 without being reported as claimed, while the same claim made with

@@ -23,13 +23,23 @@ import { createRequire } from 'node:module'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { prepareZXingModule, readBarcodes } from 'zxing-wasm/reader'
 
+import {
+  encodeQr,
+  encodeQrAlphanumeric,
+  encodeQrText,
+  qrToSvgPath,
+  QrError,
+  QR_ALPHANUMERIC,
+  segmentCapacity,
+  type QrCode,
+} from '../src/qr/encode.js'
+import { dataCapacity, moduleCount, type EcLevel } from '../src/qr/tables.js'
+
 /**
  * What zxing reads, named through its own signature: core has no DOM types, so
  * ImageData is not in scope here, and core must not gain them to satisfy a test.
  */
 type Pixels = Parameters<typeof readBarcodes>[0]
-import { encodeQr, encodeQrText, qrToSvgPath, QrError, type QrCode } from '../src/qr/encode.js'
-import { dataCapacity, moduleCount, type EcLevel } from '../src/qr/tables.js'
 
 const LEVELS: readonly EcLevel[] = ['L', 'M', 'Q', 'H']
 
@@ -246,5 +256,56 @@ describe('core.qr.encode', () => {
     const b = encodeQr(data, { level: 'Q' })
     expect(a.modules).toEqual(b.modules)
     expect(a.mask).toBe(b.mask)
+  })
+
+  /**
+   * INV-QR-8. Alphanumeric mode, at every version and level, filled to the
+   * capacity segmentCapacity reports and read back by zxing.
+   *
+   * Filled past what byte mode could hold at the same version, so a decode at
+   * this length is only possible if the characters really were packed two to
+   * 11 bits. And one character more is refused, so the capacity BBQr sizes its
+   * frames by is exact rather than conservative.
+   */
+  it('round-trips-alphanumeric-mode-at-every-version-and-level', async () => {
+    const failures: string[] = []
+    for (let version = 1; version <= 40; version += 1) {
+      for (const level of LEVELS) {
+        const length = segmentCapacity('alphanumeric', version, level)
+        expect(length).toBeGreaterThan(segmentCapacity('byte', version, level))
+        let text = ''
+        for (let i = 0; i < length; i += 1) text += QR_ALPHANUMERIC.charAt((i * 7 + (i >> 3)) % 45)
+        try {
+          const decoded = await decode(encodeQrAlphanumeric(text, { version, level }))
+          const read = new TextDecoder().decode(decoded.bytes)
+          if (read !== text) failures.push(`v${String(version)}${level}: read back differs`)
+          if (decoded.version !== version) failures.push(`v${String(version)}${level}: version`)
+        } catch (err) {
+          failures.push(`v${String(version)}${level}: ${(err as Error).message}`)
+        }
+        expect(() => encodeQrAlphanumeric(`${text}0`, { version, level })).toThrow(/do not fit/)
+      }
+    }
+    expect(failures, `${String(failures.length)} of 160 combinations failed`).toEqual([])
+  }, 300_000)
+
+  /** INV-QR-8. An odd final character takes the 6 bit path, and it reads back. */
+  it('encodes-an-odd-trailing-alphanumeric-character', async () => {
+    for (const text of ['B', 'B$', 'B$2', 'B$2P0100ABCDEFG']) {
+      const decoded = await decode(encodeQrAlphanumeric(text))
+      expect(new TextDecoder().decode(decoded.bytes)).toBe(text)
+    }
+  })
+
+  /**
+   * INV-QR-8. Outside the 45 characters is refused, not quietly drawn in byte
+   * mode: a fallback would pass every other test here and break the one
+   * requirement (BBQr's, SP-TX-6) this mode exists for.
+   */
+  it('refuses-a-character-outside-the-alphanumeric-set', () => {
+    for (const text of ['b$2p', 'B$2P#', 'B$2P\u00e9', 'B$2P\n']) {
+      expect(() => encodeQrAlphanumeric(text), JSON.stringify(text)).toThrow(QrError)
+    }
+    expect(() => encodeQrAlphanumeric('b')).toThrow(/not a QR alphanumeric character/)
   })
 })

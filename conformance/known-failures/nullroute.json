@@ -8,20 +8,6 @@
       "check": "verdict",
       "requirement": "SP-TX-5",
       "reason": "N5: the collector compares total, file type and encoding only, so two transfers with disjoint indices are joined"
-    },
-    {
-      "file": "bbqr-psbt.json",
-      "case": "write-1in20out",
-      "check": "qrMode",
-      "requirement": "SP-TX-6",
-      "reason": "G2: the QR encoder writes byte mode only"
-    },
-    {
-      "file": "bbqr-psbt.json",
-      "case": "write-1in2out",
-      "check": "qrMode",
-      "requirement": "SP-TX-6",
-      "reason": "G2: the QR encoder writes byte mode only"
     }
   ]
 }

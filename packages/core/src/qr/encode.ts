@@ -9,10 +9,11 @@
  * drew the square they photographed. A dependency here would be code outside the
  * hash that produced the bytes the hash is supposed to cover.
  *
- * Byte mode only, which is not a limitation worth removing. Everything this
- * device emits is base64, hex or a descriptor, and alphanumeric mode would save
- * a little space on the descriptor case at the cost of a second encoder path and
- * a second set of bugs.
+ * Two modes. Byte mode carries anything. Alphanumeric mode carries only the
+ * standard's 45 characters and packs two into 11 bits, and it exists because
+ * BBQr requires it of every frame ("Your QR MUST use the alphanumeric character
+ * encoding", SP-TX-6). A BBQr frame is uppercase base32 or hex under a header
+ * drawn from the same set, so it always fits, and it fits in fewer frames.
  *
  * It is NOT cryptography and nothing here is secret. The failure mode is a code
  * that will not scan, which is annoying and obvious, rather than a code that
@@ -157,33 +158,114 @@ class Bits {
   }
 }
 
-/** Byte mode's character count field is wider above version 9. */
-function countBits(version: number): number {
-  return version < 10 ? 8 : 16
+/**
+ * The 45 characters alphanumeric mode can carry, in the standard's order: a
+ * character's value is its index here.
+ */
+export const QR_ALPHANUMERIC = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:'
+
+/**
+ * One run of data in one mode: what the standard calls a segment. Everything
+ * after the data (terminator, padding, error correction, placement) is the
+ * same for both modes, so only this differs between them.
+ */
+interface Segment {
+  readonly mode: 'byte' | 'alphanumeric'
+  /** Characters for alphanumeric, bytes for byte mode, as the count field holds. */
+  readonly count: number
+  /** The four bit mode indicator. */
+  readonly indicator: number
+  /** Bits of data after the mode indicator and count. */
+  readonly dataBits: number
+  readonly writeData: (bits: Bits) => void
 }
 
-/** The smallest version that holds this much data at this level. */
-function chooseVersion(byteLength: number, level: EcLevel): number {
+function byteSegment(data: Uint8Array): Segment {
+  return {
+    mode: 'byte',
+    count: data.length,
+    indicator: 0b0100,
+    dataBits: data.length * 8,
+    writeData: (bits) => {
+      for (const byte of data) bits.push(byte, 8)
+    },
+  }
+}
+
+function alphanumericSegment(text: string): Segment {
+  const values: number[] = []
+  for (const char of text) {
+    const value = QR_ALPHANUMERIC.indexOf(char)
+    if (value < 0) {
+      throw new QrError(
+        `${JSON.stringify(char)} is not a QR alphanumeric character. ` +
+          `Only digits, capital letters, space and $%*+-./: are.`
+      )
+    }
+    values.push(value)
+  }
+  const pairs = Math.floor(values.length / 2)
+  return {
+    mode: 'alphanumeric',
+    count: values.length,
+    indicator: 0b0010,
+    // Two characters in 11 bits, and a trailing single character in 6.
+    dataBits: pairs * 11 + (values.length % 2) * 6,
+    writeData: (bits) => {
+      for (let i = 0; i + 1 < values.length; i += 2) {
+        bits.push((values[i] ?? 0) * 45 + (values[i + 1] ?? 0), 11)
+      }
+      if (values.length % 2 === 1) bits.push(values[values.length - 1] ?? 0, 6)
+    },
+  }
+}
+
+/**
+ * Width of the character count field, which grows with the version. Byte mode
+ * uses 8 bits below version 10 and 16 from there; alphanumeric uses 9, 11 and
+ * 13 across versions 1 to 9, 10 to 26 and 27 to 40.
+ */
+function countBits(mode: Segment['mode'], version: number): number {
+  if (mode === 'byte') return version < 10 ? 8 : 16
+  return version < 10 ? 9 : version < 27 ? 11 : 13
+}
+
+/** Codewords this segment needs at this version: mode, count, data. */
+function codewordsNeeded(segment: Segment, version: number): number {
+  return Math.ceil((4 + countBits(segment.mode, version) + segment.dataBits) / 8)
+}
+
+/**
+ * The most characters (alphanumeric) or bytes (byte mode) one code carries at
+ * this version and level. BBQr sizes its frames with this, so a frame is never
+ * one character too long for the version it was sized against.
+ */
+export function segmentCapacity(mode: Segment['mode'], version: number, level: EcLevel): number {
+  const bits = dataCapacity(version, level) * 8 - 4 - countBits(mode, version)
+  if (mode === 'byte') return Math.floor(bits / 8)
+  return Math.floor(bits / 11) * 2 + (bits % 11 >= 6 ? 1 : 0)
+}
+
+/** The smallest version that holds this segment at this level. */
+function chooseVersion(segment: Segment, level: EcLevel): number {
   for (let version = 1; version <= 40; version += 1) {
-    // 4 bits of mode indicator, then the character count, then the data.
-    const needed = Math.ceil((4 + countBits(version) + byteLength * 8) / 8)
-    if (needed <= dataCapacity(version, level)) return version
+    if (codewordsNeeded(segment, version) <= dataCapacity(version, level)) return version
   }
   throw new QrError(
-    `${String(byteLength)} bytes will not fit in a single QR code at level ${level}. ` +
-      `Split it across several with the BBQr encoder.`
+    `${String(segment.count)} ${segment.mode === 'byte' ? 'bytes' : 'characters'} will not ` +
+      `fit in a single QR code at level ${level}. Split it across several with the BBQr encoder.`
   )
 }
 
 // --- Data encoding ---------------------------------------------------------
 
-function encodeData(data: Uint8Array, version: number, level: EcLevel): Uint8Array {
+function encodeData(segment: Segment, version: number, level: EcLevel): Uint8Array {
   const capacity = dataCapacity(version, level)
   const bits = new Bits()
 
-  bits.push(0b0100, 4) // byte mode
-  bits.push(data.length, countBits(version))
-  for (const byte of data) bits.push(byte, 8)
+  bits.push(segment.indicator, 4)
+  bits.push(segment.count, countBits(segment.mode, version))
+  segment.writeData(bits)
 
   // Terminator, up to four bits, truncated if the capacity ends sooner.
   const remaining = capacity * 8 - bits.length
@@ -501,21 +583,34 @@ function penalty(grid: Grid): number {
  * it works on the developer's phone and fails on the user's.
  */
 export function encodeQr(data: Uint8Array, options: EncodeOptions = {}): QrCode {
+  return encodeSegment(byteSegment(data), options)
+}
+
+/**
+ * Text in alphanumeric mode, for BBQr frames (SP-TX-6). Refuses any character
+ * outside QR_ALPHANUMERIC rather than falling back to byte mode, because a
+ * frame that silently changed mode would pass every test here and fail the
+ * one requirement this function exists to meet.
+ */
+export function encodeQrAlphanumeric(text: string, options: EncodeOptions = {}): QrCode {
+  return encodeSegment(alphanumericSegment(text), options)
+}
+
+function encodeSegment(segment: Segment, options: EncodeOptions): QrCode {
   const level = options.level ?? 'M'
-  const version = options.version ?? chooseVersion(data.length, level)
+  const version = options.version ?? chooseVersion(segment, level)
 
   if (version < 1 || version > 40 || !Number.isInteger(version)) {
     throw new QrError(`QR version ${String(version)} does not exist. Versions run 1 to 40.`)
   }
-  const capacity = dataCapacity(version, level)
-  const needed = Math.ceil((4 + countBits(version) + data.length * 8) / 8)
-  if (needed > capacity) {
+  if (codewordsNeeded(segment, version) > dataCapacity(version, level)) {
     throw new QrError(
-      `${String(data.length)} bytes do not fit in version ${String(version)} at level ${level}.`
+      `${String(segment.count)} ${segment.mode === 'byte' ? 'bytes' : 'characters'} do not ` +
+        `fit in version ${String(version)} at level ${level}.`
     )
   }
 
-  const codewords = interleave(encodeData(data, version, level), version, level)
+  const codewords = interleave(encodeData(segment, version, level), version, level)
   const size = moduleCount(version)
 
   if (options.mask !== undefined && (options.mask < 0 || options.mask > 7)) {
