@@ -9,6 +9,12 @@
 *.psbt binary
 *.txn binary
 
+# Published vector files are pinned by the hash of their bytes as upstream
+# ships them. bip-0340/test-vectors.csv has CRLF line endings, and the rule
+# above would store it with LF, so a fresh checkout would hash differently
+# from both the pin in sign.spec.yaml and the file in bitcoin/bips.
+spec/vectors/bip340-test-vectors.csv -text
+
 # Generated. Collapsed in diffs so lockfile churn does not bury a real change.
 package-lock.json linguist-generated=true -diff
 

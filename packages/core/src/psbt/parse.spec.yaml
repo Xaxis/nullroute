@@ -40,6 +40,7 @@ invariants:
       - packages/core/test/psbt.parse.test.ts::refuses-input-that-is-not-a-psbt
       - packages/core/test/psbt.parse.test.ts::refuses-a-truncated-psbt
       - packages/core/test/psbt.parse.test.ts::refuses-an-absurdly-large-input
+      - packages/core/test/vectors.bip174.test.ts::refuses-every-published-invalid-psbt
 
   - id: INV-PSBT-10
     statement: >
@@ -59,6 +60,23 @@ invariants:
       - packages/core/test/psbt.parse.test.ts::maps-a-script-back-to-its-address
       - packages/core/test/psbt.parse.test.ts::encodes-the-address-for-the-network-it-was-given
       - packages/core/test/psbt.parse.test.ts::returns-undefined-for-a-script-with-no-address
+
+  - id: INV-PSBT-18
+    statement: >
+      Every PSBT that BIP-174 publishes as valid parses, from base64 text and
+      from raw bytes, and so does every PSBT in its role walk-through and its
+      "Fails Signer checks" list, which are well formed and are refused at
+      signing rather than at parsing. The extraction of those vectors from the
+      BIP text is checked by re-encoding each hex and base64 pair.
+    tests:
+      - packages/core/test/vectors.bip174.test.ts::extraction-is-faithful
+      - packages/core/test/vectors.bip174.test.ts::parses-every-published-valid-psbt
+
+vectors:
+  - name: BIP-174 test vectors, extracted from the BIP text
+    file: spec/vectors/bip174-psbt.json
+    sha256: cc13f846f8a81bfab738d43d985e14547b4cc3ad57766e430e880578406ce911
+    source: https://github.com/bitcoin/bips/blob/d1d2042c857f337c147785c1d02cfd9f9d3c84fb/bip-0174.mediawiki
 
 threats:
   - INV-PSBT-1

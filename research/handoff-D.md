@@ -168,10 +168,10 @@ means values copied into a test; **none** means no published value is checked.
 | 129 | Four modes | None; own BSMS strings | All |
 | 143 | Five worked sighashes | None | All |
 | 173, 350 | Valid and invalid strings and addresses | None (one BIP-173 address appears only as a stranger's address) | All |
-| 174 | About 46, including invalid PSBTs and a role walk-through | None | All |
+| 174 | 47 PSBTs: 20 invalid, 10 valid, 4 that fail signer checks, 13 in a role walk-through | Vendored as an extraction (`spec/vectors/bip174-psbt.json`, bips `d1d2042c`, by `tools/extract-bip174-vectors.mjs`): all 47 run through `parsePsbt` (INV-PSBT-9, INV-PSBT-18); both signer steps reproduced and the 3 keyed signer-check cases refused through the signing call (INV-SIG-8) | Combiner, finalizer and extractor outputs are parsed but not reproduced, since nullroute does not play those roles; the first signer-check case has no published keys |
 | 370, 371 | Yes | None | All |
-| 340 | `test-vectors.csv`, 19 rows | None (one public key reused as an arbitrary key) | All |
-| 341 | `wallet-test-vectors.json` | None | All |
+| 340 | `test-vectors.csv`, 19 rows | Vendored (`spec/vectors/bip340-test-vectors.csv`, bips `d1d2042c`): all 8 signing rows through `@noble/curves` `schnorr.sign` with their own aux_rand, all 19 through `schnorr.verify` including the 10 expected false (INV-SIG-6) | None. Signing rows with nonzero aux_rand exercise the primitive, not nullroute's path, which fixes aux_rand to zero (INV-SIG-1) |
+| 341 | `wallet-test-vectors.json` | Vendored (`spec/vectors/bip341-wallet-test-vectors.json`, bips `d1d2042c`): 7 scriptPubKey cases, 5 through `deriveTaprootAddresses` and all 7 through the `p2tr` call it makes (INV-TR-6); 7 key path inputs, sighash and signature through `parsePsbt` and `Transaction.sign` with `AUX_RAND` (INV-SIG-7) | Script path spending (the file publishes none); `sigMsg` and the intermediate hashes, which the library does not expose; the auxiliary fully signed transaction |
 | 322 | Basic and generated files | Inline: some basic vectors, including the RFC 6979 "Hello World" signature | Most tx hashes, non-p2wpkh and error cases, the generated file |
 | 380 | Checksums and key expressions | Vendored: all 8 checksums. Inline: 9 valid key forms, checked as "parses" only | Private key forms (refused by design), all 21 invalid key expressions |
 | 381, 382, 383, 387 | Yes | None | All |
@@ -181,10 +181,16 @@ means values copied into a test; **none** means no published value is checked.
 | 388 | Yes | Not used by nullroute | All |
 
 The largest gaps against SP-DEP-1's own list (BIP-32, BIP-39, BIP-174 and the
-descriptor documents): no BIP-174 vector at all, no invalid-input vector for
-BIP-32 or BIP-380, and no descriptor-to-script vector for BIPs 381 to 387. For
-signing, no BIP-340, BIP-341 or BIP-143 vector is checked; signatures are
-checked for determinism and against bitcoinjs-lib.
+descriptor documents): no invalid-input vector for BIP-32 or BIP-380, and no
+descriptor-to-script vector for BIPs 381 to 387. BIP-174 is now covered, as
+above. For signing, the BIP-340 and BIP-341 vectors now run; no BIP-143 vector
+is checked yet, so segwit v0 signatures are still checked only for
+determinism, against bitcoinjs-lib, and by the two BIP-174 signer steps.
+
+The BIP-174, 340 and 341 rows were updated after this survey, from files
+fetched at bips `d1d2042c857f337c147785c1d02cfd9f9d3c84fb`, not `7c7cb232`.
+No case failed; the BIP-174 test keeps an empty known-exception list for any
+future one.
 
 ## Manifest
 

@@ -815,9 +815,9 @@ Deployed.
 | BIP-125 | `bip-0125.mediawiki` | Deployed | Replaceability shown in review | SP-REV-9 |
 | BIP-143 | `bip-0143.mediawiki` | Deployed | Segwit v0 sighash | SP-REV-3 basis |
 | BIP-173, 350 | `bip-0173`, `bip-0350` | Deployed | Address encoding | SP-HW-2 arithmetic |
-| BIP-174 | `bip-0174.mediawiki` | Deployed (1.4.4) | PSBT | Required |
+| BIP-174 | `bip-0174.mediawiki` | Deployed (1.4.4) | PSBT | Required. Vectors extracted into `spec/vectors/bip174-psbt.json` (bips `d1d2042c`): all 20 invalid refused, all 10 valid parse, both walk-through signer steps reproduced |
 | BIP-370 | `bip-0370.mediawiki` | Deployed | PSBT version 2 | Cited by `core.psbt.parse`; no test in this repository feeds a version 2 PSBT, so support is UNVERIFIED and this profile requires version 0 only |
-| BIP-340, 341, 342 | `bip-0340`, `bip-0341`, `bip-0342` | Deployed | Taproot signing and scripts | SP-SIG-1, SP-REV-3 |
+| BIP-340, 341, 342 | `bip-0340`, `bip-0341`, `bip-0342` | Deployed | Taproot signing and scripts | SP-SIG-1, SP-REV-3. Vectors in `spec/vectors/bip340-test-vectors.csv` and `spec/vectors/bip341-wallet-test-vectors.json` (bips `d1d2042c`); BIP-342 publishes none |
 | BIP-380, 381, 382, 383, 386, 387 | `bip-0380` and the rest | Deployed | Descriptors, including `multi_a` and `sortedmulti_a` | Checksum required unless explicitly overridden (`core.descriptor.parse`); vectors in `spec/vectors/bip380-checksum.json` |
 | BIP-389 | `bip-0389.mediawiki` | Draft | Multipath key expressions | A subset: nullroute accepts the multipath element only as the last step before the wildcard, where BIP-389 allows further `/NUM` steps after it (`bip-0389.mediawiki` lines 42-46) |
 | BIP-322 | `bip-0322.mediawiki` | Complete (2.0.0) | Message signing | INV-MSG-6 reproduces the ECDSA signature published in `bip-0322/basic-test-vectors.json` byte for byte |
@@ -833,7 +833,11 @@ Deployed.
 the descriptor documents it claims, and MUST pass the published vectors of each
 where the BIP provides them. Check: nullroute's vectors in `spec/vectors/`;
 `research/handoff-D.md`, "BIP vectors for SP-DEP-1", lists per BIP which
-published vectors nullroute includes and which it does not.
+published vectors nullroute includes and which it does not. BIP-174, BIP-340
+and BIP-341 are now included (INV-PSBT-9, INV-PSBT-18, INV-SIG-6 to INV-SIG-8,
+INV-TR-6). Where nullroute's own path cannot take a vector's input (raw keys
+rather than a seed, or a tapleaf it refuses), the test runs the library call
+that path makes and says so; the invariant statements name each such limit.
 
 ## 8. Out of scope
 

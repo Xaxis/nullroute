@@ -85,6 +85,26 @@ invariants:
       - packages/core/test/descriptor.taproot.test.ts::counts-a-ranged-leaf-as-a-ranged-descriptor
       - packages/core/test/descriptor.taproot.test.ts::derives-a-range-of-addresses-that-all-differ
 
+  - id: INV-TR-6
+    statement: >
+      Every BIP-341 scriptPubKey vector whose tree has a descriptor form this
+      device accepts (five of seven: key path only, or pk() leaves) derives the
+      published address through parseDescriptor and deriveTaprootAddresses. For
+      all seven, the p2tr call that path makes produces the published tweaked
+      key, scriptPubKey, address, merkle root, leaf hashes and control blocks.
+      The other two trees hold leaves the device refuses (INV-TR-4), so for them
+      only the library call is checked.
+    tests:
+      - packages/core/test/vectors.bip341.test.ts::reads-every-published-bip341-vector
+      - packages/core/test/vectors.bip341.test.ts::derives-the-published-taproot-address-from-a-descriptor
+      - packages/core/test/vectors.bip341.test.ts::matches-every-published-output-key-merkle-root-and-control-block
+
+vectors:
+  - name: BIP-341 wallet test vectors
+    file: spec/vectors/bip341-wallet-test-vectors.json
+    sha256: 403e19fb81dd1f31e745699216308f61fb403774b2aafa87b631b8f7c042d37f
+    source: https://github.com/bitcoin/bips/blob/d1d2042c857f337c147785c1d02cfd9f9d3c84fb/bip-0341/wallet-test-vectors.json
+
 threats:
   - INV-PSBT-2
   - INV-TR-2

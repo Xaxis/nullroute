@@ -69,6 +69,8 @@ invariants:
     tests:
       - packages/core/test/psbt.sign.test.ts::uses-zero-aux-rand
       - packages/core/test/differential.test.ts::agrees-byte-for-byte-on-every-p2wpkh-signature
+      - packages/core/test/vectors.bip340.test.ts::reproduces-the-zero-aux-rand-vectors-with-the-devices-own-constant
+      - packages/core/test/vectors.bip341.test.ts::signs-every-published-key-path-input-with-zero-aux-rand
 
   - id: INV-SIG-2
     statement: >
@@ -101,6 +103,54 @@ invariants:
       PSBT is returned rather than a bare transaction.
     tests:
       - packages/core/test/psbt.sign.test.ts::signs-an-input-it-owns
+
+  - id: INV-SIG-6
+    statement: >
+      The Schnorr primitive every signing and verifying path calls, schnorr in
+      @noble/curves, reproduces every signature in the BIP-340 test vectors from
+      the vector's own aux_rand, and returns the published verification result
+      for every row, including the ten that must be rejected.
+    tests:
+      - packages/core/test/vectors.bip340.test.ts::reads-every-published-bip340-vector
+      - packages/core/test/vectors.bip340.test.ts::signs-every-published-bip340-vector
+      - packages/core/test/vectors.bip340.test.ts::verifies-every-published-bip340-vector
+
+  - id: INV-SIG-7
+    statement: >
+      For every key path input in the BIP-341 wallet test vectors, a PSBT
+      carried through parsePsbt and signed with the call signTransaction makes
+      (Transaction.sign with AUX_RAND) produces the published sighash and the
+      published witness byte for byte, across all seven sighash types the
+      vectors use. The vectors give raw keys rather than a seed, so the seed
+      derivation in signTransaction is not part of this check.
+    tests:
+      - packages/core/test/vectors.bip341.test.ts::computes-every-published-taproot-sighash
+      - packages/core/test/vectors.bip341.test.ts::signs-every-published-key-path-input-with-zero-aux-rand
+
+  - id: INV-SIG-8
+    statement: >
+      The same signing call reproduces both signer steps of the BIP-174 role
+      walk-through byte for byte, and puts no signature on an input the BIP
+      lists under "Fails Signer checks" while still signing the intact input
+      beside it. The first of those four cases has no published keys and is
+      only checked to parse.
+    tests:
+      - packages/core/test/vectors.bip174.test.ts::reproduces-both-published-signer-steps
+      - packages/core/test/vectors.bip174.test.ts::signs-nothing-on-an-input-the-bip-says-a-signer-must-refuse
+
+vectors:
+  - name: BIP-340 test vectors
+    file: spec/vectors/bip340-test-vectors.csv
+    sha256: 34c9d1d9c3a88d524bc80778540dc43f8306ec249a7485293063c376db851c2d
+    source: https://github.com/bitcoin/bips/blob/d1d2042c857f337c147785c1d02cfd9f9d3c84fb/bip-0340/test-vectors.csv
+  - name: BIP-341 wallet test vectors
+    file: spec/vectors/bip341-wallet-test-vectors.json
+    sha256: 403e19fb81dd1f31e745699216308f61fb403774b2aafa87b631b8f7c042d37f
+    source: https://github.com/bitcoin/bips/blob/d1d2042c857f337c147785c1d02cfd9f9d3c84fb/bip-0341/wallet-test-vectors.json
+  - name: BIP-174 test vectors, extracted from the BIP text
+    file: spec/vectors/bip174-psbt.json
+    sha256: cc13f846f8a81bfab738d43d985e14547b4cc3ad57766e430e880578406ce911
+    source: https://github.com/bitcoin/bips/blob/d1d2042c857f337c147785c1d02cfd9f9d3c84fb/bip-0174.mediawiki
 
 threats:
   - INV-SIG-1
@@ -140,5 +190,6 @@ security_notes: >
 references:
   - RFC 6979, Deterministic Usage of DSA and ECDSA
   - BIP-340, Schnorr Signatures for secp256k1
+  - BIP-341, Taproot SegWit version 1 spending rules
   - BIP-174, Partially Signed Bitcoin Transaction Format
   - docs/THREAT-MODEL.md
