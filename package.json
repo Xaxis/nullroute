@@ -24,7 +24,6 @@
     "build": "tsc --build tsconfig.build.json",
     "type-check": "tsc --build tsconfig.build.json --force",
     "lint": "eslint .",
-    "lint:prove": "node tools/prove-lint.mjs",
     "test": "vitest run",
     "verify": "node packages/verify/dist/cli.js",
     "prose": "node tools/checks/check-prose.mjs",
@@ -32,10 +31,10 @@
     "clean": "rm -rf packages/*/dist apps/web/.next apps/web/out"
   },
   "devDependencies": {
-    "@eslint/js": "9.39.5",
+    "@eslint/js": "10.0.1",
     "@fast-check/vitest": "0.4.1",
     "@types/node": "24.13.3",
-    "eslint": "9.39.5",
+    "eslint": "10.11.0",
     "fast-check": "4.9.0",
     "typescript": "6.0.3",
     "typescript-eslint": "8.67.0",

@@ -885,7 +885,8 @@ export function App() {
         } catch (unasked) {
           throw new Error(
             `${(refused as Error).message} The device could not then be asked what is open: ` +
-              (unasked as Error).message
+              (unasked as Error).message,
+            { cause: unasked }
           )
         }
         throw refused

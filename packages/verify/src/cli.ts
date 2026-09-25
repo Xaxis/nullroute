@@ -72,7 +72,7 @@ function line(outcome: CheckOutcome): string {
 
 function main(): number {
   const outcomes: CheckOutcome[] = []
-  let specs: LoadedSpec[] = []
+  let specs: LoadedSpec[]
 
   // Specs must load before anything can be checked against them. A malformed
   // spec is a hard stop rather than a failed check, because every later check

@@ -95,7 +95,8 @@ async function rpc(method, params = [], wallet) {
         `  without running, so this is a failure rather than a skip.\n\n` +
         `  Start one:\n` +
         `    bitcoind -regtest -daemon -fallbackfee=0.0002 \\\n` +
-        `      -rpcuser=${RPC_USER} -rpcpassword=${RPC_PASSWORD} -rpcport=18443\n`
+        `      -rpcuser=${RPC_USER} -rpcpassword=${RPC_PASSWORD} -rpcport=18443\n`,
+      { cause: err }
     )
   }
 

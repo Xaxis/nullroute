@@ -182,7 +182,7 @@ function globForms(root, glob) {
   // under usr/ and are the only ones `walk` will have listed.
   for (const merged of ['lib', 'bin', 'sbin', 'lib32', 'lib64', 'libx32']) {
     if (!normalised.startsWith(`${merged}/`)) continue
-    let linked = false
+    let linked
     try {
       linked = lstatSync(join(root, merged)).isSymbolicLink()
     } catch {
@@ -1263,7 +1263,7 @@ export function udevRules(root, params) {
 
   const lines = []
   for (const dir of ['usr/lib/udev/rules.d', 'lib/udev/rules.d', 'etc/udev/rules.d']) {
-    let names = []
+    let names
     try {
       names = readdirSync(join(root, dir))
     } catch {
