@@ -170,15 +170,13 @@ describe('core.message.bip322 signing', () => {
     )
   })
 
-  it('signs-wrapped-segwit-too', async () => {
-    const bitcoin = await import('bitcoinjs-lib')
+  it('signs-wrapped-segwit-too', () => {
     using seed = mnemonicToSeed(MNEMONIC, '')
     const signed = signMessage(seed, MAINNET, 'p2sh-p2wpkh', "m/49'/0'/0'/0/0", 'Hello World')
 
     expect(signed.address.startsWith('3')).toBe(true)
     const raw = base64.decode(signed.signature.slice(SIMPLE_PREFIX.length))
     expect(raw[0]).toBe(2)
-    void bitcoin
   })
 
   /**

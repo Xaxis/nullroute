@@ -210,7 +210,7 @@ export function verifyMessage(
     return verifyTaproot(stack, message, script)
   }
   if (decoded.type === 'wpkh') {
-    return verifyKeyHash(stack, message, script, script.slice(2), 'p2wpkh', network)
+    return verifyKeyHash(stack, message, script, script.slice(2), 'p2wpkh')
   }
   if (decoded.type === 'sh') {
     return verifyWrapped(stack, message, script, network)
@@ -303,14 +303,7 @@ function verifyWrapped(
     )
   }
 
-  return verifyKeyHash(
-    stack,
-    message,
-    script,
-    btc.p2wpkh(pubkey).script.slice(2),
-    'p2sh-p2wpkh',
-    network
-  )
+  return verifyKeyHash(stack, message, script, btc.p2wpkh(pubkey).script.slice(2), 'p2sh-p2wpkh')
 }
 
 /**
@@ -325,10 +318,8 @@ function verifyKeyHash(
   message: string,
   script: Uint8Array,
   keyHash: Uint8Array,
-  scriptType: 'p2wpkh' | 'p2sh-p2wpkh',
-  network: Network
+  scriptType: 'p2wpkh' | 'p2sh-p2wpkh'
 ): MessageVerification {
-  void network
   if (stack.length !== 2) {
     return fail(scriptType, 'A key-hash witness is a signature and a public key, and that is not.')
   }

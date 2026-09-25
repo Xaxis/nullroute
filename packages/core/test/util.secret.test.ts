@@ -56,7 +56,7 @@ describe('core.util.secret', () => {
     const bytes = new Uint8Array([1, 2, 3, 4])
     expect(() => {
       using secret = Secret.fromBytes(bytes, 'scoped')
-      void secret.length
+      expect(secret.length).toBe(4)
       throw new Error('boom')
     }).toThrow('boom')
     expect([...bytes]).toEqual([0, 0, 0, 0])
