@@ -368,6 +368,43 @@ describe('core.qr.ur decoding', () => {
     }).toThrow(/checksum is wrong/)
     expect(decoder.result).toBeUndefined()
   })
+
+  /**
+   * INV-UR-6. A hostile first frame cannot make the device allocate or loop on
+   * numbers it chose. Before the caps, one QR claiming four billion parts
+   * built a four billion entry array in chooseFragments and froze the screen.
+   */
+  it('refuses-a-first-frame-that-claims-an-impossible-size', () => {
+    const part = (seqNum: number, seqLen: number, messageLen: number, dataLen = 10) =>
+      `ur:bytes/${String(seqNum)}-${String(seqLen)}/${bytewordsEncode(
+        encodePart({ seqNum, seqLen, messageLen, checksum: 1, data: new Uint8Array(dataLen) }),
+        'minimal'
+      )}`
+    expect(() =>
+      new UrDecoder().receive(part(4_000_000_001, 4_000_000_000, 40_000_000_000))
+    ).toThrow(/too large/)
+    expect(() => new UrDecoder().receive(part(1, 3, 2_000_000_000))).toThrow(/too large/)
+    // Lengths that no encoder produces: three fragments of ten do not make 45 bytes.
+    expect(() => new UrDecoder().receive(part(1, 3, 45))).toThrow(/do not add up/)
+    expect(() => new UrDecoder().receive(part(1, 3, 20))).toThrow(/do not add up/)
+  })
+
+  /**
+   * INV-UR-6. A mixed part draws only the fragments it mixes, not a shuffle of
+   * every index: the same first draws as the full shuffle, and nothing after.
+   * A timing threshold would not show this (the full shuffle of 10,000 took
+   * 16 ms here, well inside any limit a loaded machine could promise), so the
+   * generator's position is compared instead.
+   */
+  it('draws-only-the-fragments-it-mixes', () => {
+    const items = Array.from({ length: 10_000 }, (_, i) => i)
+    const partial = Xoshiro256.fromString('Wolf')
+    const full = Xoshiro256.fromString('Wolf')
+    expect(shuffled(items, partial, 3)).toEqual(shuffled(items, full).slice(0, 3))
+    const after = Xoshiro256.fromString('Wolf')
+    for (let i = 0; i < 3; i += 1) after.nextInt(0, items.length - 1 - i)
+    expect(partial.next()).toBe(after.next())
+  })
 })
 
 describe('core.qr.ur psbt', () => {

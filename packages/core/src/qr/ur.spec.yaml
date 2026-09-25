@@ -112,6 +112,17 @@ invariants:
       - packages/core/test/qr.ur.test.ts::reads-a-psbt-under-either-registered-name
       - packages/core/test/qr.ur.test.ts::writes-a-psbt-as-uppercase-crypto-psbt-frames
 
+  - id: INV-UR-6
+    statement: >
+      A first frame cannot make the decoder allocate or loop on sizes it
+      chose: a message longer than a PSBT can be, more than 10,000 parts, or
+      lengths no encoder produces (seqLen other than ceil(messageLen /
+      fragmentLen)) are refused before anything is sized from them. A mixed
+      part draws only the fragments it mixes.
+    tests:
+      - packages/core/test/qr.ur.test.ts::refuses-a-first-frame-that-claims-an-impossible-size
+      - packages/core/test/qr.ur.test.ts::draws-only-the-fragments-it-mixes
+
 vectors:
   - name: Blockchain Commons UR, bc-ur test suite and BCR papers
     file: spec/vectors/ur-bcr.json
@@ -120,6 +131,7 @@ vectors:
 
 threats:
   - INV-UR-4
+  - INV-UR-6
 
 security_notes: >
   Standard tier, like BBQr. UR moves public data: the PSBT a coordinator sends

@@ -171,18 +171,45 @@ export class RandomSampler {
 
 // --- Fragment selection ----------------------------------------------------
 
+/**
+ * The largest transfer a decoder will start on. A PSBT is refused above
+ * 1,000,000 bytes (packages/core/src/psbt/parse.ts), and its CBOR head adds at
+ * most five, so a longer message cannot become a PSBT. And 10,000 parts covers
+ * that size at 100-byte fragments, already a quarter hour of animation.
+ * Without these, one frame claiming four billion parts made chooseFragments
+ * build a four billion entry array (INV-UR-6).
+ */
+export const MAX_MESSAGE_LEN = 1_000_005
+export const MAX_SEQ_LEN = 10_000
+
+/**
+ * The degree sampler depends only on seqLen, and a decoder asks for the same
+ * seqLen on every mixed part, so the last one is kept. The C++ rebuilds it each
+ * call and the Swift reference once per message; both give the same draws,
+ * because construction is deterministic.
+ */
+let degreeSampler: { readonly seqLen: number; readonly sampler: RandomSampler } | undefined
+
 /** Draws the degree first: two nextDouble calls (bc-ur src/fountain-utils.cpp:16-23). */
 export function chooseDegree(seqLen: number, rng: Xoshiro256): number {
-  const weights: number[] = []
-  for (let i = 1; i <= seqLen; i += 1) weights.push(1 / i)
-  return new RandomSampler(weights).next(rng) + 1
+  if (degreeSampler?.seqLen !== seqLen) {
+    const weights: number[] = []
+    for (let i = 1; i <= seqLen; i += 1) weights.push(1 / i)
+    degreeSampler = { seqLen, sampler: new RandomSampler(weights) }
+  }
+  return degreeSampler.sampler.next(rng) + 1
 }
 
-/** Remove a random remaining item, append it, until none remain (fountain-utils.hpp:25-35). */
-export function shuffled<T>(items: readonly T[], rng: Xoshiro256): T[] {
+/**
+ * Remove a random remaining item, append it, `count` times (all by default)
+ * (fountain-utils.hpp:25-35). Stopping early draws exactly what the full
+ * shuffle draws up to that point, so the first `count` items are the same; the
+ * multipart paper's Swift reference stops early the same way.
+ */
+export function shuffled<T>(items: readonly T[], rng: Xoshiro256, count = items.length): T[] {
   const remaining = [...items]
   const result: T[] = []
-  while (remaining.length > 0) {
+  while (remaining.length > 0 && result.length < count) {
     const index = rng.nextInt(0, remaining.length - 1)
     const [item] = remaining.splice(index, 1)
     result.push(item as T)
@@ -206,7 +233,7 @@ export function chooseFragments(seqNum: number, seqLen: number, checksum: number
   const rng = new Xoshiro256(seed)
   const degree = chooseDegree(seqLen, rng)
   const indexes = Array.from({ length: seqLen }, (_, i) => i)
-  return shuffled(indexes, rng).slice(0, degree)
+  return shuffled(indexes, rng, degree)
 }
 
 // --- Encoder ---------------------------------------------------------------
@@ -356,14 +383,19 @@ export class FountainDecoder {
       throw new UrError('That UR part is empty.')
     }
     if (this.#expected === undefined) {
+      // Checked before anything is sized from them (INV-UR-6).
+      if (part.messageLen > MAX_MESSAGE_LEN || part.seqLen > MAX_SEQ_LEN) {
+        throw new UrError('That UR transfer is too large for anything this device reads.')
+      }
+      // Exactly what every encoder produces: equal fragments, the last padded.
+      if (part.seqLen !== Math.ceil(part.messageLen / part.data.length)) {
+        throw new UrError('That UR part has lengths that do not add up. Start again.')
+      }
       this.#expected = {
         seqLen: part.seqLen,
         messageLen: part.messageLen,
         checksum: part.checksum,
         fragmentLen: part.data.length,
-      }
-      if (part.seqLen * part.data.length < part.messageLen) {
-        throw new UrError('That UR part describes fragments too short for its message.')
       }
     } else if (
       part.seqLen !== this.#expected.seqLen ||
