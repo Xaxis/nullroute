@@ -861,7 +861,7 @@ web-lint: ## ESLint the website workspace
 web-type-check: ## TypeScript for the website
 	@npm run type-check --workspace @nullroute/web
 
-web-isolation: ## The site loads nothing off-origin and emits no inline styles
+web-isolation: ## The site loads nothing off-origin but its visit counter, and emits no inline styles
 	@node tools/checks/check-web-isolation.mjs
 
 web-csp: ## vercel.json's CSP still matches the built inline script hashes

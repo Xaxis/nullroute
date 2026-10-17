@@ -52,19 +52,34 @@ export function inlineScriptHashes(htmlDocuments) {
   return [...hashes].sort()
 }
 
+/**
+ * The visit counter, the one off-origin allowance (VISIT_COUNTER in
+ * apps/web/lib/site.ts). Exact paths rather than the origin: the counter script
+ * and the endpoint it posts to, and nothing else Overlook serves. Its Web Vitals
+ * script (v.js) is switched off on this site and is not allowed here, so turning
+ * it back on is a policy change someone has to make on purpose.
+ *
+ * WEBSITE ONLY. The device frontend's policy is a meta tag in
+ * packages/ui/index.html, checked by `make device-csp` (INV-NET-3), and it
+ * allows no other origin at all.
+ */
+export const VISIT_COUNTER_SCRIPT = 'https://overlook.technology/s.js'
+export const VISIT_COUNTER_ENDPOINT = 'https://overlook.technology/e'
+
 /** The Content-Security-Policy, given the inline script hashes to allow. */
 export function buildPolicy(hashes) {
   return [
     // Nothing loads unless a directive below says otherwise.
     "default-src 'none'",
-    `script-src 'self' ${hashes.join(' ')}`,
+    `script-src 'self' ${VISIT_COUNTER_SCRIPT} ${hashes.join(' ')}`,
     // No 'unsafe-inline'. The build emits no inline styles and CI enforces it.
     "style-src 'self'",
     "img-src 'self' data:",
     "font-src 'self'",
-    // The site makes no requests, but 'self' keeps Next's client router from
-    // tripping the policy if a future page prefetches a route payload.
-    "connect-src 'self'",
+    // The visit counter posts each visit to its endpoint, the only off-origin
+    // request the site makes. 'self' keeps Next's client router from tripping
+    // the policy if a future page prefetches a route payload.
+    `connect-src 'self' ${VISIT_COUNTER_ENDPOINT}`,
     "manifest-src 'self'",
     // No <base> rewriting, no form posts anywhere, no embedding in a frame.
     "base-uri 'none'",

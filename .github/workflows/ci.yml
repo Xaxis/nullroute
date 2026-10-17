@@ -459,8 +459,9 @@ jobs:
 
       # The site documents a device whose premise is that it has no network
       # capability. A docs site pulling a font from a CDN would undercut its own
-      # argument on the page where it makes it.
-      - name: Site loads nothing off-origin
+      # argument on the page where it makes it. The one exception is the
+      # owner's visit counter, held to one script URL and fixed settings.
+      - name: Site loads nothing off-origin but its visit counter
         run: make web-isolation
 
       # Next inlines an RSC bootstrap into every page, so the CSP carries their

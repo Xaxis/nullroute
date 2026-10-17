@@ -27,3 +27,22 @@ export const OG_IMAGE = {
   alt: 'nullroute. Built to be checked, not to be trusted. Air-gapped Bitcoin signer for the Raspberry Pi.',
   type: 'image/png',
 } as const
+
+/**
+ * The visit counter: Overlook, the owner's own cookieless analytics, and the one
+ * thing this site loads from another origin.
+ *
+ * WEBSITE ONLY. The device frontend is a different build (packages/ui) under a
+ * different policy (INV-NET-3) and must never carry this. apps/web never ships
+ * to the device, so nothing here can reach it.
+ *
+ * Kept to a visit count on purpose. `outbound: false` stops it reporting link
+ * clicks and downloads, and `vitals: 0` stops it loading a second script for Web
+ * Vitals. The policy in tools/lib/site-headers.mjs allows exactly `src` and the
+ * endpoint beside it, and tools/checks/check-web-isolation.mjs fails the build
+ * if a page loads it with any other settings, or loads anything else at all.
+ */
+export const VISIT_COUNTER = {
+  src: 'https://overlook.technology/s.js',
+  site: 'ws_5bd4fpcbpb',
+} as const

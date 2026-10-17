@@ -276,12 +276,13 @@ body {
 
 /* --- The device screenshot lightbox ---------------------------------------
  *
- * NO JAVASCRIPT, BECAUSE THE POLICY SAYS SO. INV-NET-3 pins this site to
- * `default-src 'none'` with every inline script hashed, and a page arguing that
- * you should not have to trust anyone is a poor place to ask for another
- * script. `:target` is the whole mechanism: the thumbnail links to an id, the
- * overlay matching that id stops being `display: none`, and the back button
- * closes it because it is just history.
+ * NO JAVASCRIPT, BECAUSE THE POLICY SAYS SO. The site's policy
+ * (tools/lib/site-headers.mjs) is `default-src 'none'` with every inline script
+ * hashed, and a page arguing that you should not have to trust anyone is a
+ * poor place to ask for another script. INV-NET-3 is the device frontend's
+ * policy, not this one. `:target` is the whole mechanism: the thumbnail links
+ * to an id, the overlay matching that id stops being `display: none`, and the
+ * back button closes it because it is just history.
  *
  * Hidden with `display: none` rather than opacity, so the six copies of the
  * image are never painted and never fetched until one is opened, and nothing

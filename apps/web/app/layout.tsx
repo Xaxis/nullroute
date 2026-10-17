@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import Link from 'next/link'
 import { Mark } from '@/components/Mark'
 import { DOCS } from '@/lib/docs'
-import { OG_IMAGE, REPO_URL } from '@/lib/site'
+import { OG_IMAGE, REPO_URL, VISIT_COUNTER } from '@/lib/site'
 import '../styles/globals.css'
 
 export const metadata: Metadata = {
@@ -97,6 +97,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               Pre-1.0, unaudited, and not a product. No releases, no support, no warranty. Do not
               put money on this.
             </p>
+            {/* SAY WHAT THE COUNTER DOES, on every page it runs on. The site
+                is the one part of this project that counts anything, and a
+                reader of a threat model is owed the boundary between the two
+                stated plainly rather than inferred from a policy header. */}
+            <p className="mt-4 text-sm text-ink-500 max-w-2xl leading-relaxed">
+              This website counts visits with our own privacy-friendly analytics. Each page view
+              sends the page&rsquo;s address, the referring site, your browser and device type, and
+              how long and how far down the page was read. It sets no cookies and stores nothing in
+              your browser unless you opt out; your IP address is used only to make a daily
+              anonymous count and a rough location, and is never stored. To opt out on this site,
+              open any page with <code className="font-mono">?ov_ignore=1</code>, which leaves one
+              flag in this browser so it stays off. The device has no analytics: its frontend can
+              reach nothing but its own daemon (INV-NET-3).
+            </p>
             <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-ink-500">
               <span className="inline-flex items-center gap-2 font-mono text-ink-400">
                 <Mark className="size-3.5 shrink-0 text-signal-500" />
@@ -114,6 +128,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </div>
         </footer>
+
+        {/* The visit counter (see VISIT_COUNTER in lib/site.ts).
+
+            A plain deferred <script>, not next/script. next/script injects
+            the tag from client code after hydration, so it would be absent
+            from the served HTML: a reader viewing the source would not see
+            it, and tools/checks/check-web-isolation.mjs, which reads the
+            built HTML, could not hold it to its settings. Here it is in every
+            page's bytes, where both can. React renders it in place and does
+            not run it again on client navigation; the counter follows those
+            itself. */}
+        <script
+          defer
+          src={VISIT_COUNTER.src}
+          data-site={VISIT_COUNTER.site}
+          data-outbound="false"
+          data-vitals="0"
+        />
       </body>
     </html>
   )

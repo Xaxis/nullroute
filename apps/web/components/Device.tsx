@@ -17,9 +17,9 @@
  *
  * THE LIGHTBOX HAS NO JAVASCRIPT, and that is a constraint rather than a boast.
  * The site's policy is `default-src 'none'` with every inline script pinned by
- * hash, and INV-NET-3 is the assertion that says so. A modal built the usual
- * way would mean a new script, a new hash, and a page about not trusting things
- * asking to run more code. `:target` does the whole job in CSS: the thumbnail
+ * hash (tools/lib/site-headers.mjs; INV-NET-3 is the device frontend's policy,
+ * not this one). A modal built the usual way would mean a new script, a new
+ * hash, and a page about not trusting things asking to run more code. `:target` does the whole job in CSS: the thumbnail
  * is a link to the overlay's id, the overlay is hidden until the URL names it,
  * and the browser's own back button closes it. It works with JavaScript off,
  * every view is linkable, and the keyboard already does the right thing because
