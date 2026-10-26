@@ -34,7 +34,7 @@
  */
 
 import { spawn } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
@@ -51,6 +51,17 @@ const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const ORIGIN = process.argv[2] ?? process.env['NULLROUTE_SITE'] ?? 'https://nullroute.diy'
 
 /**
+ * A doc page that renders its shell but not its body would still "load", so
+ * the body is measured against its own source. A fixed floor of 5,000
+ * characters stood here until SECURITY.md was published: it is 2,732 bytes
+ * of markdown, so the check failed a page that rendered completely, and the
+ * same floor would have passed a long document that rendered a fifth of
+ * itself. Rendered text runs shorter than its markdown (link targets, table
+ * rules and fences do not show), so half the source is the bar.
+ */
+const BODY_SHARE = 0.5
+
+/**
  * Every document, read out of the registry rather than listed here.
  *
  * This list was four entries long while the site published six documents, so
@@ -63,19 +74,52 @@ const ORIGIN = process.argv[2] ?? process.env['NULLROUTE_SITE'] ?? 'https://null
  */
 function docPages() {
   const source = readFileSync(join(ROOT, 'apps/web/lib/docs.ts'), 'utf8')
-  const found = [...source.matchAll(/slug:\s*'([a-z0-9-]+)'[\s\S]{0,400}?title:\s*'([^']+)'/g)]
+  const found = [
+    ...source.matchAll(
+      /slug:\s*'([a-z0-9-]+)'[\s\S]{0,400}?file:\s*'([^']+)'[\s\S]{0,400}?title:\s*'([^']+)'/g
+    ),
+  ]
   if (found.length === 0) {
     console.error(
       'check-web-live: no documents parsed from apps/web/lib/docs.ts, so this is blind.'
     )
     process.exit(1)
   }
-  return found.map((m) => ({ path: `/docs/${m[1]}`, expect: m[2] }))
+  return found.map((m) => ({
+    path: `/docs/${m[1]}`,
+    expect: m[3],
+    minBody: Math.floor(readFileSync(join(ROOT, m[2]), 'utf8').length * BODY_SHARE),
+  }))
 }
 
-const PAGES = [{ path: '/', expect: 'Built to be checked' }, ...docPages()]
-
 const OUT = join(ROOT, 'apps/web/out')
+
+/**
+ * Every other page the build wrote, read out of apps/web/out.
+ *
+ * The same lesson as the document list one level up: the site grew from seven
+ * pages to nineteen and this check still opened the home page and the
+ * documents, so /check, /profile and the rest went live unchecked. Each page
+ * is expected to carry the title its own build gave it; the byte comparison
+ * below is what proves it is that build.
+ */
+function builtPages() {
+  if (!existsSync(OUT)) {
+    console.error('check-web-live: no apps/web/out. Run "make web-build" first.')
+    process.exit(1)
+  }
+  return readdirSync(OUT, { recursive: true })
+    .filter((f) => f.endsWith('.html') && !['404.html', '_not-found.html'].includes(f))
+    .map((f) => (f === 'index.html' ? '/' : `/${f.slice(0, -'.html'.length)}`))
+    .filter((path) => !path.startsWith('/docs/'))
+    .sort()
+    .map((path) => {
+      const title = /<title>([^<]*)<\/title>/.exec(readFileSync(builtFile(path), 'utf8'))
+      return { path, expect: title ? title[1].replaceAll('&amp;', '&') : '(no title in the build)' }
+    })
+}
+
+const PAGES = [...builtPages(), ...docPages()]
 
 /** Where `next build` put the page this path serves. */
 function builtFile(path) {
@@ -83,9 +127,6 @@ function builtFile(path) {
 }
 
 const sha256 = (text) => createHash('sha256').update(text).digest('hex')
-
-/** A doc page that renders its shell but not its body would still "load". */
-const MIN_CHARS = 5000
 
 const PORT = await freePort()
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -184,7 +225,7 @@ async function main() {
 
   let failures = 0
 
-  for (const { path, expect } of PAGES) {
+  for (const { path, expect, minBody } of PAGES) {
     problems = []
     await send(page, state, 'Page.navigate', { url: `${ORIGIN}${path}` })
     await sleep(2500)
@@ -193,7 +234,8 @@ async function main() {
       expression: `JSON.stringify({
         title: document.title,
         h1: (document.querySelector('h1') || {}).textContent || '',
-        chars: document.body.innerText.length
+        chars: document.body.innerText.length,
+        body: (document.querySelector('.prose-doc') || { innerText: '' }).innerText.length
       })`,
       returnByValue: true,
     })
@@ -232,8 +274,11 @@ async function main() {
     if (!info.h1.includes(expect) && !info.title.includes(expect)) {
       issues.push(`expected "${expect}" in the heading or title, got h1="${info.h1}"`)
     }
-    if (path.startsWith('/docs') && info.chars < MIN_CHARS) {
-      issues.push(`only ${info.chars} characters of text: the document body did not render`)
+    if (minBody !== undefined && info.body < minBody) {
+      issues.push(
+        `the document body is ${String(info.body)} characters against a source that needs ` +
+          `${String(minBody)}: it did not render`
+      )
     }
     issues.push(...problems)
 
@@ -243,7 +288,9 @@ async function main() {
       for (const issue of issues) console.error(`    ${issue.slice(0, 200)}`)
       console.error('')
     } else {
-      console.log(`  ok  ${path}  (${info.chars} chars, no console errors)`)
+      const body =
+        minBody === undefined ? '' : `, body ${String(info.body)} of ${String(minBody)} needed`
+      console.log(`  ok  ${path}  (${info.chars} chars${body}, no console errors)`)
     }
   }
 
