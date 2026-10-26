@@ -46,3 +46,16 @@ export const VISIT_COUNTER = {
   src: 'https://overlook.technology/s.js',
   site: 'ws_5bd4fpcbpb',
 } as const
+
+/**
+ * The header, in the order a reader's questions arrive: how do I check it,
+ * what is the profile, what is the device, where does it stand, where is the
+ * detail. Verbs and nouns a builder uses, not "Features" and "Why us".
+ */
+export const NAV: readonly { href: string; label: string }[] = [
+  { href: '/check', label: 'Check it' },
+  { href: '/profile', label: 'Profile' },
+  { href: '/device', label: 'Device' },
+  { href: '/status', label: 'Status' },
+  { href: '/docs', label: 'Docs' },
+]

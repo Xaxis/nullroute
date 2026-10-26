@@ -3,158 +3,422 @@
 /*
  * nullroute.diy
  *
- * The visual direction is deliberately close to a terminal and a technical
- * specification, because that is what the project is. No gradients, no hero
- * animation, no stock photography of a padlock. A site that looks like a
- * fintech landing page would be making a claim the threat model spends four
- * pages walking back.
+ * LAID OUT LIKE A TEST REPORT, because that is the genre whose whole job is
+ * to be checked by somebody who does not trust the author. Numbered figures,
+ * a source line under every artefact, the result next to the method that
+ * produced it. A reader recognises "measurement, method, source" without
+ * being told, so the page never has to say the word verifiable.
  *
- * Dark by default: the device runs a dark theme (it is used in low light), and
- * the site should look like it belongs to the same object.
+ * THE DEVICE'S OWN TWO THEMES, not a third. The light tokens below are the
+ * device's light theme (packages/ui/src/styles.css, `[data-theme='light']`)
+ * and the dark ones are its default theme, value for value. The site follows
+ * the reader's system setting rather than offering a toggle, because a toggle
+ * needs a script and somewhere to remember the choice, and this page asks for
+ * neither. The device screenshots sit on a black plate in both, so the panel
+ * reads as an object photographed for the report.
+ *
+ * This used to be dark only, reasoned as "the site should look like it
+ * belongs to the same object". It still does: the device ships both themes.
+ *
+ * No gradients, no hero animation, no stock photography of a padlock. A site
+ * that looks like a fintech landing page would be making a claim the threat
+ * model spends four pages walking back.
  */
 
-@theme {
-  /* Near-black rather than pure black: pure black against bright text causes
-     halation on OLED and is genuinely harder to read for long stretches. */
-  --color-ink-950: #0b0c0e;
-  --color-ink-900: #111317;
-  --color-ink-850: #171a1f;
-  --color-ink-800: #1e222a;
-  --color-ink-700: #2b313b;
-  /* Borders and rules only. At 2.02:1 on ink-950 this is not a text colour,
-     and using it as one (which this site did) puts real prose below every
-     legibility threshold there is. */
-  --color-ink-600: #3d4552;
-  /* Lightened from #5a6472, which was 3.26:1 on ink-950 and 3.10:1 on ink-900
-     and therefore failed WCAG AA everywhere it was used. This is the quietest
-     colour on the site that still clears 4.5:1 on both surfaces (4.85 and
-     4.61), which matters because it carries the caveats and the qualifications,
-     and those are the sentences this project can least afford people to skip. */
-  --color-ink-500: #767f8f;
-  --color-ink-400: #8b94a3;
-  --color-ink-300: #b6bdc8;
-  --color-ink-200: #d8dce3;
-  --color-ink-100: #eef0f4;
-
-  /* One accent, used sparingly. Signal orange reads as "attend to this"
-     without borrowing the Bitcoin logo's exact colour. */
-  --color-signal-500: #e8833a;
-  --color-signal-400: #f39c5c;
-  --color-signal-300: #f7b884;
-
-  /* Reserved strictly for honest limitations and hard warnings. If this colour
-     appears, the text next to it is telling you what the device cannot do. */
-  --color-caution-500: #d9534f;
-  --color-caution-300: #f0918e;
-
-  --color-verify-500: #4fa88a;
-  --color-verify-300: #86c9b2;
-
-  --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace;
-  --font-sans:
-    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+/* --- Typefaces -------------------------------------------------------------
+ *
+ * Self-hosted, cut to Latin, and rebuilt from the foundries' releases by
+ * tools/gen-web-fonts.sh, which pins each archive by hash. Loading a font from
+ * a CDN would be a third party on the page that argues against third parties,
+ * and `font-src 'self'` would refuse it anyway.
+ *
+ * Serif for the argument, sans for labels, mono for evidence. The split is the
+ * point: what the project says and what a reader can check look different.
+ *
+ * HASHES ARE SET IN DEJAVU SANS MONO, the face the device draws them in, so
+ * the glyphs compared on this page are the glyphs the panel shows. That file
+ * holds only what a hash display needs.
+ */
+@font-face {
+  font-family: 'Source Serif 4';
+  src: url('/fonts/SourceSerif4-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Source Serif 4';
+  src: url('/fonts/SourceSerif4-Italic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Source Serif 4 Display';
+  src: url('/fonts/SourceSerif4Display-Semibold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  src: url('/fonts/IBMPlexSans-Regular-Latin1.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  src: url('/fonts/IBMPlexSans-SemiBold-Latin1.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('/fonts/IBMPlexMono-Regular-Latin1.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('/fonts/IBMPlexMono-Medium-Latin1.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'DejaVu Sans Mono Hex';
+  src: url('/fonts/DejaVuSansMono-Hex.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }
 
+/* --- Colour ----------------------------------------------------------------
+ *
+ * Every text colour clears WCAG AA (4.5:1) on every surface it is used on.
+ * `muted` carries the captions, the source lines and the caveats, and those
+ * are the sentences this project can least afford people to skip, so it is
+ * the colour held hardest to that line. `line` and `border` are for rules
+ * only and never for text.
+ *
+ * `caution` is reserved. If it appears, the text beside it is telling you
+ * what the device cannot do or what failed.
+ */
 :root {
-  color-scheme: dark;
+  color-scheme: light dark;
+
+  --paper: #f5f4f1;
+  --surface: #fbfaf8;
+  --sunk: #efedea;
+  --line: #dedbd5;
+  --border: #c9c5bd;
+  --ink: #14161a;
+  --body: #3d424b;
+  --muted: #5c626d;
+  --signal: #c2620f;
+  --link: #8a4409;
+  --link-hover: #5f2e05;
+  --verify: #1d5a46;
+  --verify-line: #2f8168;
+  --verify-fill: #cfe6dd;
+  --caution: #8c2420;
+  --caution-line: #b83c37;
+  --caution-fill: #f3d5d3;
+  --plate: #08090b;
+  --plate-line: #2d323d;
+  --plate-text: #c2c8d2;
+  --scrim: rgb(20 22 26 / 72%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #08090b;
+    --surface: #101216;
+    --sunk: #171a20;
+    --line: #1f232b;
+    --border: #2d323d;
+    --ink: #f4f6f9;
+    --body: #c2c8d2;
+    --muted: #949cab;
+    --signal: #e8833a;
+    --link: #f39c5c;
+    --link-hover: #f7b884;
+    --verify: #86c9b2;
+    --verify-line: #4fa88a;
+    --verify-fill: #10261f;
+    --caution: #f0918e;
+    --caution-line: #d9534f;
+    --caution-fill: #2b1313;
+    --plate: #000000;
+    --plate-line: #2d323d;
+    --plate-text: #c2c8d2;
+    --scrim: rgb(0 0 0 / 82%);
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-sunk: var(--sunk);
+  --color-line: var(--line);
+  --color-border: var(--border);
+  --color-ink: var(--ink);
+  --color-body: var(--body);
+  --color-muted: var(--muted);
+  --color-signal: var(--signal);
+  --color-link: var(--link);
+  --color-link-hover: var(--link-hover);
+  --color-verify: var(--verify);
+  --color-verify-line: var(--verify-line);
+  --color-verify-fill: var(--verify-fill);
+  --color-caution: var(--caution);
+  --color-caution-line: var(--caution-line);
+  --color-caution-fill: var(--caution-fill);
+  --color-plate: var(--plate);
+  --color-plate-line: var(--plate-line);
+  --color-plate-text: var(--plate-text);
+
+  --font-serif: 'Source Serif 4', 'Iowan Old Style', Georgia, serif;
+  --font-display: 'Source Serif 4 Display', 'Source Serif 4', Georgia, serif;
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+  --font-hash: 'DejaVu Sans Mono Hex', 'DejaVu Sans Mono', 'IBM Plex Mono', ui-monospace, monospace;
 }
 
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background-color: var(--color-ink-950);
-  color: var(--color-ink-200);
-  font-family: var(--font-sans);
+  background-color: var(--paper);
+  color: var(--body);
+  font-family: var(--font-serif);
+  font-size: 1.0625rem;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  font-feature-settings: 'kern' 1;
+}
+
+@media (min-width: 640px) {
+  body {
+    font-size: 1.125rem;
+  }
+}
+
+::selection {
+  background: color-mix(in srgb, var(--signal) 28%, transparent);
+  color: var(--ink);
 }
 
 /*
- * Keyboard focus.
- *
- * There was none. Tailwind's preflight removes the user agent's outline and
- * this site never put one back, so every link, button and die on the page was
- * invisible to anyone navigating by keyboard: focus moved, nothing changed on
- * screen. On a dark theme the default ring is nearly invisible anyway, so it is
- * drawn explicitly in the accent colour, which is 9.06:1 against the page.
- *
- * `:focus-visible` rather than `:focus`, so a mouse click on a die does not
- * leave a ring behind it.
+ * Keyboard focus, drawn explicitly. Tailwind's preflight removes the user
+ * agent's outline, and a site that never put one back is invisible to anyone
+ * navigating by keyboard. `:focus-visible` so a click leaves nothing behind.
  */
 :focus-visible {
-  outline: 2px solid var(--color-signal-400);
-  outline-offset: 2px;
+  outline: 2px solid var(--signal);
+  outline-offset: 3px;
   border-radius: 2px;
 }
 
-/*
- * Hashes, addresses and hex are chunked and monospaced everywhere they appear.
- * The device does the same thing for the same reason: a user comparing a root
- * hash on a screen against one in a terminal needs the glyphs to be
- * unambiguous and the grouping to be identical in both places.
+/* --- Small type ------------------------------------------------------------
+ *
+ * Labels are the report's furniture: figure numbers, table heads, the field
+ * names over a readout. Tracked a little, not a lot. The old site tracked them
+ * at 0.18em, which reads as decoration rather than as a word.
  */
-.hash {
-  font-family: var(--font-mono);
-  font-variant-ligatures: none;
-  word-break: break-all;
-  font-feature-settings: 'zero' 1;
+.label {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
-/* Long-form documentation rendered from docs/ at the repository root. */
+/* A link in running text. Underlined, because colour alone is not a cue. */
+.link {
+  color: var(--link);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+  text-decoration-color: color-mix(in srgb, var(--link) 45%, transparent);
+  transition:
+    color 0.15s,
+    text-decoration-color 0.15s;
+}
+.link:hover {
+  color: var(--link-hover);
+  text-decoration-color: currentColor;
+}
+
+/*
+ * Inline code in prose. Plex Mono at a size that sits on the serif's x-height
+ * rather than towering over it.
+ */
+.code {
+  font-family: var(--font-mono);
+  font-size: 0.84em;
+  background: var(--sunk);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 0.05em 0.3em;
+  color: var(--ink);
+  word-break: break-word;
+}
+
+/* --- Hashes ----------------------------------------------------------------
+ *
+ * Chunked in groups of four and set in the device's face, everywhere one
+ * appears. A reader comparing the number on a panel against the number in a
+ * terminal needs the glyphs unambiguous and the grouping identical in both.
+ *
+ * The groups are separate elements, so a phone wraps between groups and never
+ * inside one, and `user-select: all` on the whole lets one tap take the hash
+ * as a single string. The spaces between groups are CSS gaps, not characters,
+ * so what is copied is the hash itself.
+ */
+.hash {
+  font-family: var(--font-hash);
+  font-variant-ligatures: none;
+  font-feature-settings: 'zero' 1;
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.55em;
+  row-gap: 0.15em;
+  user-select: all;
+  -webkit-user-select: all;
+}
+.hash > span {
+  white-space: nowrap;
+}
+
+/*
+ * THE ROOT ON A GRID, for the one place it is set large. Wrapping by width
+ * broke it 7, 7 and 2 on a laptop and 6, 6 and 4 on a phone, and a hash that
+ * breaks unevenly is harder to compare group by group against a lock screen.
+ * Four columns or eight, chosen by the page, so every row is whole.
+ */
+.hash-grid {
+  display: grid;
+  justify-content: start;
+}
+
+/*
+ * Hovering a group lights the same group in the other copy of the hash on
+ * the page, where there is one. Sixteen rules, no script.
+ */
+.hash-pair:has(.hash > span:nth-child(1):hover) .hash > span:nth-child(1),
+.hash-pair:has(.hash > span:nth-child(2):hover) .hash > span:nth-child(2),
+.hash-pair:has(.hash > span:nth-child(3):hover) .hash > span:nth-child(3),
+.hash-pair:has(.hash > span:nth-child(4):hover) .hash > span:nth-child(4),
+.hash-pair:has(.hash > span:nth-child(5):hover) .hash > span:nth-child(5),
+.hash-pair:has(.hash > span:nth-child(6):hover) .hash > span:nth-child(6),
+.hash-pair:has(.hash > span:nth-child(7):hover) .hash > span:nth-child(7),
+.hash-pair:has(.hash > span:nth-child(8):hover) .hash > span:nth-child(8),
+.hash-pair:has(.hash > span:nth-child(9):hover) .hash > span:nth-child(9),
+.hash-pair:has(.hash > span:nth-child(10):hover) .hash > span:nth-child(10),
+.hash-pair:has(.hash > span:nth-child(11):hover) .hash > span:nth-child(11),
+.hash-pair:has(.hash > span:nth-child(12):hover) .hash > span:nth-child(12),
+.hash-pair:has(.hash > span:nth-child(13):hover) .hash > span:nth-child(13),
+.hash-pair:has(.hash > span:nth-child(14):hover) .hash > span:nth-child(14),
+.hash-pair:has(.hash > span:nth-child(15):hover) .hash > span:nth-child(15),
+.hash-pair:has(.hash > span:nth-child(16):hover) .hash > span:nth-child(16) {
+  color: var(--signal);
+}
+
+/* --- Transcripts -----------------------------------------------------------
+ *
+ * A command and its real output, as one figure. The command is selectable in
+ * one tap; the output is not, because nobody needs to paste it.
+ */
+.transcript {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.75;
+  color: var(--body);
+}
+.transcript .cmd {
+  color: var(--ink);
+  user-select: all;
+  -webkit-user-select: all;
+}
+.transcript .prompt {
+  color: var(--muted);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* --- Long-form documents rendered from docs/ ------------------------------ */
 .prose-doc {
-  color: var(--color-ink-200);
-  line-height: 1.7;
+  color: var(--body);
+  line-height: 1.68;
 }
 .prose-doc h1,
 .prose-doc h2,
 .prose-doc h3,
 .prose-doc h4 {
-  color: var(--color-ink-100);
-  font-weight: 600;
+  color: var(--ink);
   scroll-margin-top: 6rem;
 }
 .prose-doc h1 {
-  font-size: 1.875rem;
-  line-height: 1.2;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  line-height: 1.1;
+  letter-spacing: -0.015em;
   margin-bottom: 1.5rem;
-  letter-spacing: -0.02em;
 }
 .prose-doc h2 {
-  font-size: 1.375rem;
-  margin-top: 3rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.625rem;
+  line-height: 1.2;
+  margin-top: 3.25rem;
   margin-bottom: 1rem;
   padding-top: 1.5rem;
-  border-top: 1px solid var(--color-ink-800);
-  letter-spacing: -0.01em;
+  border-top: 1px solid var(--line);
 }
 .prose-doc h3 {
+  font-family: var(--font-sans);
+  font-weight: 600;
   font-size: 1.0625rem;
-  margin-top: 2rem;
+  margin-top: 2.25rem;
   margin-bottom: 0.75rem;
 }
 .prose-doc h4 {
+  font-family: var(--font-sans);
+  font-weight: 600;
   font-size: 0.9375rem;
-  margin-top: 1.5rem;
+  margin-top: 1.75rem;
   margin-bottom: 0.5rem;
-  color: var(--color-ink-300);
+  color: var(--body);
 }
 .prose-doc p {
   margin-bottom: 1.125rem;
 }
 .prose-doc a {
-  color: var(--color-signal-400);
+  color: var(--link);
   text-decoration: underline;
-  text-underline-offset: 3px;
+  text-underline-offset: 0.18em;
   text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in srgb, var(--link) 45%, transparent);
 }
 .prose-doc a:hover {
-  color: var(--color-signal-300);
+  color: var(--link-hover);
+  text-decoration-color: currentColor;
 }
 .prose-doc strong {
-  color: var(--color-ink-100);
+  color: var(--ink);
   font-weight: 600;
+  font-family: var(--font-sans);
+  font-size: 0.94em;
 }
 .prose-doc ul,
 .prose-doc ol {
@@ -171,29 +435,29 @@ body {
   margin-bottom: 0.4rem;
 }
 .prose-doc li::marker {
-  color: var(--color-ink-500);
+  color: var(--muted);
 }
 .prose-doc code {
   font-family: var(--font-mono);
-  font-size: 0.875em;
-  background-color: var(--color-ink-850);
-  border: 1px solid var(--color-ink-800);
+  font-size: 0.82em;
+  background-color: var(--sunk);
+  border: 1px solid var(--line);
   border-radius: 3px;
-  padding: 0.1em 0.35em;
-  color: var(--color-ink-100);
+  padding: 0.05em 0.3em;
+  color: var(--ink);
   word-break: break-word;
 }
 .prose-doc pre {
-  background-color: var(--color-ink-900);
-  border: 1px solid var(--color-ink-800);
-  border-radius: 6px;
+  background-color: var(--sunk);
+  border: 1px solid var(--line);
+  border-radius: 4px;
   padding: 1rem 1.125rem;
   margin-bottom: 1.25rem;
   /* Wide content scrolls inside its own box. Without this a single long hash
      pushes the whole page sideways on a phone. */
   overflow-x: auto;
   font-size: 0.8125rem;
-  line-height: 1.6;
+  line-height: 1.65;
 }
 .prose-doc pre code {
   background: none;
@@ -202,14 +466,15 @@ body {
   font-size: inherit;
 }
 .prose-doc blockquote {
-  border-left: 3px solid var(--color-signal-500);
+  border-left: 3px solid var(--signal);
   padding-left: 1rem;
   margin: 1.25rem 0;
-  color: var(--color-ink-300);
+  color: var(--body);
+  font-style: italic;
 }
 .prose-doc hr {
   border: 0;
-  border-top: 1px solid var(--color-ink-800);
+  border-top: 1px solid var(--line);
   margin: 2.5rem 0;
 }
 /* These documents use `---` before most section headings, and h2 already draws
@@ -222,46 +487,47 @@ body {
 
 /* Tables carry the threat model and the interop matrix, so they need to stay
    readable rather than merely present. */
-.prose-doc .table-scroll {
+.prose-doc .table-scroll,
+.table-scroll {
   overflow-x: auto;
   margin-bottom: 1.25rem;
-  border: 1px solid var(--color-ink-800);
-  border-radius: 6px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
 }
 .prose-doc table {
   width: 100%;
   border-collapse: collapse;
+  font-family: var(--font-sans);
   font-size: 0.875rem;
+  line-height: 1.5;
 }
 .prose-doc th {
   text-align: left;
   padding: 0.625rem 0.875rem;
-  background-color: var(--color-ink-900);
-  color: var(--color-ink-100);
+  background-color: var(--sunk);
+  color: var(--ink);
   font-weight: 600;
-  border-bottom: 1px solid var(--color-ink-800);
+  border-bottom: 1px solid var(--line);
   white-space: nowrap;
 }
 .prose-doc td {
   padding: 0.625rem 0.875rem;
-  border-bottom: 1px solid var(--color-ink-850);
+  border-bottom: 1px solid var(--line);
   vertical-align: top;
 }
 .prose-doc tbody tr:last-child td {
   border-bottom: none;
 }
 
-/* Anchor links on headings, revealed on hover. */
-.prose-doc .heading-anchor {
-  color: var(--color-ink-600);
-  text-decoration: none;
-  margin-left: 0.4rem;
-  opacity: 0;
-  transition: opacity 0.12s ease;
+/* Requirement ids in the signer profile, made addressable. */
+.prose-doc .req {
+  scroll-margin-top: 6rem;
 }
-.prose-doc h2:hover .heading-anchor,
-.prose-doc h3:hover .heading-anchor {
-  opacity: 1;
+.prose-doc .req:target {
+  background: color-mix(in srgb, var(--signal) 14%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--signal) 40%, transparent);
+  outline-offset: 0.25rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -276,17 +542,16 @@ body {
 
 /* --- The device screenshot lightbox ---------------------------------------
  *
- * NO JAVASCRIPT, BECAUSE THE POLICY SAYS SO. The site's policy
- * (tools/lib/site-headers.mjs) is `default-src 'none'` with every inline script
- * hashed, and a page arguing that you should not have to trust anyone is a
- * poor place to ask for another script. INV-NET-3 is the device frontend's
- * policy, not this one. `:target` is the whole mechanism: the thumbnail links
- * to an id, the overlay matching that id stops being `display: none`, and the
- * back button closes it because it is just history.
+ * NO JAVASCRIPT, BECAUSE THE POLICY SAYS SO. The site's policy is
+ * `default-src 'none'` with every inline script hashed, and a page arguing that
+ * you should not have to trust anyone is a poor place to ask for another
+ * script. `:target` is the whole mechanism: the thumbnail links to an id, the
+ * overlay matching that id stops being `display: none`, and the back button
+ * closes it because it is just history.
  *
- * Hidden with `display: none` rather than opacity, so the six copies of the
- * image are never painted and never fetched until one is opened, and nothing
- * inside them can be tabbed to while they are closed.
+ * Hidden with `display: none` rather than opacity, so the copies of the image
+ * are never painted until one is opened, and nothing inside them can be tabbed
+ * to while they are closed.
  */
 .shot {
   display: none;
@@ -303,8 +568,8 @@ body {
 .shot__backdrop {
   position: absolute;
   inset: 0;
-  background: color-mix(in srgb, var(--color-ink-950) 88%, transparent);
-  backdrop-filter: blur(2px);
+  background: var(--scrim);
+  backdrop-filter: blur(3px);
 }
 .shot__panel {
   position: relative;
@@ -313,6 +578,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  padding: clamp(0.75rem, 2vw, 1.25rem);
+  background: var(--plate);
+  border: 1px solid var(--plate-line);
+  border-radius: 6px;
 }
 .shot__image {
   display: block;
@@ -320,33 +589,39 @@ body {
   height: auto;
   /* The panel is 800x480 and the caption needs room underneath, so the image is
      capped by height rather than width on a short window. */
-  max-height: calc(100vh - 12rem);
+  max-height: calc(100vh - 13rem);
   object-fit: contain;
-  border: 1px solid var(--color-ink-800);
-  border-radius: 0.375rem;
-  background: var(--color-ink-950);
 }
 .shot__caption {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1.5rem;
+  color: var(--plate-text);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.shot__caption strong {
+  color: #f4f6f9;
+  font-weight: 600;
 }
 .shot__close {
   flex-shrink: 0;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  letter-spacing: 0.16em;
-  color: var(--color-ink-400);
-  border: 1px solid var(--color-ink-700);
-  border-radius: 0.25rem;
+  color: #c2c8d2;
+  border: 1px solid var(--plate-line);
+  border-radius: 3px;
   padding: 0.5rem 0.875rem;
   transition:
     color 0.15s,
     border-color 0.15s;
 }
 .shot__close:hover {
-  color: var(--color-ink-100);
-  border-color: var(--color-signal-500);
+  color: #f4f6f9;
+  border-color: #e8833a;
 }

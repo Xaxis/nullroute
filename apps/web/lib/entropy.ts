@@ -45,3 +45,38 @@ export function readEntropyExample(): EntropyExample {
   }
   return { rolls, digest }
 }
+
+export interface MnemonicExample {
+  readonly words: readonly string[]
+  /** The 64-byte BIP-39 seed with an empty passphrase, as hex. */
+  readonly seed: string
+}
+
+/**
+ * The worked example's 24 words and seed, read from the same document.
+ *
+ * Read, not recomputed: the site has no BIP-39 implementation and should not
+ * grow one. The document is checked against the code by the device's own
+ * tests, and what this guards is the site quoting it faithfully: exactly 24
+ * words, numbered 1 to 24, and a seed of exactly 128 hex characters.
+ */
+export function readMnemonicExample(): MnemonicExample {
+  const doc = readRepoFile('docs/ENTROPY.md')
+  const grid = /produces this 24-word mnemonic:\n\n```\n([\s\S]+?)\n```/.exec(doc)?.[1]
+  const seedBlock = /this BIP-39 seed:\n\n```\n([0-9a-f]+)\n([0-9a-f]+)\n```/.exec(doc)
+  if (grid === undefined || seedBlock === null) {
+    throw new Error('nullroute.diy: no worked mnemonic or seed found in docs/ENTROPY.md.')
+  }
+  const numbered = new Map<number, string>()
+  for (const match of grid.matchAll(/(\d+)\.\s+([a-z]+)/g)) {
+    numbered.set(Number(match[1]), match[2] ?? '')
+  }
+  const words = Array.from({ length: 24 }, (_, i) => numbered.get(i + 1) ?? '')
+  const seed = `${seedBlock[1] ?? ''}${seedBlock[2] ?? ''}`
+  if (numbered.size !== 24 || words.some((w) => w === '') || seed.length !== 128) {
+    throw new Error(
+      'nullroute.diy: the worked mnemonic in docs/ENTROPY.md is not 24 words and a 64-byte seed.'
+    )
+  }
+  return { words, seed }
+}

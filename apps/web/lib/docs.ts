@@ -66,6 +66,24 @@ export const DOCS: readonly DocMeta[] = [
     question: 'What are the screens, and what does each one refuse?',
   },
   {
+    slug: 'security',
+    navLabel: 'Security',
+    file: 'SECURITY.md',
+    title: 'Reporting a flaw',
+    summary:
+      'Report privately through GitHub, acknowledged within 72 hours. What is in scope, why a documented design limit is not a vulnerability, and why an understated one is.',
+    question: 'I found a flaw. Where does it go?',
+  },
+  {
+    slug: 'contributing',
+    navLabel: 'Contributing',
+    file: 'CONTRIBUTING.md',
+    title: 'Contributing',
+    summary:
+      'Write the spec with the code, bind every invariant to a test that exists, ask before adding a dependency, and name the spec id in security-relevant code.',
+    question: 'How do I help, and what will a change be held to?',
+  },
+  {
     slug: 'entropy',
     navLabel: 'Entropy',
     file: 'docs/ENTROPY.md',
@@ -83,3 +101,15 @@ export function docBySlug(slug: string): DocMeta | undefined {
 export function readDoc(meta: DocMeta): string {
   return readRepoFile(meta.file)
 }
+
+/**
+ * Every repository file the site renders, and the page that renders it. A
+ * link in one rendered file to another goes to that page; a link to anything
+ * else goes to the file on GitHub.
+ */
+export const PUBLISHED: ReadonlyMap<string, string> = new Map<string, string>([
+  ...DOCS.map((doc) => [doc.file, `/docs/${doc.slug}`] as const),
+  ['spec/signer-profile.md', '/profile/spec'],
+  ['conformance/README.md', '/profile/kit'],
+  ['spec/interop/README.md', '/device/interop'],
+])
