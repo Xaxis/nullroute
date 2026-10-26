@@ -1911,8 +1911,20 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   ...(REACH[name] ?? []).map((reach) => ({ name, reach })),
 ])
 
-const name = new URLSearchParams(window.location.search).get('screen') ?? 'wallet'
+const params = new URLSearchParams(window.location.search)
+const name = params.get('screen') ?? 'wallet'
 const render = SCREENS[name]
+
+/*
+ * AS THE WEBSITE SHOWS IT, NOT AS THE PANEL HAS TO SURVIVE IT. Every state
+ * below gets a Signet banner and a "4 of 5" step counter so the layout checks
+ * measure the tallest header a screen can have. That is the right fixture for
+ * a check and the wrong one for a picture: a published screenshot showed a
+ * Signet banner beside a wallet labelled Mainnet, and a seed-writing step
+ * counter above the transaction review. `?as=shot` turns both off, so a
+ * screenshot shows a mainnet wallet the way a mainnet wallet looks.
+ */
+const realistic = params.get('as') === 'shot'
 
 /**
  * Every state carries the network banner, unless its fixture set one already.
@@ -1997,6 +2009,8 @@ root.render(
       <pre data-testid="gallery-unknown">
         {`No screen called ${name}. Known: ${Object.keys(SCREENS).join(', ')}`}
       </pre>
+    ) : realistic ? (
+      render()
     ) : (
       withBanner(withSteps(render(), name))
     )}

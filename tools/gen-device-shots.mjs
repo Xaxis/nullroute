@@ -59,7 +59,10 @@ const SCREENS = [
   { name: 'lock-passing', as: 'lock', caption: 'The hash before the PIN' },
   { name: 'dice', as: 'dice', caption: 'A hundred rolls' },
   { name: 'seed', as: 'seed', caption: 'The words, once' },
-  { name: 'psbt-review', as: 'review', caption: 'Read before signing' },
+  // Reached by tapping Review. The state on its own is the paste box the
+  // review starts from, which is what this picture was for a month: a site
+  // captioning "Read before signing" over a text field.
+  { name: 'psbt-review', as: 'review', caption: 'Read before signing', reach: ['psbt-review'] },
   { name: 'receive', as: 'receive', caption: 'An address to check' },
   { name: 'verify-message', as: 'verify', caption: "Somebody else's proof" },
 ]
@@ -205,7 +208,9 @@ async function main() {
   const stale = []
   for (const screen of SCREENS) {
     await cdp(page, 'Page.navigate', {
-      url: `http://127.0.0.1:${String(PORT)}/?screen=${screen.name}`,
+      // `as=shot`: the realistic fixture rather than the worst-case header the
+      // layout checks measure. See the comment where the gallery reads it.
+      url: `http://127.0.0.1:${String(PORT)}/?screen=${screen.name}&as=shot`,
     })
     await sleep(1200)
     /*
