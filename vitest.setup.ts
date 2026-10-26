@@ -23,6 +23,8 @@ const seedOverride = process.env['FAST_CHECK_SEED']
 fc.configureGlobal({
   seed: seedOverride === undefined ? 0x6e756c6c : Number(seedOverride),
   numRuns: 200,
-  // Report the failing input rather than a shrunk-to-nothing summary.
-  verbose: 1,
+  // Report the failing input rather than a shrunk-to-nothing summary. The
+  // named member, not the number it stands for: typescript-eslint 8.71 refuses
+  // a bare 1 where the type is the enum.
+  verbose: fc.VerbosityLevel.Verbose,
 })
