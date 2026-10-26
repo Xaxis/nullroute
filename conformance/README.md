@@ -158,9 +158,11 @@ that shares no code with it.
 | `review-ownership.json` | 5 | SP-REV-24, 25 | Core PSBTs from a second wallet (the BIP-32 test vector 1 key), with derivation records naming the signer's fingerprint. Verdicts from the requirement text. |
 | `manifest-root.json` | 2 | SP-ATT-2 | `LC_ALL=C sort -z \| xargs -0 sha256sum` over the files, and `sha256sum` of the result. The forbidden roots are from `LC_ALL=en_US.UTF-8 sort` and from ICU's `en-US` collation. |
 | `bbqr-psbt.json` | 12 | SP-TX-2 to 6 | Frames from Coinkite's reference splitter (`coinkite/BBQr`, `python/bbqr`), and a real Coldcard camera scan from that repository's test data. Decoded payloads cross-checked with Python's base32 and zlib. |
+| `ur-psbt.json` | 5 | SP-TX-7 | Frames written by SeedSigner's own UR encoder (`SeedSigner/seedsigner`, `src/seedsigner/helpers/ur2`) around PSBT bodies from `selfcustody/urtypes`, and read back by SeedSigner's own decoder. Optional: only for a signer that implements UR. |
 
 Every external document was fetched at a pinned commit: `bitcoin/bips` at
-`7c7cb232`, `coinkite/BBQr` at `8dc7ef07`, and `sipa/bech32` at `7a7d7ab1`.
+`7c7cb232`, `coinkite/BBQr` at `8dc7ef07`, `sipa/bech32` at `7a7d7ab1`,
+`SeedSigner/seedsigner` at `088b144e`, and `selfcustody/urtypes` at `7fb280ea`.
 
 ### Levels
 

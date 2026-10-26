@@ -6,6 +6,8 @@
  *
  *   --vectors <dir>          vector directory (default: spec/vectors/signer-profile)
  *   --known-failures <file>  JSON list of failures the implementer already reports
+ *   --report <file>          also write the per-file results as JSON, for a site or a CI
+ *                            summary to read rather than retype
  *   --only <file.json>       run one vector file
  *   --verbose                print every case, not only the ones that did not pass
  *
@@ -24,7 +26,7 @@
  */
 
 import { createHash } from 'node:crypto'
-import { readFileSync, readdirSync } from 'node:fs'
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { inflateRawSync } from 'node:zlib'
@@ -48,6 +50,7 @@ function parseArgs(argv) {
     const a = argv[i]
     if (a === '--vectors') args.vectors = resolve(argv[(i += 1)])
     else if (a === '--known-failures') args.known = resolve(argv[(i += 1)])
+    else if (a === '--report') args.report = resolve(argv[(i += 1)])
     else if (a === '--only') args.only = argv[(i += 1)]
     else if (a === '--verbose') args.verbose = true
     else if (a.startsWith('--')) throw new Error(`unknown option ${a}`)
@@ -729,6 +732,7 @@ async function main() {
   console.log(`vectors: ${args.vectors} (${String(pins.files.length)} files, all match SHA256SUMS)`)
 
   const totals = { pass: 0, known: 0, fail: 0, notRun: 0, advisories: 0 }
+  const results = []
   for (const file of pins.files) {
     if (args.only !== undefined && file !== args.only) continue
     const doc = JSON.parse(readFileSync(join(args.vectors, file), 'utf8'))
@@ -781,6 +785,13 @@ async function main() {
         lines.push(`  advisory ${c.id}: ${s.message}`)
       }
     }
+    results.push({
+      file,
+      requirements: doc.requirements ?? [],
+      operation: doc.operations ?? null,
+      cases: doc.cases.length,
+      ...counts,
+    })
     totals.pass += counts.pass
     totals.known += counts.known
     totals.fail += counts.fail
@@ -814,7 +825,29 @@ async function main() {
   console.log(
     `\n${String(totals.pass)} passed, ${String(totals.known)} known failures, ${String(totals.fail)} failed, ${String(totals.notRun)} not run, ${String(totals.advisories)} advisories`
   )
-  process.exit(totals.fail > 0 || totals.notRun > 0 || stale.length > 0 ? 1 : 0)
+  const passed = totals.fail === 0 && totals.notRun === 0 && stale.length === 0
+  if (args.report !== undefined) {
+    // WHAT RAN, AGAINST WHAT. The hash of SHA256SUMS ties the result to the
+    // exact vector set, so whoever reads this can refuse it once the vectors
+    // move instead of quoting a pass that was earned against older ones. No
+    // timestamp: the same run writes the same bytes.
+    const report = {
+      format: 'signer-profile-conformance-report',
+      version: 1,
+      adapter: adapter.name ?? null,
+      vectorsSha256sums: createHash('sha256')
+        .update(readFileSync(join(args.vectors, 'SHA256SUMS')))
+        .digest('hex'),
+      only: args.only ?? null,
+      files: results,
+      totals,
+      knownFailures: known.length,
+      stale: stale.length,
+      passed,
+    }
+    writeFileSync(args.report, `${JSON.stringify(report, null, 2)}\n`)
+  }
+  process.exit(passed ? 0 : 1)
 }
 
 export { qrFirstMode, parsePsbtMaps, base32Decode, parseBbqrHeader }

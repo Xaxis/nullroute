@@ -24,6 +24,7 @@ tmp/
 
 # Build artifacts from the verification pipeline
 verification-report.json
+conformance-report.json
 test-report.json
 sbom.cdx.json
 *.tsbuildinfo

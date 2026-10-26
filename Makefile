@@ -265,7 +265,8 @@ conformance: build ## The signer profile vectors in spec/vectors/signer-profile/
 	# findings, not waivers: a new failure fails this target, and so does a
 	# listed one that starts passing, so the list cannot outlive the fix.
 	@node conformance/run.mjs conformance/adapters/nullroute.mjs \
-	  --known-failures conformance/known-failures/nullroute.json
+	  --known-failures conformance/known-failures/nullroute.json \
+	  --report conformance-report.json
 
 # Lands with PSBT signing. There is no signature to reproduce until then, and a
 # target that passed with nothing to examine would report assurance the project
@@ -813,7 +814,7 @@ clean: ## Remove build output
 # --- the website -------------------------------------------------------------
 # nullroute.diy. Never ships to the device, never enters MANIFEST.lock.
 
-web: verification-report.json ## Run the website locally
+web: verification-report.json conformance-report.json ## Run the website locally
 	@npm run dev --workspace @nullroute/web
 
 # The home page renders the real figures from the last verification run, so the
@@ -845,7 +846,19 @@ REPORT_INPUTS := MANIFEST.lock vitest.config.ts $(shell git ls-files test 2>/dev
 verification-report.json: $(REPORT_INPUTS)
 	@$(MAKE) --no-print-directory verify
 
-web-build: verification-report.json ## Production build of the website
+# THE SAME RULE FOR THE PROFILE'S RESULT. The site's profile section renders
+# the conformance run per vector file rather than typing "112 of 112", so it
+# needs the run's own report, generated and never committed for the reason the
+# verification report is not. Its inputs are the vectors and the implementation
+# (both under MANIFEST.lock) and the runner, adapter and known failures under
+# conformance/. The site also refuses a report whose vector set is not the one
+# on disk, so a stale pass cannot be quoted even if make misses an input.
+CONFORMANCE_INPUTS := MANIFEST.lock $(shell git ls-files conformance 2>/dev/null)
+
+conformance-report.json: $(CONFORMANCE_INPUTS)
+	@$(MAKE) --no-print-directory conformance
+
+web-build: verification-report.json conformance-report.json ## Production build of the website
 	# Always from clean. Turbopack's incremental cache in .next changes the
 	# emitted chunk filenames, which changes the inline RSC payload, which
 	# changes the sha256 hashes the CSP pins. A warm build and a cold build of
