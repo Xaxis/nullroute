@@ -547,6 +547,9 @@ works would be marketing.
   open wallet.
 - **Batch signing is not supported.** Several PSBTs from one card session, each
   individually reviewed, is phase 7.
+- **PSBT version 2 is refused.** The device reads version 0 (BIP-174) only, and
+  says so when handed a version 2 (BIP-370) PSBT. If your coordinator writes
+  version 2, export the transaction again as version 0.
 - **Taproot multisig can be registered and its addresses derived, but message
   signing for taproot is not implemented.** See `docs/THREAT-MODEL.md` for the
   full list of what is and is not built.

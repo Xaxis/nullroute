@@ -26,6 +26,10 @@ algorithm: >
   its own error is surfaced rather than replaced, because it names the field
   that failed.
 
+  Only version 0 (BIP-174) is accepted. The library also reads version 2
+  (BIP-370), and a version 2 PSBT is refused after decoding with a message
+  that names the version found and asks for a version 0 export.
+
   A locking script is mapped back to an address by decoding the script and
   re-encoding it for the given network. A script with no standard address form
   returns undefined rather than throwing.
@@ -41,6 +45,7 @@ invariants:
       - packages/core/test/psbt.parse.test.ts::refuses-a-truncated-psbt
       - packages/core/test/psbt.parse.test.ts::refuses-an-absurdly-large-input
       - packages/core/test/vectors.bip174.test.ts::refuses-every-published-invalid-psbt
+      - packages/core/test/vectors.bip370.test.ts::refuses-every-published-invalid-bip370-psbt
 
   - id: INV-PSBT-10
     statement: >
@@ -75,11 +80,27 @@ invariants:
       - packages/core/test/vectors.bip174.test.ts::extraction-is-faithful
       - packages/core/test/vectors.bip174.test.ts::parses-every-published-valid-psbt
 
+  - id: INV-PSBT-19
+    statement: >
+      Only a version 0 PSBT is accepted. Every PSBT that BIP-370 publishes, in
+      its valid list and its locktime lists, is refused from base64 text and
+      from raw bytes, and the refusal names the version found and asks for a
+      version 0 export. Every PSBT in its invalid list is refused as well. The
+      extraction of those vectors from the BIP text is checked by re-encoding
+      each hex and base64 pair.
+    tests:
+      - packages/core/test/vectors.bip370.test.ts::extraction-is-faithful
+      - packages/core/test/vectors.bip370.test.ts::refuses-every-published-version-2-psbt
+
 vectors:
   - name: BIP-174 test vectors, extracted from the BIP text
     file: spec/vectors/bip174-psbt.json
     sha256: cc13f846f8a81bfab738d43d985e14547b4cc3ad57766e430e880578406ce911
     source: https://github.com/bitcoin/bips/blob/d1d2042c857f337c147785c1d02cfd9f9d3c84fb/bip-0174.mediawiki
+  - name: BIP-370 test vectors, extracted from the BIP text
+    file: spec/vectors/bip370-psbt.json
+    sha256: f86a90a928ea90aa3f208fd58c8b4aea1fe7456db1ceeef755597db39f076d72
+    source: https://github.com/bitcoin/bips/blob/1e431879afd53be71a3bafe29ddae93837337f40/bip-0370.mediawiki
 
 threats:
   - INV-PSBT-1
@@ -104,11 +125,22 @@ security_notes: >
   a multi-gigabyte blob from exhausting memory on a Raspberry Pi before the
   structure is examined at all.
 
+  Version 2 is refused rather than supported, and the refusal is a decision,
+  not a gap left open. @scure/btc-signer accepted every valid BIP-370 vector,
+  so before INV-PSBT-19 a version 2 PSBT reached the review screen down a path
+  no test fed. Supporting it means checking the review against what version 2
+  adds: a locktime computed from per-input fields, and flags declaring that
+  inputs and outputs may be added after signing. Until that is done and
+  specified, the device says what it found and asks for version 0. The
+  library's version 2 reader still runs on the bytes before the refusal, so
+  its parsing is still attack surface; what the refusal removes is review and
+  signing of what it produced.
+
   This module does not validate that the PSBT makes economic sense, that its
   inputs exist, or that its amounts are consistent. Those are review's job, and
   splitting them keeps decoding free of policy.
 
 references:
   - BIP-174, Partially Signed Bitcoin Transaction Format
-  - BIP-370, PSBT Version 2
+  - BIP-370, PSBT Version 2 (refused, INV-PSBT-19)
   - docs/THREAT-MODEL.md

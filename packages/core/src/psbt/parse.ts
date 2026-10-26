@@ -67,6 +67,7 @@ export function parsePsbt(input: string | Uint8Array): btc.Transaction {
     )
   }
 
+  let tx: btc.Transaction
   try {
     // 'ignore' keeps key-value pairs this build does not recognise through
     // signing (INV-PSBT-15). Without it they survived parsing and were dropped
@@ -74,12 +75,26 @@ export function parsePsbt(input: string | Uint8Array): btc.Transaction {
     // passed through, and BIP-174 says a signer must not remove them.
     // @scure/btc-signer 2.4 made 'strip' the default and deprecated the
     // allowUnknown flag this used to pass; proprietary pairs follow this policy.
-    return btc.Transaction.fromPSBT(bytes, { unknown: 'ignore' })
+    tx = btc.Transaction.fromPSBT(bytes, { unknown: 'ignore' })
   } catch (err) {
     // Not swallowed: the library's message names the field it choked on, which
     // is the only useful thing to show someone holding a PSBT that will not load.
     throw new PsbtError(`That PSBT could not be decoded. ${(err as Error).message}`)
   }
+
+  // INV-PSBT-19. Version 0 only. The library reads version 2 (BIP-370) as
+  // well, and before this check it was accepted and reviewed down a path no
+  // test fed. Version 2 computes the locktime from per-input fields and can
+  // declare its inputs and outputs modifiable after signing, and none of that
+  // had been checked against what the review screen says. Refusing it is the
+  // honest state until it has been; the signer profile requires version 0.
+  if (tx.opts.PSBTVersion !== 0) {
+    throw new PsbtError(
+      `That is a version ${String(tx.opts.PSBTVersion)} PSBT, and this device reads version 0 ` +
+        '(BIP-174) only. Export the transaction from your coordinator again as a version 0 PSBT.'
+    )
+  }
+  return tx
 }
 
 /** Base64, the form a PSBT travels in. */

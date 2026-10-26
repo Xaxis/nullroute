@@ -3,7 +3,7 @@
 [![CI](https://github.com/Xaxis/nullroute/actions/workflows/ci.yml/badge.svg)](https://github.com/Xaxis/nullroute/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Specs](https://img.shields.io/badge/specs-39-informational)](packages/verify)
-[![Invariants](https://img.shields.io/badge/invariants-338-informational)](docs/THREAT-MODEL.md)
+[![Invariants](https://img.shields.io/badge/invariants-339-informational)](docs/THREAT-MODEL.md)
 
 An air-gapped Bitcoin signing device you can check rather than trust. You roll
 100 dice, it turns them into a seed by a rule you can repeat with `sha256sum`,
@@ -153,7 +153,7 @@ and anything involving a cloud.
 | Phase | Scope | State |
 | --- | --- | --- |
 | 1 | Spec system, entropy, BIP-39/32, daemon, lock screen, networks | **Complete** |
-| 2 | Descriptors, addresses, PSBT review, signing. Provisioning tier 0. | **Complete**, except tier 0 signing and publishing, which are planned |
+| 2 | Descriptors, addresses, PSBT review, signing. Provisioning tier 0. | **Complete**, except tier 0 signing and publishing, which are planned. PSBT version 2 is refused by decision, not supported |
 | 3 | Encrypted store, passphrase, multisig, cosigner registration, tier 1 boot attestation | **Complete** |
 | 4 | BIP-322 message signing, BIP-85 child seeds, BIP-329 labels | **Complete** |
 | 5 | Wallet layer, optional and lower assurance | Not started |

@@ -1,5 +1,6 @@
 {
-  "bundle": "a3bcdd955421bdb0df559703c51a70f04a4149840b05405c94397485b06b381b",
-  "platform": "darwin-arm64",
+  "bundle": "0b6172e93a779a18810eb677f04349e5379a9c6bf78c886773bc296fcac3707c",
+  "platform": "linux-x64",
+  "browser": "Chrome/156.0.8078.4",
   "screens": "lock,dice,seed,review,receive,verify"
 }

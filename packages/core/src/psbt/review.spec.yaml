@@ -184,6 +184,6 @@ security_notes: >
 
 references:
   - BIP-174, Partially Signed Bitcoin Transaction Format
-  - BIP-370, PSBT Version 2
+  - BIP-370, PSBT Version 2 (refused before review, INV-PSBT-19 in core.psbt.parse)
   - BIP-125, Opt-in Full Replace-by-Fee Signalling
   - docs/THREAT-MODEL.md
