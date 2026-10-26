@@ -739,7 +739,7 @@ overlay, and a second panel needs a layout that passes SP-HW-2 at its size.
 | SP-HW-2 | Met in the headless render; unverified on the panel | `tools/checks/check-screen-fit.mjs` at 800x480 |
 | SP-HW-3 | Met against a software decoder; unverified with a camera | INV-QR-5 |
 | SP-HW-4 | Unverified until bring-up | FT5406 touch controller in the overlay |
-| SP-HW-5 | Unverified until bring-up | Pi Camera Module 3 named as optional; nothing in `provisioning/` names a camera driver, so whether Chromium's `getUserMedia` reaches it is open (`research/00-current-state.md` 3.4). The SD card path in `docs/USING.md` needs checking against `docs/THREAT-MODEL.md`, which says nothing mounts removable media (see `research/handoff-C.md`) |
+| SP-HW-5 | Unverified until bring-up | The camera is a USB (UVC) webcam. The card carries the `uvcvideo` driver, udev to load it when one is plugged in, the kiosk's permission for video devices and a browser policy granting the camera to the device's own page only (udev and the driver: INV-PROV-30); no camera has streamed on a Pi. A Pi CSI camera module has no driver in the pinned kernel. Nothing mounts removable media, so the SD card transport is planned and not built |
 | SP-HW-6 | Met in the image; unverified on the running device | INV-PROV-13, INV-NET-1 to INV-NET-3. The radio chip remains on the board (`docs/THREAT-MODEL.md`, Assumptions) |
 | SP-HW-7 | Met | INV-STORE-1, INV-PROV-11 |
 | SP-HW-8 | Met in the build; unverified on hardware | `os-verity.yaml`, INV-BOOT-1 |

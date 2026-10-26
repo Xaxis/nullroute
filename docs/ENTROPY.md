@@ -125,8 +125,13 @@ bits, the output is 256 bits wide, and SHA-256 is modelled as a random oracle
 here, so the output is full strength. Hashing 258.5 bits into 256 loses nothing
 that matters.
 
-This choice is also compatible with how Coldcard derives seeds from dice, which
-means a user can cross-check nullroute against an unrelated implementation.
+The same rule, SHA-256 of the ASCII roll string, is what Coldcard, SeedSigner
+and Krux use when a seed comes from dice alone, so a user can cross-check
+nullroute against an unrelated implementation. Two differences matter. They
+accept 99 rolls, so a 99-roll seed from any of them cannot be reproduced here,
+where 100 is the minimum; and SeedSigner takes exactly 99, so a 100-roll seed
+from nullroute cannot be re-entered there. Coldcard's other path, dice mixed
+with its own entropy, hashes differently and is not reproducible here at all.
 
 ### Worked example
 

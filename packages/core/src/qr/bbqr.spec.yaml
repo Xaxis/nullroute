@@ -40,8 +40,10 @@ algorithm: >
 
   Written parts are always `2`, base32. Writing `Z` would put a compressor in the
   signing path and a few extra frames is the cheaper price. Read parts may be
-  `2`, `H` or `Z`, because Coldcard writes `Z` by default and refusing it would
-  mean refusing the counterpart most users own. `Z` is a raw deflate stream over
+  `2`, `H` or `Z`, because BBQr says `Z` "must be implemented by receivers", so a
+  reader that refused it would refuse frames any conforming writer may send.
+  Coldcard itself writes `2` by default; which writers emit `Z` has not been
+  checked, and the requirement does not depend on it. `Z` is a raw deflate stream over
   the whole payload, inflated once after joining, using the platform's
   DecompressionStream so the reader stays free of a dependency too.
 

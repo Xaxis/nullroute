@@ -12,7 +12,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'none'; script-src 'self' https://overlook.technology/s.js 'sha256-/onnFPZZURtabXaIao7kjM91yoN6IyE/PQIhDn4DZJY=' 'sha256-06AOYf8ehkXyjeynsMaetFWqYcykogwIhqZxv/EHMks=' 'sha256-2EVLaLW1os3mWt2tWSqWMfRqsMSaJ7DBEuKAVnUzQw8=' 'sha256-9j/S5TdCKKKLmAjxiBNeC0BjUF8fWPxdGKNLMXpXUlU=' 'sha256-B8JbVKdsdFvxwTaaRrkSTC3sV6CCJvkuYr5fD7p0roo=' 'sha256-OBTN3RiyCV4Bq7dFqZ5a2pAXjnCcCYeTJMO2I/LYKeo=' 'sha256-OhDQQda13Otnrd8wl1Q+BeuPHto1qMQ0zzo7vIokXiM=' 'sha256-WnC1T+bFN4RLmZHrTgUNE/rKjAieKwd/IgAvkD4yOW8=' 'sha256-yU3xSgnAklp8oAxTfsAJfb55OIN4wcQJK0N8zuyb06I='; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://overlook.technology/e; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests"
+          "value": "default-src 'none'; script-src 'self' https://overlook.technology/s.js 'sha256-9j/S5TdCKKKLmAjxiBNeC0BjUF8fWPxdGKNLMXpXUlU=' 'sha256-B8JbVKdsdFvxwTaaRrkSTC3sV6CCJvkuYr5fD7p0roo=' 'sha256-OBTN3RiyCV4Bq7dFqZ5a2pAXjnCcCYeTJMO2I/LYKeo=' 'sha256-OV3UxoXiTHbuhPXLXuyJ+SSbApClKL53n9Oax3EFVYI=' 'sha256-OhDQQda13Otnrd8wl1Q+BeuPHto1qMQ0zzo7vIokXiM=' 'sha256-WnC1T+bFN4RLmZHrTgUNE/rKjAieKwd/IgAvkD4yOW8=' 'sha256-iHt05GxRXAcUq4oRrVzFqfViE7l/MPN/JJXUWvDJJsk=' 'sha256-xzV8yovUg4PP6X32jN4xbg2Wic1IIufTljkVUCBBCMg=' 'sha256-yU3xSgnAklp8oAxTfsAJfb55OIN4wcQJK0N8zuyb06I='; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://overlook.technology/e; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests"
         },
         {
           "key": "X-Content-Type-Options",

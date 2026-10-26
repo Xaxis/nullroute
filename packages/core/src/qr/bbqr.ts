@@ -40,9 +40,10 @@
  *
  * COMPRESSION. This writes `2` (base32) and never `Z` (deflate then base32),
  * because emitting `Z` would mean a compressor in the signing path, and a few
- * extra frames is a cheaper price than that. It READS `Z`, because Coldcard
- * writes it by default and refusing would mean refusing the most common
- * counterpart. Inflating uses the platform's DecompressionStream, which exists
+ * extra frames is a cheaper price than that. It READS `Z`, because BBQr says
+ * receivers must, so refusing it would refuse frames any conforming writer may
+ * send. (Coldcard writes `2` by default; the requirement, not any one writer,
+ * is the reason.) Inflating uses the platform's DecompressionStream, which exists
  * in Node and in the browser, so the reader stays free of dependencies too.
  */
 
