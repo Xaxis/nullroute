@@ -66,14 +66,14 @@ Compute the root hash:
 
 ```console
 $ sha256sum MANIFEST.lock
-3702a1c77b39252916a3e4d22b4003f98e5392803b29eea0ffc88c78321d5ce7  MANIFEST.lock
+00188a12555b5dbade0dc840d80c6331d68e007c2c448b8aefa4ce488bcd91c2  MANIFEST.lock
 ```
 
 Regenerate the manifest from scratch and confirm it matches what is committed:
 
 ```console
 $ git ls-files -z package.json package-lock.json packages spec provisioning | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum
-3702a1c77b39252916a3e4d22b4003f98e5392803b29eea0ffc88c78321d5ce7  -
+00188a12555b5dbade0dc840d80c6331d68e007c2c448b8aefa4ce488bcd91c2  -
 ```
 
 On macOS use `shasum -a 256` in place of `sha256sum`. The values are identical.
@@ -583,12 +583,17 @@ partition.
 cannot check that your Pi is a real Pi, that its BootROM is the published one,
 or that nothing was added to the board between the factory and you.
 
-**Reproducibility depends on upstream archives.** A reproducible image needs its
-package inputs to remain fetchable at the versions used. Today the build
-installs from the live Debian mirror, not a snapshot, so two builds of one
-commit agree only while that archive has not moved. Pinning to a snapshot, and
-recording the hash of every input so a future verifier can at least confirm what
-went in, are planned and not built.
+**Reproducibility depends on an upstream archive.** A reproducible image needs
+its package inputs to stay fetchable at the versions used. The build installs
+from snapshot.debian.org at one timestamp, `NULLROUTE_SNAPSHOT` in
+`provisioning/build/Dockerfile`, for the build host, the system partition and the
+kernel and firmware alike, so a version Debian supersedes stays fetchable and a
+later build of the same commit sees the same archive. This moved the dependency
+rather than removing it: the build now relies on snapshot.debian.org being up
+and serving what it served. The kernel and firmware packages are checked against
+pinned digests; the rest are checked by apt against Debian's signed indices for
+that moment, and their hashes are not yet recorded in the repository. Two builds
+on different days have not yet been compared.
 
 ---
 

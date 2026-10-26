@@ -37,6 +37,40 @@
 # mapping, not the boot chain ahead of them.
 FROM debian:bookworm-slim@sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171
 
+# THE ARCHIVE AT ONE MOMENT, NOT THE ARCHIVE TODAY. Every package below is
+# pinned to an exact version, and pinning a version is not the same as being
+# able to fetch it: Debian removes a superseded version from the live mirror at
+# the next point release. That happened to ca-certificates 20250419~deb12u1 in
+# October 2026 and every build of every commit failed at this line, the device
+# code untouched. snapshot.debian.org serves the archive as it was at a given
+# timestamp, permanently, so the pins stay fetchable and the build stops being
+# a function of the date.
+#
+# ONE VALUE FOR THE WHOLE IMAGE. build-system.sh reads NULLROUTE_SNAPSHOT for
+# the system partition and the kernel and firmware it extracts, so the build
+# host and the card come from the same moment. This file is under MANIFEST.lock,
+# so moving the timestamp moves the root hash a user compares.
+#
+# Check-Valid-Until is off because a snapshot's Release file carries the expiry
+# it had on the day, which has passed. The signatures are still checked against
+# the keyring in the base image; only the freshness window is waived, which is
+# the point of asking for an old archive.
+ENV NULLROUTE_SNAPSHOT=20261017T000000Z
+RUN printf '%s\n' \
+      'Types: deb' \
+      "URIs: http://snapshot.debian.org/archive/debian/${NULLROUTE_SNAPSHOT}" \
+      'Suites: bookworm bookworm-updates' \
+      'Components: main' \
+      'Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg' \
+      '' \
+      'Types: deb' \
+      "URIs: http://snapshot.debian.org/archive/debian-security/${NULLROUTE_SNAPSHOT}" \
+      'Suites: bookworm-security' \
+      'Components: main' \
+      'Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg' \
+      > /etc/apt/sources.list.d/debian.sources \
+ && printf 'Acquire::Check-Valid-Until "false";\n' > /etc/apt/apt.conf.d/10snapshot
+
 # One layer, so the version pins and the cleanup cannot drift apart.
 #
 # --no-install-recommends because a recommended package is a package nobody

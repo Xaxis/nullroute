@@ -45,7 +45,11 @@ OUT="${1:?usage: build-system.sh <output directory>}"
 # check-backends now reads this line and the profile together, so the next
 # disagreement is a failure rather than a discovery.
 SUITE="${NULLROUTE_SUITE:-trixie}"
-MIRROR="${NULLROUTE_MIRROR:-http://deb.debian.org/debian}"
+# The archive at the moment the Dockerfile names, not the archive today, so a
+# package Debian supersedes cannot change the card or stop it building. See
+# NULLROUTE_SNAPSHOT in the Dockerfile; the apt configuration it writes there
+# waives the expired Release dates for every apt call below as well.
+MIRROR="${NULLROUTE_MIRROR:-http://snapshot.debian.org/archive/debian/${NULLROUTE_SNAPSHOT:?set by the Dockerfile}}"
 VARIANT="${NULLROUTE_VARIANT:-essential}"
 
 : "${SOURCE_DATE_EPOCH:?SOURCE_DATE_EPOCH must be set, or the build is not reproducible}"
@@ -124,6 +128,7 @@ echo "  SOURCE_DATE_EPOCH $SOURCE_DATE_EPOCH"
 mmdebstrap --variant="$VARIANT" --mode=root --format=directory \
   --include=systemd,systemd-sysv,udev,dbus,chromium,chromium-sandbox,cage,cryptsetup-bin,e2fsprogs,kmod,iproute2,fonts-dejavu-core,fonts-dejavu-mono \
   --aptopt='APT::Install-Recommends "false"' \
+  --aptopt='Acquire::Check-Valid-Until "false"' \
   "$SUITE" "$ROOTFS" "$MIRROR" >/dev/null 2>&1
 
 # THE USERS AND GROUPS THE PACKAGES DECLARE, MADE NOW RATHER THAN AT BOOT.
@@ -301,12 +306,11 @@ printf 'nullroute\n' > "$ROOTFS/etc/hostname"
 # two files out of the .deb does not.
 #
 # PINNED BY VERSION AND BY HASH. `apt-get download <name>` fetches whatever the
-# archive holds today, which makes the card a function of the date. The versions
-# below are exact and the digests are checked, so a changed upstream is a loud
-# failure here rather than a different root hash nobody can explain. When Debian
-# removes a superseded version from the pool this stops working, which is the
-# limitation docs/VERIFICATION.md already states about upstream archives; a
-# download that fails is the correct behaviour for it.
+# archive holds, which made the card a function of the date. The versions below
+# are exact and the digests are checked, so a changed upstream is a loud failure
+# here rather than a different root hash nobody can explain. They come from the
+# snapshot MIRROR names, so a version Debian has since superseded stays
+# fetchable; a digest that differs still stops the build.
 KERNEL_DEB=linux-image-6.12.94+deb13-arm64_6.12.94-1_arm64.deb
 KERNEL_SHA=72db7fcfb443a4b03448bda98f4e7c1a1fa0d6c21fc57f0b119d704442f8ad49
 FIRMWARE_DEB=raspi-firmware_1.20240424+ds-6_all.deb
