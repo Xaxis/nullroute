@@ -381,10 +381,14 @@ transaction claimed it. Check: vector `review-change.json`; nullroute INV-UI-12
 in terms of what the signature does not commit to, not only as a number. Check:
 vector `review-sighash.json`; nullroute INV-PSBT-6.
 
-**SP-REV-9.** A non-zero `nLockTime` MUST be displayed as the block height or
-date before which the transaction cannot confirm, and whether the transaction
-signals replaceability (BIP-125) MUST be displayed. Check: vector
-`review-timelocks.json`; nullroute INV-PSBT-7.
+**SP-REV-9.** A non-zero `nLockTime` that consensus enforces MUST be displayed
+as the block height or date before which the transaction cannot confirm.
+Consensus enforces it only when at least one input's `nSequence` is not
+0xffffffff (Bitcoin Core, `IsFinalTx`). When every input's is, the locktime is
+ignored, and the signer MUST NOT display it as a time before which the
+transaction cannot confirm. Whether the transaction signals replaceability
+(BIP-125) MUST be displayed. Check: vector `review-timelocks.json`; nullroute
+INV-PSBT-7, INV-PSBT-20.
 
 **SP-REV-10.** When the wallet is not on mainnet, the network MUST be named on
 screen throughout. Check: nullroute INV-UI-3.
@@ -476,7 +480,7 @@ INV-SIG-1, INV-SIG-2 (differential against bitcoinjs-lib, 120 cases); manual:
 | SP-REV-6 | Met | INV-PSBT-2, INV-PSBT-12, INV-PSBT-16, INV-UI-12; search bound four script types, two branches, 100 addresses each (`packages/daemon/src/psbt.spec.yaml` lines 77-89) |
 | SP-REV-7 | Met, including the SHOULD | INV-UI-12, INV-PSBT-2. A false claim is shown as a payment and reported as claimed, from `PSBT_OUT_BIP32_DERIVATION` and `PSBT_OUT_TAP_BIP32_DERIVATION` alike (`review-change.json`; `psbt.review.test.ts::reports-a-false-taproot-claim-on-an-output`) |
 | SP-REV-8 | Met | INV-PSBT-6 |
-| SP-REV-9 | Met | INV-PSBT-7. A transaction is replaceable when any input signals, as BIP-125 defines it, checked by `review-timelocks.json` and `psbt.review.test.ts::counts-one-signalling-input-as-replaceable` |
+| SP-REV-9 | Met | INV-PSBT-7. A transaction is replaceable when any input signals, as BIP-125 defines it, checked by `review-timelocks.json` and `psbt.review.test.ts::counts-one-signalling-input-as-replaceable`. INV-PSBT-20: a locktime every final input leaves unenforced is reported as ignored, not as a delay |
 | SP-REV-10 | Met | INV-UI-3 |
 | SP-REV-11 | Met | Unknown pairs never block and are reported (INV-PSBT-15), and survive parsing and signing in globals, inputs and outputs: `parsePsbt` keeps them for the signer, checked by `review-unknown-fields.json` and `psbt.review.test.ts::keeps-fields-it-does-not-understand-through-signing` |
 | SP-REV-12 | Met | INV-QUORUM-4, INV-QUORUM-8, INV-UI-37, INV-UI-63 |
@@ -886,3 +890,4 @@ scope", restated without the nullroute specifics.
 | 0.1 | 24 September 2026 | First draft, from nullroute at commit `00a460a` |
 | 0.1 | 24 September 2026 | Vector files published in `spec/vectors/signer-profile/`, with `conformance/`. Check lines and the nullroute conformance column updated from running them. No requirement changed |
 | 0.1 | 26 October 2026 | Section 7, BIP-370 row: nullroute refuses version 2 PSBTs (INV-PSBT-19) instead of leaving their support unverified. No requirement changed |
+| 0.1 | 26 October 2026 | SP-REV-9 amended: a locktime that every input being final leaves unenforced MUST NOT be shown as delaying confirmation. The old text required showing every non-zero locktime that way, which is false when consensus ignores it. One vector added to `review-timelocks.json` |

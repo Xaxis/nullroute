@@ -175,6 +175,7 @@ export interface ReviewWarning {
     | 'unknown-fields'
     | 'not-replaceable'
     | 'locktime'
+    | 'locktime-not-enforced'
     | 'no-change-verified'
     | 'unverified-amount'
   readonly message: string
@@ -245,6 +246,7 @@ export function reviewTransaction(tx: btc.Transaction, options: ReviewOptions): 
   let sighashType: number | undefined
   let mixedSighash = false
   let replaceable = false
+  let everyInputFinal = true
 
   for (let i = 0; i < tx.inputsLength; i += 1) {
     const input = tx.getInput(i)
@@ -272,6 +274,7 @@ export function reviewTransaction(tx: btc.Transaction, options: ReviewOptions): 
     // it as replaceable (INV-PSBT-7, SP-REV-9).
     const sequence = input.sequence ?? 0xffffffff
     if (sequence < 0xfffffffe) replaceable = true
+    if (sequence !== 0xffffffff) everyInputFinal = false
 
     const txid = input.txid === undefined ? '' : Buffer.from(input.txid).toString('hex')
 
@@ -430,16 +433,32 @@ export function reviewTransaction(tx: btc.Transaction, options: ReviewOptions): 
     })
   }
 
+  // INV-PSBT-20. Consensus ignores nLockTime when every input's sequence is
+  // 0xffffffff: Bitcoin Core's IsFinalTx returns true before it compares the
+  // locktime with anything. This used to say "cannot confirm until" for any
+  // locktime above zero, which in that case is false, and somebody deciding
+  // whether a payment can wait or be replaced needs the true version.
   const locktime = tx.lockTime
   if (locktime > 0) {
-    warnings.push({
-      kind: 'locktime',
-      message:
-        locktime < 500000000
-          ? `This transaction cannot confirm until block ${String(locktime)}.`
-          : `This transaction cannot confirm until ${new Date(locktime * 1000).toISOString().slice(0, 10)}.`,
-      blocking: false,
-    })
+    const when =
+      locktime < 500000000
+        ? `block ${String(locktime)}`
+        : new Date(locktime * 1000).toISOString().slice(0, 10)
+    warnings.push(
+      everyInputFinal
+        ? {
+            kind: 'locktime-not-enforced',
+            message:
+              `This transaction sets a locktime of ${when}, but every input is marked final, ` +
+              'so the network ignores it. The locktime does not delay confirmation.',
+            blocking: false,
+          }
+        : {
+            kind: 'locktime',
+            message: `This transaction cannot confirm until ${when}.`,
+            blocking: false,
+          }
+    )
   }
 
   // Fields this device does not model.

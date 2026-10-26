@@ -148,6 +148,7 @@ export function reviewPsbt(psbtBase64, context) {
     const verdict =
       ownedInputs.length === 0 ? 'refuse' : result.signable ? 'allow' : 'block-until-override'
     const lockWarning = result.warnings.find((w) => w.kind === 'locktime')
+    const lockIgnored = result.warnings.some((w) => w.kind === 'locktime-not-enforced')
     const unknown = result.warnings.find((w) => w.kind === 'unknown-fields')
     return {
       verdict,
@@ -164,9 +165,11 @@ export function reviewPsbt(psbtBase64, context) {
         .filter((o) => o.changeRejectedBecause !== undefined)
         .map((o) => o.index),
       sighash: sighashMeaning(result.sighash),
-      // What the screen says: "cannot confirm until block N" or "until <date>".
-      locktime:
-        lockWarning === undefined
+      // What the screen says: "cannot confirm until block N" or "until <date>",
+      // or that a locktime is set and every input being final leaves it unenforced.
+      locktime: lockIgnored
+        ? { kind: 'not-enforced', value: result.locktime }
+        : lockWarning === undefined
           ? { kind: 'none', value: result.locktime }
           : {
               kind: lockWarning.message.includes('until block') ? 'height' : 'time',

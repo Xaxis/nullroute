@@ -105,7 +105,7 @@ your signer shows; a case fails if it checks a field you left out.
 | `outputs` | `[{ index, address, amountSats, kind, changePath }]`. `kind` is `payment` or `change`. `address` is the full address or `null`. `changePath` is the path shown beside change, such as `m/84'/0'/0'/1/0`. |
 | `claimedOutputs` | Indices of outputs the review says the transaction claimed were the wallet's, and which did not re-derive. |
 | `sighash` | `{ outputs, otherInputsMayBeAdded }`. `outputs` is `all`, `none`, `one` or `unrecognised`: which outputs the signature commits to, as the review describes it. |
-| `locktime` | `{ kind, value }`. `kind` is `none` (nLockTime is 0), `height` or `time`, as the review presents it. |
+| `locktime` | `{ kind, value }`. `kind` is `none` (nLockTime is 0), `height` or `time` as the review presents it, or `not-enforced` when nLockTime is set and every input's nSequence is 0xffffffff, so consensus ignores it. |
 | `replaceable` | Whether the review says the transaction signals BIP-125 replaceability. |
 | `unknownFieldsReported` | How many key-value pairs the review says it does not model. |
 | `warnings` | Warning codes shown. The only code the vectors look for is `high-fee`. |
@@ -152,7 +152,7 @@ that shares no code with it.
 | `review-input-amounts.json` | 7 | SP-REV-3 | Core PSBTs with UTXO records removed or altered. Verdicts from the requirement text, BIP-174 and BIP-341. Core's `decodepsbt` error for the mismatched TXID is recorded. |
 | `review-change.json` | 9 | SP-REV-6, 7, 14 | Core PSBTs. Change and path from `getaddressinfo`. The wallet key is the published BIP-84 and BIP-86 test key; the generator stops unless Core derives the addresses those BIPs print. Derivation claims use the public keys those BIPs print. |
 | `review-sighash.json` | 13 | SP-REV-8, 23 | Core PSBTs with `PSBT_IN_SIGHASH_TYPE` set. Meaning from BIP-143 and BIP-341; Core's names recorded. |
-| `review-timelocks.json` | 8 | SP-REV-9 | Core PSBTs. Height or time from `LOCKTIME_THRESHOLD` in Bitcoin Core's source. Replaceability from BIP-125, and from Core's own mempool (`getmempoolentry`) for every case it could broadcast. |
+| `review-timelocks.json` | 9 | SP-REV-9 | Core PSBTs. Height or time from `LOCKTIME_THRESHOLD` in Bitcoin Core's source. Not enforced from `IsFinalTx` in Core's source, and from Core accepting that transaction into its mempool far below its locktime. Replaceability from BIP-125, and from Core's own mempool (`getmempoolentry`) for every case it could broadcast. |
 | `review-unknown-fields.json` | 2 | SP-REV-11 | A Core PSBT with pairs added. Core's `decodepsbt` lists them as unknown or proprietary. Preservation from BIP-174. |
 | `review-ownership.json` | 5 | SP-REV-24, 25 | Core PSBTs from a second wallet (the BIP-32 test vector 1 key), with derivation records naming the signer's fingerprint. Verdicts from the requirement text. |
 | `manifest-root.json` | 2 | SP-ATT-2 | `LC_ALL=C sort -z \| xargs -0 sha256sum` over the files, and `sha256sum` of the result. The forbidden roots are from `LC_ALL=en_US.UTF-8 sort` and from ICU's `en-US` collation. |
@@ -232,7 +232,7 @@ for them.
 
 ## nullroute's results
 
-`make conformance` today: all 112 cases pass, with no SHOULD missed, and
+`make conformance` today: all 113 cases pass, with no SHOULD missed, and
 [`known-failures/nullroute.json`](known-failures/nullroute.json) is empty.
 Four requirements have failed and been fixed, which is what the list is for:
 

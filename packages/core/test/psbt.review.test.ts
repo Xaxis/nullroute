@@ -291,6 +291,61 @@ describe('core.psbt.review', () => {
   })
 
   /**
+   * INV-PSBT-20. Consensus ignores nLockTime when every input's sequence is
+   * 0xffffffff (Bitcoin Core's IsFinalTx), so "cannot confirm until" would be
+   * false there. The same locktime with one non-final input is enforced and
+   * says so, which is what makes the first half a statement about sequences
+   * rather than about the number.
+   */
+  it('reports-a-locktime-that-final-inputs-leave-unenforced', () => {
+    const { changePathOf } = ourAddresses()
+    for (const locktime of [800_000, 1_767_225_600]) {
+      const final = build({
+        outputs: [{ address: STRANGER, amount: 90_000n }],
+        sequence: 0xffffffff,
+        locktime,
+      })
+      const finalReview = reviewTransaction(final, { network: MAINNET, isChange: changePathOf })
+      expect(finalReview.locktime).toBe(locktime)
+      expect(finalReview.warnings.some((w) => w.kind === 'locktime')).toBe(false)
+      const ignored = finalReview.warnings.find((w) => w.kind === 'locktime-not-enforced')
+      expect(ignored?.blocking).toBe(false)
+      expect(ignored?.message).toMatch(/ignores it/)
+      expect(ignored?.message).not.toMatch(/cannot confirm/)
+
+      const enforced = build({
+        outputs: [{ address: STRANGER, amount: 90_000n }],
+        sequence: 0xfffffffe,
+        locktime,
+      })
+      const enforcedReview = reviewTransaction(enforced, {
+        network: MAINNET,
+        isChange: changePathOf,
+      })
+      expect(enforcedReview.warnings.some((w) => w.kind === 'locktime-not-enforced')).toBe(false)
+      expect(enforcedReview.warnings.find((w) => w.kind === 'locktime')?.message).toMatch(
+        /cannot confirm until/
+      )
+    }
+
+    // One final input beside one that is not: enforced, because consensus
+    // needs only one non-final input to apply the locktime.
+    const mixed = build({
+      outputs: [{ address: STRANGER, amount: 90_000n }],
+      sequence: 0xffffffff,
+      locktime: 800_000,
+    })
+    mixed.addInput({
+      ...fundedBy(mixed.getInput(0).witnessUtxo?.script ?? new Uint8Array(), 50_000n, 7),
+      sequence: 0xfffffffe,
+    })
+    const mixedReview = reviewTransaction(mixed, { network: MAINNET, isChange: changePathOf })
+    expect(mixedReview.warnings.find((w) => w.kind === 'locktime')?.message).toContain(
+      'block 800000'
+    )
+  })
+
+  /**
    * INV-PSBT-7. BIP-125 signals replaceability when ANY input does. Requiring
    * every input to called a mixed transaction not replaceable, and Core's
    * mempool treats it as replaceable.

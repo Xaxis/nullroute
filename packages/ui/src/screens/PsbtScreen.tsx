@@ -148,6 +148,7 @@ const WARNING_LABELS: Record<ReviewWarning['kind'], string> = {
   'unknown-fields': 'unknown fields in the file',
   'not-replaceable': 'this cannot be replaced',
   locktime: 'a locktime is set',
+  'locktime-not-enforced': 'a locktime is set and ignored',
   'no-change-verified': 'change could not be verified',
   'unverified-amount': 'input amounts could not be checked',
 }

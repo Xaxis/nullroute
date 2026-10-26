@@ -1,5 +1,5 @@
 {
-  "bundle": "0b6172e93a779a18810eb677f04349e5379a9c6bf78c886773bc296fcac3707c",
+  "bundle": "614411c4985d4a4793dd8887f9e8741ab7eb5487679d9d92407dc276bea06768",
   "platform": "linux-x64",
   "browser": "Chrome/156.0.8078.4",
   "screens": "lock,dice,seed,review,receive,verify"

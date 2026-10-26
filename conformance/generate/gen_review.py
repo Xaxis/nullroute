@@ -307,7 +307,37 @@ T = 'review-timelocks.json'
 SRC_LOCK = ('locktime kind: values below 500000000 are block heights, others are UNIX times '
             '(Bitcoin Core v31.1 src/script/script.h line 47, LOCKTIME_THRESHOLD)')
 SRC_RBF = 'replaceable: BIP-125 line 40, explicit signalling if any input has nSequence below 0xfffffffe'
-for name, lt, seqs, broadcast in (
+SRC_FINAL = ('not-enforced: nLockTime is ignored when every input has nSequence 0xffffffff '
+             '(Bitcoin Core v31.1 src/consensus/tx_verify.cpp lines 17 to 36, IsFinalTx, and its comment '
+             '"in which case nLockTime is ignored"); Core accepted this transaction into its mempool at the '
+             'block height recorded below, far below the locktime')
+
+def timelock_case(name, lt, seqs, broadcast):
+    coins = [coin('ours.w') for _ in seqs]
+    total = sum(Decimal(c['amount']) for c in coins)
+    p = build(coins, [(pay(30), total - Decimal('0.0001'))], locktime=lt, sequences=seqs)
+    core = core_view(p)
+    d = rpc('decodepsbt', p)
+    core['tx.locktime'] = d['tx']['locktime']
+    core['tx.sequence'] = [i['sequence'] for i in d['tx']['vin']]
+    enforced = any(s != 0xffffffff for s in seqs)
+    if broadcast:
+        if lt > 0 and not enforced:
+            core['blockHeight'] = rpc('getblockcount')
+        core.update(broadcast_view(p))
+    kind = 'none' if lt == 0 else ('not-enforced' if not enforced else ('height' if lt < 500000000 else 'time'))
+    rbf = any(s < 0xfffffffe for s in seqs)
+    if broadcast:
+        assert core['bip125-replaceable'] == rbf, (name, core)
+    exp = {'verdict': 'allow', 'locktime': {'kind': kind, 'value': lt}, 'replaceable': rbf}
+    srcs = [SRC_LOCK, SRC_RBF + ('; Core getmempoolentry bip125-replaceable agrees, recorded below' if broadcast else '')]
+    if kind == 'not-enforced':
+        srcs.append(SRC_FINAL)
+    case(T, name, ['SP-REV-9'],
+         f'nLockTime {lt}, input sequences {", ".join(hex(s) for s in seqs)}.', p, exp, srcs, core=core)
+
+
+for args in (
         ('no-locktime-signals-rbf', 0, [0xfffffffd], True),
         ('height-locktime', 840000, [0xfffffffd], False),
         ('largest-height', 499999999, [0xfffffffd], False),
@@ -316,23 +346,7 @@ for name, lt, seqs, broadcast in (
         ('no-locktime-final-sequence', 0, [0xffffffff], True),
         ('one-of-two-inputs-signals', 0, [0xfffffffd, 0xffffffff], True),
         ('second-of-two-inputs-signals', 0, [0xffffffff, 0x00000000], True)):
-    coins = [coin('ours.w') for _ in seqs]
-    total = sum(Decimal(c['amount']) for c in coins)
-    p = build(coins, [(pay(30), total - Decimal('0.0001'))], locktime=lt, sequences=seqs)
-    core = core_view(p)
-    d = rpc('decodepsbt', p)
-    core['tx.locktime'] = d['tx']['locktime']
-    core['tx.sequence'] = [i['sequence'] for i in d['tx']['vin']]
-    if broadcast:
-        core.update(broadcast_view(p))
-    kind = 'none' if lt == 0 else ('height' if lt < 500000000 else 'time')
-    rbf = any(s < 0xfffffffe for s in seqs)
-    if broadcast:
-        assert core['bip125-replaceable'] == rbf, (name, core)
-    exp = {'verdict': 'allow', 'locktime': {'kind': kind, 'value': lt}, 'replaceable': rbf}
-    srcs = [SRC_LOCK, SRC_RBF + ('; Core getmempoolentry bip125-replaceable agrees, recorded below' if broadcast else '')]
-    case(T, name, ['SP-REV-9'],
-         f'nLockTime {lt}, input sequences {", ".join(hex(s) for s in seqs)}.', p, exp, srcs, core=core)
+    timelock_case(*args)
 
 # ---------------------------------------------------------------- change
 C = 'review-change.json'
@@ -467,6 +481,13 @@ case(O, 'sign-only-the-owned-input', ['SP-REV-25'],
      'Input 0 is the signer\'s taproot input. Input 1 is foreign and carries a derivation record naming the signer. '
      'Only input 0 may receive a signature.',
      p, {'verdict': 'signed', 'signatures': {'0': True, '1': False}}, ['verdict: SP-REV-25 text'], op='sign')
+
+# ---------------------------------------------------------------- appended cases
+# Cases added after the first publication go here, last, because every case
+# above takes coins from the same pools in order. Inserting one earlier hands
+# every later case a different outpoint, which rewrites files whose expected
+# values have not changed and moves pins nobody meant to move.
+timelock_case('height-locktime-every-input-final', 840000, [0xffffffff], True)
 
 for name, cases in files.items():
     doc = json.load(open(f'{OUT}/{name}'))

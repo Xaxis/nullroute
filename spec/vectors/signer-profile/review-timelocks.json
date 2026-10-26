@@ -272,6 +272,41 @@
         ],
         "bip125-replaceable": true
       }
+    },
+    {
+      "id": "height-locktime-every-input-final",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-9"
+      ],
+      "level": "MUST",
+      "description": "nLockTime 840000, input sequences 0xffffffff.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAV7hxSyAlYN8pUyiORGEv4zro2sqlEX2sOAjb7xngTytAAAAAAD/////AfDKBSoBAAAAFgAUm/GSAz8NM699KgPLLYa+AiUZHQtA0QwAAAEAhAIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////AwEYAP7///8CAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4gAAAAAAAAAAJmokqiGp7eL2HD9x0d79P6mZ36NpU3VcaQaJeZlitIvr2DaXToz5FwAAAAEBHwDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIiBgMw1U/Q3UIKbl+NNiT180gsrjUPedXwdTv1vu+cLZGvPBhzxdoKVAAAgAAAAIAAAACAAAAAAAAAAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "locktime": {
+          "kind": "not-enforced",
+          "value": 840000
+        },
+        "replaceable": false
+      },
+      "sources": [
+        "locktime kind: values below 500000000 are block heights, others are UNIX times (Bitcoin Core v31.1 src/script/script.h line 47, LOCKTIME_THRESHOLD)",
+        "replaceable: BIP-125 line 40, explicit signalling if any input has nSequence below 0xfffffffe; Core getmempoolentry bip125-replaceable agrees, recorded below",
+        "not-enforced: nLockTime is ignored when every input has nSequence 0xffffffff (Bitcoin Core v31.1 src/consensus/tx_verify.cpp lines 17 to 36, IsFinalTx, and its comment \"in which case nLockTime is ignored\"); Core accepted this transaction into its mempool at the block height recorded below, far below the locktime"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "tx.locktime": 840000,
+        "tx.sequence": [
+          4294967295
+        ],
+        "blockHeight": 197,
+        "bip125-replaceable": false
+      }
     }
   ],
   "bitcoinCore": "/Satoshi:31.1.0/",

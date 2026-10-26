@@ -88,6 +88,16 @@ invariants:
       - packages/core/test/psbt.review.test.ts::reports-replaceability-and-locktime
       - packages/core/test/psbt.review.test.ts::counts-one-signalling-input-as-replaceable
 
+  - id: INV-PSBT-20
+    statement: >
+      A non-zero locktime is described as delaying confirmation only when
+      consensus enforces it, which needs at least one input whose sequence is
+      not 0xffffffff. When every input's sequence is 0xffffffff the locktime is
+      ignored, and the review says it is set and ignored, never that the
+      transaction cannot confirm before it.
+    tests:
+      - packages/core/test/psbt.review.test.ts::reports-a-locktime-that-final-inputs-leave-unenforced
+
   - id: INV-PSBT-15
     statement: >
       Key-value pairs the device does not model are reported to the user and
@@ -134,7 +144,7 @@ vectors:
     source: conformance/README.md; run by make conformance
   - name: Signer profile SP-REV-9, locktime and replaceability
     file: spec/vectors/signer-profile/review-timelocks.json
-    sha256: e4aa374d3ed136f4a36d0caee72f8c8e12a2bb9debcf8bdfe9b0f239cc4fd02a
+    sha256: 962fc8933e2f38247df046684ee5eb295c2265f70cc3f381624d29545de7e6cb
     source: conformance/README.md; run by make conformance
   - name: Signer profile SP-REV-11, unknown key-value pairs
     file: spec/vectors/signer-profile/review-unknown-fields.json
