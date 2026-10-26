@@ -101,6 +101,41 @@ describe('core.descriptor.coordinator', () => {
   })
 
   /**
+   * INV-COORD-1. Sparrow's Export > Output Descriptor, laid out as
+   * Descriptor.exportWallet writes it at Sparrow commit d61b2a6, around the
+   * three descriptors Sparrow's own DescriptorTest.testExport asserts for that
+   * wallet. RECONSTRUCTED from Sparrow's source rather than captured, because
+   * Sparrow's test resources hold no such file; spec/interop/ holds only real
+   * ones. The leading `#` heading sent this to the Coldcard reader, which
+   * refused it for naming no cosigners.
+   */
+  it('reads-sparrows-commented-descriptor-export', () => {
+    const key =
+      '[a262308d/84h/0h/0h]xpub6DM7CYgaTMdMbhTcLTUWmNUE5WLXK5hx8ZMa4sRw8qYJPqtqKYiKnwsmT8A6AijDVAUZRivdBnXdR8QE7Y9vVnqvzPL3fXCmu1WtCRLdAoz'
+    const both = `wpkh(${key}/<0;1>/*)#cpx4ean7`
+    const receive = `wpkh(${key}/0/*)#s5x06kda`
+    const change = `wpkh(${key}/1/*)#pqrw8ra9`
+    const exported = [
+      '# Receive and change descriptor:',
+      both,
+      '',
+      '',
+      '# Receive descriptor:',
+      receive,
+      '',
+      '# Change descriptor:',
+      change,
+      '',
+    ].join('\n')
+
+    const result = importCoordinatorFile(exported)
+    expect(result.format).toBe('descriptor')
+    // Sparrow's checksums, unchanged: each line was read on its own.
+    expect(result.descriptors.map((entry) => entry.descriptor)).toEqual([both, receive, change])
+    expect(() => importCoordinatorFile('# Receive descriptor:\n')).toThrow(/no descriptor/)
+  })
+
+  /**
    * INV-COORD-2. The Coldcard format carries no descriptor, so one is built
    * from Policy, Derivation and Format. Every one of those is required, because
    * a default would silently produce a different wallet.
@@ -131,6 +166,32 @@ describe('core.descriptor.coordinator', () => {
     )
     expect(() => importCoordinatorFile(coldcard({ Format: 'nonsense' }))).toThrow(
       /Unknown script format/
+    )
+  })
+
+  /**
+   * INV-COORD-5. A Derivation line governs the cosigner lines after it, so a
+   * cosigner listed before any Derivation line has none, and is refused rather
+   * than lent the one that comes later. The real multi-derivation file is in
+   * interop.fixtures.test.ts.
+   */
+  it('refuses-a-cosigner-with-no-derivation-line-above-it', () => {
+    const file = [
+      'Name: Late Derivation',
+      'Policy: 2 of 2',
+      'Format: P2WSH',
+      `4369050F: ${X1}`,
+      "Derivation: m/48'/0'/0'/2'",
+      `5C9E228D: ${X2}`,
+    ].join('\n')
+    expect(() => importCoordinatorFile(file)).toThrow(/missing Derivation/)
+
+    // With the line moved above both, the same file assembles.
+    const fixed = file
+      .replace("Derivation: m/48'/0'/0'/2'\n", '')
+      .replace('Format: P2WSH', "Format: P2WSH\nDerivation: m/48'/0'/0'/2'")
+    expect(importCoordinatorFile(fixed).descriptors[0]?.descriptor).toContain(
+      "[4369050f/48'/0'/0'/2']"
     )
   })
 

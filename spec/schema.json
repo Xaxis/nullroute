@@ -87,7 +87,7 @@
     "vectors": {
       "type": "array",
       "uniqueItems": true,
-      "description": "Official test vector files this module must pass, pinned by content hash so a vector file cannot be edited to make a failing implementation pass.",
+      "description": "Official test vector files this module must pass, pinned by content hash so a vector file cannot be edited to make a failing implementation pass. Under spec/vectors/ for published vectors, or spec/interop/ for real exports from other wallets kept with their provenance.",
       "items": { "$ref": "#/$defs/vector" }
     },
 
@@ -181,7 +181,7 @@
         "name": { "type": "string", "minLength": 3 },
         "file": {
           "type": "string",
-          "pattern": "^spec/vectors/(?!.*(^|/)\\.\\.(/|$))[A-Za-z0-9._/-]+$"
+          "pattern": "^spec/(vectors|interop)/(?!.*(^|/)\\.\\.(/|$))[A-Za-z0-9._/-]+$"
         },
         "sha256": {
           "type": "string",

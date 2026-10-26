@@ -82,17 +82,41 @@ export function importCoordinatorFile(input: string): CoordinatorImport {
 
   if (text.startsWith('{') || text.startsWith('[')) return importJson(text)
   if (/^BSMS\s/i.test(text)) return importBsms(text)
-  if (/^\s*(#|Name:|Policy:|Derivation:|Format:)/im.test(text) && text.includes(':')) {
+  // Coldcard is recognised by its own lines, a header it builds from or a
+  // cosigner line, and not by a `#` comment. Sparrow heads its descriptor export
+  // with `# Receive and change descriptor:`, and that file was read as a
+  // Coldcard setup naming no cosigners (INV-COORD-1).
+  if (
+    /^\s*(Name|Policy|Derivation|Format)\s*:/im.test(text) ||
+    /^\s*[0-9a-fA-F]{8}\s*:/m.test(text)
+  ) {
     return importColdcard(text)
   }
   return importBareDescriptor(text)
 }
 
-/** A descriptor on its own, which is what a well-behaved export already is. */
+/**
+ * Descriptors one per line, which is what a well-behaved export already is.
+ *
+ * Read line by line (INV-COORD-1). Sparrow and others write a wallet's receive
+ * and change descriptors on separate lines, and the whole file used to be read
+ * as one descriptor: the checksum check then took everything after the first
+ * `#` as the supplied checksum and refused a correct file as "altered since it
+ * was written". That message accuses someone of tampering, so it is the one
+ * that must never be wrong. Blank lines and `#` comment lines are skipped; a
+ * descriptor's own checksum never starts a line.
+ */
 function importBareDescriptor(text: string): CoordinatorImport {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !line.startsWith('#'))
+  if (lines.length === 0) {
+    throw new CoordinatorFormatError('That file holds comments and no descriptor.')
+  }
   return {
     format: 'descriptor',
-    descriptors: [canonicalise(text)],
+    descriptors: lines.map((line) => canonicalise(line)),
     unverifiedClaims: [],
   }
 }
@@ -101,15 +125,25 @@ function importBareDescriptor(text: string): CoordinatorImport {
  * Coldcard's multisig setup file, and the several wallets that copy it.
  *
  * A header of `Key: value` lines, then one `FINGERPRINT: xpub` line per
- * cosigner. There is no descriptor in the file at all, so one is assembled from
- * Policy, Derivation and Format. That assembly is the risky part of this module
- * and it is why `Format` is required rather than defaulted: guessing P2WSH for a
- * file that meant P2SH would produce a wallet with entirely different addresses
- * and nothing on screen would say so.
+ * cosigner, under a Derivation line in the header or one above each cosigner
+ * where their paths differ. There is no descriptor in the file at all, so one
+ * is assembled from Policy, Derivation and Format. That assembly is the risky
+ * part of this module and it is why `Format` is required rather than defaulted:
+ * guessing P2WSH for a file that meant P2SH would produce a wallet with
+ * entirely different addresses and nothing on screen would say so.
  */
 function importColdcard(text: string): CoordinatorImport {
   const header = new Map<string, string>()
-  const cosigners: { fingerprint: string; xpub: string }[] = []
+  const cosigners: { fingerprint: string; xpub: string; derivation: string | undefined }[] = []
+
+  // INV-COORD-5. A Derivation line applies to the cosigner lines after it, which
+  // is how Coldcard and Electrum write a quorum whose cosigners sit on different
+  // paths. Read as a single header, the LAST Derivation line was applied to every
+  // key, so a key origin the file stated plainly was replaced by another
+  // cosigner's, silently, and the device looking for its own key under that
+  // origin would not find it.
+  let derivation: string | undefined
+  const derivations: string[] = []
 
   for (const rawLine of text.split(/\r?\n/)) {
     const line = rawLine.trim()
@@ -121,9 +155,13 @@ function importColdcard(text: string): CoordinatorImport {
     const value = line.slice(separator + 1).trim()
 
     if (/^[0-9a-fA-F]{8}$/.test(key)) {
-      cosigners.push({ fingerprint: key.toLowerCase(), xpub: value })
+      cosigners.push({ fingerprint: key.toLowerCase(), xpub: value, derivation })
     } else {
       header.set(key.toLowerCase(), value)
+      if (key.toLowerCase() === 'derivation') {
+        derivation = value
+        if (!derivations.includes(value)) derivations.push(value)
+      }
     }
   }
 
@@ -135,13 +173,13 @@ function importColdcard(text: string): CoordinatorImport {
   }
 
   const policy = header.get('policy')
-  const derivation = header.get('derivation')
   const format = header.get('format')
+  const underived = cosigners.some((cosigner) => cosigner.derivation === undefined)
 
-  if (policy === undefined || derivation === undefined || format === undefined) {
+  if (policy === undefined || underived || format === undefined) {
     const missing = [
       policy === undefined ? 'Policy' : '',
-      derivation === undefined ? 'Derivation' : '',
+      underived ? 'Derivation' : '',
       format === undefined ? 'Format' : '',
     ].filter((entry) => entry.length > 0)
     throw new CoordinatorFormatError(
@@ -168,8 +206,13 @@ function importColdcard(text: string): CoordinatorImport {
     throw new CoordinatorFormatError(`A ${policy} quorum is not satisfiable.`)
   }
 
-  const origin = derivation.replace(/^m/i, '').replace(/h/g, "'")
-  const keys = cosigners.map((c) => `[${c.fingerprint}${origin}]${c.xpub}`)
+  const keys = cosigners.map((c) => {
+    // Refused above; checked again here because this is where it is used.
+    if (c.derivation === undefined) {
+      throw new CoordinatorFormatError(`Cosigner ${c.fingerprint} has no Derivation line above it.`)
+    }
+    return `[${c.fingerprint}${c.derivation.replace(/^m/i, '').replace(/h/g, "'")}]${c.xpub}`
+  })
 
   const wrap = wrapperFor(format)
   const descriptors = [false, true].map((change) => {
@@ -185,7 +228,7 @@ function importColdcard(text: string): CoordinatorImport {
     descriptors,
     unverifiedClaims: [
       `Policy line says ${policy}.`,
-      `Derivation line says ${derivation}.`,
+      ...derivations.map((path) => `Derivation line says ${path}.`),
       `Format line says ${format}.`,
     ],
   }
@@ -258,6 +301,22 @@ function importBsms(text: string): CoordinatorImport {
     .split(',')
     .map((path) => path.trim())
     .filter((path) => path.length > 0)
+
+  // BIP-129: "A descriptor template must be accompanied by derivation path
+  // restrictions", and each "must start with /". Checked before expanding
+  // (INV-COORD-3). Expanding first spliced "No path restrictions", or the first
+  // address when the restrictions line was left blank, into every key, and the
+  // refusal that followed said a cosigner's key was not valid base58: it blamed
+  // a good key for what the file left out.
+  if (
+    template.includes('/**') &&
+    (branches.length === 0 || !branches.every((path) => path.startsWith('/')))
+  ) {
+    throw new CoordinatorFormatError(
+      `That BSMS file has a descriptor template, and BIP-129 requires a template to come with ` +
+        `path restrictions such as /0/*,/1/*. Where they belong it has ${JSON.stringify(paths)}.`
+    )
+  }
 
   const descriptors = branches.map((path, index) => {
     const expanded = template.replace(/\/\*\*/g, path)

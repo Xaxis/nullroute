@@ -1,5 +1,5 @@
 id: core.descriptor.coordinator
-version: 1
+version: 2
 title: Reading other wallets' exports, and writing one they can read
 assurance_tier: critical
 status: implemented
@@ -19,15 +19,24 @@ algorithm: >
   The format is detected from the content, not from a filename, because the file
   arrives by camera or on a card and may have no name.
 
-  A bare descriptor passes through. JSON is walked for descriptor-shaped strings
+  A file of bare descriptors passes through, one descriptor per line, skipping
+  blank lines and `#` comment lines. JSON is walked for descriptor-shaped strings
   rather than matched against each vendor's schema, which covers Sparrow,
   Specter and Bitcoin Core between them and survives a vendor changing its
   wrapper. Bitcoin Core's `internal` flag, where present, is the only reliable
   statement of which branch a descriptor covers. BIP-129 BSMS expands its `/**`
-  shorthand into the explicit paths the file names.
+  shorthand into the explicit paths the file names, and a template without
+  path restrictions is refused, as BIP-129 requires.
 
   A Coldcard setup file carries no descriptor at all, so one is ASSEMBLED from
   Policy, Derivation and Format. All three are required and none is defaulted.
+  A Derivation line applies to the cosigner lines after it, so a file that
+  gives each cosigner its own path assembles each key with its own origin.
+
+  The formats are tested against real exports kept verbatim in spec/interop/:
+  files from Coldcard, Specter, Jade, Keystone, Caravan, Electrum and the
+  BIP-129 test vectors as Sparrow keeps them for its own importers, and Bitcoin
+  Core 31.1's own exports. spec/interop/README.md records where each came from.
 
   Every path ends in the project's own strict parser and re-emits a recomputed
   checksum, so no format reader can produce something the parser would reject.
@@ -36,9 +45,9 @@ invariants:
   - id: INV-COORD-1
     statement: >
       A Coldcard setup file, Sparrow or Specter JSON, a Bitcoin Core
-      importdescriptors array, a BIP-129 BSMS file and a bare descriptor are all
-      read, and each yields descriptors that parse under this project's own
-      rules.
+      importdescriptors array, a BIP-129 BSMS file and a file of bare
+      descriptors, one per line with or without `#` comment lines, are all read,
+      and each yields descriptors that parse under this project's own rules.
     tests:
       - packages/core/test/descriptor.coordinator.test.ts::reads-a-coldcard-setup-file
       - packages/core/test/descriptor.coordinator.test.ts::reads-json-from-sparrow-or-specter
@@ -46,6 +55,8 @@ invariants:
       - packages/core/test/descriptor.coordinator.test.ts::reads-a-bsms-file-and-expands-both-branches
       - packages/core/test/descriptor.coordinator.test.ts::still-reads-a-bare-descriptor
       - packages/core/test/descriptor.coordinator.test.ts::produces-descriptors-that-parse-under-our-own-rules
+      - packages/core/test/descriptor.coordinator.test.ts::reads-sparrows-commented-descriptor-export
+      - packages/core/test/interop.fixtures.test.ts::reads-descriptor-files-with-one-descriptor-per-line
 
   - id: INV-COORD-2
     statement: >
@@ -58,15 +69,19 @@ invariants:
       - packages/core/test/descriptor.coordinator.test.ts::refuses-a-policy-that-disagrees-with-the-cosigner-count
       - packages/core/test/descriptor.coordinator.test.ts::refuses-a-script-format-it-does-not-know
       - packages/core/test/descriptor.coordinator.test.ts::builds-the-script-wrapper-the-format-line-names
+      - packages/core/test/interop.fixtures.test.ts::refuses-real-coldcard-exports-missing-policy-or-a-cosigner
 
   - id: INV-COORD-3
     statement: >
       A descriptor arriving with a checksum that does not match its contents is
-      refused, and malformed or oversized input fails cleanly.
+      refused, and malformed or oversized input fails cleanly. A BSMS descriptor
+      template without the path restrictions BIP-129 requires is refused for
+      that reason, before any key is read.
     tests:
       - packages/core/test/descriptor.coordinator.test.ts::refuses-a-descriptor-whose-checksum-does-not-match
       - packages/core/test/descriptor.coordinator.test.ts::re-parses-everything-with-the-strict-parser
       - packages/core/test/descriptor.coordinator.test.ts::refuses-a-bsms-version-it-does-not-read
+      - packages/core/test/interop.fixtures.test.ts::refuses-real-bsms-files-bip-129-does-not-allow
 
   - id: INV-COORD-4
     statement: >
@@ -76,6 +91,42 @@ invariants:
     tests:
       - packages/core/test/descriptor.coordinator.test.ts::surfaces-what-it-did-not-verify
       - packages/core/test/descriptor.coordinator.test.ts::exports-a-bundle-a-coordinator-can-read
+      - packages/core/test/interop.fixtures.test.ts::surfaces-a-real-bsms-first-address-without-believing-it
+
+  - id: INV-COORD-5
+    statement: >
+      In a Coldcard setup file, each cosigner's key origin is the Derivation
+      line above that cosigner's line, so a quorum whose cosigners use
+      different paths keeps each path. A cosigner with no Derivation line above
+      it is refused, never given another cosigner's.
+    tests:
+      - packages/core/test/interop.fixtures.test.ts::assembles-each-cosigner-under-its-own-derivation-line
+      - packages/core/test/descriptor.coordinator.test.ts::refuses-a-cosigner-with-no-derivation-line-above-it
+
+  - id: INV-COORD-6
+    statement: >
+      Real exports kept verbatim in spec/interop/, each matching the SHA-256
+      recorded there, read to the script types, thresholds, key origins and
+      extended keys Sparrow's own tests assert for them. Every descriptor read
+      from them derives the addresses Bitcoin Core 31.1 derives, and the ones
+      BIP-84, BIP-86 or BIP-129 publish where they publish one. A real export in
+      a format this module does not read is refused whole.
+    tests:
+      - packages/core/test/interop.fixtures.test.ts::every-fixture-matches-its-pinned-hash
+      - packages/core/test/interop.fixtures.test.ts::reads-real-coldcard-exports-as-sparrow-asserts
+      - packages/core/test/interop.fixtures.test.ts::reads-real-specter-json-as-written
+      - packages/core/test/interop.fixtures.test.ts::reads-real-descriptor-exports-as-sparrow-asserts
+      - packages/core/test/interop.fixtures.test.ts::reads-real-bsms-files-to-the-addresses-bip-129-states
+      - packages/core/test/interop.fixtures.test.ts::reads-bitcoin-core-31-listdescriptors
+      - packages/core/test/interop.fixtures.test.ts::reads-a-bitcoin-core-importdescriptors-array-core-accepted
+      - packages/core/test/interop.fixtures.test.ts::reads-multipath-descriptors-as-core-expands-them
+      - packages/core/test/interop.fixtures.test.ts::refuses-real-exports-in-formats-it-does-not-read
+
+vectors:
+  - name: Real coordinator exports from Sparrow's test resources and Bitcoin Core 31.1
+    file: spec/interop/SHA256SUMS
+    sha256: 5f9221c520f36acb25d4c1b02d02ebd9b6ba86f5a5676bc8ce73dd47e17fcae3
+    source: spec/interop/README.md
 
 threats:
   - INV-PSBT-2
@@ -119,7 +170,16 @@ security_notes: >
   script tree in a file of fingerprint and xpub lines, so any mapping would be an
   invention.
 
+  A descriptor is read as written, which is not how every coordinator reads it.
+  Sparrow reads `multi()` as `sortedmulti()`, and reads an extended key with no
+  child path as an account with receive and change branches. This module does
+  neither, so the 2020 Specter export in spec/interop/ derives different
+  addresses here than in Sparrow, and Bitcoin Core agrees with this module.
+  Nothing here can detect that kind of disagreement with a coordinator. Comparing
+  a first address on both screens before funding is what does.
+
 references:
   - BIP-129, Bitcoin Secure Multisig Setup
+  - spec/interop/README.md, the real exports and their provenance
   - BIP-380, Output Script Descriptors
   - docs/THREAT-MODEL.md

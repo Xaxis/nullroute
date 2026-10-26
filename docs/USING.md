@@ -322,10 +322,18 @@ therefore a round of exporting, then a round of registering.
    in step 5 differs only when the KEYS differ.
 
    **With a coordinator.** Any software that speaks descriptors, and several
-   that ship their own formats. The device reads Coldcard setup files, BSMS
-   round-two files, Sparrow and Specter JSON, and Bitcoin Core
-   `importdescriptors` arrays. Still the right choice when the other cosigners
-   are other vendors' hardware, or when you want a watching wallet anyway.
+   that ship their own formats. The device reads Coldcard setup files,
+   including Electrum's, which give each cosigner its own Derivation line; BSMS
+   round-two files; Specter Desktop JSON, which Sparrow also writes; Bitcoin
+   Core's `listdescriptors` output and `importdescriptors` arrays; and files of
+   descriptors one per line, such as Jade's and Keystone's exports and
+   Sparrow's Output Descriptor export. Every one of those but Sparrow's
+   descriptor export is tested against real files the other program wrote,
+   kept in [spec/interop](../spec/interop/README.md) with where each came from
+   and what this device does with it. Caravan and Electrum wallet files are
+   refused, because neither holds a descriptor. Still the right choice when
+   the other cosigners are other vendors' hardware, or when you want a watching
+   wallet anyway.
 
    Building is not registering either way. What comes out is a descriptor, and
    it still goes through the review in step 4.
@@ -553,6 +561,16 @@ works would be marketing.
 - **Taproot multisig can be registered and its addresses derived, but message
   signing for taproot is not implemented.** See `docs/THREAT-MODEL.md` for the
   full list of what is and is not built.
+- **The first address in a BSMS file is shown, not checked.** BIP-129 has the
+  signer compare it with its own derivation. This device lists it among what
+  the file claims and leaves the comparison to you: before sending anything to
+  the quorum, check that this device's first receive address for it is the one
+  the file stated.
+- **A descriptor is read exactly as written.** Sparrow reads `multi()` as
+  `sortedmulti()`, and reads an extended key with no `/0/*` after it as a whole
+  account. This device does neither, so an old Specter export that relies on
+  either derives different addresses here than in Sparrow. Compare a first
+  address on both screens before sending anything to a quorum.
 - **There is no device-to-device transport.** Everything goes through a
   coordinator or through you carrying a card or pointing a camera. That is a
   deliberate consequence of the air gap, not an oversight.
