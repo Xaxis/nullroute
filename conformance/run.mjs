@@ -454,6 +454,69 @@ async function runSign(adapter, c, contexts, o) {
   }
 }
 
+/**
+ * SP-REV-22, on one PSBT that a blocking condition stops: signed without an
+ * override, signed with one, then signed without one again.
+ *
+ * The first call must not sign, because a blocking condition disables signing.
+ * The second MAY sign, since the profile lets a signer refuse outright instead
+ * of offering an override, but where the condition cannot be lifted at all it
+ * must not. If it signs, it must sign the transaction it was given and nothing
+ * else. The third call is the one this file exists for: an override applies to
+ * one signature and is never stored, so asking again without one must not
+ * sign. A signer that remembered the override would pass every other vector in
+ * this kit.
+ */
+async function runOverride(adapter, c, contexts, o) {
+  const context = contexts[c.input.context]
+  const e = c.expected
+  const first = await adapter.signPsbt(c.input.psbt, context, { override: false })
+  o.expect(
+    'without-override',
+    first?.verdict !== 'signed',
+    'signed with no override, but a blocking condition must disable signing'
+  )
+  const lifted = await adapter.signPsbt(c.input.psbt, context, { override: true })
+  if (e.withOverride === 'refuse') {
+    o.expect(
+      'override-cannot-lift',
+      lifted?.verdict !== 'signed',
+      'signed under an override, but this condition cannot be lifted by one'
+    )
+  } else if (lifted?.verdict === 'signed') {
+    let before
+    let after
+    try {
+      before = parsePsbtMaps(c.input.psbt)
+      after = parsePsbtMaps(lifted.psbtBase64)
+    } catch (err) {
+      o.expect('psbt', false, `PSBT signed under the override does not parse: ${err.message}`)
+      return
+    }
+    const unsigned = (m) => m.global.find((kv) => kv.key === '00')?.value
+    o.expect(
+      'unsigned-tx',
+      unsigned(before) === unsigned(after),
+      'the unsigned transaction changed when it was signed under the override'
+    )
+    for (const [index, want] of Object.entries(e.signatures ?? {})) {
+      const map = after.inputs[Number(index)] ?? []
+      const has = map.some((kv) => SIGNATURE_KEY_TYPES.has(kv.key.slice(0, 2)))
+      o.expect(
+        `signature.${index}`,
+        has === want,
+        `input ${index} ${has ? 'has' : 'has no'} signature under the override, expected ${want ? 'one' : 'none'}`
+      )
+    }
+  }
+  const again = await adapter.signPsbt(c.input.psbt, context, { override: false })
+  o.expect(
+    'not-stored',
+    again?.verdict !== 'signed',
+    'signed with no override after an override was given once; an override must never be stored'
+  )
+}
+
 async function runDice(adapter, c, o) {
   const r = await adapter.diceToSeed(c.input.rolls)
   const e = c.expected
@@ -623,6 +686,7 @@ const OPERATIONS = {
   diceBitsShown: { needs: ['diceBitsShown'], run: (a, c, _, o) => runAccounting(a, c, o) },
   review: { needs: ['reviewPsbt'], run: runReview },
   sign: { needs: ['signPsbt'], run: runSign },
+  signOverride: { needs: ['signPsbt'], run: runOverride },
   buildManifest: { needs: ['buildManifest'], run: (a, c, _, o) => runManifest(a, c, o) },
   bbqrJoin: { needs: ['bbqrJoin'], run: (a, c, _, o) => runJoin(a, c, o) },
   bbqrEncodePsbt: { needs: ['bbqrEncodePsbt'], run: (a, c, _, o) => runEncode(a, c, o) },

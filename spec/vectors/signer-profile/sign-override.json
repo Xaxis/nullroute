@@ -1,0 +1,106 @@
+{
+  "format": "signer-profile-vectors",
+  "version": 1,
+  "profile": "spec/signer-profile.md, draft specification version 0.1",
+  "file": "sign-override.json",
+  "requirements": [
+    "SP-REV-22"
+  ],
+  "operations": "signOverride",
+  "description": "A blocking condition disables signing. It may be lifted only by an explicit override that applies to one signature and is never stored: each case asks to sign without an override, with one, and without one again. A transaction the signer owns no input of is refused, and no override lifts that.",
+  "cases": [
+    {
+      "id": "sighash-none-lifted-for-one-signature",
+      "operation": "signOverride",
+      "requirements": [
+        "SP-REV-22",
+        "SP-REV-23"
+      ],
+      "level": "MUST",
+      "description": "One owned input requesting SIGHASH_NONE, which blocks signing. Signed without an override, with one, and without one again.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAc86ThpCOcDlvfBUOfHYXDLYVmjI6SRANmHeGiiNQGWtAAAAAAD9////AfDKBSoBAAAAFgAUDhNTKuh6e9kGMGFPvQ139TMRWNMAAAAAAAEAhAIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////AwE5AP7///8CAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4gAAAAAAAAAAJmokqiGp7eL2HD9x0d79P6mZ36NpU3VcaQaJeZlitIvr2DaXToz5OAAAAAEBHwDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIBAwQCAAAAIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAA=",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "withoutOverride": "not-signed",
+        "withOverride": "may-sign",
+        "signatures": {
+          "0": true
+        }
+      },
+      "sources": [
+        "blocking: SP-REV-23 text",
+        "override: SP-REV-22 text, \"It MAY be lifted only by an explicit override that applies to one signature and is never stored\""
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "sighash": [
+          "NONE"
+        ]
+      }
+    },
+    {
+      "id": "unconfirmed-amount-lifted-for-one-signature",
+      "operation": "signOverride",
+      "requirements": [
+        "SP-REV-22",
+        "SP-REV-3"
+      ],
+      "level": "MUST",
+      "description": "One owned segwit v0 input with only PSBT_IN_WITNESS_UTXO, so its amount is the coordinator's word and signing is blocked. Signed without an override, with one, and without one again.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAYtlAugk9Uepb7GV6/LkTMKFPWHrI2Z1IN+JnbGfE0muAAAAAAD9////AfDKBSoBAAAAFgAU+Zf9NLw1tuyNi/jxn+NtAHsWczkAAAAAAAEBHwDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIiBgMw1U/Q3UIKbl+NNiT180gsrjUPedXwdTv1vu+cLZGvPBhzxdoKVAAAgAAAAIAAAACAAAAAAAAAAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "withoutOverride": "not-signed",
+        "withOverride": "may-sign",
+        "signatures": {
+          "0": true
+        }
+      },
+      "sources": [
+        "blocking: SP-REV-3 text, BIP-174 line 415",
+        "override: SP-REV-22 text, \"It MAY be lifted only by an explicit override that applies to one signature and is never stored\""
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "no-owned-input-not-lifted",
+      "operation": "signOverride",
+      "requirements": [
+        "SP-REV-22",
+        "SP-REV-25"
+      ],
+      "level": "MUST",
+      "description": "One input, owned by another wallet. There is nothing this signer can sign, and an override does not change that.",
+      "input": {
+        "psbt": "cHNidP8BAFICAAAAAezU/GrSa6A7ak9j1rMfy0FmLbwgnKJjFOGon5WFRv2mAAAAAAD9////AfDKBSoBAAAAFgAUWdnu76f2sz7xNRt9zfvsWtkHZTEAAAAAAAEAhAIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////AwFbAP7///8CAPIFKgEAAAAWABQPDRF6h+fgZGi5CvvbcsPvZgctpgAAAAAAAAAAJmokqiGp7eL2HD9x0d79P6mZ36NpU3VcaQaJeZlitIvr2DaXToz5WgAAAAEBHwDyBSoBAAAAFgAUDw0Reofn4GRouQr723LD72YHLaYiBgLOMIi0I7RDp90D/8kXlhxD30G1ClYn4a8xov1lxXvlChg0Qhk+VAAAgAAAAIAAAACAAAAAAAAAAAAAIgICLdh0PVlN3/x6SKQITi34ToNa/C8DRKfiiE+r7TCXJtcYNEIZPlQAAIAAAACAAAAAgAAAAACsAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "withoutOverride": "not-signed",
+        "withOverride": "refuse"
+      },
+      "sources": [
+        "verdict: SP-REV-25 text",
+        "override: SP-REV-22 text, \"It MAY be lifted only by an explicit override that applies to one signature and is never stored\""
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    }
+  ],
+  "bitcoinCore": "/Satoshi:31.1.0/",
+  "contexts": {
+    "abandon-mainnet": {
+      "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+      "passphrase": "",
+      "network": "mainnet",
+      "masterFingerprint": "73c5da0a"
+    }
+  }
+}

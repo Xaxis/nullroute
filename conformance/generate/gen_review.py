@@ -489,6 +489,31 @@ case(O, 'sign-only-the-owned-input', ['SP-REV-25'],
 # values have not changed and moves pins nobody meant to move.
 timelock_case('height-locktime-every-input-final', 840000, [0xffffffff], True)
 
+# SP-REV-22: the override path. Every other sign case asks with override false,
+# so nothing checked that a blocked transaction signs only with an override,
+# or that the override is not remembered.
+V = 'sign-override.json'
+SRC_OVERRIDE = ('override: SP-REV-22 text, "It MAY be lifted only by an explicit override that applies to '
+                'one signature and is never stored"')
+p = set_sighash(build([coin('ours.w')], [(pay(70), 'rest')]), [0x02])
+case(V, 'sighash-none-lifted-for-one-signature', ['SP-REV-22', 'SP-REV-23'],
+     'One owned input requesting SIGHASH_NONE, which blocks signing. Signed without an override, with one, '
+     'and without one again.',
+     p, {'withoutOverride': 'not-signed', 'withOverride': 'may-sign', 'signatures': {'0': True}},
+     ['blocking: SP-REV-23 text', SRC_OVERRIDE], op='signOverride')
+p = strip(build([coin('ours.w')], [(pay(71), 'rest')]), 0, 0x00)
+case(V, 'unconfirmed-amount-lifted-for-one-signature', ['SP-REV-22', 'SP-REV-3'],
+     'One owned segwit v0 input with only PSBT_IN_WITNESS_UTXO, so its amount is the coordinator\'s word '
+     'and signing is blocked. Signed without an override, with one, and without one again.',
+     p, {'withoutOverride': 'not-signed', 'withOverride': 'may-sign', 'signatures': {'0': True}},
+     ['blocking: SP-REV-3 text, BIP-174 line 415', SRC_OVERRIDE], op='signOverride')
+p = build([coin('foreign.w')], [(pay(72), 'rest')], wallets=('foreign',))
+case(V, 'no-owned-input-not-lifted', ['SP-REV-22', 'SP-REV-25'],
+     'One input, owned by another wallet. There is nothing this signer can sign, and an override does not '
+     'change that.',
+     p, {'withoutOverride': 'not-signed', 'withOverride': 'refuse'},
+     ['verdict: SP-REV-25 text', SRC_OVERRIDE], op='signOverride')
+
 for name, cases in files.items():
     doc = json.load(open(f'{OUT}/{name}'))
     doc['bitcoinCore'] = CORE

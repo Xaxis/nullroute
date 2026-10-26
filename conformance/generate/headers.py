@@ -59,6 +59,12 @@ HEADERS = {
         'review, sign',
         'A transaction with no input the signer owns is not signable, and signing keys are found from each '
         'input\'s own script, never from a derivation path the PSBT supplies.'),
+    'sign-override.json': (
+        ['SP-REV-22'],
+        'signOverride',
+        'A blocking condition disables signing. It may be lifted only by an explicit override that applies '
+        'to one signature and is never stored: each case asks to sign without an override, with one, and '
+        'without one again. A transaction the signer owns no input of is refused, and no override lifts that.'),
     'manifest-root.json': (
         ['SP-ATT-2'],
         'buildManifest',

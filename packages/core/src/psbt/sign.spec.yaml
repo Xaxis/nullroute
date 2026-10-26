@@ -193,6 +193,10 @@ vectors:
     file: spec/vectors/bip143-sighash.json
     sha256: 463d6f8dbcfa85fe8b281e75a41786406b14f1aebbe37a79fc7e300d40307ea4
     source: https://github.com/bitcoin/bips/blob/d1d2042c857f337c147785c1d02cfd9f9d3c84fb/bip-0143.mediawiki
+  - name: Signer profile SP-REV-22, the single-use override
+    file: spec/vectors/signer-profile/sign-override.json
+    sha256: 05104879eda7f7635daf314f220f7f3cd64a685b9cf0b4a957ee3990653ec692
+    source: conformance/README.md; run by make conformance
 
 threats:
   - INV-SIG-1

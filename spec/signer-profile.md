@@ -428,8 +428,8 @@ until the last element has been shown.
 
 **SP-REV-22.** Any blocking condition MUST disable signing. It MAY be lifted
 only by an explicit override that applies to one signature and is never
-stored. The reason MUST be stated beside the disabled control. Check: nullroute
-INV-UI-13, INV-UI-62, INV-SIG-3.
+stored. The reason MUST be stated beside the disabled control. Check: vector
+`sign-override.json`; nullroute INV-UI-13, INV-UI-62, INV-SIG-3.
 
 **SP-REV-23.** Any sighash type other than `SIGHASH_ALL` (0x01) or
 `SIGHASH_DEFAULT` (0x00, taproot only) MUST be a blocking condition. That
@@ -488,7 +488,7 @@ INV-SIG-1, INV-SIG-2 (differential against bitcoinjs-lib, 120 cases); manual:
 | SP-REV-14 | Met | INV-PSBT-13 |
 | SP-REV-20 | Met | INV-UI-11 |
 | SP-REV-21 | Met in tests; unverified on the panel | INV-UI-103 |
-| SP-REV-22 | Met | INV-UI-13, INV-UI-62, INV-SIG-3 |
+| SP-REV-22 | Met | INV-UI-13, INV-UI-62, INV-SIG-3; `sign-override.json` checks that the override applies to one signature and is not stored |
 | SP-REV-23 | Met | INV-PSBT-3 |
 | SP-REV-24 | Met | INV-PSBT-14, INV-UI-14, INV-SIG-4 |
 | SP-REV-25 | Met | INV-PSBT-14 |
@@ -891,3 +891,4 @@ scope", restated without the nullroute specifics.
 | 0.1 | 24 September 2026 | Vector files published in `spec/vectors/signer-profile/`, with `conformance/`. Check lines and the nullroute conformance column updated from running them. No requirement changed |
 | 0.1 | 26 October 2026 | Section 7, BIP-370 row: nullroute refuses version 2 PSBTs (INV-PSBT-19) instead of leaving their support unverified. No requirement changed |
 | 0.1 | 26 October 2026 | SP-REV-9 amended: a locktime that every input being final leaves unenforced MUST NOT be shown as delaying confirmation. The old text required showing every non-zero locktime that way, which is false when consensus ignores it. One vector added to `review-timelocks.json` |
+| 0.1 | 26 October 2026 | Vector file `sign-override.json` added for SP-REV-22: until now every signing vector asked with no override, so nothing checked that an override lifts a block for one signature only. No requirement changed |

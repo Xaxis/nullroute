@@ -78,7 +78,7 @@ Adapter functions must not throw for input the signer rejects. A rejection is a
 | `diceToSeed(rolls)` | `rolls`: the string exactly as a user typed it | `{ verdict: 'accept', entropyHex, mnemonic, seedHex }` or `{ verdict: 'refuse' }`. `seedHex` is the BIP-39 seed with an empty passphrase. |
 | `diceBitsShown(count)` | `count`: a number of valid rolls | The integer number of bits the signer displays after that many rolls. |
 | `reviewPsbt(psbt, context)` | `psbt`: base64 PSBT; `context`: see below | A review result, see below. |
-| `signPsbt(psbt, context, options)` | as above; `options.override` is always `false` in this version | `{ verdict: 'signed', psbtBase64 }` or `{ verdict: 'refuse' }`. |
+| `signPsbt(psbt, context, options)` | as above; `options.override` is `true` only in `sign-override.json`, where it is the explicit single-use override SP-REV-22 describes | `{ verdict: 'signed', psbtBase64 }` or `{ verdict: 'refuse' }`. |
 | `buildManifest(files)` | `files`: `[{ path, bytes }]`, `bytes` a `Uint8Array`, in no particular order | `{ manifest, root }`: the manifest text exactly, and its root as lowercase hex. |
 | `urJoin(frames)` | `frames`: scanned UR strings, in scan order | `{ verdict: 'complete', type, data }` with `type` the UR type (`crypto-psbt` or `psbt`) and `data` the binary PSBT, or `{ verdict: 'refuse' }`, or `{ verdict: 'incomplete' }`. Optional: only for a signer that implements UR (SP-TX-7). |
 | `bbqrJoin(frames)` | `frames`: the scanned strings, in scan order | `{ verdict: 'complete', fileType, data }` with `fileType` the BBQr letter and `data` a `Uint8Array`, or `{ verdict: 'refuse' }`, or `{ verdict: 'incomplete' }`. |
@@ -154,6 +154,7 @@ that shares no code with it.
 | `review-sighash.json` | 13 | SP-REV-8, 23 | Core PSBTs with `PSBT_IN_SIGHASH_TYPE` set. Meaning from BIP-143 and BIP-341; Core's names recorded. |
 | `review-timelocks.json` | 9 | SP-REV-9 | Core PSBTs. Height or time from `LOCKTIME_THRESHOLD` in Bitcoin Core's source. Not enforced from `IsFinalTx` in Core's source, and from Core accepting that transaction into its mempool far below its locktime. Replaceability from BIP-125, and from Core's own mempool (`getmempoolentry`) for every case it could broadcast. |
 | `review-unknown-fields.json` | 2 | SP-REV-11 | A Core PSBT with pairs added. Core's `decodepsbt` lists them as unknown or proprietary. Preservation from BIP-174. |
+| `sign-override.json` | 3 | SP-REV-22 | Core PSBTs blocked by SIGHASH_NONE, by an unconfirmed segwit v0 amount, and by owning no input. Each is signed without an override, with one, and without one again; the expected verdicts are the requirement text. |
 | `review-ownership.json` | 5 | SP-REV-24, 25 | Core PSBTs from a second wallet (the BIP-32 test vector 1 key), with derivation records naming the signer's fingerprint. Verdicts from the requirement text. |
 | `manifest-root.json` | 2 | SP-ATT-2 | `LC_ALL=C sort -z \| xargs -0 sha256sum` over the files, and `sha256sum` of the result. The forbidden roots are from `LC_ALL=en_US.UTF-8 sort` and from ICU's `en-US` collation. |
 | `bbqr-psbt.json` | 12 | SP-TX-2 to 6 | Frames from Coinkite's reference splitter (`coinkite/BBQr`, `python/bbqr`), and a real Coldcard camera scan from that repository's test data. Decoded payloads cross-checked with Python's base32 and zlib. |
@@ -232,7 +233,7 @@ for them.
 
 ## nullroute's results
 
-`make conformance` today: all 113 cases pass, with no SHOULD missed, and
+`make conformance` today: all 116 cases pass, with no SHOULD missed, and
 [`known-failures/nullroute.json`](known-failures/nullroute.json) is empty.
 Four requirements have failed and been fixed, which is what the list is for:
 
