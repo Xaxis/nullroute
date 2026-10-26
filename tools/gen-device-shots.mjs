@@ -175,6 +175,16 @@ async function main() {
    * rather than passing quietly, which is the same three-state rule the image
    * verifiers use: could-not-check is not a pass.
    */
+  /*
+   * THE BROWSER BUILD IS PART OF THE RASTERISER TOO. The platform alone was
+   * enough while every set of images came from a Mac and every check ran on
+   * Linux, because the two never matched. Once images are made on Linux, CI
+   * matches on platform and compares pixels drawn by whatever Chrome its setup
+   * step installed that day against pixels drawn by another build, and a Skia
+   * change between them reads as a redesigned device. So the build is recorded
+   * and both have to match before the pixels are asked anything.
+   */
+  const { product } = await cdp(browser, 'Browser.getVersion')
   const bundle = createHash('sha256')
   for (const name of readdirSync(join(GALLERY, 'assets')).sort()) {
     bundle.update(name).update(readFileSync(join(GALLERY, 'assets', name)))
@@ -182,13 +192,15 @@ async function main() {
   const stamp = {
     bundle: bundle.digest('hex'),
     platform: `${process.platform}-${process.arch}`,
+    browser: String(product),
     screens: SCREENS.map((s) => s.as).join(','),
   }
   const stampFile = join(OUT, 'rendered-from.json')
   const previous = existsSync(stampFile)
     ? JSON.parse(readFileSync(stampFile, 'utf8'))
-    : { bundle: '', platform: '', screens: '' }
-  const comparable = previous.platform === stamp.platform
+    : { bundle: '', platform: '', browser: '', screens: '' }
+  const comparable = previous.platform === stamp.platform && previous.browser === stamp.browser
+  const madeWith = (s) => `${s.platform} with ${s.browser ?? 'an unrecorded browser'}`
 
   const stale = []
   for (const screen of SCREENS) {
@@ -298,8 +310,9 @@ async function main() {
       comparable
         ? `gen-device-shots: ${String(SCREENS.length)} screenshots match the frontend, pixel for pixel`
         : `gen-device-shots: ${String(SCREENS.length)} screenshots were rendered from this exact ` +
-            `frontend. They were made on ${previous.platform} and this is ${stamp.platform}, and ` +
-            `Chrome rasterises differently on each, so the pixels are not compared here.`
+            `frontend. They were made on ${madeWith(previous)} and this is ${madeWith(stamp)}, ` +
+            `and different rasterisers draw the same markup differently, so the pixels are not ` +
+            `compared here.`
     )
   } else {
     console.log(
