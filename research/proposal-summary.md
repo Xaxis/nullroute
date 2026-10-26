@@ -2,7 +2,7 @@
 
 Workstream E. A plain-language summary for a reader who knows Bitcoin and has
 never seen this project. Every number below says where it came from. Numbers
-from a command were produced on this branch at commit `e2cd5d6` on 24 September
+from a command were produced on `main` at commit `09dce4c` on 26 October
 2026.
 
 ## Status
@@ -87,13 +87,13 @@ Output of `make verify` on this branch:
 
 | Check | Result |
 | --- | --- |
-| Coverage | 256 of 256 runtime exports of `packages/core` named by a spec |
-| Invariants | 317 invariants bound to 890 tests, each of which ran and passed; 1187 tests in the suite |
-| Vectors | 15 of 15 vector files match their pinned hash |
+| Coverage | 271 of 271 runtime exports of `packages/core` named by a spec |
+| Invariants | 347 invariants bound to 1026 tests, each of which ran and passed; 1343 tests in the suite |
+| Vectors | 36 of 36 vector files match their pinned hash |
 | Differential | 3 modules cross-checked against `bitcoinjs-lib` |
-| Integrity | 346 files, root `3630ffd79271d43c61645fa60ed2c633fd922c921cc5c5d4286bb4fab317f0af` |
+| Integrity | 433 files, root `5955aa9cf815f3dcbfdafcc26c538de4b55a3091062ee6d03b9a3a5560c378ac` |
 
-Totals: 38 specs, 317 invariants. The README badges state the same two numbers,
+Totals: 39 specs, 347 invariants. The README badges state the same two numbers,
 and `make badges` checks that they match.
 
 What this proves and what it does not: the code does what its specs say, on the
@@ -114,7 +114,8 @@ $ sha256sum MANIFEST.lock
 $ git ls-files -z package.json package-lock.json packages spec provisioning | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum
 ```
 
-For this summary the three were run with macOS `shasum -a 256`. All 346 files
+For this summary the three were run with GNU coreutils 9.4 on Linux, after an
+earlier check with macOS `shasum -a 256`. All 433 files
 matched, and both roots were the value in the table above.
 
 The screen also says what the number does not prove. It is drawn by the software
@@ -144,7 +145,7 @@ byte for byte. The cost is the fault-injection resistance that random
 
 [`spec/signer-profile.md`](../spec/signer-profile.md) is a draft specification
 (version 0.1) for air-gapped signers. It is a proposal. Nobody has adopted it,
-including nullroute, which fails parts of it. It has 62 requirements in seven
+including nullroute, which fails parts of it. It has 63 requirements in seven
 areas: entropy, pre-signing review, signing, attestation, hardware, transport
 and dependencies. No requirement names a board, panel or vendor. Each one names
 its check: a vector file, a nullroute invariant, a manual procedure, or
@@ -153,7 +154,7 @@ UNTESTABLE with the reason.
 [`conformance/`](../conformance/README.md) turns the testable part into
 something a second implementation can run:
 
-- **Vectors.** Twelve JSON files, 112 cases, in
+- **Vectors.** Thirteen JSON files, 116 cases, in
   [`spec/vectors/signer-profile/`](../spec/vectors/signer-profile/SHA256SUMS),
   pinned by a `SHA256SUMS` file that coreutils can check.
 - **Expected values from outside nullroute.** Bitcoin Core 31.1 on regtest, the
@@ -181,10 +182,10 @@ Raspberry Pi, and it does not mean reviewed by anyone but the author.
 | Claim | How it is checked | Source of the expected result |
 | --- | --- | --- |
 | Code, specs and tests agree | `make verify` (run for this summary; output above) | The specs in `packages/*/src/**/*.spec.yaml` |
-| BIP-32, BIP-39, BIP-84, BIP-86, BIP-380 checksums | `make test-vectors`; `make verify` checks the pins | Vectors from the BIPs, vendored in [`spec/vectors/`](../spec/vectors/bip32.json) (BIP-32 vectors 1 to 4, all 24 English BIP-39 vectors, the BIP-84 and BIP-86 addresses, all 8 BIP-380 checksums) |
+| BIP-32, BIP-39, BIP-84, BIP-86, BIP-174, BIP-143, BIP-340, BIP-341, BIP-370 and BIP-380 to 386 | `make test-vectors`; `make verify` checks the pins | Vectors from the BIPs, vendored in [`spec/vectors/`](../spec/vectors/bip32.json): BIP-32 vectors 1 to 5, all 24 English BIP-39 vectors, the BIP-84 and BIP-86 addresses, BIP-380's checksums and key expressions, BIP-381 to 386's descriptors, and the PSBT, signing and sighash vectors. BIP-370's version 2 PSBTs are refused by decision |
 | Derivation, addresses and signatures agree with a second implementation | `make test-differential` | `bitcoinjs-lib` |
 | Signatures are deterministic | `make test-repro` signs one PSBT 100 times | Byte comparison against libsecp256k1 |
-| The signer profile's testable requirements | `make conformance`: all 112 cases pass, no SHOULD is missed | Bitcoin Core 31.1 regtest, BIP texts, coreutils, Coinkite's BBQr code |
+| The signer profile's testable requirements | `make conformance`: all 116 cases pass, no SHOULD is missed | Bitcoin Core 31.1 regtest, BIP texts, coreutils, Coinkite's BBQr code |
 | A wallet can be recovered and spent without nullroute | `make test-recovery-drill` (INV-INTEROP-1) | Bitcoin Core on regtest |
 | The manifest root is recomputable | The three commands above | coreutils (`shasum` on macOS) |
 | Dice to seed | INV-DICE-1 to INV-DICE-8, and `dice-to-entropy.json` | `printf \| sha256sum`; BIP-39 checked against the Trezor vectors |
@@ -234,13 +235,13 @@ and Jade read only `crypto-psbt` ([ur-notes](ur-notes.md)).
 | --- | --- |
 | SP-TX-5 cannot be fully met from BBQr frames alone | Decided: the assembled payload is validated structurally (INV-QR-10). A digest would need a field BBQr lacks; UR has one, so a UR transfer is told apart exactly |
 | BIP-322 variant prefix | Closed. BIP-322 1.0.0 says signers MUST prefix the signature with its variant (`smp`). nullroute now writes it and reproduces the published p2wpkh vector byte for byte, prefix included, against `bip-0322/basic-test-vectors.json` pinned in `spec/vectors/` |
-| The override path | Every vector signs with `override: false`. No case checks that a blocked transaction signs only with the override and that it does not persist (SP-REV-22) |
-| Locktime when every input is final | The review still says the transaction cannot confirm before the locktime, which is not enforced in that case. The profile does not say what to show |
-| PSBT version 2 | Referenced by two specs, fed by no test. The profile requires version 0 only |
-| Published BIP vectors not included | No BIP-174 PSBT vectors, no invalid-input vectors for BIP-32 or BIP-380, no descriptor-to-script vectors for BIP-381 to 387, no BIP-340, 341 or 143 signing vectors ([handoff-D, SP-DEP-1 table](handoff-D.md#bip-vectors-for-sp-dep-1)) |
+| The override path | Closed. `sign-override.json` asks to sign blocked PSBTs without an override, with one, and without one again; two deliberately broken adapters each fail it (SP-REV-22, `0b94fa5`) |
+| Locktime when every input is final | Closed. The review reports such a locktime as ignored, never as a delay (INV-PSBT-20), SP-REV-9 is amended, and a vector carries Bitcoin Core's own mempool acceptance as evidence (`dba42bd`) |
+| PSBT version 2 | Closed by decision. Every PSBT BIP-370 publishes is refused at parse with a message asking for version 0 (INV-PSBT-19, `0d8e94f`) |
+| Published BIP vectors not included | Closed. BIP-174, 143, 340, 341 and 370, BIP-32 vector 5, BIP-380's key expressions and BIP-381 to 386's descriptors are all in `spec/vectors/`. Running the last three found four bugs, fixed in `09dce4c`. Kinds the device does not derive are asserted case by case ([handoff-D, SP-DEP-1 table](handoff-D.md#bip-vectors-for-sp-dep-1)) |
 | Portable vectors for SP-REV-1 and SP-SIG-1 | Checked by nullroute's own tests only |
-| The adapter repeats two pieces of UI logic | `bbqrPayload` in `QrDisplay.tsx` and `maySign` in `PsbtScreen.tsx`, so a UI change the adapter does not follow would go unnoticed |
-| Tools not run | GNU coreutils and a glibc locale were not run for the manifest vectors; only macOS tools and ICU |
+| The adapter repeats one piece of UI logic | `maySign` in `PsbtScreen.tsx`, so a UI change the adapter does not follow would go unnoticed |
+| Tools not run | Closed. The vectors were regenerated on Linux with GNU coreutils 9.4 and glibc 2.39; every expected value was unchanged, and glibc's locale order added a third forbidden manifest root (`6a69590`) |
 
 Closed since those handoffs, each by a commit on `main`: segwit v0 input amounts
 (SP-REV-3, `8b9272b`), the daemon's start-up refusal and its tests (SP-ATT-6,
@@ -250,16 +251,11 @@ and the multi-frame PSBT sent as base64 text instead of binary (G1, `a0ed400`).
 
 ### Open items from workstream A
 
-- The reason given for reading BBQr encoding `Z` says Coldcard writes it by
-  default; Coldcard's current source writes base32 (G5,
-  `packages/core/src/qr/bbqr.spec.yaml` line 38). The behaviour is right and the
-  stated reason is not.
-- `docs/AIR-GAP.md` and `docs/PROVISIONING.md` are cited from source comments
-  and do not exist (G8).
-- Build comments in the `Makefile` and CI still name a Raspberry Pi 5 target;
-  the only supported board is the Pi 4 (G9).
-- `docs/ENTROPY.md` says the dice rule is compatible with Coldcard without
-  naming the dice-only path; Coldcard's mixing path hashes differently.
+- Closed: the reason for reading BBQr `Z` now cites BBQr's receiver
+  requirement rather than a Coldcard default it does not have (G5), no source
+  cites a document that does not exist (G8, now a check), no build comment
+  names a Pi 5 (G9), and `docs/ENTROPY.md` names the dice-only path and where
+  compatibility stops (`ad12eff`).
 - A 100-roll nullroute seed cannot be re-entered on SeedSigner, which takes
   exactly 99, and a 99-roll seed from Coldcard, SeedSigner or Krux cannot be
   reproduced on nullroute.
@@ -275,8 +271,9 @@ run on a Raspberry Pi.
 - The firmware path from power-on to the kernel, which is built and on the card.
 - The DSI panel and its touch controller (SP-HW-1, SP-HW-4). The build refuses
   to finish unless the merged device tree enables both.
-- The camera. Nothing in `provisioning/` names a camera driver, so whether the
-  kiosk browser can reach a Pi Camera Module 3 is open (SP-HW-5).
+- The camera, a USB (UVC) webcam. The card carries its driver, udev to load it
+  and the kiosk's permission to open it (INV-PROV-30), and none has streamed on
+  a Pi (SP-HW-5).
 - Layout on the real panel: full addresses (SP-REV-5, SP-HW-2) and the
   read-to-the-end gate before Sign (SP-REV-21) are measured at 800x480 in a
   headless browser only.
@@ -296,8 +293,9 @@ Argon2id at 64 MiB and three passes. No signed boot chain (tier 2): an attacker
 who rewrites the boot partition controls the numbers the device shows. No
 signing key and no published image (tier 0 signing and publishing are planned).
 Duress features are planned and not built, and the threat model says they would
-buy time against an unsophisticated adversary and nothing more. Image
-reproducibility depends on the live Debian mirror, not a pinned snapshot. The
+buy time against an unsophisticated adversary and nothing more. The image
+build reads Debian from one snapshot.debian.org timestamp, so it now depends on
+that service rather than on the live mirror standing still. The
 full list is in [docs/THREAT-MODEL.md](../docs/THREAT-MODEL.md#out-of-scope).
 
 ### Documents that disagreed with the code
@@ -316,8 +314,8 @@ owned.
 | --- | --- |
 | Outside cryptographic and code review | `make verify` proves the code matches its specs. Whether the specs describe a secure design is a human judgement, and so far only the author has made it |
 | A second, independent implementation of the profile | Vectors catch a shared mistake only where the expected value came from outside both implementations. A second signer, on other hardware and in another language, is the test of whether the profile is implementable as written |
-| Discussion on bitcoin-dev and Delving Bitcoin | The profile takes positions others may reject: 100 rolls where three products accept 99, BBQr's alphanumeric mode, a blocking rule for segwit v0 inputs, no UR. Those need argument from people who build signers and coordinators |
-| Coordinator authors testing interoperability | No coordinator has read nullroute's multi-frame QR output, and the conformance kit stands in for coordinators with Coinkite's reference code and one Coldcard scan |
+| Discussion on bitcoin-dev and Delving Bitcoin | The profile takes positions others may reject: 100 rolls where three products accept 99, a blocking rule for segwit v0 inputs, and signatures with `aux_rand` fixed to zero. Those need argument from people who build signers and coordinators |
+| Coordinator authors testing interoperability | No coordinator has read nullroute's multi-frame QR output with a camera. The kit stands in with Coinkite's reference code, a Coldcard scan and SeedSigner's own UR code, and `spec/interop/` holds 43 real exports from other wallets and Bitcoin Core that nullroute's import is tested against |
 | Hardware bring-up | Someone with the board, the panel and the camera has to boot the card, then record what the panel, touch, camera and network interfaces actually do |
 
 ## Sources
