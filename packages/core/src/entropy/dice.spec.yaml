@@ -110,7 +110,7 @@ invariants:
 vectors:
   - name: Signer profile SP-ENT-1 to SP-ENT-4, dice to entropy
     file: spec/vectors/signer-profile/dice-to-entropy.json
-    sha256: a789242a31e6fdf2ebf64779f61655d0104acabec906cf92a8bc3427fdddff1c
+    sha256: bfbc76765e7a7a6c8f2ad77730f9476a5aa73979e7ba85d33b8a34109b6f35bd
     source: conformance/README.md; run by make conformance
   - name: Signer profile SP-ENT-5, entropy count ceiling
     file: spec/vectors/signer-profile/dice-accounting.json

@@ -259,7 +259,16 @@ fetches every reference at its pinned commit into the scratch directory, starts
 a regtest node there, rewrites the vector files, `SHA256SUMS`, and the pins in
 nullroute's spec files, then stops the node and deletes its data. Review the
 diff before committing it: a changed expected value is a claim that the source
-changed, and it needs a reason.
+changed, and it needs a reason. `RPCPORT` and `P2PPORT` move the node off its
+default ports, and `BITCOIND` and `BITCOIN_CLI` point at a particular build.
+
+The files were first generated on macOS and are now generated on Linux with
+GNU coreutils 9.4, glibc 2.39 and Bitcoin Core 31.1.0 from bitcoincore.org.
+Every expected value came out the same on both. What changed is what the
+sources name, one error string Core words differently on each system, and
+one root added to `manifest-root.json`: glibc's `en_US.UTF-8` collation orders
+the test paths a third way, unlike both byte order and ICU, so its root is now
+listed as one that MUST NOT be produced.
 
 ## BIP test vectors (SP-DEP-1)
 

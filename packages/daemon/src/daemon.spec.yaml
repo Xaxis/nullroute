@@ -161,7 +161,7 @@ invariants:
 vectors:
   - name: Signer profile SP-ATT-2, manifest and root
     file: spec/vectors/signer-profile/manifest-root.json
-    sha256: 04f19731c20973223cacc286395c6ccab4ebf521193412d4e76db2c4f72f7138
+    sha256: 3f70a06d43ba3ce1bfb7fcdfe11a4ce10ef4b2297b35eabdf669dd2e8e36e1c4
     source: conformance/README.md; run by make conformance
 
 threats:

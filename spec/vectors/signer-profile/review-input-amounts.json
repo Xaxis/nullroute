@@ -103,7 +103,7 @@
         "verdict: SP-REV-3 text; Core decodepsbt error recorded below"
       ],
       "bitcoinCore": {
-        "decodepsbt": "error: 'TX decode failed Non-witness UTXO does not match outpoint hash: unspecified iostream_category error'"
+        "decodepsbt": "error: 'TX decode failed Non-witness UTXO does not match outpoint hash: iostream error'"
       }
     },
     {

@@ -126,7 +126,7 @@ vectors:
     source: conformance/README.md; run by make conformance
   - name: Signer profile SP-REV-3, confirmed input amounts
     file: spec/vectors/signer-profile/review-input-amounts.json
-    sha256: 4fccf6fd8682540ca7a704ef228acd63c1b10671123cdf58d2fd979c31376590
+    sha256: 5eca8164d99385395efb01123ab114f1b388114c69600664977ff9cd504ad54a
     source: conformance/README.md; run by make conformance
   - name: Signer profile SP-REV-8, SP-REV-23, sighash
     file: spec/vectors/signer-profile/review-sighash.json

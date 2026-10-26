@@ -38,7 +38,7 @@
         "seedHex": "e50a429924dbdf4500fa0cf03cca5b1a5dab1524cf1cd0efe1868eee17837be02e061f3eaae7e08aaae894eb0dd14b6f04f793826f246d9b4960aded98ab8011"
       },
       "sources": [
-        "entropyHex: printf '%s' ROLLS | shasum -a 256, and /sbin/sha256sum, agreeing with Python hashlib",
+        "entropyHex: printf '%s' ROLLS | shasum -a 256, and sha256sum (GNU coreutils) 9.4, agreeing with Python hashlib",
         "mnemonic: BIP-39 (bip-0039.mediawiki, \"Generating the mnemonic\") with bip-0039/english.txt from bitcoin/bips at 7c7cb232, implementation checked against the 24 Trezor vectors in spec/vectors/bip39-english.json",
         "seedHex: PBKDF2-HMAC-SHA512, 2048 iterations, salt \"mnemonic\" (bip-0039.mediawiki, \"From mnemonic to seed\"), empty passphrase"
       ]
@@ -64,7 +64,7 @@
         "seedHex": "2dff8beddbf0adafdf7c82b75acd98b5efc2c6ccd381fe1418b4c98748d92943f0bd7fe80d04a5550946b1ad91494ae0dcd6d4aa0bd7f0ed79200a5203a96705"
       },
       "sources": [
-        "entropyHex: printf '%s' ROLLS | shasum -a 256, and /sbin/sha256sum, agreeing with Python hashlib",
+        "entropyHex: printf '%s' ROLLS | shasum -a 256, and sha256sum (GNU coreutils) 9.4, agreeing with Python hashlib",
         "mnemonic: BIP-39 (bip-0039.mediawiki, \"Generating the mnemonic\") with bip-0039/english.txt from bitcoin/bips at 7c7cb232, implementation checked against the 24 Trezor vectors in spec/vectors/bip39-english.json",
         "seedHex: PBKDF2-HMAC-SHA512, 2048 iterations, salt \"mnemonic\" (bip-0039.mediawiki, \"From mnemonic to seed\"), empty passphrase"
       ]
@@ -89,7 +89,7 @@
         "seedHex": "822c6fcb9581cfa8d5dcd60ace99d25250d0e74ab6f241b476a9255aeb1aabdddcbb2d1411d49a553dc1acc483e891502bff72385bf669373763f2c4aaab0a57"
       },
       "sources": [
-        "entropyHex: printf '%s' ROLLS | shasum -a 256, and /sbin/sha256sum, agreeing with Python hashlib",
+        "entropyHex: printf '%s' ROLLS | shasum -a 256, and sha256sum (GNU coreutils) 9.4, agreeing with Python hashlib",
         "mnemonic: BIP-39 (bip-0039.mediawiki, \"Generating the mnemonic\") with bip-0039/english.txt from bitcoin/bips at 7c7cb232, implementation checked against the 24 Trezor vectors in spec/vectors/bip39-english.json",
         "seedHex: PBKDF2-HMAC-SHA512, 2048 iterations, salt \"mnemonic\" (bip-0039.mediawiki, \"From mnemonic to seed\"), empty passphrase"
       ]
@@ -114,7 +114,7 @@
         "seedHex": "901d8d0160621653ce9bd28ac4044fea604bb94d6accc9aa2b7ec1f4df4311da443610e39ebe19f911dad811fcef3d494bf7c0daa82638dcbc74d01e47994497"
       },
       "sources": [
-        "entropyHex: printf '%s' ROLLS | shasum -a 256, and /sbin/sha256sum, agreeing with Python hashlib",
+        "entropyHex: printf '%s' ROLLS | shasum -a 256, and sha256sum (GNU coreutils) 9.4, agreeing with Python hashlib",
         "mnemonic: BIP-39 (bip-0039.mediawiki, \"Generating the mnemonic\") with bip-0039/english.txt from bitcoin/bips at 7c7cb232, implementation checked against the 24 Trezor vectors in spec/vectors/bip39-english.json",
         "seedHex: PBKDF2-HMAC-SHA512, 2048 iterations, salt \"mnemonic\" (bip-0039.mediawiki, \"From mnemonic to seed\"), empty passphrase"
       ]
@@ -139,7 +139,7 @@
         "seedHex": "7811669dbe93940237603d5806d19970f44de89fe65adac207fc6eec617348076fc584f3c8da6b2e81f7efae1548bfd1838d536a94b77ce2eb430ccde82241f9"
       },
       "sources": [
-        "entropyHex: printf '%s' ROLLS | shasum -a 256, and /sbin/sha256sum, agreeing with Python hashlib",
+        "entropyHex: printf '%s' ROLLS | shasum -a 256, and sha256sum (GNU coreutils) 9.4, agreeing with Python hashlib",
         "mnemonic: BIP-39 (bip-0039.mediawiki, \"Generating the mnemonic\") with bip-0039/english.txt from bitcoin/bips at 7c7cb232, implementation checked against the 24 Trezor vectors in spec/vectors/bip39-english.json",
         "seedHex: PBKDF2-HMAC-SHA512, 2048 iterations, salt \"mnemonic\" (bip-0039.mediawiki, \"From mnemonic to seed\"), empty passphrase"
       ]

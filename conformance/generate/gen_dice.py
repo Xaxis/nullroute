@@ -1,16 +1,18 @@
 """dice-to-entropy.json and dice-accounting.json.
 
 Digest: Python hashlib, cross-checked against `printf '%s' ROLLS | shasum -a 256`
-and `/sbin/sha256sum`. Mnemonic: BIP-39 algorithm written here from
+and the sha256sum on PATH, named in each case's sources. Mnemonic: BIP-39 algorithm written here from
 bip-0039.mediawiki with the English list from bitcoin/bips, checked against the
 Trezor vectors before use. Seed: PBKDF2-HMAC-SHA512, 2048 rounds, salt
 "mnemonic". Accounting ceiling: exact integer arithmetic.
 """
 import hashlib, json, subprocess, sys, unicodedata
 from fractions import Fraction
+from lib import sha256sum_tool
 
 OUT = sys.argv[1]
 ROOT = sys.argv[2]  # repository root, for the Trezor vectors
+SHA256SUM, SHA256SUM_NAME = sha256sum_tool()
 WORDS = open('src/english.txt').read().split()
 assert len(WORDS) == 2048
 
@@ -37,7 +39,7 @@ print('BIP-39 implementation matches', len(trezor), 'Trezor vectors')
 
 def shell_digest(rolls):
     a = subprocess.run(['sh', '-c', 'printf "%s" "$1" | shasum -a 256', 'sh', rolls], capture_output=True, text=True).stdout.split()[0]
-    b = subprocess.run(['sh', '-c', 'printf "%s" "$1" | /sbin/sha256sum', 'sh', rolls], capture_output=True, text=True).stdout.split()[0]
+    b = subprocess.run(['sh', '-c', 'printf "%s" "$1" | "$2"', 'sh', rolls, SHA256SUM], capture_output=True, text=True).stdout.split()[0]
     assert a == b
     return a
 
@@ -81,7 +83,7 @@ for cid, reqs, rolls, desc in accept:
                   'input': {'rolls': rolls, 'count': len(rolls)},
                   'expected': {'verdict': 'accept', 'entropyHex': digest, 'mnemonic': mn,
                                'seedHex': mnemonic_to_seed(mn).hex()},
-                  'sources': ["entropyHex: printf '%s' ROLLS | shasum -a 256, and /sbin/sha256sum, agreeing with Python hashlib",
+                  'sources': [f"entropyHex: printf '%s' ROLLS | shasum -a 256, and {SHA256SUM_NAME}, agreeing with Python hashlib",
                               'mnemonic: BIP-39 (bip-0039.mediawiki, "Generating the mnemonic") with bip-0039/english.txt from bitcoin/bips at 7c7cb232, implementation checked against the 24 Trezor vectors in spec/vectors/bip39-english.json',
                               'seedHex: PBKDF2-HMAC-SHA512, 2048 iterations, salt "mnemonic" (bip-0039.mediawiki, "From mnemonic to seed"), empty passphrase']})
 assert cases[0]['expected']['entropyHex'] == 'e56403e8522ddeae1b44a1e8148b1ba4d3b4c626ccf20980056eedcc7e0c0f35'

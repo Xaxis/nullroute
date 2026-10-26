@@ -1,15 +1,19 @@
 """manifest-root.json: expected manifests from the shell tools, not from nullroute.
 
 The tree is written to a scratch directory. The manifest is produced by
-`LC_ALL=C sort -z | xargs -0 sha256sum` (macOS /sbin/sha256sum, cross-checked
+`LC_ALL=C sort -z | xargs -0 sha256sum` (the sha256sum on PATH, cross-checked
 against `shasum -a 256`), and the root is `sha256sum` of the manifest file. A
 locale-aware order is produced with `LC_ALL=en_US.UTF-8 sort` and with Node's
-Intl.Collator('en-US') for comparison.
+Intl.Collator('en-US') for comparison. The sources name the tools and the
+system that ran them.
 """
 import base64, json, os, shutil, subprocess, sys
+from lib import os_name, sha256sum_tool
 
 OUT = sys.argv[1]
 TREE = os.path.abspath('manifest-tree')
+SHA256SUM, SHA256SUM_NAME = sha256sum_tool()
+SYSTEM = os_name()
 
 FILES = {
     'packages/B.txt': b'upper case B\n',
@@ -38,12 +42,12 @@ def run(cmd, env=None, stdin=None):
 def manifest_for(order_env):
     listing = b''.join(p.encode() + b'\0' for p in FILES)
     ordered = run(['sort', '-z'], env=order_env, stdin=listing)
-    a = run(['xargs', '-0', '/sbin/sha256sum'], stdin=ordered)
+    a = run(['xargs', '-0', SHA256SUM], stdin=ordered)
     b = run(['xargs', '-0', 'shasum', '-a', '256'], stdin=ordered)
     assert a == b, (a, b)
     with open(os.path.join(TREE, '..', 'MANIFEST.tmp'), 'wb') as f:
         f.write(a)
-    root = run(['/sbin/sha256sum', os.path.join(TREE, '..', 'MANIFEST.tmp')]).split()[0].decode()
+    root = run([SHA256SUM, os.path.join(TREE, '..', 'MANIFEST.tmp')]).split()[0].decode()
     return a, root
 
 
@@ -64,7 +68,7 @@ icu_manifest = ''.join(next(ln + '\n' for ln in c_manifest.decode().splitlines()
 import hashlib
 icu_root = hashlib.sha256(icu_manifest).hexdigest()
 print('C order:', c_order)
-print('macOS en_US.UTF-8 sort differs from C:', loc_manifest != c_manifest)
+print(SYSTEM, 'en_US.UTF-8 sort differs from C:', loc_manifest != c_manifest)
 print('ICU en-US order differs from C:', icu_order != c_order)
 assert icu_root != c_root
 
@@ -80,10 +84,10 @@ cases = [{
                     'and every byte value.'),
     'input': {'files': files},
     'expected': {'manifest': c_manifest.decode(), 'root': c_root, 'rootMustNotBe': sorted(set([icu_root, loc_root]) - {c_root})},
-    'sources': ["manifest: LC_ALL=C sort -z | xargs -0 sha256sum over the files as written (macOS /sbin/sha256sum and shasum -a 256 agree)",
+    'sources': [f"manifest: LC_ALL=C sort -z | xargs -0 sha256sum over the files as written ({SHA256SUM_NAME} and shasum -a 256 agree, on {SYSTEM})",
                 'root: sha256sum of the manifest file',
-                'rootMustNotBe: the root of the same lines ordered by Intl.Collator("en-US") (ICU in Node ' + subprocess.run(['node', '--version'], capture_output=True, text=True).stdout.strip() + ') and the root from LC_ALL=en_US.UTF-8 sort on macOS: examples of the locale-aware order SP-ATT-2 forbids'],
-    'notes': ('macOS `LC_ALL=en_US.UTF-8 sort` ' + ('orders these paths differently from C' if loc_manifest != c_manifest else 'orders these paths the same as C, so ICU is used for the locale example')),
+                'rootMustNotBe: the root of the same lines ordered by Intl.Collator("en-US") (ICU in Node ' + subprocess.run(['node', '--version'], capture_output=True, text=True).stdout.strip() + ') and the root from LC_ALL=en_US.UTF-8 sort on ' + SYSTEM + ': examples of the locale-aware order SP-ATT-2 forbids'],
+    'notes': (SYSTEM + ' `LC_ALL=en_US.UTF-8 sort` ' + ('orders these paths differently from C' if loc_manifest != c_manifest else 'orders these paths the same as C, so ICU is used for the locale example')),
 }]
 single = {'packages/only.txt': b'one file\n'}
 line = hashlib.sha256(single['packages/only.txt']).hexdigest() + '  packages/only.txt\n'
@@ -97,7 +101,7 @@ cases.append({
     'expected': {'manifest': line, 'root': hashlib.sha256(line.encode()).hexdigest()},
     'sources': ["printf 'one file\\n' | sha256sum, and sha256sum of the resulting one-line manifest"],
 })
-check = subprocess.run(['sh', '-c', "printf 'one file\\n' | /sbin/sha256sum"], capture_output=True, text=True).stdout.split()[0]
+check = subprocess.run(['sh', '-c', "printf 'one file\\n' | \"$1\"", 'sh', SHA256SUM], capture_output=True, text=True).stdout.split()[0]
 assert line.startswith(check)
 doc = json.load(open(f'{OUT}/manifest-root.json'))
 doc['cases'] = cases

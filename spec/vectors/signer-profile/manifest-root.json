@@ -89,15 +89,16 @@
         "manifest": "9c41a763273eb2fd5f65eedaf4a584ce1984a95a3fd1c01d8a78d24f40bfeb49  packages/B.txt\n1b8274812f672bd931e01d9ff3714fcf99f3767767d3006df168c7a539283050  packages/Zeta/z.ts\n3524b2593af2dcf30517e9c5eddbd934fa69c7073cd11dfef73df34c117eae01  packages/_private/x.ts\neb0aab4e6ef02868d92fd2a28677038092c761a8337a7f7a8e59560c5e2994c3  packages/a.txt\nf0a694b2ddcc769cec41395b4af1ea3e2d208d244d35e2f3ac3c22c1cd556f4a  packages/alpha-beta.txt\nb6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060  packages/alpha.txt\n3698225106e518e9669291c24e0722688dea1b5611e33ff3327f19fdd37f3c2f  packages/alpha/beta.txt\n6db0f6e1133a0debabee7bf20a2ad413d0279f891fcf74c05da928eb34863c6b  packages/alpha10.txt\n9257872a1fba978179a9b2b5ffb6ba54d9f06aad1d4c69169f89bbe4cd0d543b  packages/alpha9.txt\n2702d06f3cb671c7ef4bb53f96a1e1633a427e003f540eca2793cc135cf74da4  packages/alpha_beta.txt\n6612d9c94c2da8d2544e1188348fc7baf717ffff1bacde51929a166404a41ffc  packages/crlf.txt\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  packages/empty\ne421985de8560d2d2847361afd20f82baf462e4ae68b199b19d664a7e4c2428d  packages/no-final-newline.txt\ndab36c36bd1bd8668b2532b4a971169c7540aa036123e47dc9eb2badbc89f7fd  packages/with space.txt\n3aa90d290caacacb7e05dfed9583b07f52b60ae092b4b15679c759a08135a851  packages/émigré.txt\n40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880  spec/binary.bin\n",
         "root": "7d64a8c520e0d971f523bfc48083184e4883ab2fd2f0963596dff919bcae893f",
         "rootMustNotBe": [
+          "026034d83c51951d652ba7530e6bc4fd68499e4aa5140b04bc32220df9571688",
           "d11dfb7597c62b104adc43ae32d8b96a6cdbf8e700d0fa26cd3291e01e6ad135"
         ]
       },
       "sources": [
-        "manifest: LC_ALL=C sort -z | xargs -0 sha256sum over the files as written (macOS /sbin/sha256sum and shasum -a 256 agree)",
+        "manifest: LC_ALL=C sort -z | xargs -0 sha256sum over the files as written (sha256sum (GNU coreutils) 9.4 and shasum -a 256 agree, on Linux (glibc 2.39))",
         "root: sha256sum of the manifest file",
-        "rootMustNotBe: the root of the same lines ordered by Intl.Collator(\"en-US\") (ICU in Node v24.3.0) and the root from LC_ALL=en_US.UTF-8 sort on macOS: examples of the locale-aware order SP-ATT-2 forbids"
+        "rootMustNotBe: the root of the same lines ordered by Intl.Collator(\"en-US\") (ICU in Node v24.21.0) and the root from LC_ALL=en_US.UTF-8 sort on Linux (glibc 2.39): examples of the locale-aware order SP-ATT-2 forbids"
       ],
-      "notes": "macOS `LC_ALL=en_US.UTF-8 sort` orders these paths differently from C"
+      "notes": "Linux (glibc 2.39) `LC_ALL=en_US.UTF-8 sort` orders these paths differently from C"
     },
     {
       "id": "single-file",

@@ -24,6 +24,7 @@ WORK=${1:?usage: regenerate.sh <empty scratch directory>}
 BITCOIND=${BITCOIND:-bitcoind}
 BITCOIN_CLI=${BITCOIN_CLI:-bitcoin-cli}
 RPCPORT=${RPCPORT:-28443}
+export RPCPORT
 P2PPORT=${P2PPORT:-28444}
 
 BIPS=7c7cb232c228b258616ef64a3a079aa82996da8c

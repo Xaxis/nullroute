@@ -1,13 +1,38 @@
 """Helpers for generating signer-profile vectors. Python stdlib plus sipa's
 bech32 reference code (fetched into src/). Nothing here imports nullroute."""
-import base64, hashlib, json, sys, urllib.request
+import base64, hashlib, json, os, platform, shutil, subprocess, sys, urllib.request
 from decimal import Decimal
 
 sys.path.insert(0, 'src')  # sipa/bech32 ref/python/segwit_addr.py, fetched by regenerate.sh
 import segwit_addr  # noqa: E402
 
-RPC = 'http://127.0.0.1:28443'
+# regenerate.sh exports the port it started bitcoind on. This was a literal,
+# so the script's RPCPORT override started Core on one port and asked another.
+RPC = 'http://127.0.0.1:' + os.environ.get('RPCPORT', '28443')
 AUTH = base64.b64encode(b'u:p').decode()
+
+
+def sha256sum_tool():
+    """The sha256sum on PATH, and how a source line names it.
+
+    The dice and manifest generators ran macOS's /sbin/sha256sum by path, so
+    they ran on macOS and nowhere else, and every expected digest had been
+    checked by one implementation on one system. GNU coreutils prints its name
+    and version; the macOS tool takes no --version, so it is named by path.
+    """
+    path = shutil.which('sha256sum')
+    assert path, 'no sha256sum on PATH'
+    ver = subprocess.run([path, '--version'], capture_output=True, text=True)
+    first = ver.stdout.splitlines()[0] if ver.returncode == 0 and ver.stdout else ''
+    return path, first or f'{os_name()} {path}'
+
+
+def os_name():
+    """macOS, or Linux with its C library, for naming whose `sort` ran."""
+    if platform.system() == 'Darwin':
+        return 'macOS'
+    libc, version = platform.libc_ver()
+    return f'{platform.system()} ({libc} {version})' if libc else platform.system()
 
 
 def rpc(method, *params, wallet=None):
