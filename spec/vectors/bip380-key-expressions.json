@@ -1,0 +1,157 @@
+{
+  "note": "Extracted from the key expression part of the \"Test Vectors\" section of bip-0380.mediawiki by tools/extract-bip380-vectors.mjs. Each expression is copied verbatim from the last <tt> element on its bullet and each description is the text before it; nothing is decoded or re-encoded. \"valid\" and \"invalid\" are the two lists the BIP names. The checksum vectors from the same section are in spec/vectors/bip380-checksum.json.",
+  "source": "https://github.com/bitcoin/bips/blob/93607da01df07348dcd37ddf62d3cae350436783/bip-0380.mediawiki",
+  "bipsCommit": "93607da01df07348dcd37ddf62d3cae350436783",
+  "valid": [
+    {
+      "description": "Compressed public key",
+      "expression": "0260b2003c386519fc9eadf2b5cf124dd8eea4c4e68d5e154050a9346ea98ce600"
+    },
+    {
+      "description": "Uncompressed public key",
+      "expression": "04a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd5b8dec5235a0fa8722476c7709c02559e3aa73aa03918ba2d492eea75abea235"
+    },
+    {
+      "description": "Public key with key origin",
+      "expression": "[deadbeef/0h/0h/0h]0260b2003c386519fc9eadf2b5cf124dd8eea4c4e68d5e154050a9346ea98ce600"
+    },
+    {
+      "description": "Public key with key origin (<tt>'</tt> as hardened indicator)",
+      "expression": "[deadbeef/0'/0'/0']0260b2003c386519fc9eadf2b5cf124dd8eea4c4e68d5e154050a9346ea98ce600"
+    },
+    {
+      "description": "Public key with key origin (mixed hardened indicator)",
+      "expression": "[deadbeef/0'/0h/0']0260b2003c386519fc9eadf2b5cf124dd8eea4c4e68d5e154050a9346ea98ce600"
+    },
+    {
+      "description": "WIF uncompressed private key",
+      "expression": "5KYZdUEo39z3FPrtuX2QbbwGnNP5zTd7yyr2SC1j299sBCnWjss"
+    },
+    {
+      "description": "WIF compressed private key",
+      "expression": "L4rK1yDtCWekvXuE6oXD9jCYfFNV2cWRpVuPLBcCU2z8TrisoyY1"
+    },
+    {
+      "description": "Extended public key",
+      "expression": "xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL"
+    },
+    {
+      "description": "Extended public key with key origin",
+      "expression": "[deadbeef/0h/1h/2h]xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL"
+    },
+    {
+      "description": "Extended public key with derivation",
+      "expression": "[deadbeef/0h/1h/2h]xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL/3/4/5"
+    },
+    {
+      "description": "Extended public key with derivation and children",
+      "expression": "[deadbeef/0h/1h/2h]xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL/3/4/5/*"
+    },
+    {
+      "description": "Extended public key with hardened derivation and unhardened children",
+      "expression": "xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL/3h/4h/5h/*"
+    },
+    {
+      "description": "Extended public key with hardened derivation and children",
+      "expression": "xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL/3h/4h/5h/*h"
+    },
+    {
+      "description": "Extended public key with key origin, hardened derivation and children",
+      "expression": "[deadbeef/0h/1h/2]xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL/3h/4h/5h/*h"
+    },
+    {
+      "description": "Extended private key",
+      "expression": "xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc"
+    },
+    {
+      "description": "Extended private key with key origin",
+      "expression": "[deadbeef/0h/1h/2h]xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc"
+    },
+    {
+      "description": "Extended private key with derivation",
+      "expression": "[deadbeef/0h/1h/2h]xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc/3/4/5"
+    },
+    {
+      "description": "Extended private key with derivation and children",
+      "expression": "[deadbeef/0h/1h/2h]xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc/3/4/5/*"
+    },
+    {
+      "description": "Extended private key with hardened derivation and unhardened children",
+      "expression": "xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc/3h/4h/5h/*"
+    },
+    {
+      "description": "Extended private key with hardened derivation and children",
+      "expression": "xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc/3h/4h/5h/*h"
+    },
+    {
+      "description": "Extended private key with key origin, hardened derivation and children",
+      "expression": "[deadbeef/0h/1h/2]xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc/3h/4h/5h/*h"
+    }
+  ],
+  "invalid": [
+    {
+      "description": "Children indicator in key origin",
+      "expression": "[deadbeef/0h/0h/0h/*]0260b2003c386519fc9eadf2b5cf124dd8eea4c4e68d5e154050a9346ea98ce600"
+    },
+    {
+      "description": "Trailing slash in key origin",
+      "expression": "[deadbeef/0h/0h/0h/]0260b2003c386519fc9eadf2b5cf124dd8eea4c4e68d5e154050a9346ea98ce600"
+    },
+    {
+      "description": "Too short fingerprint",
+      "expression": "[deadbef/0h/0h/0h]0260b2003c386519fc9eadf2b5cf124dd8eea4c4e68d5e154050a9346ea98ce600"
+    },
+    {
+      "description": "Too long fingerprint",
+      "expression": "[deadbeeef/0h/0h/0h]0260b2003c386519fc9eadf2b5cf124dd8eea4c4e68d5e154050a9346ea98ce600"
+    },
+    {
+      "description": "Invalid hardened indicators",
+      "expression": "[deadbeef/0f/0f/0f]0260b2003c386519fc9eadf2b5cf124dd8eea4c4e68d5e154050a9346ea98ce600"
+    },
+    {
+      "description": "Invalid hardened indicators",
+      "expression": "[deadbeef/-0/-0/-0]0260b2003c386519fc9eadf2b5cf124dd8eea4c4e68d5e154050a9346ea98ce600"
+    },
+    {
+      "description": "Invalid hardened indicators",
+      "expression": "[deadbeef/0H/0H/0H]0260b2003c386519fc9eadf2b5cf124dd8eea4c4e68d5e154050a9346ea98ce600"
+    },
+    {
+      "description": "Invalid hardened indicators",
+      "expression": "[deadbeef/0h/1h/2]xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc/3H/4h/5h/*H"
+    },
+    {
+      "description": "Private key with derivation",
+      "expression": "L4rK1yDtCWekvXuE6oXD9jCYfFNV2cWRpVuPLBcCU2z8TrisoyY1/0"
+    },
+    {
+      "description": "Private key with derivation children",
+      "expression": "L4rK1yDtCWekvXuE6oXD9jCYfFNV2cWRpVuPLBcCU2z8TrisoyY1/*"
+    },
+    {
+      "description": "Derivation index out of range",
+      "expression": "xprv9s21ZrQH143K31xYSDQpPDxsXRTUcvj2iNHm5NUtrGiGG5e2DtALGdso3pGz6ssrdK4PFmM8NSpSBHNqPqm55Qn3LqFtT2emdEXVYsCzC2U/2147483648"
+    },
+    {
+      "description": "Invalid derivation index",
+      "expression": "xprv9s21ZrQH143K31xYSDQpPDxsXRTUcvj2iNHm5NUtrGiGG5e2DtALGdso3pGz6ssrdK4PFmM8NSpSBHNqPqm55Qn3LqFtT2emdEXVYsCzC2U/1aa"
+    },
+    {
+      "description": "Multiple key origins",
+      "expression": "[aaaaaaaa][aaaaaaaa]xprv9s21ZrQH143K31xYSDQpPDxsXRTUcvj2iNHm5NUtrGiGG5e2DtALGdso3pGz6ssrdK4PFmM8NSpSBHNqPqm55Qn3LqFtT2emdEXVYsCzC2U/2147483647'/0"
+    },
+    {
+      "description": "Missing key origin start",
+      "expression": "aaaaaaaa]xprv9s21ZrQH143K31xYSDQpPDxsXRTUcvj2iNHm5NUtrGiGG5e2DtALGdso3pGz6ssrdK4PFmM8NSpSBHNqPqm55Qn3LqFtT2emdEXVYsCzC2U/2147483647'/0"
+    },
+    {
+      "description": "Non hex fingerprint",
+      "expression": "[gaaaaaaa]xprv9s21ZrQH143K31xYSDQpPDxsXRTUcvj2iNHm5NUtrGiGG5e2DtALGdso3pGz6ssrdK4PFmM8NSpSBHNqPqm55Qn3LqFtT2emdEXVYsCzC2U/2147483647'/0"
+    },
+    {
+      "description": "Key origin with no public key",
+      "expression": "[deadbeef]"
+    }
+  ]
+}

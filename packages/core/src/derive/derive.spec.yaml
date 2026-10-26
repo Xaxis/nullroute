@@ -59,6 +59,17 @@ invariants:
     tests:
       - packages/core/test/vectors.bip32.test.ts::both-hardened-notations-agree
 
+  - id: INV-BIP32-3
+    statement: >
+      parseExtendedKey refuses every extended key in BIP-32 test vector 5, all
+      sixteen, while a valid key still parses. The extraction of that vector
+      from the BIP text is checked by the one property its keys share: every
+      key but the one the BIP calls an invalid checksum passes its own
+      base58check.
+    tests:
+      - packages/core/test/vectors.bip32.test.ts::extraction-is-faithful
+      - packages/core/test/vectors.bip32.test.ts::refuses-every-published-invalid-extended-key
+
   - id: INV-PATH-1
     statement: >
       Path normalisation maps both hardened notations to the canonical
@@ -83,6 +94,10 @@ vectors:
     file: spec/vectors/bip32.json
     sha256: 05eb0497e7069b0f6cc6ea3490e063476bb7b46c8f60c9f73b73e755b87d2b1e
     source: https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
+  - name: BIP-32 test vector 5, the invalid extended keys, extracted from the BIP text
+    file: spec/vectors/bip32-invalid-keys.json
+    sha256: ef725eb0503be0eb9037d605b6d50dec86966bb22261758797aac9a44290807c
+    source: https://github.com/bitcoin/bips/blob/c0644a054fd1568ecbfc9c2b656ad5200b16ff74/bip-0032.mediawiki
 
 threats:
   - INV-KEY-1
@@ -105,6 +120,11 @@ security_notes: >
   Vector 4 of BIP-32 is included specifically because implementations have
   historically mishandled a private key with a leading zero byte, producing a
   divergent chain.
+
+  Vector 5 is the list of extended keys every wallet must refuse. Through
+  parseExtendedKey all sixteen are refused by the library's own checks. The
+  path an extended key from outside actually takes is the descriptor parser,
+  which accepted six of them until INV-DPARSE-3 was extended to cover them.
 
 references:
   - BIP-32, Hierarchical Deterministic Wallets

@@ -119,6 +119,16 @@ invariants:
       - packages/core/test/descriptor.multisig.test.ts::still-bounds-bare-p2sh-at-fifteen
       - packages/core/test/descriptor.multisig.test.ts::refuses-a-quorum-it-could-not-derive-an-address-for
 
+  - id: INV-MULTI-14
+    statement: >
+      An uncompressed key in wsh() or sh(wsh()) multisig is refused before any
+      address is derived, as BIP-382 requires of every key under wsh(), because
+      a spend revealing one is non-standard and would not be relayed. Bare sh()
+      multisig, which is legacy script, still takes one and derives what
+      bitcoinjs-lib derives.
+    tests:
+      - packages/core/test/descriptor.multisig.test.ts::refuses-an-uncompressed-key-under-wsh
+
 threats:
   - INV-PSBT-2
   - INV-MULTI-2

@@ -250,11 +250,15 @@ describe('core.descriptor.parse script expressions', () => {
   /*
    * INV-DPARSE-8. One key expression, one spelling.
    *
-   * BIP-380 allows ' and h and H for a hardened step, and a fingerprint is hex
-   * and therefore case-insensitive. This parser has always normalised all of
-   * them; what was missing was a way to WRITE the normal form back out, so
+   * BIP-380 allows ' and h for a hardened step, and a fingerprint is hex and
+   * therefore case-insensitive. This parser has always normalised all of them;
+   * what was missing was a way to WRITE the normal form back out, so
    * assembleQuorum emitted keys as the user typed them and the same quorum got
    * a different checksum on each co-signer's device.
+   *
+   * H is not a legal form. This test used to list it as one, and BIP-380 has
+   * listed it as invalid since bitcoin/bips 3cc71d7c, so it is refused rather
+   * than rewritten (INV-DPARSE-3).
    */
   it('writes-one-spelling-for-every-legal-form-of-the-same-key', () => {
     const xpub =
@@ -264,10 +268,17 @@ describe('core.descriptor.parse script expressions', () => {
     for (const written of [
       canonical,
       `[73C5DA0A/48h/0h/0h/2h]${xpub}/<0;1>/*`,
-      `[73c5da0A/48H/0'/0h/2']${xpub}/<0;1>/*`,
+      `[73c5da0A/48h/0'/0h/2']${xpub}/<0;1>/*`,
       `  ${canonical}  `,
     ]) {
       expect(canonicalKeyExpression(written)).toBe(canonical)
+    }
+    for (const written of [
+      `[73c5da0A/48H/0'/0h/2']${xpub}/<0;1>/*`,
+      `[73c5da0a/48'/0'/0'/2']${xpub}/<0H;1>/*`,
+      `[73c5da0a/48'/0'/0'/2']${xpub}/0H/*`,
+    ]) {
+      expect(() => canonicalKeyExpression(written), written.slice(-12)).toThrow(/with H/)
     }
   })
 

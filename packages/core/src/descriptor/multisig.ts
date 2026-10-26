@@ -131,6 +131,24 @@ export function multisigShape(descriptor: Descriptor): MultisigShape {
     )
   }
   /*
+   * COMPRESSED KEYS ONLY UNDER wsh(). INV-MULTI-14.
+   *
+   * BIP-382: every key under wsh() must produce a compressed public key, and it
+   * lists wsh(pk()) over an uncompressed key as invalid. A spend from a witness
+   * script holding one is non-standard, so ordinary nodes will not relay it,
+   * and funds received at its address are stuck until a miner includes the
+   * spend by hand. The parser accepts a 65-byte key anywhere and
+   * @scure/btc-signer builds the script without complaint, so wsh(multi()) and
+   * sh(wsh(multi())) over one derived an address. Bare sh() is legacy script,
+   * where an uncompressed key is standard, so it keeps them.
+   */
+  if (kind !== 'sh' && body.keys.some((key) => key.kind === 'raw' && key.byteLength === 65)) {
+    throw new DescriptorParseError(
+      `An uncompressed public key cannot go under wsh(). BIP-382 requires compressed keys in a ` +
+        `witness script, because a spend that reveals an uncompressed one is non-standard.`
+    )
+  }
+  /*
    * BARE sh() ONLY, and this said `kind !== 'wsh'`.
    *
    * The reasoning in the sentence is right and the condition did not match it.

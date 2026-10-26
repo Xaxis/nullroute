@@ -26,6 +26,7 @@
 import { hexToBytes } from '@noble/hashes/utils.js'
 import { sha256 } from '@noble/hashes/sha2.js'
 import { base58 } from '@scure/base'
+import { HDKey } from '@scure/bip32'
 import { HARDENED_OFFSET, PathError, parsePath } from '../derive/path.js'
 import { verifyChecksum } from './checksum.js'
 
@@ -178,6 +179,25 @@ function splitArguments(input: string): string[] {
   return parts
 }
 
+/**
+ * Refuse `H` as a hardened marker in a key expression. INV-DPARSE-3.
+ *
+ * BIP-380 writes a hardened step as `h` or `'`, and since bitcoin/bips
+ * 3cc71d7c (July 2025) its test vectors list `[deadbeef/0H/0H/0H]` among the
+ * invalid key expressions, which is what Bitcoin Core has always done. This
+ * parser accepted `H` and normalised it, so it read descriptors that Core and
+ * the BIP both refuse, and a quorum registered from one could not be imported
+ * by a coordinator that follows either. parsePath still reads `H` in a plain
+ * BIP-32 path, which BIP-380 does not govern; this is the descriptor rule.
+ */
+function refuseCapitalH(text: string, where: string): void {
+  if (!text.includes('H')) return
+  throw new DescriptorParseError(
+    `${where} ${JSON.stringify(text)} marks a hardened step with H. BIP-380 allows only h ` +
+      `or ', and Bitcoin Core refuses H.`
+  )
+}
+
 /** Parse a `[fingerprint/path]` prefix, returning it and the remainder. */
 function parseOrigin(input: string): { origin: KeyOrigin | undefined; rest: string } {
   if (!input.startsWith('[')) return { origin: undefined, rest: input }
@@ -203,6 +223,7 @@ function parseOrigin(input: string): { origin: KeyOrigin | undefined; rest: stri
   // leading "m". parsePath wants one, and normalising here means both hardened
   // notations work exactly as they do everywhere else.
   const rawPath = slash === -1 ? '' : inner.slice(slash + 1)
+  refuseCapitalH(rawPath, 'Key origin path')
   let path = 'm'
   if (rawPath.length > 0) {
     try {
@@ -283,6 +304,49 @@ function assertExtendedKey(value: string): void {
         `the end exist to catch exactly this.`
     )
   }
+
+  /*
+   * A CHECKSUM PROVES TRANSCRIPTION, NOT THAT THE BYTES ARE A KEY. INV-DPARSE-3.
+   *
+   * BIP-32 test vector 5 lists extended keys every wallet must refuse, and six
+   * of them begin "xpub" and carry a valid checksum: private key bytes under a
+   * public version, a key byte of 04 or 01, a point not on the curve, and depth
+   * zero with a parent fingerprint or child index. All six parsed here. The
+   * library refused them later, when an address was derived, which is the late
+   * failure the note above exists to prevent, and keyPayload compared them as
+   * keys in the meantime.
+   *
+   * The version is checked against the public versions this parser reads, and
+   * the key byte against the two that begin a compressed public key, before
+   * the library sees it: with a 02 or 03 there the library takes the bytes as
+   * a public key and its private version, given as 0, is never consulted. The
+   * library then applies the rest of BIP-32 (the point, the depth-zero rule),
+   * and it is the same call derive-key.ts makes, so what this accepts is what
+   * derivation accepts.
+   */
+  const version =
+    (((body[0] ?? 0) << 24) | ((body[1] ?? 0) << 16) | ((body[2] ?? 0) << 8) | (body[3] ?? 0)) >>> 0
+  if (!STANDARD_VERSION.has(version)) {
+    throw new DescriptorParseError(
+      `Key ${JSON.stringify(value.slice(0, 24))} passes its checksum and its version bytes are ` +
+        `not those of an extended public key this device reads.`
+    )
+  }
+  if (body[45] !== 0x02 && body[45] !== 0x03) {
+    throw new DescriptorParseError(
+      `Key ${JSON.stringify(value.slice(0, 24))} passes its checksum and does not hold a ` +
+        `compressed public key: its key data begins ${(body[45] ?? 0).toString(16).padStart(2, '0')} ` +
+        `rather than 02 or 03. A 00 there is private key material under a public key's version.`
+    )
+  }
+  try {
+    HDKey.fromExtendedKey(value, { public: version, private: 0 })
+  } catch (err) {
+    throw new DescriptorParseError(
+      `Key ${JSON.stringify(value.slice(0, 24))} passes its checksum and is not a valid BIP-32 ` +
+        `extended public key: ${(err as Error).message}.`
+    )
+  }
 }
 
 function parseDerivation(suffix: string): {
@@ -291,6 +355,7 @@ function parseDerivation(suffix: string): {
   multipath: number[] | undefined
 } {
   if (suffix.length === 0) return { path: '', ranged: false, multipath: undefined }
+  refuseCapitalH(suffix, 'Derivation')
 
   let working = suffix
   let ranged = false
@@ -330,7 +395,7 @@ function parseDerivation(suffix: string): {
       throw new DescriptorParseError('Multipath must offer at least two alternatives.')
     }
     multipath = options.map((option) => {
-      const hardened = /['hH]$/.test(option)
+      const hardened = /['h]$/.test(option)
       const digits = hardened ? option.slice(0, -1) : option
       if (!/^[0-9]+$/.test(digits)) {
         throw new DescriptorParseError(
@@ -764,9 +829,10 @@ function standardPrefix(extended: string): string {
 /**
  * One key expression, written the way every device would write it.
  *
- * WHY THIS EXISTS. BIP-380 says a hardened step may be spelled `'`, `h` or `H`,
- * and BIP-32 fingerprints are hex, which is case-insensitive. The parser
- * already knows this: `[73C5DA0A/48h/0h/0h/2h]xpub…` and
+ * WHY THIS EXISTS. BIP-380 says a hardened step may be spelled `'` or `h` (it
+ * lists `H` as invalid, and the parser refuses it), and BIP-32 fingerprints are
+ * hex, which is case-insensitive. The parser already knows this:
+ * `[73C5DA0A/48h/0h/0h/2h]xpub…` and
  * `[73c5da0a/48'/0'/0'/2']xpub…` parse to byte-identical objects, which is
  * INV-DPARSE-2.
  *
@@ -808,10 +874,10 @@ export function canonicalKeyExpression(text: string): string {
    * because the parse does not keep enough to rebuild it: a multipath element
    * is replaced by a literal `0` at its position in `path`, and nothing records
    * which `0` it was. Only the hardened marker is rewritten, which is the one
-   * thing in a suffix that has three spellings. The round trip below is what
+   * thing in a suffix that has two spellings. The round trip below is what
    * makes taking it from the text safe.
    */
-  const suffix = afterOrigin.slice(typed.length).replace(/(\d)[hH](?=$|[/>;])/g, "$1'")
+  const suffix = afterOrigin.slice(typed.length).replace(/(\d)h(?=$|[/>;])/g, "$1'")
 
   const canonical = `${origin}${material}${suffix}`
   // The guard compares against the typed key with only its prefix replaced:

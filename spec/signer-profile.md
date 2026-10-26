@@ -818,7 +818,7 @@ Deployed.
 
 | Document | File | Status (version) | Used for | nullroute |
 | --- | --- | --- | --- | --- |
-| BIP-32 | `bip-0032.mediawiki` | Deployed | Key derivation | Vectors in `spec/vectors/bip32.json` |
+| BIP-32 | `bip-0032.mediawiki` | Deployed | Key derivation | Vectors 1 to 4 in `spec/vectors/bip32.json`. Vector 5, the invalid extended keys, extracted into `spec/vectors/bip32-invalid-keys.json` (bips `c0644a05`): all 16 refused by `parseExtendedKey` (INV-BIP32-3) and by every path a key from outside takes, through the descriptor parser (INV-DPARSE-3) |
 | BIP-39 | `bip-0039.mediawiki` | Deployed | Mnemonic, ENT = 256 | Vectors in `spec/vectors/bip39-english.json` |
 | BIP-44, 49, 84, 86 | `bip-0044`, `bip-0049`, `bip-0084`, `bip-0086` | Deployed | Single-key account paths | Vectors in `spec/vectors/bip84-86-addresses.json` for 84 and 86 |
 | BIP-48 | `bip-0048.mediawiki` | Deployed | Multisig account paths | Used |
@@ -829,7 +829,8 @@ Deployed.
 | BIP-174 | `bip-0174.mediawiki` | Deployed (1.4.4) | PSBT | Required. Vectors extracted into `spec/vectors/bip174-psbt.json` (bips `d1d2042c`): all 20 invalid refused, all 10 valid parse, both walk-through signer steps reproduced |
 | BIP-370 | `bip-0370.mediawiki` | Deployed | PSBT version 2 | Not supported. This profile requires version 0 only. nullroute refuses every version 2 PSBT the BIP publishes, with a message asking for a version 0 export (INV-PSBT-19, `spec/vectors/bip370-psbt.json`) |
 | BIP-340, 341, 342 | `bip-0340`, `bip-0341`, `bip-0342` | Deployed | Taproot signing and scripts | SP-SIG-1, SP-REV-3. Vectors in `spec/vectors/bip340-test-vectors.csv` and `spec/vectors/bip341-wallet-test-vectors.json` (bips `d1d2042c`); BIP-342 publishes none |
-| BIP-380, 381, 382, 383, 386, 387 | `bip-0380` and the rest | Deployed | Descriptors, including `multi_a` and `sortedmulti_a` | Checksum required unless explicitly overridden (`core.descriptor.parse`); vectors in `spec/vectors/bip380-checksum.json` |
+| BIP-380, 381, 382, 383, 386, 387 | `bip-0380` and the rest | Deployed | Descriptors, including `multi_a` and `sortedmulti_a` | Checksum required unless explicitly overridden (`core.descriptor.parse`); checksum vectors in `spec/vectors/bip380-checksum.json`. Key expressions extracted into `spec/vectors/bip380-key-expressions.json` (bips `93607da0`): the 10 valid ones with no private key or hardened wildcard parse to what they name, the other 11 are refused by design, and all 16 invalid ones are refused, `H` as a hardened marker included (INV-DPARSE-1, INV-DPARSE-3, INV-DPARSE-4). BIP-381 to 386 vectors extracted into `spec/vectors/bip381-descriptors.json` to `bip386-descriptors.json` (INV-DESC-9, INV-DESC-10): of 52 valid descriptors, 3 derive the published script (`sh(wsh(multi()))`, `tr(KEY)`, `tr(KEY,pk(KEY))`), 23 parse and are refused by the evaluator as kinds it does not derive, and 26 hold a private key and are refused; all 32 invalid ones are refused, 14 by the parser and 18 by the evaluator. BIP-387's vectors are not run |
+| BIP-384, 385 | `bip-0384`, `bip-0385` | Deployed | `combo()`, `raw()`, `addr()` | Not supported. They parse and nothing is derived from them; their published vectors run with the rows above |
 | BIP-389 | `bip-0389.mediawiki` | Draft | Multipath key expressions | A subset: nullroute accepts the multipath element only as the last step before the wildcard, where BIP-389 allows further `/NUM` steps after it (`bip-0389.mediawiki` lines 42-46) |
 | BIP-322 | `bip-0322.mediawiki` | Complete (2.0.0) | Message signing | INV-MSG-6 reproduces the ECDSA signature published in `bip-0322/basic-test-vectors.json` byte for byte |
 | BIP-329 | `bip-0329.mediawiki` | Draft | Label import and export | Labels never decide ownership (INV-DAEMON-21) |
@@ -846,10 +847,14 @@ where the BIP provides them. Check: nullroute's vectors in `spec/vectors/`;
 `research/handoff-D.md`, "BIP vectors for SP-DEP-1", lists per BIP which
 published vectors nullroute includes and which it does not. BIP-143, BIP-174,
 BIP-340 and BIP-341 are now included (INV-PSBT-9, INV-PSBT-18, INV-SIG-6 to
-INV-SIG-10, INV-TR-6). Where nullroute's own path cannot take a vector's input
-(raw keys rather than a seed, a tapleaf it refuses, or a script with
-OP_CODESEPARATOR), the test runs the library call that path makes and says so;
-the invariant statements name each such limit.
+INV-SIG-10, INV-TR-6), and so are BIP-32 test vector 5 and the BIP-380 to
+BIP-386 key expression and descriptor vectors (INV-BIP32-3, INV-DPARSE-1,
+INV-DPARSE-3, INV-DPARSE-4, INV-DESC-9, INV-DESC-10). Most valid descriptor
+vectors are kinds nullroute does not derive from, or hold a private key; the
+section 7 row says how many of each. Where nullroute's own path cannot take a
+vector's input (raw keys rather than a seed, a tapleaf it refuses, or a script
+with OP_CODESEPARATOR), the test runs the library call that path makes and says
+so; the invariant statements name each such limit.
 
 ## 8. Out of scope
 

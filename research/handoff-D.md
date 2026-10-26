@@ -156,7 +156,7 @@ means values copied into a test; **none** means no published value is checked.
 
 | BIP | Publishes vectors | In nullroute | Not included |
 | --- | --- | --- | --- |
-| 32 | Test vectors 1 to 5 | Vendored: vectors 1 to 4, every chain (`spec/vectors/bip32.json`) | Vector 5, invalid extended keys |
+| 32 | Test vectors 1 to 5 | Vendored: vectors 1 to 4, every chain (`spec/vectors/bip32.json`). Vector 5 extracted (`spec/vectors/bip32-invalid-keys.json`, bips `c0644a05`, by `tools/extract-bip32-vectors.mjs`): all 16 invalid keys refused by `parseExtendedKey` (INV-BIP32-3) and through the key expression, descriptor, coordinator file, quorum assembly and canonical rewrite paths (INV-DPARSE-3). Six that begin `xpub` and pass their checksum were accepted by the descriptor parser before this; the parser now applies BIP-32's checks | None |
 | 39 | Trezor `vectors.json`, and a Japanese file | Vendored: all 24 English vectors, four directions | Other languages in the same file; the Japanese file |
 | 44, 48 | No (path tables only) | Not applicable | |
 | 49 | Yes | None | All |
@@ -173,19 +173,33 @@ means values copied into a test; **none** means no published value is checked.
 | 340 | `test-vectors.csv`, 19 rows | Vendored (`spec/vectors/bip340-test-vectors.csv`, bips `d1d2042c`): all 8 signing rows through `@noble/curves` `schnorr.sign` with their own aux_rand, all 19 through `schnorr.verify` including the 10 expected false (INV-SIG-6) | None. Signing rows with nonzero aux_rand exercise the primitive, not nullroute's path, which fixes aux_rand to zero (INV-SIG-1) |
 | 341 | `wallet-test-vectors.json` | Vendored (`spec/vectors/bip341-wallet-test-vectors.json`, bips `d1d2042c`): 7 scriptPubKey cases, 5 through `deriveTaprootAddresses` and all 7 through the `p2tr` call it makes (INV-TR-6); 7 key path inputs, sighash and signature through `parsePsbt` and `Transaction.sign` with `AUX_RAND` (INV-SIG-7) | Script path spending (the file publishes none); `sigMsg` and the intermediate hashes, which the library does not expose; the auxiliary fully signed transaction |
 | 322 | Basic and generated files | Inline: some basic vectors, including the RFC 6979 "Hello World" signature | Most tx hashes, non-p2wpkh and error cases, the generated file |
-| 380 | Checksums and key expressions | Vendored: all 8 checksums. Inline: 9 valid key forms, checked as "parses" only | Private key forms (refused by design), all 21 invalid key expressions |
-| 381, 382, 383, 387 | Yes | None | All |
-| 386 | Yes | Two input keys reused; scripts compared with `@scure/btc-signer`, not the BIP | All expected scripts |
+| 380 | Checksums and key expressions | Vendored: all 8 checksums. Key expressions extracted (`spec/vectors/bip380-key-expressions.json`, bips `93607da0`, by `tools/extract-bip380-vectors.mjs`): the 10 of 21 valid ones with no private key or hardened wildcard parse to the key, origin, derivation and range they name (INV-DPARSE-1); the other 11 are refused by design (INV-DPARSE-4, INV-DPARSE-3); all 16 invalid ones are refused (INV-DPARSE-3). `[deadbeef/0H/0H/0H]` was accepted before this; `H` is now refused | Nothing unrun. Three invalid cases are refused for their `xprv` before the defect the BIP names is reached; the test also runs each with the public half of that key |
+| 381 to 386 | Valid descriptors with scripts, invalid descriptors | Extracted, one file per BIP (`spec/vectors/bip381-descriptors.json` to `bip386-descriptors.json`, by `tools/extract-descriptor-vectors.mjs`): 52 valid, 32 invalid, every case listed with its outcome (INV-DESC-9, INV-DESC-10). Valid: 3 derive the published script through `deriveQuorumAddresses`; 23 are kinds it refuses (single-key, bare `multi()`, `combo()`, `raw()`, `addr()`), each parsed and its scripts rebuilt by the test from the parse tree; 26 hold a private key and are refused at parse. Invalid: 14 refused at parse, 18 parsed and refused by the evaluator. `tr()` over an uncompressed key derived an address before this (fixed, INV-TR-7), as did `wsh(multi())` over one (fixed, INV-MULTI-14) | No single-key, `combo()`, `raw()` or `addr()` evaluator exists, so those scripts check the parse, not a derivation path the device has |
+| 387 | Yes | None | All |
 | 389 | Yes | None; one form refused by design | All |
 | 329 | Eight-line export | None | All |
 | 388 | Yes | Not used by nullroute | All |
 
 The largest gaps against SP-DEP-1's own list (BIP-32, BIP-39, BIP-174 and the
-descriptor documents): no invalid-input vector for BIP-32 or BIP-380, and no
-descriptor-to-script vector for BIPs 381 to 387. BIP-174 is now covered, as
-above. For signing, the BIP-340, BIP-341 and BIP-143 vectors now run, so
-segwit v0 signatures are checked against published values and not only for
-determinism and against bitcoinjs-lib.
+descriptor documents) were no invalid-input vector for BIP-32 or BIP-380, and
+no descriptor-to-script vector for BIPs 381 to 387. BIP-174 is now covered, as
+above, and so are BIP-32 vector 5, the BIP-380 key expressions and BIPs 381 to
+386, as in the rows above; BIP-387 is still not run. For signing, the BIP-340,
+BIP-341 and BIP-143 vectors now run, so segwit v0 signatures are checked
+against published values and not only for determinism and against
+bitcoinjs-lib.
+
+The BIP-32, 380 and 381 to 386 rows were updated from files fetched at the
+latest `bitcoin/bips` commit touching each BIP: `c0644a05` (32), `93607da0`
+(380), `66dbdb47` (381), `a31ee298` (382), `803c9849` (383), `24903248` (384),
+`4b63b2eb` (385) and `9d735fb3` (386). Running them found four disagreements,
+each fixed in core: six invalid BIP-32 keys accepted by the descriptor parser
+(INV-DPARSE-3), `H` accepted as a hardened marker (INV-DPARSE-3), `tr()` over
+an uncompressed key deriving an address (INV-TR-7), and the sibling
+`wsh(multi())` over an uncompressed key, not itself a published vector
+(INV-MULTI-14). Eighteen published invalid descriptors still parse and are
+refused only by the evaluator, because the parser leaves placement and
+key-context rules to it; whether the parser should enforce them is open.
 
 The BIP-143, 174, 340 and 341 rows were updated after this survey, from files
 fetched at bips `d1d2042c857f337c147785c1d02cfd9f9d3c84fb`, not `7c7cb232`.

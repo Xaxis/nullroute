@@ -219,8 +219,8 @@ describe('core.descriptor.assemble', () => {
   /*
    * The same quorum, spelled three legal ways, is one checksum.
    *
-   * BIP-380 lets a hardened step be written ' or h or H, and a fingerprint is
-   * hex, so it is case-insensitive. The parser has always known that and
+   * BIP-380 lets a hardened step be written ' or h, and a fingerprint is hex,
+   * so it is case-insensitive. The parser has always known that and
    * normalises all of them to the same object. The assembler did not use it:
    * it sorted the keys canonically and then wrote each one out as the user had
    * typed it, so three co-signers who spell their paths differently got

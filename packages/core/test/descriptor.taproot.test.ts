@@ -112,6 +112,27 @@ describe('core.descriptor.taproot', () => {
     ).toThrow(/not a tr\(\) one/)
   })
 
+  /**
+   * INV-TR-7. BIP-386 lists tr() over an uncompressed key as invalid. Its x
+   * coordinate was taken instead, so the descriptor derived the address of
+   * tr(INTERNAL). Refused as the internal key and in every leaf kind. The key
+   * is BIP-386's own, the uncompressed form of INTERNAL.
+   */
+  it('refuses-an-uncompressed-key-under-tr', () => {
+    const uncompressed = `04${INTERNAL}5b8dec5235a0fa8722476c7709c02559e3aa73aa03918ba2d492eea75abea235`
+    for (const body of [
+      `tr(${uncompressed})`,
+      `tr(${A},pk(${uncompressed}))`,
+      `tr(${A},multi_a(1,${B},${uncompressed}))`,
+      `tr(${A},sortedmulti_a(1,${B},${uncompressed}))`,
+    ]) {
+      expect(() => address(body), body.slice(0, 20)).toThrow(/cannot go under tr\(\)/)
+    }
+    // The compressed form of the same key is allowed, and is the same address
+    // as the x-only one.
+    expect(address(`tr(03${INTERNAL})`)).toBe(address(`tr(${INTERNAL})`))
+  })
+
   // INV-TR-5. The quorum is summarised only when the answer is unambiguous.
   it('reports-a-single-multisig-leaf-and-refuses-to-guess-between-two', () => {
     expect(taprootQuorum(parse(`tr(${INTERNAL})`))).toBeUndefined()

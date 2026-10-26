@@ -99,6 +99,17 @@ invariants:
       - packages/core/test/vectors.bip341.test.ts::derives-the-published-taproot-address-from-a-descriptor
       - packages/core/test/vectors.bip341.test.ts::matches-every-published-output-key-merkle-root-and-control-block
 
+  - id: INV-TR-7
+    statement: >
+      An uncompressed key under tr(), as the internal key or in a pk(),
+      multi_a() or sortedmulti_a() leaf, is refused before any address is
+      derived, as BIP-386 requires and its published invalid tr() over an
+      uncompressed key shows. It was converted to its x coordinate instead,
+      so that invalid descriptor derived the address of the x-only one.
+    tests:
+      - packages/core/test/descriptor.taproot.test.ts::refuses-an-uncompressed-key-under-tr
+      - packages/core/test/vectors.bip386.test.ts::refuses-every-published-invalid-descriptor
+
 vectors:
   - name: BIP-341 wallet test vectors
     file: spec/vectors/bip341-wallet-test-vectors.json

@@ -266,6 +266,40 @@ describe('core.descriptor.multisig', () => {
     const shape = multisigShape(parse(body))
     expect(shape).toMatchObject({ kind: 'wsh', threshold: 2, total: 3, sorted: true })
   })
+
+  /**
+   * INV-MULTI-14. BIP-382 forbids an uncompressed key anywhere under wsh(),
+   * and lists wsh(pk()) over one as invalid. This device derives no pk() under
+   * wsh(), so that vector was refused anyway (vectors.bip382.test.ts); the
+   * multisig shapes it does derive took the same key and built an address on
+   * it. The key is BIP-382's own, the uncompressed form of 03a34b99...
+   */
+  it('refuses-an-uncompressed-key-under-wsh', () => {
+    const uncompressed =
+      '04a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd5b8dec5235a0fa8722476c7709c02559e3aa73aa03918ba2d492eea75abea235'
+    const node = NODES[0]
+    if (node === undefined) throw new Error('no cosigner')
+    const compressed = Buffer.from(node.derive(0).derive(0).publicKey).toString('hex')
+    const inner = `sortedmulti(1,${compressed},${uncompressed})`
+
+    for (const body of [`wsh(${inner})`, `sh(wsh(${inner}))`]) {
+      expect(
+        () => deriveMultisigAddresses(parse(body), { network: MAINNET }),
+        body.slice(0, 9)
+      ).toThrow(/uncompressed public key cannot go under wsh/)
+    }
+    // Bare sh() is legacy script, where an uncompressed key is standard, and
+    // it still derives what bitcoinjs-lib derives.
+    const [address] = deriveMultisigAddresses(parse(`sh(multi(1,${compressed},${uncompressed}))`), {
+      network: MAINNET,
+      count: 1,
+    })
+    const ms = bitcoin.payments.p2ms({
+      m: 1,
+      pubkeys: [Buffer.from(compressed, 'hex'), Buffer.from(uncompressed, 'hex')],
+    })
+    expect(address?.address).toBe(bitcoin.payments.p2sh({ redeem: ms }).address)
+  })
 })
 
 /**

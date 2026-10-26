@@ -59,9 +59,22 @@ export interface DeriveTaprootOptions {
 type TapLeaf = ReturnType<typeof btc.p2tr_pk> | ReturnType<typeof btc.p2tr_ms>
 type TapScriptTree = ReturnType<typeof btc.taprootListToTree>
 
-/** x-only, which is what taproot uses everywhere. */
+/**
+ * x-only, which is what taproot uses everywhere.
+ *
+ * AN UNCOMPRESSED KEY IS REFUSED, NOT CUT DOWN. INV-TR-7. BIP-386 says every
+ * key under tr() must produce an x-only key and lists tr() over an uncompressed
+ * key among its invalid descriptors. The parser accepts a 65-byte raw key
+ * anywhere, and this used to take bytes 1 to 33 of it, its x coordinate, so
+ * that published invalid descriptor derived a taproot address here.
+ */
 function xOnly(pubkey: Uint8Array): Uint8Array {
-  return pubkey.length === 32 ? pubkey : pubkey.slice(1, 33)
+  if (pubkey.length === 32) return pubkey
+  if (pubkey.length === 33) return pubkey.slice(1, 33)
+  throw new DescriptorParseError(
+    `A ${String(pubkey.length)}-byte key cannot go under tr(). BIP-386 allows x-only and ` +
+      `compressed keys there, and an uncompressed key is refused rather than converted.`
+  )
 }
 
 /**

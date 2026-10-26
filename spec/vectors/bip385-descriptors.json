@@ -1,0 +1,58 @@
+{
+  "note": "Extracted from the \"Test Vectors\" section of bip-0385.mediawiki by tools/extract-descriptor-vectors.mjs. Descriptors and scripts are copied verbatim from their <tt> elements; nothing is decoded or re-encoded. \"valid\" holds each valid descriptor with the scripts listed under it in order, or, where the BIP groups them under child labels, with \"children\". \"invalid\" holds each invalid descriptor with the description before it.",
+  "source": "https://github.com/bitcoin/bips/blob/4b63b2eb99dc6f40f1793044c7add57367af9381/bip-0385.mediawiki",
+  "bipsCommit": "4b63b2eb99dc6f40f1793044c7add57367af9381",
+  "bip": 385,
+  "valid": [
+    {
+      "descriptor": "raw(deadbeef)",
+      "scripts": [
+        "deadbeef"
+      ]
+    },
+    {
+      "descriptor": "raw(512103a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd4104a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd5b8dec5235a0fa8722476c7709c02559e3aa73aa03918ba2d492eea75abea23552ae)",
+      "scripts": [
+        "512103a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd4104a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd5b8dec5235a0fa8722476c7709c02559e3aa73aa03918ba2d492eea75abea23552ae"
+      ]
+    },
+    {
+      "descriptor": "raw(a9149a4d9901d6af519b2a23d4a2f51650fcba87ce7b87)",
+      "scripts": [
+        "a9149a4d9901d6af519b2a23d4a2f51650fcba87ce7b87"
+      ]
+    },
+    {
+      "descriptor": "addr(3PUNyaW7M55oKWJ3kDukwk9bsKvryra15j)",
+      "scripts": [
+        "a914eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee87"
+      ]
+    }
+  ],
+  "invalid": [
+    {
+      "description": "Non-hex script",
+      "descriptor": "raw(asdf)"
+    },
+    {
+      "description": "Invalid address",
+      "descriptor": "addr(asdf)"
+    },
+    {
+      "description": "<tt>raw</tt> nested in <tt>sh</tt>",
+      "descriptor": "sh(raw(deadbeef))"
+    },
+    {
+      "description": "<tt>raw</tt> nested in <tt>wsh</tt>",
+      "descriptor": "wsh(raw(deadbeef))"
+    },
+    {
+      "description": "<tt>addr</tt> nested in <tt>sh</tt>",
+      "descriptor": "sh(addr(3PUNyaW7M55oKWJ3kDukwk9bsKvryra15j))"
+    },
+    {
+      "description": "<tt>addr</tt> nested in <tt>wsh</tt>",
+      "descriptor": "wsh(addr(3PUNyaW7M55oKWJ3kDukwk9bsKvryra15j))"
+    }
+  ]
+}

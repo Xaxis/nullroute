@@ -25,8 +25,12 @@ algorithm: >
 
   A key expression is an optional [fingerprint/path] origin followed by either a
   raw hex key of 32, 33 or 65 bytes, or an extended public key with an optional
-  derivation suffix. Both hardened notations are accepted and normalised to the
-  apostrophe form. A trailing /* marks a range; BIP-389 /<a;b> multipath is
+  derivation suffix. An extended key must pass its base58check and be what
+  BIP-32 calls a valid extended public key: a public version this parser
+  reads, a compressed point on the curve, and no parent fingerprint or child
+  index at depth zero. Both hardened notations BIP-380 allows, h and ', are
+  accepted and normalised to the apostrophe form; H, which BIP-380 lists as
+  invalid, is refused. A trailing /* marks a range; BIP-389 /<a;b> multipath is
   recorded as alternatives, and read only as the last step before the
   wildcard. Anywhere else it is refused, because derivation substitutes the
   chosen branch into the final step.
@@ -39,9 +43,16 @@ algorithm: >
 
 invariants:
   - id: INV-DPARSE-1
-    statement: The key expression forms BIP-380 lists as valid are accepted.
+    statement: >
+      Every key expression BIP-380 publishes as valid that holds no private key
+      and no hardened wildcard, ten of twenty one, parses to the key, origin,
+      derivation and range it names. The extraction of those vectors from the
+      BIP text is checked by every extended key in it passing its own
+      base58check.
     tests:
       - packages/core/test/descriptor.parse.test.ts::accepts-bip380-key-expressions
+      - packages/core/test/vectors.bip380.test.ts::extraction-is-faithful
+      - packages/core/test/vectors.bip380.test.ts::parses-every-published-valid-public-key-expression
 
   - id: INV-DPARSE-2
     statement: >
@@ -52,20 +63,32 @@ invariants:
 
   - id: INV-DPARSE-3
     statement: >
-      Malformed origins, unknown key formats, hardened wildcards and malformed
-      multipath are refused rather than interpreted, and a key that starts like
-      an extended key is checked against its own base58check rather than being
-      accepted on the strength of its first four characters.
+      Malformed origins, unknown key formats, hardened wildcards, H as a
+      hardened marker and malformed multipath are refused rather than
+      interpreted, and a key that starts like an extended key is checked
+      against its own base58check and against BIP-32's rules for an extended
+      public key rather than being accepted on the strength of its first four
+      characters. Every key expression BIP-380 publishes as invalid, all
+      sixteen, is refused, and so is every key in BIP-32 test vector 5, all
+      sixteen, through each path a key from outside takes: a key expression,
+      a descriptor, a coordinator file, an assembled quorum and the canonical
+      rewrite.
     tests:
       - packages/core/test/descriptor.parse.test.ts::refuses-what-it-does-not-understand
       - packages/core/test/descriptor.parse.test.ts::refuses-multipath-anywhere-but-the-last-step
       - packages/core/test/descriptor.parse.test.ts::refuses-malformed-or-unknown-scripts
       - packages/core/test/descriptor.parse.test.ts::refuses-a-key-that-only-starts-like-an-extended-key
+      - packages/core/test/vectors.bip380.test.ts::refuses-every-published-invalid-key-expression
+      - packages/core/test/vectors.bip380.test.ts::refuses-the-published-forms-it-declines-by-design
+      - packages/core/test/vectors.bip32.test.ts::every-import-path-refuses-every-published-invalid-extended-key
 
   - id: INV-DPARSE-4
-    statement: A descriptor containing an extended private key is refused.
+    statement: >
+      A descriptor containing an extended private key or a WIF private key is
+      refused, including the nine valid BIP-380 key expressions that hold one.
     tests:
       - packages/core/test/descriptor.parse.test.ts::refuses-extended-private-keys
+      - packages/core/test/vectors.bip380.test.ts::refuses-the-published-forms-it-declines-by-design
 
   - id: INV-DPARSE-5
     statement: >
@@ -101,9 +124,10 @@ invariants:
   - id: INV-DPARSE-8
     statement: >
       A key expression has one written form. The spellings BIP-380 treats as
-      equal (a hardened step as ' or h or H, and a fingerprint in any case) are
-      written back out identically, and a rewrite that would change what the
-      key means throws rather than being emitted.
+      equal (a hardened step as ' or h, and a fingerprint in any case) are
+      written back out identically, a key spelled with H is refused rather
+      than rewritten, and a rewrite that would change what the key means
+      throws rather than being emitted.
     tests:
       - packages/core/test/descriptor.parse.test.ts::writes-one-spelling-for-every-legal-form-of-the-same-key
       - packages/core/test/descriptor.parse.test.ts::leaves-a-key-it-cannot-improve-exactly-as-it-was
@@ -118,6 +142,16 @@ invariants:
       however its keys were spelled, and one Bitcoin Core will import.
     tests:
       - packages/core/test/descriptor.assemble.test.ts::writes-one-checksum-whichever-slip132-prefix-a-key-was-given-in
+
+vectors:
+  - name: BIP-380 key expression test vectors, extracted from the BIP text
+    file: spec/vectors/bip380-key-expressions.json
+    sha256: be33d8abe86eea69cee43b36462c221c3d0ccdb97d99579572403b0e9ed1c010
+    source: https://github.com/bitcoin/bips/blob/93607da01df07348dcd37ddf62d3cae350436783/bip-0380.mediawiki
+  - name: BIP-32 test vector 5, the invalid extended keys, extracted from the BIP text
+    file: spec/vectors/bip32-invalid-keys.json
+    sha256: ef725eb0503be0eb9037d605b6d50dec86966bb22261758797aac9a44290807c
+    source: https://github.com/bitcoin/bips/blob/c0644a054fd1568ecbfc9c2b656ad5200b16ff74/bip-0032.mediawiki
 
 threats:
   - INV-PSBT-1
@@ -144,7 +178,25 @@ security_notes: >
   WIF private keys are not accepted at all, and an extended private key is
   refused with an explicit message rather than parsed and ignored.
 
+  THE PARSER DOES NOT CHECK CONTEXT. Where a script may appear (sh() only at
+  the top, wpkh() and wsh() only at the top or inside sh(), tr(), combo(),
+  raw() and addr() only at the top) and which keys a context allows
+  (compressed only under wpkh() and wsh(), no uncompressed key under tr()) are
+  left to the evaluator that consumes the tree, which refuses anything it does
+  not derive. Of the thirty two invalid descriptors BIPs 381 to 386 publish,
+  eighteen parse and are refused there, each listed in its vector test
+  (INV-DESC-10). That holds only while every path from a descriptor to an
+  address goes through deriveQuorumAddresses or the functions it dispatches
+  to. The 'descriptor.parse' IPC method reports such a descriptor as parsed.
+
+  H AS A HARDENED MARKER WAS ACCEPTED until the BIP-380 vectors were run. The
+  BIP has listed it as invalid since bitcoin/bips 3cc71d7c (July 2025), and
+  Bitcoin Core never accepted it, so this parser read descriptors no
+  coordinator following either would import. The derivation path parser
+  outside descriptors still reads H.
+
 references:
+  - BIP-32, Hierarchical Deterministic Wallets, test vector 5
   - BIP-380, Output Script Descriptors General Operation
   - BIP-381, Non-Segwit Output Script Descriptors
   - BIP-382, Segwit Output Script Descriptors
