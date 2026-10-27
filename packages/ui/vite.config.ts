@@ -137,7 +137,7 @@ export default defineConfig({
     // The device build has to be reproducible: its hash is covered by
     // MANIFEST.lock and displayed at boot.
     sourcemap: false,
-    rollupOptions: {
+    rolldownOptions: {
       output: {
         // Deterministic chunk names rather than content-hash suffixes that vary
         // with unrelated changes.
