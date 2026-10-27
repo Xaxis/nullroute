@@ -62,9 +62,13 @@ jobs:
       - name: Boot it, and boot a modified copy
         run: make image-boot-test
 
+      # Into a directory the runner owns. The build container writes
+      # out/system as root, so nothing can be added beside the card there.
       - name: Checksums
         run: |
-          cd out/system
+          mkdir card
+          cp out/system/nullroute.img out/system/root-hash out/system/console-intact.log card/
+          cd card
           sha256sum nullroute.img root-hash > SHA256SUMS
           cat SHA256SUMS
           echo "verity root hash: $(cat root-hash)"
@@ -73,11 +77,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: nullroute-card-UNSIGNED-${{ github.sha }}
-          path: |
-            out/system/nullroute.img
-            out/system/root-hash
-            out/system/SHA256SUMS
-            out/system/console-intact.log
+          path: card/
           if-no-files-found: error
           retention-days: 14
 
