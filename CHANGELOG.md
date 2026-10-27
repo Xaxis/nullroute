@@ -10,6 +10,10 @@ first, and the website's status page renders it.
 
 ## October 2026
 
+- **2026-10-27** A BSMS file's first address is checked against this device's
+  own derivation, and a file stating another is refused (INV-COORD-7), as
+  BIP-129 asks of a signer. It had been shown as an unchecked claim, so two of
+  Sparrow's tampered test files were read; they are refused now.
 - **2026-10-27** Whether to sign is decided by one function, `signVerdict`, that
   the signer, the review screen's Sign button and the conformance adapter all
   call (INV-SIG-11). The signer had read `signable` alone; it now also holds a

@@ -402,6 +402,9 @@ export function multisigMethods(ctx: HandlerContext): MethodTable {
         format: imported.format,
         name: imported.name ?? null,
         unverifiedClaims: imported.unverifiedClaims,
+        // Checked against this device's own derivation in core, or the file
+        // was refused (INV-COORD-7). Null when the file stated none.
+        firstAddress: imported.firstAddress ?? null,
         descriptors: imported.descriptors.map((entry) => ({
           descriptor: entry.descriptor,
           change: entry.change ?? null,

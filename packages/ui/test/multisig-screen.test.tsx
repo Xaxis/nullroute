@@ -265,6 +265,42 @@ describe('ui.screens.multisig coordinator files', () => {
   })
 
   /**
+   * INV-COORD-7. A BSMS first address reaches this screen only after the
+   * daemon derived the same one, so it is shown as this device's own and
+   * never among the claims. BIP-129 has every signer show it so the signers
+   * can confirm the same address with each other.
+   */
+  it('shows-a-bsms-first-address-as-its-own-once-checked', async () => {
+    const first = 'bc1qrgc6p3kylfztu06ysl752gwwuekhvtfh9vr7zg43jvu60mutamcsv948ej'
+    mount({
+      onImportFile: vi.fn().mockResolvedValue({
+        ...IMPORTED,
+        format: 'bsms',
+        name: null,
+        unverifiedClaims: ['Paths line says /0/*,/1/*.'],
+        firstAddress: first,
+      }),
+    })
+    fireEvent.change(screen.getByTestId('multisig-input'), { target: { value: 'BSMS 1.0' } })
+    fireEvent.click(screen.getByTestId('multisig-import'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('multisig-imported-first-address').textContent).toBe(first)
+    })
+    expect(screen.getByTestId('multisig-imported-claims').textContent).not.toContain(first)
+  })
+
+  it('shows-no-first-address-when-the-file-stated-none', async () => {
+    mount()
+    fireEvent.change(screen.getByTestId('multisig-input'), { target: { value: 'Name: Family' } })
+    fireEvent.click(screen.getByTestId('multisig-import'))
+    await waitFor(() => {
+      expect(screen.getByTestId('multisig-imported-name')).toBeTruthy()
+    })
+    expect(screen.queryByTestId('multisig-imported-first-address')).toBeNull()
+  })
+
+  /**
    * INV-UI-47. The bundle is offered once something is registered, and says
    * that a quorum every device agreed to is still invisible to the coordinator.
    */

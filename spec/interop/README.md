@@ -88,11 +88,11 @@ device reads derives the same addresses as Core.
 | `sparrow/bsms/multisig-2.bsms` | `2fdc121f5d3655e5de266708486a83c6934421fa4d55e1b24fdf2e55271334f5` | Reads; bc1qrgc6p3... (importWallet2) | Reads; derives the address BIP-129 publishes |
 | `sparrow/bsms/multisig-3.bsms` | `258ed2684da014289df95c6f7ab4367530f01223654e3995371dbc0bac4cfd57` | Refuses: reads `multi()` as sorted, which derives another address (importWallet3) | Reads `multi()` as written and derives 3GzMtF..., the address BIP-129 publishes |
 | `sparrow/bsms/multisig-4.bsms` | `b8ad2bd0bba218ec7de0753e53d18722bb7331a32b50d2d0261a61a9b141436b` | Reads; the stated address is uppercase (importWallet4) | Reads; derives the same address |
-| `sparrow/bsms/multisig-5.bsms` | `d8d09bf2de19d00254a09e194e52de8b1000e57682a241659b8003350572d06a` | Refuses restrictions /2/*,/3/* | Expands to /2/* and /3/* and labels the second change. The stated address is for /0/0 and is surfaced, not checked |
+| `sparrow/bsms/multisig-5.bsms` | `d8d09bf2de19d00254a09e194e52de8b1000e57682a241659b8003350572d06a` | Refuses restrictions /2/*,/3/* | Refuses: its address is /0/0's and its first restriction is /2/*, which BIP-129 says the first address comes from (INV-COORD-7) |
 | `sparrow/bsms/multisig-6.bsms` | `098d545bc60d890b13a805574cc840185b24f9ca85958989cc72cc31a4be647a` | Reads, treating a template with "No path restrictions" as /0/*,/1/* | Refuses: BIP-129 requires a template to come with restrictions (INV-COORD-3) |
 | `sparrow/bsms/multisig-7.bsms` | `db149a6451eb51b4591bb1b32cae64e3661eed5b983c2d643373e9640e3f2229` | Refuses /2/*,/3/* | Expands to /2/* and /3/*; there is no first address to surface |
 | `sparrow/bsms/multisig-8.bsms` | `3d359d1fe97ee152539101a01d8f9ccaa1c2fbebddcd1f9e383a35ef8eeffca0` | Reads a fixed /0/0 descriptor | Reads it as one fixed address, the one stated |
-| `sparrow/bsms/multisig-9.bsms` | `1148c93a7a029c698ac4c36741b88c48ce00a7efa455f928b34f9a11b37a368d` | Refuses: the stated address is not the descriptor's | Reads it and surfaces the stated address as unverified; its own address differs (INV-COORD-4) |
+| `sparrow/bsms/multisig-9.bsms` | `1148c93a7a029c698ac4c36741b88c48ce00a7efa455f928b34f9a11b37a368d` | Refuses: the stated address is not the descriptor's | Refuses: the stated address is not the descriptor's, and the refusal names the one it derives (INV-COORD-7) |
 | `sparrow/bsms/multisig-10.bsms` | `bfdec2a801ba09ba83c2c50471084e4dfefc776f85c59d966667d6dab035a7a3` | Reads a fixed P2SH-P2WSH descriptor | Reads it; derives the stated 3MmNkJ... |
 | `sparrow/bsms/multisig-11.bsms` | `712fae55f188d70f88999cdc9a73a9cae513eebf474ea181e7321a54ec0e88d6` | Refuses: fixed on /5/7, outside its receive and change chains | Reads it as one fixed address |
 | `sparrow/bsms/multisig-12.bsms` | `d8959c13601a5ccffab2f26e220a99e3076e0892d23bd35d55a489877826b71f` | Reads; change address 3 is bc1qr47z3t... | Reads it as one fixed address, that one |
@@ -101,7 +101,7 @@ device reads derives the same addresses as Core.
 | `sparrow/bsms/multisig-15.bsms` | `b55d777cb23ef7e27c14fb750ac3a09588d1d365a9da2e07b3355e95332071c4` | Refuses: the stated address is for different keys | Refuses: template without restrictions (INV-COORD-3) |
 | `sparrow/bsms/multisig-16.bsms` | `2be959323123943f81b06be32fbface5a5ac9a74df5c71a5bfd96e23889542de` | Reads, treating the blank restrictions line as none | Refuses: template without restrictions (INV-COORD-3) |
 | `sparrow/bsms/multisig-17.bsms` | `5ecfd3674741d5fb0a44ad160456390284f7ee759b6e875b48c5a8bd909ed372` | Refuses: "not-an-address" | Refuses: template without restrictions (INV-COORD-3) |
-| `sparrow/bsms/multisig-address-mismatch.bsms` | `b500aeab7ee1f09958a50b918334bf71d157b28603004446a2a39db2d55ea070` | Refuses: the stated address is not the descriptor's | Reads it and surfaces the stated address as unverified; its own address differs (INV-COORD-4) |
+| `sparrow/bsms/multisig-address-mismatch.bsms` | `b500aeab7ee1f09958a50b918334bf71d157b28603004446a2a39db2d55ea070` | Refuses: the stated address is not the descriptor's | Refuses: the stated address is not the descriptor's, and the refusal names the one it derives (INV-COORD-7) |
 | `sparrow/bsms/multisig-threshold-zero.bsms` | `40385c0217217cee789b93b0c6109331c926546a27279f3ed9e42453770888c7` | Refuses | Refuses: threshold 0 is out of range |
 
 ### Formats nullroute does not read
@@ -151,13 +151,16 @@ these is hidden by a test: each is asserted as it is.
    Coldcard format only. Sparrow reads both.
 2. **Specter DIY's `addwallet` text and a `Receive:`-labelled descriptor are
    refused.** Both wrap a descriptor this device would read on its own.
-3. **The first address in a BSMS file is not compared.** BIP-129 has the signer
-   check it. This module surfaces it as an unverified claim, and the comparison
-   is left to the user on the import screen. Sparrow refuses
-   `multisig-9.bsms` and `multisig-address-mismatch.bsms` for the mismatch;
-   nullroute reads them.
-4. **A BSMS file without a first address is read** (`multisig-14.bsms`), though
-   BIP-129 says the line must be there.
+3. **The first address in a BSMS file is compared, and was not until 27
+   October 2026.** It used to be surfaced as an unverified claim with the
+   comparison left to the user, and nullroute read `multisig-9.bsms` and
+   `multisig-address-mismatch.bsms`, which Sparrow refuses for the mismatch.
+   Both are refused now (INV-COORD-7), and so is `multisig-5.bsms`, whose
+   address is /0/0's beside restrictions that start at /2/*.
+4. **A BSMS file without a first address is read** (`multisig-14.bsms`,
+   `multisig-7.bsms`), though BIP-129 says the line must be there. With
+   nothing to compare, this device's own first address is what the signers
+   confirm with each other.
 5. **BSMS restrictions other than /0/*,/1/* are expanded as given** and the
    second is labelled change, which BIP-129 does not say. Fixed descriptors on
    other chains are read as one fixed address. Sparrow refuses all of these.

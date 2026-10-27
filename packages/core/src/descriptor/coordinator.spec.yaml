@@ -26,7 +26,10 @@ algorithm: >
   wrapper. Bitcoin Core's `internal` flag, where present, is the only reliable
   statement of which branch a descriptor covers. BIP-129 BSMS expands its `/**`
   shorthand into the explicit paths the file names, and a template without
-  path restrictions is refused, as BIP-129 requires.
+  path restrictions is refused, as BIP-129 requires. A BSMS file's stated first
+  address is compared with index 0 of the first path restriction, derived here
+  on each address family, and a file whose statement matches none of them is
+  refused, as BIP-129 has the signer do. A file with no address line is read.
 
   A Coldcard setup file carries no descriptor at all, so one is ASSEMBLED from
   Policy, Derivation and Format. All three are required and none is defaulted.
@@ -86,12 +89,29 @@ invariants:
   - id: INV-COORD-4
     statement: >
       What a file asserts about itself is surfaced as an unverified claim and
-      never used to decide anything. An exported bundle carries the canonical
-      descriptor and reads back identically.
+      never used to accept anything. The one statement this module checks, a
+      BSMS first address, can only refuse a file (INV-COORD-7). An exported
+      bundle carries the canonical descriptor and reads back identically.
     tests:
       - packages/core/test/descriptor.coordinator.test.ts::surfaces-what-it-did-not-verify
       - packages/core/test/descriptor.coordinator.test.ts::exports-a-bundle-a-coordinator-can-read
-      - packages/core/test/interop.fixtures.test.ts::surfaces-a-real-bsms-first-address-without-believing-it
+
+  - id: INV-COORD-7
+    statement: >
+      A BSMS file that states a first address is read only when that address
+      is index 0 of its first path restriction, or the one address of a fixed
+      descriptor, as derived by this device on mainnet, testnet or regtest. Any
+      other stated address refuses the file and names the address the
+      descriptor derives. A file with no first address line is read, and its
+      first address is this device's own.
+    tests:
+      - packages/core/test/descriptor.coordinator.test.ts::refuses-a-bsms-first-address-its-descriptor-does-not-derive
+      - packages/core/test/interop.fixtures.test.ts::refuses-real-bsms-files-whose-first-address-is-not-their-own
+      - packages/core/test/interop.fixtures.test.ts::reads-real-bsms-files-to-the-addresses-bip-129-states
+      - packages/ui/test/multisig-screen.test.tsx::shows-a-bsms-first-address-as-its-own-once-checked
+      - packages/ui/test/multisig-screen.test.tsx::shows-no-first-address-when-the-file-stated-none
+      - packages/daemon/test/bsms-import.ipc.test.ts::returns-the-first-address-core-checked
+      - packages/daemon/test/bsms-import.ipc.test.ts::refuses-a-file-whose-first-address-is-not-its-own
 
   - id: INV-COORD-5
     statement: >

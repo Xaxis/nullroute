@@ -26,6 +26,8 @@
 
 import { parseDescriptor, type Descriptor } from './parse.js'
 import { withChecksum } from './checksum.js'
+import { deriveQuorumAddresses } from './quorum-addresses.js'
+import { networkById } from '../network/networks.js'
 
 export class CoordinatorFormatError extends Error {
   constructor(message: string) {
@@ -60,6 +62,13 @@ export interface CoordinatorImport {
    * a user can notice a disagreement, and are never used to decide anything.
    */
   readonly unverifiedClaims: readonly string[]
+  /**
+   * The wallet's first address as a BSMS file stated it, present only once it
+   * has been checked against this device's own derivation and matched
+   * (INV-COORD-7). A file whose statement does not match is refused, so this
+   * is never a claim.
+   */
+  readonly firstAddress?: string
 }
 
 const MAX_INPUT_BYTES = 100_000
@@ -269,10 +278,14 @@ function wrapperFor(format: string): (inner: string) => string {
  * A version line, a descriptor template using `/**` for both branches, the
  * paths that template expands to, and a first address the coordinator computed.
  *
- * That address is NOT trusted. It is the coordinator's claim about what the
- * descriptor derives to, and checking it against our own derivation is the
- * caller's job, which is the entire point of BIP-129's final round. It is
- * surfaced as an unverified claim rather than silently ignored.
+ * THAT ADDRESS IS CHECKED HERE, AND IT CAN ONLY REFUSE (INV-COORD-7). BIP-129
+ * has the signer verify it because "an attacker who tampers with the multisig
+ * configuration must also change the wallet's first address". This device used
+ * to show it as an unverified claim and leave the comparison to the user, while
+ * Sparrow refused the same files outright. A check whose only outcome is a
+ * refusal cannot make a file more trusted, so it does not break INV-COORD-4:
+ * the descriptor still decides every address, and the statement can only stop
+ * the import.
  */
 function importBsms(text: string): CoordinatorImport {
   const lines = text
@@ -324,14 +337,46 @@ function importBsms(text: string): CoordinatorImport {
   })
 
   const claims = [`Paths line says ${paths}.`]
-  if (firstAddress !== undefined && firstAddress.length > 0) {
-    claims.push(
-      `The coordinator says the first address is ${firstAddress}. Compare it against what ` +
-        `this device derives; nothing here has checked it.`
-    )
+  const receive = descriptors[0]
+  if (firstAddress === undefined || firstAddress.length === 0 || receive === undefined) {
+    // BIP-129 says the line must be there. Without it there is nothing to
+    // compare, and this device's own derivation is what the user confirms with
+    // the other signers either way, so the file is read rather than refused.
+    return { format: 'bsms', descriptors, unverifiedClaims: claims }
   }
+  checkFirstAddress(receive.parsed, firstAddress, branches[0] ?? 'the descriptor')
+  return { format: 'bsms', descriptors, unverifiedClaims: claims, firstAddress }
+}
 
-  return { format: 'bsms', descriptors, unverifiedClaims: claims }
+/**
+ * Whether a stated first address is this descriptor's first address.
+ *
+ * BIP-129: "If there are path restrictions, use the first address from the
+ * first path restriction", so it is index 0 of the first descriptor the file
+ * expands to, or the one address a fixed descriptor has.
+ *
+ * The file does not say which network it is for, so the address is derived
+ * once per address family (mainnet, testnet, regtest) and any one matching is
+ * a match: the question is whether the descriptor is the one the coordinator
+ * computed from, and a script is the same script on every network. Compared
+ * as written and lowercased, because bech32 may be written in capitals and
+ * base58 may not be changed at all.
+ */
+function checkFirstAddress(descriptor: Descriptor, stated: string, restriction: string): void {
+  const derived = (['mainnet', 'testnet3', 'regtest'] as const).map(
+    (id) => deriveQuorumAddresses(descriptor, { network: networkById(id), count: 1 })[0]?.address
+  )
+  if (derived.some((address) => address === stated || address === stated.toLowerCase())) return
+  // The refusal shows the address in the family the file wrote, so the two
+  // can be compared by eye: a mainnet address beside a testnet one differs in
+  // every character and says nothing about which key changed.
+  const family = /^bcrt1/i.test(stated) ? 2 : /^(tb1|[mn2])/i.test(stated) ? 1 : 0
+  throw new CoordinatorFormatError(
+    `That BSMS file says the wallet's first address is ${stated}, and its descriptor derives ` +
+      `${derived[family] ?? 'nothing'} from ${restriction}. BIP-129 states that address so a signer ` +
+      `can tell the setup was altered after the coordinator computed it. Ask the coordinator ` +
+      `for the file again before registering anything.`
+  )
 }
 
 /**

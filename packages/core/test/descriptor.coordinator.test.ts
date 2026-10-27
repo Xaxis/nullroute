@@ -19,6 +19,8 @@ import {
   importCoordinatorFile,
 } from '../src/descriptor/coordinator.js'
 import { parseDescriptor } from '../src/descriptor/parse.js'
+import { deriveQuorumAddresses } from '../src/descriptor/quorum-addresses.js'
+import { MAINNET } from '../src/network/networks.js'
 
 const X1 =
   'xpub6DzhyrnFFYQ1HimDiM388xHnDiRPNdZJFBmmxge3Y1WWcHLtMJLfRuhRHqnQCPbTj3fGKTuKFLHzzwpJkp5Dtc3UtLKZKaVZe1yqMBXd6Vk'
@@ -85,13 +87,45 @@ describe('core.descriptor.coordinator', () => {
 
   it('reads-a-bsms-file-and-expands-both-branches', () => {
     const template = `wsh(sortedmulti(2,[4369050f/48h/0h/0h/2h]${X1}/**,[5c9e228d/48h/0h/0h/2h]${X2}/**))`
-    const result = importCoordinatorFile(`BSMS 1.0\n${template}\n/0/*,/1/*\nbc1qexample\n`)
+    // No first address line: what it is checked against is the test below.
+    const result = importCoordinatorFile(`BSMS 1.0\n${template}\n/0/*,/1/*\n`)
 
     expect(result.format).toBe('bsms')
     expect(result.descriptors).toHaveLength(2)
     expect(result.descriptors[0]?.descriptor).toContain('/0/*')
     expect(result.descriptors[1]?.descriptor).toContain('/1/*')
     expect(result.descriptors[1]?.change).toBe(true)
+  })
+
+  /**
+   * INV-COORD-7. BIP-129's first address is checked, and it can only refuse.
+   * It used to be surfaced as a claim with "nothing here has checked it",
+   * which left the one check BIP-129 gives a signer to the user's eye.
+   */
+  it('refuses-a-bsms-first-address-its-descriptor-does-not-derive', () => {
+    const template = `wsh(sortedmulti(2,[4369050f/48h/0h/0h/2h]${X1}/**,[5c9e228d/48h/0h/0h/2h]${X2}/**))`
+    const unstated = importCoordinatorFile(`BSMS 1.0\n${template}\n/0/*,/1/*\n`)
+    const first = deriveQuorumAddresses(unstated.descriptors[0]!.parsed, {
+      network: MAINNET,
+      count: 1,
+    })[0]!.address
+
+    const stated = importCoordinatorFile(`BSMS 1.0\n${template}\n/0/*,/1/*\n${first}\n`)
+    expect(stated.firstAddress).toBe(first)
+    // Not a claim any more: it has been checked.
+    expect(stated.unverifiedClaims.join(' ')).not.toContain(first)
+
+    // The first path restriction decides which address is first.
+    const change = deriveQuorumAddresses(unstated.descriptors[1]!.parsed, {
+      network: MAINNET,
+      count: 1,
+    })[0]!.address
+    for (const wrong of [change, 'bc1qcoordinatorclaim']) {
+      const attempt = (): unknown =>
+        importCoordinatorFile(`BSMS 1.0\n${template}\n/0/*,/1/*\n${wrong}\n`)
+      expect(attempt, wrong).toThrow(CoordinatorFormatError)
+      expect(attempt, wrong).toThrow(`its descriptor derives ${first} from /0/*`)
+    }
   })
 
   it('still-reads-a-bare-descriptor', () => {
@@ -244,16 +278,14 @@ describe('core.descriptor.coordinator', () => {
 
   /**
    * INV-COORD-4. What a file says about itself is a hint, never evidence.
-   *
-   * BIP-129 has the coordinator state the first address precisely so the signer
-   * can disagree with it. Surfacing it as an unverified claim is the whole
-   * point; consuming it as truth would defeat the round it belongs to.
+   * Its paths line and a Coldcard file's policy and format lines are surfaced
+   * and decide nothing.
    */
   it('surfaces-what-it-did-not-verify', () => {
     const template = `wsh(sortedmulti(2,[4369050f/48h/0h/0h/2h]${X1}/**,[5c9e228d/48h/0h/0h/2h]${X2}/**))`
-    const bsms = importCoordinatorFile(`BSMS 1.0\n${template}\n/0/*,/1/*\nbc1qcoordinatorclaim\n`)
-    expect(bsms.unverifiedClaims.join(' ')).toContain('bc1qcoordinatorclaim')
-    expect(bsms.unverifiedClaims.join(' ')).toContain('nothing here has checked it')
+    const bsms = importCoordinatorFile(`BSMS 1.0\n${template}\n/0/*,/1/*\n`)
+    expect(bsms.unverifiedClaims).toEqual(['Paths line says /0/*,/1/*.'])
+    expect(bsms.firstAddress).toBeUndefined()
 
     const cc = importCoordinatorFile(coldcard())
     expect(cc.unverifiedClaims.join(' ')).toContain('Policy line says 2 of 3')

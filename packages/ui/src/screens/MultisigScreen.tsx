@@ -72,6 +72,13 @@ export interface ImportedFileView {
    * used to decide nothing.
    */
   readonly unverifiedClaims: readonly string[]
+  /**
+   * A BSMS file's first address, present only once the daemon has derived the
+   * same one (INV-COORD-7): a file stating another is refused before it gets
+   * here. BIP-129 has the signer show it so every signer can confirm the same
+   * address with the others.
+   */
+  readonly firstAddress?: string | null
   readonly descriptors: readonly {
     readonly descriptor: string
     readonly change: boolean | null
@@ -332,6 +339,15 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
               <span className="nr-value" data-testid="multisig-imported-name">
                 {imported.name}
               </span>
+            </div>
+          </div>
+        )}
+
+        {imported.firstAddress != null && (
+          <div className="nr-card nr-card--tight">
+            <span className="nr-label">First address, the one this device derives</span>
+            <div className="nr-address nr-break" data-testid="multisig-imported-first-address">
+              {imported.firstAddress}
             </div>
           </div>
         )}

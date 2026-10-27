@@ -433,10 +433,9 @@ describe('core.descriptor.coordinator real exports', () => {
       const imported = importCoordinatorFile(read(`sparrow/${name}`))
       expect(imported.format, name).toBe('bsms')
       expect(addressesOf(imported.descriptors[0]!.parsed, MAINNET, 1)[0], name).toBe(address)
-      // The file's own statement, surfaced and not consumed (INV-COORD-4).
-      expect(imported.unverifiedClaims.join(' ').toLowerCase(), name).toContain(
-        address.toLowerCase()
-      )
+      // The file's own statement, checked against that derivation and kept as
+      // written, capitals included (INV-COORD-7).
+      expect(imported.firstAddress?.toLowerCase(), name).toBe(address.toLowerCase())
     }
 
     // Templates expand into one descriptor per restriction, in the order given.
@@ -447,13 +446,9 @@ describe('core.descriptor.coordinator real exports', () => {
     expect(multisigShape(parsedOf('bsms/multisig-3.bsms')[0]!).sorted).toBe(false)
 
     // Every BSMS file this device reads, against Core.
-    for (const n of ['1', '2', '3', '4', '5', '7', '8', '9', '10', '11', '12', '13', '14']) {
+    for (const n of ['1', '2', '3', '4', '7', '8', '10', '11', '12', '13', '14']) {
       expectCoreAgrees(`bsms/multisig-${n}.bsms`, parsedOf(`bsms/multisig-${n}.bsms`))
     }
-    expectCoreAgrees(
-      'bsms/multisig-address-mismatch.bsms',
-      parsedOf('bsms/multisig-address-mismatch.bsms')
-    )
   })
 
   /**
@@ -475,26 +470,34 @@ describe('core.descriptor.coordinator real exports', () => {
   })
 
   /**
-   * INV-COORD-4. A first address that disagrees with the descriptor is shown and
-   * not believed. This device derives its own first address from the
-   * descriptor, which is not the one the file states, and nothing it returns
-   * came from the statement. Sparrow refuses these files outright; here the
-   * comparison is the user's, on the import screen.
+   * INV-COORD-7. A first address that is not the descriptor's refuses the file,
+   * as Sparrow refuses these. This device used to read them, show the address
+   * as "nothing here has checked it" and leave the comparison to the user.
+   *
+   * multisig-9 and multisig-address-mismatch state an address their
+   * descriptors do not derive. multisig-5 states the address of /0/0 beside
+   * restrictions that start at /2/*, and BIP-129 says the first address comes
+   * from the first restriction. Sparrow refuses multisig-5 for its
+   * restrictions; this device reads those, and refuses it for the address.
    */
-  it('surfaces-a-real-bsms-first-address-without-believing-it', () => {
-    for (const name of ['multisig-address-mismatch.bsms', 'multisig-9.bsms']) {
-      const imported = importCoordinatorFile(read(`sparrow/bsms/${name}`))
-      const claimed = 'bc1qng45c3rez2265epnmvhajjj6hlpdv83zn8q8xy6h3mh2pnn8fglq0qgdzk'
-      expect(imported.unverifiedClaims.join(' '), name).toContain(claimed)
-      expect(imported.unverifiedClaims.join(' '), name).toContain('nothing here has checked it')
-      const derived = addressesOf(imported.descriptors[0]!.parsed, MAINNET, 1)[0]
-      expect(derived, name).not.toBe(claimed)
+  it('refuses-real-bsms-files-whose-first-address-is-not-their-own', () => {
+    for (const name of ['multisig-address-mismatch.bsms', 'multisig-9.bsms', 'multisig-5.bsms']) {
+      const attempt = (): unknown => importCoordinatorFile(read(`sparrow/bsms/${name}`))
+      expect(attempt, name).toThrow(CoordinatorFormatError)
+      expect(attempt, name).toThrow(/says the wallet's first address is bc1q/)
     }
-    // BIP-129 says the fourth line must be there. This device does not need
-    // it, since it would not believe it, and reads the file without one.
-    const unstated = importCoordinatorFile(read('sparrow/bsms/multisig-14.bsms'))
-    expect(unstated.descriptors).toHaveLength(2)
-    expect(unstated.unverifiedClaims).toEqual(['Paths line says /0/*,/1/*.'])
+    expect(() => importCoordinatorFile(read('sparrow/bsms/multisig-5.bsms'))).toThrow(
+      /derives \S+ from \/2\/\*/
+    )
+
+    // BIP-129 says the fourth line must be there. With nothing to compare,
+    // the file is read, and this device's own first address is what the
+    // signers confirm with each other.
+    for (const name of ['multisig-14.bsms', 'multisig-7.bsms']) {
+      const unstated = importCoordinatorFile(read(`sparrow/bsms/${name}`))
+      expect(unstated.descriptors, name).toHaveLength(2)
+      expect(unstated.firstAddress, name).toBeUndefined()
+    }
   })
 
   /**

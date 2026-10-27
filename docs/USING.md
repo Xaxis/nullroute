@@ -561,11 +561,15 @@ works would be marketing.
 - **Taproot multisig can be registered and its addresses derived, but message
   signing for taproot is not implemented.** See `docs/THREAT-MODEL.md` for the
   full list of what is and is not built.
-- **The first address in a BSMS file is shown, not checked.** BIP-129 has the
-  signer compare it with its own derivation. This device lists it among what
-  the file claims and leaves the comparison to you: before sending anything to
-  the quorum, check that this device's first receive address for it is the one
-  the file stated.
+- **A BSMS file's first address is checked, and a wrong one refuses the file.**
+  BIP-129 has the coordinator write the wallet's first address into the file
+  so each signer can compare it with its own derivation. This device derives it
+  from the first path restriction and refuses the file, naming both addresses,
+  when they differ. The import screen then shows the address as this device's
+  own. Confirm with the other signers that every device shows the same one,
+  which is the check BIP-129 leaves to people. A file with no first address is
+  read; the address to confirm is then the first receive address this device
+  shows once the quorum is registered.
 - **A descriptor is read exactly as written.** Sparrow reads `multi()` as
   `sortedmulti()`, and reads an extended key with no `/0/*` after it as a whole
   account. This device does neither, so an old Specter export that relies on
