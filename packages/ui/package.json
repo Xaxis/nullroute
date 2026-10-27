@@ -22,7 +22,7 @@
   "dependencies": {
     "@nullroute/core": "*",
     "react-dom": "19.3.1",
-    "zxing-wasm": "3.1.5"
+    "zxing-wasm": "3.1.6"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.3.3",
@@ -33,6 +33,6 @@
     "happy-dom": "21.0.4",
     "react": "19.3.1",
     "tailwindcss": "4.3.3",
-    "vite": "8.3.4"
+    "vite": "8.3.5"
   }
 }
