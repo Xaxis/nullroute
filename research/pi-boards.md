@@ -16,6 +16,82 @@ Every external claim below was read from a primary source on 25 September 2026.
 Sources are linked inline. Where a claim could not be fetched it says
 UNVERIFIED.
 
+## Update, 27 October 2026: the owner's board is a Pi 5
+
+The owner runs a Pi 5, and the device is meant to run on a Pi 4 or a Pi 5.
+This section re-checks the Pi 5 against primary sources a month on. Where it
+and the rest of this document disagree, this section is newer. The full notes,
+with every source, were taken in a scratch file; the facts that decide
+anything are below.
+
+**Debian kernels.** The only Debian kernel with a working Pi 5 tree is
+trixie-backports 7.2. At the image's snapshot pin (`20261017T000000Z`)
+backports carried 7.2.6-1~bpo13+1 (first seen 3 October); 7.2.9 arrived 20
+hours after the pin and 7.2.11 on 24 October. The 7.1.8 path recommended
+above is gone: its `linux-base` package is no longer in the index. 7.2 is
+packaged differently from 6.12: `linux-image-<v>` is a small package that
+depends on `linux-binary-<v>` (the kernel, as `usr/lib/modules/<v>/vmlinuz`,
+an uncompressed arm64 `Image`), `linux-base-<v>` (the device trees and the
+config) and `linux-modules-<v>`. Nothing is under `/boot`, so
+`build-system.sh` changes shape, not only version. Backports has no security
+support: "Unfortunately not. This is done on a best effort basis"
+(<https://backports.debian.org/FAQ/>). The 6.12.94 pin already lags
+trixie-security, which had 6.12.113 at the snapshot, so the image tracks no
+security updates either way until someone moves a pin.
+
+**The Pi 5 tree in 7.2** (`bcm2712-rpi-5-b.dtb`, byte-identical in 7.2.6, 7.2.11
+and 7.2.12, parsed from the package): HDMI, the vc6 HVS, v3d, the PCIe link to
+RP1, RP1 itself, RP1's USB and Ethernet, and the SD controller are enabled.
+The RP1 camera receivers are present and disabled. **There is no DSI node.**
+Wifi (`sdio2/wifi@1`) and Bluetooth (`uarta/bluetooth`) are described and
+enabled, exactly as in the Pi 4 tree; the image keeps them off by deleting
+their drivers and firmware, and Debian builds no driver for the Pi 5's
+Bluetooth UART at all. A D0-stepping board has its own tree,
+`bcm2712-d-rpi-5-b.dtb`, and the firmware maps D0 to it only from the
+2026-10-21 EEPROM on the latest channel.
+
+**Touch Display 1 cannot run on a Pi 5 with any non-Raspberry-Pi kernel.**
+Mainline has no RP1 DSI driver, binding or node in v7.3, in master during the
+7.4 merge window, or in `next-20261026`, and no series for one is on
+patchwork. Raspberry Pi's own kernel has it (`drivers/gpu/drm/rp1`, from
+`rpi-6.12.y` to `rpi-7.2.y`). So on Debian's kernel a Pi 5 needs an HDMI
+display.
+
+**What a Pi 5 boot needs from this image**, in the order it would fail:
+
+1. A 7.2 kernel, extracted from the split packages.
+2. An initramfs that can reach the SD card: `sdhci_brcmstb` with `sdhci`,
+   `sdhci_pltfm`, `cqhci`, `pinctrl_brcmstb`, `pinctrl_brcmstb_bcm2712`,
+   `gpio_brcmstb`, `gpio_regulator` and `fixed`. The current one carries
+   `sdhci-iproc`, and its comment saying that drives the Pi 5 is wrong. Its
+   required list names `crc32c_generic` and `libcrc32c`, which 7.2 does not
+   have, so the initramfs build fails before anything boots.
+3. Finding the card by identity. The initramfs tries `/dev/mmcblk0p1`, and
+   neither Pi tree pins mmc numbering; on a Pi 5 the wifi SDIO host can
+   probe first and push the card to `mmcblk1`. Debian bug #1055084 reports a
+   Pi 4 alternating between the two on 6.1, so this is a Pi 4 risk as well.
+   The QEMU boot test should put the card somewhere other than index 0 to
+   prove the fix.
+4. A `config.txt` with `[pi4]` and `[pi5]` sections: the DSI overlay under
+   `[pi4]` (its labels do not exist in the Pi 5 tree), and on `[pi5]` the
+   right tree for the board's stepping.
+5. A boot. No primary source records Debian's kernel booting a Pi 5;
+   raspi.debian.net says the Pi 5 "only works with Debian 14 'Forky' (testing)
+   or Sid", which is consistent with needing 7.x.
+
+**Nothing builds a flashable card anywhere today.** CI builds the system
+partition and checks it, then discards it, and `make image` and
+`make image-boot-test` need Docker, which the development box does not have.
+That blocks bring-up on either board, and is the first thing to fix.
+
+**The decision this leaves.** On Debian's kernel, the owner's Pi 5 can be a
+signer with an 800x480 HDMI panel and a USB webcam, and one card can serve a
+Pi 4 with Touch Display 1 as well. A Pi 5 with Touch Display 1 needs
+Raspberry Pi's kernel, which adds a second archive and signing key to the
+trust root and kernel builds nobody has shown to be reproducible (option (b)
+below). That is the owner's decision, and it is recorded in
+`docs/THREAT-MODEL.md` if taken.
+
 ## What the device actually needs
 
 | Capability | Why | Where it is pinned |
