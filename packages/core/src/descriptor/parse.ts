@@ -408,6 +408,15 @@ function parseDerivation(suffix: string): {
       }
       return hardened ? index + HARDENED_OFFSET : index
     })
+    // NO VALUE TWICE. INV-DPARSE-11. BIP-389 (line 50) does not allow a
+    // repeated value in a tuple. `<1;1>` parsed, and its receive and change
+    // branches derived the same addresses.
+    if (new Set(multipath).size !== multipath.length) {
+      throw new DescriptorParseError(
+        `Multipath element <${options.join(';')}> names the same step twice. BIP-389 does not ` +
+          `allow a repeated value.`
+      )
+    }
     // Replace the multipath element with a placeholder so the rest of the path
     // parses normally. The alternatives are carried separately.
     working = working.slice(0, open) + '0' + working.slice(close + 1)
@@ -706,6 +715,31 @@ export function parseDescriptor(input: string, options: ParseOptions = {}): Desc
   }
 
   const script = parseScript(verdict.body)
+
+  /*
+   * ONE TUPLE LENGTH PER DESCRIPTOR. INV-DPARSE-11.
+   *
+   * BIP-389 (line 49): every multipath element in a descriptor offers the same
+   * number of values, because the descriptor stands for that many descriptors,
+   * the first taking each element's first value, and so on. Each key was parsed
+   * on its own, so `<0;1>` beside `<0;1;2>` parsed, and derivation took the
+   * first two values of each: addresses from a descriptor the BIP lists as
+   * invalid, which a coordinator that follows it will not import. Both of the
+   * BIP's vectors for this are refused earlier, for an element before the last
+   * step, so neither reached the rule; the vector test runs them without that.
+   */
+  const tuples = new Set(
+    descriptorKeys(script).flatMap((key) =>
+      key.kind === 'extended' && key.multipath !== undefined ? [key.multipath.length] : []
+    )
+  )
+  if (tuples.size > 1) {
+    throw new DescriptorParseError(
+      `This descriptor's multipath elements offer ${[...tuples].join(' and ')} values. BIP-389 ` +
+        `requires the same number in every one, since the descriptor stands for that many ` +
+        `descriptors.`
+    )
+  }
 
   return {
     script,

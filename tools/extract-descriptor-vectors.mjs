@@ -1,17 +1,20 @@
 #!/usr/bin/env node
 /**
- * Extract the test vectors of one descriptor BIP, 381 to 386, into JSON.
+ * Extract the test vectors of one descriptor BIP, 381 to 387 or 389, into JSON.
  *
  * Each of BIP-381 (pk, pkh, sh), 382 (wpkh, wsh), 383 (multi, sortedmulti),
- * 384 (combo), 385 (raw, addr) and 386 (tr) prints its vectors inside the BIP
- * text: valid descriptors with the scripts they produce, and invalid
- * descriptors with the reason. The files under spec/vectors/ are therefore
- * extractions, and an extraction nobody can repeat is a claim rather than a
- * vector. This is the extraction, one tool for the six because they share one
- * layout. Run it on a BIP at the same bips commit and the output is
- * byte-identical to spec/vectors/bip<N>-descriptors.json, whose hash is pinned
- * in descriptor/quorum-addresses.spec.yaml. The BIP number, and so the output
- * file, comes from the BIP's own header.
+ * 384 (combo), 385 (raw, addr), 386 (tr) and 387 (multi_a, sortedmulti_a)
+ * prints its vectors inside the BIP text: valid descriptors with the scripts
+ * they produce, and invalid descriptors with the reason. BIP-389 (multipath key
+ * expressions) uses the same layout with one difference: under each valid
+ * descriptor it lists the descriptors it expands into rather than scripts. The
+ * files under spec/vectors/ are therefore extractions, and an extraction nobody
+ * can repeat is a claim rather than a vector. This is the extraction, one tool
+ * for the eight because they share one layout. Run it on a BIP at the same bips
+ * commit and the output is byte-identical to spec/vectors/bip<N>-descriptors.json,
+ * whose hash is pinned in descriptor/quorum-addresses.spec.yaml (381 to 387) or
+ * descriptor/parse.spec.yaml (389). The BIP number, and so the output file,
+ * comes from the BIP's own header.
  *
  * It reads a local copy and never fetches, because the point is that the
  * reviewer chooses where the BIP text comes from.
@@ -24,6 +27,11 @@
  *     BIP's to say and is not interpreted here: BIP-384 lists the several
  *     scripts combo() produces for one key, the others list children 0, 1
  *     and 2 of a ranged descriptor.
+ *   - After "Valid multipath descriptors followed by the descriptors they
+ *     expand into" (BIP-389): the same, except that the "** <tt>DESCRIPTOR</tt>"
+ *     bullets go in `expansions`. The heading names what the sub-bullets are,
+ *     so the heading, not the BIP number, picks the field, and nothing reads an
+ *     expansion as a script.
  *   - Where a descriptor's sub-bullets are "** Child N" labels (BIP-384), the
  *     "*** <tt>SCRIPT</tt>" bullets under each label go into `children`, as
  *     { label, scripts }, instead of `scripts`.
@@ -38,7 +46,7 @@
  *
  * Strings are copied verbatim. Nothing is decoded or re-encoded.
  *
- * Run: node tools/extract-descriptor-vectors.mjs <bip-038N.mediawiki> <bips-commit>
+ * Run: node tools/extract-descriptor-vectors.mjs <bip-03NN.mediawiki> <bips-commit>
  */
 
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -46,12 +54,18 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
-const SUPPORTED = new Set([381, 382, 383, 384, 385, 386])
+const SUPPORTED = new Set([381, 382, 383, 384, 385, 386, 387, 389])
+
+/** The headings a valid list starts under, and the field its sub-bullets go into. */
+const VALID_HEADINGS = [
+  ['Valid descriptors followed by the scripts they produce', 'scripts'],
+  ['Valid multipath descriptors followed by the descriptors they expand into', 'expansions'],
+]
 
 const [source, commit] = process.argv.slice(2)
 if (source === undefined || commit === undefined || !/^[0-9a-f]{40}$/.test(commit)) {
   console.error(
-    'usage: node tools/extract-descriptor-vectors.mjs <bip-038N.mediawiki> <bips-commit>'
+    'usage: node tools/extract-descriptor-vectors.mjs <bip-03NN.mediawiki> <bips-commit>'
   )
   process.exit(2)
 }
@@ -60,7 +74,7 @@ const text = readFileSync(source, 'utf8')
 const header = /^ {2}BIP: (\d+)$/m.exec(text)
 const bip = header === null ? undefined : Number(header[1])
 if (bip === undefined || !SUPPORTED.has(bip)) {
-  throw new Error(`Expected one of BIPs 381 to 386, found BIP ${String(bip)}.`)
+  throw new Error(`Expected one of BIPs 381 to 387 or 389, found BIP ${String(bip)}.`)
 }
 const name = `bip-0${String(bip)}.mediawiki`
 const OUT = join(ROOT, `spec/vectors/bip${String(bip)}-descriptors.json`)
@@ -73,12 +87,15 @@ const lines = text.slice(start, after < 0 ? undefined : after).split('\n')
 const TT = /^<tt>(.*)<\/tt>$/
 const out = { valid: [], invalid: [] }
 let bucket = undefined
+let field = undefined
 let current = undefined
 let child = undefined
 
 for (const line of lines) {
-  if (line.startsWith('Valid descriptors followed by the scripts they produce')) {
+  const heading = VALID_HEADINGS.find(([prefix]) => line.startsWith(prefix))
+  if (heading !== undefined) {
     bucket = out.valid
+    field = heading[1]
     continue
   }
   if (/^Invalid [Dd]escriptors/.test(line)) {
@@ -101,10 +118,10 @@ for (const line of lines) {
     const rest = line.slice(3)
     if (TT.test(rest)) {
       if (current.children !== undefined) throw new Error(`Script after a child label: ${line}`)
-      current.scripts ??= []
-      current.scripts.push(tt(rest, line))
+      current[field] ??= []
+      current[field].push(tt(rest, line))
     } else {
-      if (current.scripts !== undefined) throw new Error(`Child label after a script: ${line}`)
+      if (current[field] !== undefined) throw new Error(`Child label after a script: ${line}`)
       child = { label: rest, scripts: [] }
       current.children ??= []
       current.children.push(child)
@@ -142,17 +159,24 @@ for (const [list, cases] of Object.entries(out)) {
 // The one descriptor printed with no script, kept as an empty list so that
 // what the BIP left out is visible in the file rather than silently absent.
 for (const c of out.valid) {
-  if (c.scripts === undefined && c.children === undefined) c.scripts = []
+  if (c[field] === undefined && c.children === undefined) c[field] = []
 }
 
 const result = {
   note:
-    `Extracted from the "Test Vectors" section of ${name} by ` +
-    'tools/extract-descriptor-vectors.mjs. Descriptors and scripts are copied ' +
-    'verbatim from their <tt> elements; nothing is decoded or re-encoded. ' +
-    '"valid" holds each valid descriptor with the scripts listed under it in ' +
-    'order, or, where the BIP groups them under child labels, with "children". ' +
-    '"invalid" holds each invalid descriptor with the description before it.',
+    field === 'expansions'
+      ? `Extracted from the "Test Vectors" section of ${name} by ` +
+        'tools/extract-descriptor-vectors.mjs. Descriptors are copied verbatim ' +
+        'from their <tt> elements; nothing is decoded or re-encoded. "valid" holds ' +
+        'each valid multipath descriptor with, in "expansions", the descriptors ' +
+        'listed under it in order, which the BIP says it expands into. "invalid" ' +
+        'holds each invalid descriptor with the description before it.'
+      : `Extracted from the "Test Vectors" section of ${name} by ` +
+        'tools/extract-descriptor-vectors.mjs. Descriptors and scripts are copied ' +
+        'verbatim from their <tt> elements; nothing is decoded or re-encoded. ' +
+        '"valid" holds each valid descriptor with the scripts listed under it in ' +
+        'order, or, where the BIP groups them under child labels, with "children". ' +
+        '"invalid" holds each invalid descriptor with the description before it.',
   source: `https://github.com/bitcoin/bips/blob/${commit}/${name}`,
   bipsCommit: commit,
   bip,

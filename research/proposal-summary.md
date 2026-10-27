@@ -88,12 +88,12 @@ Output of `make verify` on this branch:
 | Check | Result |
 | --- | --- |
 | Coverage | 272 of 272 runtime exports of `packages/core` named by a spec |
-| Invariants | 350 invariants bound to 1036 tests, each of which ran and passed; 1351 tests in the suite |
-| Vectors | 36 of 36 vector files match their pinned hash |
+| Invariants | 352 invariants bound to 1044 tests, each of which ran and passed; 1358 tests in the suite |
+| Vectors | 38 of 38 vector files match their pinned hash |
 | Differential | 3 modules cross-checked against `bitcoinjs-lib` |
-| Integrity | 434 files, root `21c2d06be2802f5222f905aff254d20e2cd77cede80cc6ab2ac3dd6abcfb7593` |
+| Integrity | 438 files, root `a80a4ae6a74f54db89fbd96c1a201bda95ea714f34f6edc2c95b3deea95e550f` |
 
-Totals: 39 specs, 350 invariants. The README badges state the same two numbers,
+Totals: 39 specs, 352 invariants. The README badges state the same two numbers,
 and `make badges` checks that they match.
 
 What this proves and what it does not: the code does what its specs say, on the
@@ -115,7 +115,7 @@ $ git ls-files -z package.json package-lock.json packages spec provisioning | LC
 ```
 
 For this summary the three were run with GNU coreutils 9.4 on Linux, after an
-earlier check with macOS `shasum -a 256`. All 434 files
+earlier check with macOS `shasum -a 256`. All 438 files
 matched, and both roots were the value in the table above.
 
 The screen also says what the number does not prove. It is drawn by the software

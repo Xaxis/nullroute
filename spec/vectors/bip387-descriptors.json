@@ -1,0 +1,78 @@
+{
+  "note": "Extracted from the \"Test Vectors\" section of bip-0387.mediawiki by tools/extract-descriptor-vectors.mjs. Descriptors and scripts are copied verbatim from their <tt> elements; nothing is decoded or re-encoded. \"valid\" holds each valid descriptor with the scripts listed under it in order, or, where the BIP groups them under child labels, with \"children\". \"invalid\" holds each invalid descriptor with the description before it.",
+  "source": "https://github.com/bitcoin/bips/blob/5aadddb511a5dcfe4599531bd8ae5e5b96d0f793/bip-0387.mediawiki",
+  "bipsCommit": "5aadddb511a5dcfe4599531bd8ae5e5b96d0f793",
+  "bip": 387,
+  "valid": [
+    {
+      "descriptor": "tr(L4rK1yDtCWekvXuE6oXD9jCYfFNV2cWRpVuPLBcCU2z8TrisoyY1,multi_a(1,KzoAz5CanayRKex3fSLQ2BwJpN7U52gZvxMyk78nDMHuqrUxuSJy))",
+      "scripts": [
+        "5120eb5bd3894327d75093891cc3a62506df7d58ec137fcd104cdd285d67816074f3"
+      ]
+    },
+    {
+      "descriptor": "tr(a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd,multi_a(1,669b8afcec803a0d323e9a17f3ea8e68e8abe5a278020a929adbec52421adbd0))",
+      "scripts": [
+        "5120eb5bd3894327d75093891cc3a62506df7d58ec137fcd104cdd285d67816074f3"
+      ]
+    },
+    {
+      "descriptor": "tr(50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0,multi_a(2,[00000000/111'/222]xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc,xprv9uPDJpEQgRQfDcW7BkF7eTya6RPxXeJCqCJGHuCJ4GiRVLzkTXBAJMu2qaMWPrS7AANYqdq6vcBcBUdJCVVFceUvJFjaPdGZ2y9WACViL4L/0))",
+      "scripts": [
+        "51202eea93581594a43c0c8423b70dc112e5651df63984d108d4fc8ccd3b63b4eafa"
+      ]
+    },
+    {
+      "descriptor": "tr(50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0,sortedmulti_a(2,[00000000/111'/222]xprvA1RpRA33e1JQ7ifknakTFpgNXPmW2YvmhqLQYMmrj4xJXXWYpDPS3xz7iAxn8L39njGVyuoseXzU6rcxFLJ8HFsTjSyQbLYnMpCqE2VbFWc,xprv9uPDJpEQgRQfDcW7BkF7eTya6RPxXeJCqCJGHuCJ4GiRVLzkTXBAJMu2qaMWPrS7AANYqdq6vcBcBUdJCVVFceUvJFjaPdGZ2y9WACViL4L/0))",
+      "scripts": [
+        "512016fa6a6ba7e98c54b5bf43b3144912b78a61b60b02f6a74172b8dcb35b12bc30"
+      ]
+    },
+    {
+      "descriptor": "tr(50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0,sortedmulti_a(2,xpub6ERApfZwUNrhLCkDtcHTcxd75RbzS1ed54G1LkBUHQVHQKqhMkhgbmJbZRkrgZw4koxb5JaHWkY4ALHY2grBGRjaDMzQLcgJvLJuZZvRcEL/*,xpub68NZiKmJWnxxS6aaHmn81bvJeTESw724CRDs6HbuccFQN9Ku14VQrADWgqbhhTHBaohPX4CjNLf9fq9MYo6oDaPPLPxSb7gwQN3ih19Zm4Y/0/0/*))",
+      "scripts": [
+        "5120abd47468515223f58a1a18edfde709a7a2aab2b696d59ecf8c34f0ba274ef772",
+        "5120fe62e7ed20705bd1d3678e072bc999acb014f07795fa02cb8f25a7aa787e8cbd",
+        "51201311093750f459039adaa2a5ed23b0f7a8ae2c2ffb07c5390ea37e2fb1050b41"
+      ]
+    },
+    {
+      "descriptor": "tr(50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0,multi_a(2,xprv9s21ZrQH143K31xYSDQpPDxsXRTUcvj2iNHm5NUtrGiGG5e2DtALGdso3pGz6ssrdK4PFmM8NSpSBHNqPqm55Qn3LqFtT2emdEXVYsCzC2U/2147483647'/0,xprv9vHkqa6EV4sPZHYqZznhT2NPtPCjKuDKGY38FBWLvgaDx45zo9WQRUT3dKYnjwih2yJD9mkrocEZXo1ex8G81dwSM1fwqWpWkeS3v86pgKt/1/2/*,xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHi/10/20/30/40/*'))",
+      "scripts": [
+        "5120e4c8f2b0a7d3a688ac131cb03248c0d4b0a59bbd4f37211c848cfbd22a981192",
+        "5120827faedaa21e52fca2ac83b53afd1ab7d4d1e6ce67ff42b19f2723d48b5a19ab",
+        "5120647495ed09de61a3a324704f9203c130d655bf3141f9b748df8f7be7e9af55a4"
+      ]
+    }
+  ],
+  "invalid": [
+    {
+      "description": "Unsupported top level",
+      "descriptor": "multi_a(1,03669b8afcec803a0d323e9a17f3ea8e68e8abe5a278020a929adbec52421adbd0)"
+    },
+    {
+      "description": "Unsupported <tt>sh()</tt> context",
+      "descriptor": "sh(multi_a(1,03669b8afcec803a0d323e9a17f3ea8e68e8abe5a278020a929adbec52421adbd0))"
+    },
+    {
+      "description": "Unsupported <tt>wsh()</tt> context",
+      "descriptor": "wsh(multi_a(1,03669b8afcec803a0d323e9a17f3ea8e68e8abe5a278020a929adbec52421adbd0))"
+    },
+    {
+      "description": "Invalid threshold",
+      "descriptor": "tr(50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0,multi_a(a,03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd))"
+    },
+    {
+      "description": "Threshold of 0",
+      "descriptor": "tr(50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0,multi_a(0,03a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd))"
+    },
+    {
+      "description": "Uncompressed pubkey",
+      "descriptor": "tr(50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0,multi_a(1,04a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd5b8dec5235a0fa8722476c7709c02559e3aa73aa03918ba2d492eea75abea235))"
+    },
+    {
+      "description": "Threshold larger than keys",
+      "descriptor": "tr(50929b74c1a04954b78b4b6035e97a5e078a5a0f28ec96d547bfee9ace803ac0,multi_a(3,L4rK1yDtCWekvXuE6oXD9jCYfFNV2cWRpVuPLBcCU2z8TrisoyY1,5KYZdUEo39z3FPrtuX2QbbwGnNP5zTd7yyr2SC1j299sBCnWjss))"
+    }
+  ]
+}

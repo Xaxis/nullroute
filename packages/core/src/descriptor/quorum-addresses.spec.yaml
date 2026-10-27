@@ -42,16 +42,20 @@ invariants:
   # addresses, which is why the published descriptor vectors are bound here.
   - id: INV-DESC-9
     statement: >
-      Every valid descriptor BIPs 381 to 386 publish is handled as its test
-      lists it, case by case. Three derive their published scriptPubKey through
-      this function: sh(wsh(multi())) over sixteen keys from BIP-383, and
-      tr(KEY) and tr(KEY,pk(KEY)) from BIP-386. Twenty three are kinds this
-      function refuses (single-key pk(), pkh() and wpkh() in any nesting, bare
-      multi() and sortedmulti(), combo(), raw() and addr()); each still
-      parses, and the scripts the test rebuilds from its parse tree, with keys
-      derived by derivePubkeyAt, equal the published ones at every listed
-      index. The other twenty six carry a WIF or extended private key and are
-      refused by the parser (INV-DPARSE-4).
+      Every valid descriptor BIPs 381 to 387 publish is handled as its test
+      lists it, case by case. Five derive their published scriptPubKey through
+      this function: sh(wsh(multi())) over sixteen keys from BIP-383, tr(KEY)
+      and tr(KEY,pk(KEY)) from BIP-386, and tr(KEY,multi_a()) over fixed keys
+      and tr(KEY,sortedmulti_a()) over ranged ones, at children 0 to 2, from
+      BIP-387. Twenty three are kinds this function refuses (single-key pk(),
+      pkh() and wpkh() in any nesting, bare multi() and sortedmulti(),
+      combo(), raw() and addr()); each still parses, and the scripts the test
+      rebuilds from its parse tree, with keys derived by derivePubkeyAt, equal
+      the published ones at every listed index. The other thirty carry a WIF
+      or extended private key and are refused by the parser (INV-DPARSE-4).
+      BIP-387's multi_a() and sortedmulti_a() over the same two xprvs, run
+      with each xprv replaced by its public half, derive their published
+      scripts too.
     tests:
       - packages/core/test/vectors.bip381.test.ts::extraction-is-faithful
       - packages/core/test/vectors.bip381.test.ts::handles-every-published-valid-descriptor
@@ -65,16 +69,19 @@ invariants:
       - packages/core/test/vectors.bip385.test.ts::handles-every-published-valid-descriptor
       - packages/core/test/vectors.bip386.test.ts::extraction-is-faithful
       - packages/core/test/vectors.bip386.test.ts::handles-every-published-valid-descriptor
+      - packages/core/test/vectors.bip387.test.ts::extraction-is-faithful
+      - packages/core/test/vectors.bip387.test.ts::handles-every-published-valid-descriptor
 
   - id: INV-DESC-10
     statement: >
-      Every invalid descriptor BIPs 381 to 386 publish is refused before any
-      address is derived from it, at the stage its test lists. Fourteen are
-      refused by parseDescriptor. Eighteen parse, because the parser does not
-      check where a script may appear or which keys a context allows, and are
-      refused by this function: a misplaced sh(), wsh(), wpkh(), tr(),
-      combo(), raw() or addr(), addr() of a string that is not an address, an
-      uncompressed key under wpkh(), wsh() or tr(), and a bare sh(multi()) of
+      Every invalid descriptor BIPs 381 to 387 publish is refused before any
+      address is derived from it, at the stage its test lists. Seventeen are
+      refused by parseDescriptor. Twenty two parse, because the parser does
+      not check where a script may appear or which keys a context allows, and
+      are refused by this function: a misplaced sh(), wsh(), wpkh(), tr(),
+      combo(), raw() or addr(), multi_a() at the top level or under sh() or
+      wsh(), addr() of a string that is not an address, an uncompressed key
+      under wpkh(), wsh(), tr() or a multi_a() leaf, and a bare sh(multi()) of
       sixteen keys.
     tests:
       - packages/core/test/vectors.bip381.test.ts::refuses-every-published-invalid-descriptor
@@ -83,6 +90,7 @@ invariants:
       - packages/core/test/vectors.bip384.test.ts::refuses-every-published-invalid-descriptor
       - packages/core/test/vectors.bip385.test.ts::refuses-every-published-invalid-descriptor
       - packages/core/test/vectors.bip386.test.ts::refuses-every-published-invalid-descriptor
+      - packages/core/test/vectors.bip387.test.ts::refuses-every-published-invalid-descriptor
 
 vectors:
   - name: BIP-381 test vectors, extracted from the BIP text
@@ -109,6 +117,10 @@ vectors:
     file: spec/vectors/bip386-descriptors.json
     sha256: 4323b52ad73ac97a57f9df5a73cd791da234b7aed132c927f8e21ab079982401
     source: https://github.com/bitcoin/bips/blob/9d735fb36fdd6a5860febe7e84680aa220baad23/bip-0386.mediawiki
+  - name: BIP-387 test vectors, extracted from the BIP text
+    file: spec/vectors/bip387-descriptors.json
+    sha256: e0c9d4b9f8fb7820b66f3b3b368d5cc3626be43087d13a31f3546a179fabf5da
+    source: https://github.com/bitcoin/bips/blob/5aadddb511a5dcfe4599531bd8ae5e5b96d0f793/bip-0387.mediawiki
 
 threats:
   - INV-PSBT-2
@@ -134,20 +146,21 @@ security_notes: >
   assumed. If they agreed, every other test here would pass while the dispatch
   did nothing at all, and the module would be decorative.
 
-  THE PUBLISHED VECTORS MOSTLY EXERCISE REFUSALS. Of fifty two valid
-  descriptors in BIPs 381 to 386, three are kinds this device derives, and
+  THE PUBLISHED VECTORS MOSTLY EXERCISE REFUSALS. Of fifty eight valid
+  descriptors in BIPs 381 to 387, five are kinds this device derives, and
   the rest hold a private key or are kinds it does not derive at all. For
   those, INV-DESC-9 checks the parse and the key derivation against the
   published scripts, using script templates the test supplies, and says so:
   it is not evidence of a single-key, combo(), raw() or addr() evaluator,
-  because the device has none. Eighteen of the thirty two invalid
+  because the device has none. Twenty two of the thirty nine invalid
   descriptors reach this function at all only because the parser leaves
   placement and key-context rules to the evaluator (see
   core.descriptor.parse). Two of those rules were not enforced here either
   until the vectors were run: tr() over an uncompressed key derived an
   address (INV-TR-7), and so did wsh(multi()) over one (INV-MULTI-14).
+  BIP-387's vectors, run later, found nothing new.
 
 references:
   - BIP-380, Output Script Descriptors
-  - BIP-381 to BIP-386, the descriptor documents whose vectors INV-DESC-9 and INV-DESC-10 run
+  - BIP-381 to BIP-387, the descriptor documents whose vectors INV-DESC-9 and INV-DESC-10 run
   - BIP-387, Tapscript Multisig Output Script Descriptors

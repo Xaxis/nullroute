@@ -117,10 +117,13 @@ export function multisigShape(descriptor: Descriptor): MultisigShape {
     )
   }
 
+  // The second sentence said taproot multisig was "not supported by this
+  // device yet", which stopped being true when taproot.ts derived it. BIP-387
+  // lists sh(multi_a()) and wsh(multi_a()) as invalid, and this is their refusal.
   if (body.kind !== 'multi' && body.kind !== 'sortedmulti') {
     throw new DescriptorParseError(
       `Expected multi() or sortedmulti() inside, found ${body.kind}. ` +
-        `Taproot multisig (multi_a) is not supported by this device yet.`
+        `Taproot multisig, multi_a() or sortedmulti_a(), goes under tr() only (BIP-387).`
     )
   }
 

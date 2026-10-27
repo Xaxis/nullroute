@@ -223,8 +223,8 @@ came from nullroute.
 | Vector file in this directory | SP-ENT-1, 2, 3, 4, 5, 10; SP-REV-2, 3, 4, 6, 7, 8, 9, 11, 23, 24, 25; SP-ATT-2; SP-TX-2, 3, 4, 5, 6 |
 | Vector, SHOULD parts only | SP-REV-13 (high fee warns), SP-REV-7 (claim reported), SP-REV-11 (unknown pairs reported), SP-REV-14 (own receive address shown as a payment) |
 | Vector covers part of it | SP-ENT-7 (a flagged pattern still derives; warnings are not checked), SP-HW-9 (dice mode is deterministic; the operating system random source for sealing is manual review) |
-| An implementation's own tests only (the profile names nullroute invariants) | SP-ENT-9, SP-REV-1, SP-REV-10, SP-REV-12, SP-REV-20, SP-REV-22, SP-REV-26, SP-ATT-6, SP-ATT-7, SP-ATT-8, SP-ATT-9, SP-ATT-10, SP-ATT-11, SP-HW-7, SP-TX-1 |
-| Manual procedure, stated in the profile | SP-ENT-6, SP-ENT-8 (on-screen count), SP-REV-5, SP-REV-21, SP-SIG-1, SP-ATT-1, SP-ATT-3, SP-ATT-4, SP-ATT-5, SP-ATT-12, SP-HW-1 to SP-HW-6, SP-HW-8, SP-HW-10, SP-DEP-1 |
+| An implementation's own tests only (the profile names nullroute invariants) | SP-ENT-9, SP-REV-1, SP-REV-10, SP-REV-12, SP-REV-20, SP-REV-22, SP-REV-26, SP-ATT-6, SP-ATT-7, SP-ATT-8, SP-ATT-9, SP-ATT-10, SP-ATT-11, SP-HW-7, SP-TX-1, SP-DEP-1 (the BIPs' own published vectors, run by the implementation's tests) |
+| Manual procedure, stated in the profile | SP-ENT-6, SP-ENT-8 (on-screen count), SP-REV-5, SP-REV-21, SP-SIG-1, SP-ATT-1, SP-ATT-3, SP-ATT-4, SP-ATT-5, SP-ATT-12, SP-HW-1 to SP-HW-6, SP-HW-8, SP-HW-10 |
 | Untestable by the signer | The property behind SP-ENT-11: that the dice were fair and unobserved |
 
 Several requirements in the "own tests only" row could have portable vectors.

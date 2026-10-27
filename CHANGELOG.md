@@ -10,6 +10,11 @@ first, and the website's status page renders it.
 
 ## October 2026
 
+- **2026-10-27** BIP-387 and BIP-389's published descriptor vectors are run,
+  so every descriptor document the signer profile claims now has its vectors
+  run. BIP-389's found a defect: multipath elements of different lengths, and
+  a repeated value such as `<1;1>`, parsed and derived addresses. Both are
+  refused (INV-DPARSE-11). SP-DEP-1 has a conformance row for the first time.
 - **2026-10-27** BIP-174's published Input Finalizer PSBT and Transaction
   Extractor transaction are reproduced byte for byte by the call the signer
   finalises with (INV-SIG-12). The vector file carried them unchecked, on the

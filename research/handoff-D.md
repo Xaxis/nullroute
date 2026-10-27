@@ -175,16 +175,16 @@ means values copied into a test; **none** means no published value is checked.
 | 322 | Basic and generated files | Inline: some basic vectors, including the RFC 6979 "Hello World" signature | Most tx hashes, non-p2wpkh and error cases, the generated file |
 | 380 | Checksums and key expressions | Vendored: all 8 checksums. Key expressions extracted (`spec/vectors/bip380-key-expressions.json`, bips `93607da0`, by `tools/extract-bip380-vectors.mjs`): the 10 of 21 valid ones with no private key or hardened wildcard parse to the key, origin, derivation and range they name (INV-DPARSE-1); the other 11 are refused by design (INV-DPARSE-4, INV-DPARSE-3); all 16 invalid ones are refused (INV-DPARSE-3). `[deadbeef/0H/0H/0H]` was accepted before this; `H` is now refused | Nothing unrun. Three invalid cases are refused for their `xprv` before the defect the BIP names is reached; the test also runs each with the public half of that key |
 | 381 to 386 | Valid descriptors with scripts, invalid descriptors | Extracted, one file per BIP (`spec/vectors/bip381-descriptors.json` to `bip386-descriptors.json`, by `tools/extract-descriptor-vectors.mjs`): 52 valid, 32 invalid, every case listed with its outcome (INV-DESC-9, INV-DESC-10). Valid: 3 derive the published script through `deriveQuorumAddresses`; 23 are kinds it refuses (single-key, bare `multi()`, `combo()`, `raw()`, `addr()`), each parsed and its scripts rebuilt by the test from the parse tree; 26 hold a private key and are refused at parse. Invalid: 14 refused at parse, 18 parsed and refused by the evaluator. `tr()` over an uncompressed key derived an address before this (fixed, INV-TR-7), as did `wsh(multi())` over one (fixed, INV-MULTI-14) | No single-key, `combo()`, `raw()` or `addr()` evaluator exists, so those scripts check the parse, not a derivation path the device has |
-| 387 | Yes | None | All |
-| 389 | Yes | None; one form refused by design | All |
+| 387 | Valid descriptors with scripts, invalid descriptors | Extracted (`spec/vectors/bip387-descriptors.json`, bips `5aadddb5`, by `tools/extract-descriptor-vectors.mjs`): 6 valid, 7 invalid, every case listed with its outcome (INV-DESC-9, INV-DESC-10). Valid: 2 derive the published script through `deriveQuorumAddresses`, `tr(KEY,multi_a())` and `tr(KEY,sortedmulti_a())` at children 0 to 2; 4 hold a private key and are refused at parse, and 2 of those, with each `xprv` replaced by its public half, derive the published script too. Invalid: 3 refused at parse, 4 parsed and refused by the evaluator (`multi_a()` at the top or under `sh()` or `wsh()`, an uncompressed key in a `multi_a()` leaf). No case failed | Two private-key cases are not run with public keys: the WIF one, and the one whose hardened steps after the key need the private half. The threshold-larger-than-keys case is refused for its WIF keys before the threshold is read |
+| 389 | Valid multipath descriptors with the descriptors they expand into, invalid descriptors | Extracted (`spec/vectors/bip389-descriptors.json`, bips `5aadddb5`, by `tools/extract-descriptor-vectors.mjs`, the expansions in `expansions`): 6 valid, 8 invalid, every case listed with its outcome (INV-DPARSE-10, INV-DPARSE-11). Valid: 2 parse (`pk()`, `pkh()`), each branch equal to the descriptor the BIP expands it into, and the first two also through `derivePubkeyAt`'s receive and change selection; 3 refused by design for steps after the element; 1 holds a private key. Invalid: all 8 refused at parse; the 3 refused before their named defect is reached are run again without that obstacle. Elements of different lengths in one descriptor, and a repeated value in one element, were accepted and derived addresses before this (fixed, INV-DPARSE-11) | No valid vector is a kind nullroute derives, so none derives an address. The third value of `<0;1;2>` is checked in the parse only: nullroute derives the first two, as receive and change |
 | 329 | Eight-line export | None | All |
 | 388 | Yes | Not used by nullroute | All |
 
 The largest gaps against SP-DEP-1's own list (BIP-32, BIP-39, BIP-174 and the
 descriptor documents) were no invalid-input vector for BIP-32 or BIP-380, and
 no descriptor-to-script vector for BIPs 381 to 387. BIP-174 is now covered, as
-above, and so are BIP-32 vector 5, the BIP-380 key expressions and BIPs 381 to
-386, as in the rows above; BIP-387 is still not run. For signing, the BIP-340,
+above, and so are BIP-32 vector 5, the BIP-380 key expressions, BIPs 381 to
+387 and BIP-389, as in the rows above. For signing, the BIP-340,
 BIP-341 and BIP-143 vectors now run, so segwit v0 signatures are checked
 against published values and not only for determinism and against
 bitcoinjs-lib.
@@ -200,6 +200,18 @@ an uncompressed key deriving an address (INV-TR-7), and the sibling
 (INV-MULTI-14). Eighteen published invalid descriptors still parse and are
 refused only by the evaluator, because the parser leaves placement and
 key-context rules to it; whether the parser should enforce them is open.
+
+The 387 and 389 rows were updated from files fetched at `bitcoin/bips` master,
+`5aadddb511a5dcfe4599531bd8ae5e5b96d0f793`, on 27 October 2026. BIP-387's
+vectors found nothing; four more of its invalid descriptors are refused only
+by the evaluator, twenty two in all. BIP-389's found that the parser checked
+each multipath element on its own: elements of different lengths in one
+descriptor, which the BIP lists as invalid, parsed and derived addresses from
+the first two values of each, and so did an element repeating a value, which
+the BIP also forbids. Both are refused at parse now (INV-DPARSE-11). Neither
+published vector for mismatched lengths reached the rule, since both are
+refused first for an element before the last step, so the test runs each again
+with the element moved to the last step.
 
 The BIP-143, 174, 340 and 341 rows were updated after this survey, from files
 fetched at bips `d1d2042c857f337c147785c1d02cfd9f9d3c84fb`, not `7c7cb232`.

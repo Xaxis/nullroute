@@ -85,6 +85,35 @@ describe('core.descriptor.parse key expressions', () => {
     }
   })
 
+  /**
+   * INV-DPARSE-11. BIP-389 forbids tuples of different lengths in one
+   * descriptor and a repeated value in one tuple. Both parsed, and both
+   * derived addresses: mismatched tuples from the first two values of each,
+   * and `<1;1>` with receive and change on the same addresses.
+   */
+  it('refuses-multipath-tuples-bip389-forbids', () => {
+    const other =
+      'xpub68NZiKmJWnxxS6aaHmn81bvJeTESw724CRDs6HbuccFQN9Ku14VQrADWgqbhhTHBaohPX4CjNLf9fq9MYo6oDaPPLPxSb7gwQN3ih19Zm4Y'
+    const parse = (body: string): unknown => parseDescriptor(withChecksum(body))
+
+    expect(() => parse(`wsh(multi(2,${XPUB}/<0;1>/*,${other}/<0;1;2>/*))`)).toThrow(
+      /offer 2 and 3 values/
+    )
+    // A tuple in a taproot leaf counts as much as one in the internal key.
+    expect(() => parse(`tr(${XPUB}/<0;1>/*,pk(${other}/<0;1;2>/*))`)).toThrow(
+      /offer 2 and 3 values/
+    )
+    for (const tuple of ['<1;1>', "<1h;1'>", '<0;1;0>']) {
+      expect(() => parseKeyExpression(`${XPUB}/${tuple}/*`), tuple).toThrow(/same step twice/)
+    }
+
+    // What BIP-389 allows still parses: equal lengths, a key with no tuple
+    // beside one with a tuple, and one value hardened and one not.
+    expect(() => parse(`wsh(multi(2,${XPUB}/<0;1>/*,${other}/<2;3>/*))`)).not.toThrow()
+    expect(() => parse(`wsh(multi(2,${XPUB}/<0;1>/*,${other}/0/*))`)).not.toThrow()
+    expect(() => parseKeyExpression(`${XPUB}/<1;1h>`)).not.toThrow()
+  })
+
   // INV-DPARSE-3: refusals. Each of these is something a lenient parser would
   // wave through, and each would mean deriving scripts nobody enumerated.
   it('refuses-what-it-does-not-understand', () => {

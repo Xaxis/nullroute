@@ -33,7 +33,9 @@ algorithm: >
   invalid, is refused. A trailing /* marks a range; BIP-389 /<a;b> multipath is
   recorded as alternatives, and read only as the last step before the
   wildcard. Anywhere else it is refused, because derivation substitutes the
-  chosen branch into the final step.
+  chosen branch into the final step. As BIP-389 requires, an element that
+  repeats a value is refused, and so is a descriptor whose elements offer
+  different numbers of values.
 
   The checksum is verified as part of parsing rather than left to the caller,
   and is required unless allowBadChecksum is explicitly passed.
@@ -143,6 +145,38 @@ invariants:
     tests:
       - packages/core/test/descriptor.assemble.test.ts::writes-one-checksum-whichever-slip132-prefix-a-key-was-given-in
 
+  - id: INV-DPARSE-10
+    statement: >
+      Every valid multipath descriptor BIP-389 publishes, six, is handled as
+      its test lists it. Two, pk() and pkh() with the multipath element as the
+      last step, parse: each multipath key records as many values as the BIP
+      lists expansions, the parse at each branch equals the parse of that
+      branch's expansion, and the first two branches, which derivePubkeyAt
+      selects for receive and change, produce the expansions' scripts at
+      every index. Neither is a kind deriveQuorumAddresses derives, so no
+      published BIP-389 vector derives an address. Three put further steps
+      after the element and are refused by design (INV-DPARSE-3), and one
+      holds an extended private key (INV-DPARSE-4).
+    tests:
+      - packages/core/test/vectors.bip389.test.ts::extraction-is-faithful
+      - packages/core/test/vectors.bip389.test.ts::handles-every-published-valid-multipath-descriptor
+
+  - id: INV-DPARSE-11
+    statement: >
+      A descriptor whose multipath elements offer different numbers of
+      values, and an element that names one value twice, are refused at
+      parse, as BIP-389 requires. Both parsed before the BIP-389 vectors were
+      run, and both derived addresses: mismatched elements from the first two
+      values of each, and a repeated value with receive and change on the
+      same addresses. Every invalid descriptor BIP-389 publishes, all eight,
+      is refused at parse. Three are refused before the defect the BIP names
+      is reached, two for an extended private key and one for an element
+      before the last step; the test runs each again with that removed, and
+      the defect alone is refused.
+    tests:
+      - packages/core/test/descriptor.parse.test.ts::refuses-multipath-tuples-bip389-forbids
+      - packages/core/test/vectors.bip389.test.ts::refuses-every-published-invalid-multipath-descriptor
+
 vectors:
   - name: BIP-380 key expression test vectors, extracted from the BIP text
     file: spec/vectors/bip380-key-expressions.json
@@ -152,6 +186,10 @@ vectors:
     file: spec/vectors/bip32-invalid-keys.json
     sha256: ef725eb0503be0eb9037d605b6d50dec86966bb22261758797aac9a44290807c
     source: https://github.com/bitcoin/bips/blob/c0644a054fd1568ecbfc9c2b656ad5200b16ff74/bip-0032.mediawiki
+  - name: BIP-389 multipath descriptor test vectors, extracted from the BIP text
+    file: spec/vectors/bip389-descriptors.json
+    sha256: 23f946c604bfbc1f914e11afbf9055bdd79e4f9d893b53c0ce90a3a4c5517703
+    source: https://github.com/bitcoin/bips/blob/5aadddb511a5dcfe4599531bd8ae5e5b96d0f793/bip-0389.mediawiki
 
 threats:
   - INV-PSBT-1
@@ -180,12 +218,12 @@ security_notes: >
 
   THE PARSER DOES NOT CHECK CONTEXT. Where a script may appear (sh() only at
   the top, wpkh() and wsh() only at the top or inside sh(), tr(), combo(),
-  raw() and addr() only at the top) and which keys a context allows
-  (compressed only under wpkh() and wsh(), no uncompressed key under tr()) are
-  left to the evaluator that consumes the tree, which refuses anything it does
-  not derive. Of the thirty two invalid descriptors BIPs 381 to 386 publish,
-  eighteen parse and are refused there, each listed in its vector test
-  (INV-DESC-10). That holds only while every path from a descriptor to an
+  raw() and addr() only at the top, multi_a() only under tr()) and which keys
+  a context allows (compressed only under wpkh() and wsh(), no uncompressed
+  key under tr()) are left to the evaluator that consumes the tree, which
+  refuses anything it does not derive. Of the thirty nine invalid descriptors
+  BIPs 381 to 387 publish, twenty two parse and are refused there, each
+  listed in its vector test (INV-DESC-10). That holds only while every path from a descriptor to an
   address goes through deriveQuorumAddresses or the functions it dispatches
   to. The 'descriptor.parse' IPC method reports such a descriptor as parsed.
 
@@ -194,6 +232,20 @@ security_notes: >
   Bitcoin Core never accepted it, so this parser read descriptors no
   coordinator following either would import. The derivation path parser
   outside descriptors still reads H.
+
+  MULTIPATH ELEMENTS WERE CHECKED ONE KEY AT A TIME until the BIP-389
+  vectors were run. BIP-389 requires every element in a descriptor to offer
+  the same number of values and forbids a repeated value, and neither was
+  checked, so a descriptor the BIP lists as invalid derived addresses from
+  the first two values of each element (INV-DPARSE-11). Neither published
+  vector for mismatched lengths reached the rule, because both are refused
+  first for an element before the last step; the defect showed when they
+  were run without that.
+
+  AN ELEMENT OF MORE THAN TWO VALUES PARSES, as BIP-389 allows, and only its
+  first two are ever derived, as receive and change, which is how BIP-389
+  says a wallet should read them. A third value has no derivation path on
+  this device, so a quorum registered with one never derives that branch.
 
 references:
   - BIP-32, Hierarchical Deterministic Wallets, test vector 5
