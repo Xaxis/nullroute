@@ -195,6 +195,15 @@ invariants:
       - packages/core/test/psbt.sign.test.ts::holds-a-review-that-says-signable-beside-a-blocking-warning
       - packages/ui/test/psbt-screen.test.tsx::refuses-a-blocking-warning-even-when-told-it-is-signable
 
+  - id: INV-SIG-12
+    statement: >
+      When this device's signature completes a transaction, the finalised
+      transaction it returns comes from the call that reproduces BIP-174's
+      published Input Finalizer PSBT and Transaction Extractor transaction
+      byte for byte, run on the walk-through's combiner output.
+    tests:
+      - packages/core/test/vectors.bip174.test.ts::reproduces-the-published-finalizer-and-extractor-steps
+
 vectors:
   - name: BIP-340 test vectors
     file: spec/vectors/bip340-test-vectors.csv

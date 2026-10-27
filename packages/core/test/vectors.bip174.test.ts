@@ -51,6 +51,30 @@ interface Vectors {
   readonly roles: readonly RoleStep[]
 }
 
+/**
+ * The Transaction Extractor's output, which the extraction leaves out because
+ * it is a raw transaction rather than a PSBT. Copied from bip-0174.mediawiki
+ * line 833 at bitcoin/bips d1d2042c857f337c147785c1d02cfd9f9d3c84fb, the
+ * commit the vector file names; the test checks it only by reproducing it.
+ */
+const PUBLISHED_EXTRACTED_TX =
+  '0200000000010258e87a21b56daf0c23be8e7070456c336f7cbaa5c8757924f545887bb2abdd7500' +
+  '000000da00473044022074018ad4180097b873323c0015720b3684cc8123891048e7dbcd9b55ad67' +
+  '9c99022073d369b740e3eb53dcefa33823c8070514ca55a7dd9544f157c167913261118c01483045' +
+  '022100f61038b308dc1da865a34852746f015772934208c6d24454393cd99bdf2217770220056e67' +
+  '5a675a6d0a02b85b14e5e29074d8a25a9b5760bea2816f661910a006ea01475221029583bf39ae0a' +
+  '609747ad199addd634fa6108559d6c5cd39b4c2183f1ab96e07f2102dab61ff49a14db6a7d02b0cd' +
+  '1fbb78fc4b18312b5b4e54dae4dba2fbfef536d752aeffffffff838d0427d0ec650a68aa46bb0b09' +
+  '8aea4422c071b2ca78352a077959d07cea1d01000000232200208c2353173743b595dfb4a07b72ba' +
+  '8e42e3797da74e87fe7d9d7497e3b2028903ffffffff0270aaf00800000000160014d85c2b71d006' +
+  '0b09c9886aeb815e50991dda124d00e1f5050000000016001400aea9a2e5f0f876a588df5546e874' +
+  '2d1d87008f000400473044022062eb7a556107a7c73f45ac4ab5a1dddf6f7075fb1275969a7f383e' +
+  'fff784bcb202200c05dbb7470dbf2f08557dd356c7325c1ed30913e996cd3840945db12228da5f01' +
+  '473044022065f45ba5998b59a27ffe1a7bed016af1f1f90d54b3aa8f7450aa5f56a25103bd02207f' +
+  '724703ad1edb96680b284b56d4ffcb88f7fb759eabbe08aa30f29b851383d20147522103089dc10c' +
+  '7ac6db54f91329af617333db388cead0c231f723379d1b99030b02dc21023add904f3d6dcf59ddb9' +
+  '06b0dee23529b7ffb9ed50e5e86151926860221f0e7352ae00000000'
+
 const VECTORS = JSON.parse(
   readFileSync(new URL('../../../spec/vectors/bip174-psbt.json', import.meta.url), 'utf8')
 ) as Vectors
@@ -202,6 +226,34 @@ describe('core.psbt.sign published BIP-174 vectors', () => {
       expect(signed).toBe(2)
       expect(base64.encode(tx.toPSBT())).toBe(expected.base64)
     }
+  })
+
+  /**
+   * INV-SIG-12. The finalised transaction the device hands back is the one
+   * BIP-174's Input Finalizer and Transaction Extractor publish.
+   *
+   * signTransaction finalises a copy once its signature completes the
+   * transaction (`finaliseCopy` in sign.ts: Transaction.fromPSBT of the signed
+   * PSBT, then finalize and extract). This runs that call on the walk-through's
+   * combiner output. The vector file carried the finalizer's PSBT and nothing
+   * checked it, "since nullroute does not play those roles", while the signer
+   * was playing both whenever a quorum completed.
+   */
+  it('reproduces-the-published-finalizer-and-extractor-steps', () => {
+    const combined = VECTORS.roles[5]
+    const finalized = VECTORS.roles[6]
+    if (combined === undefined || finalized === undefined) {
+      throw new Error('role walk-through is incomplete')
+    }
+    expect(combined.step).toMatch(/a combiner must create this PSBT/)
+    expect(finalized.step).toMatch(/an input finalizer must create this PSBT/)
+
+    const copy = btc.Transaction.fromPSBT(
+      btc.Transaction.fromPSBT(base64.decode(combined.base64)).toPSBT()
+    )
+    copy.finalize()
+    expect(base64.encode(copy.toPSBT())).toBe(finalized.base64)
+    expect(bytesToHex(copy.extract())).toBe(PUBLISHED_EXTRACTED_TX)
   })
 
   /**

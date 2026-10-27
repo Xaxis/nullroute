@@ -10,6 +10,11 @@ first, and the website's status page renders it.
 
 ## October 2026
 
+- **2026-10-27** BIP-174's published Input Finalizer PSBT and Transaction
+  Extractor transaction are reproduced byte for byte by the call the signer
+  finalises with (INV-SIG-12). The vector file carried them unchecked, on the
+  grounds that the device did not play those roles; it plays both whenever its
+  signature completes a quorum.
 - **2026-10-27** A BSMS file's first address is checked against this device's
   own derivation, and a file stating another is refused (INV-COORD-7), as
   BIP-129 asks of a signer. It had been shown as an unchecked claim, so two of

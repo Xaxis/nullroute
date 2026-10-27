@@ -88,12 +88,12 @@ Output of `make verify` on this branch:
 | Check | Result |
 | --- | --- |
 | Coverage | 272 of 272 runtime exports of `packages/core` named by a spec |
-| Invariants | 349 invariants bound to 1035 tests, each of which ran and passed; 1350 tests in the suite |
+| Invariants | 350 invariants bound to 1036 tests, each of which ran and passed; 1351 tests in the suite |
 | Vectors | 36 of 36 vector files match their pinned hash |
 | Differential | 3 modules cross-checked against `bitcoinjs-lib` |
-| Integrity | 434 files, root `87edbac5fa2c8e664aab8a399ce9106c2dfec82a74b6bd73d4037cf858427e7f` |
+| Integrity | 434 files, root `21c2d06be2802f5222f905aff254d20e2cd77cede80cc6ab2ac3dd6abcfb7593` |
 
-Totals: 39 specs, 349 invariants. The README badges state the same two numbers,
+Totals: 39 specs, 350 invariants. The README badges state the same two numbers,
 and `make badges` checks that they match.
 
 What this proves and what it does not: the code does what its specs say, on the
