@@ -1,0 +1,90 @@
+name: card
+
+# A FLASHABLE CARD, BUILT AND BOOTED, FOR HARDWARE BRING-UP.
+#
+# ci.yml builds the system partition and checks it against its profile, then
+# throws it away. The full card and `make image-boot-test` need Docker, which
+# the development machine does not have, so until this job existed nothing
+# anywhere produced a card someone could put in a Pi, and the QEMU boot test
+# that proves dm-verity refuses a modified partition had not run since the
+# project moved off the machine it was written on.
+#
+# THIS IS NOT A RELEASE. The card is unsigned, and the artifact says so in its
+# name. Tier 0 is a reproducible build published with a signature; this is the
+# same build handed to the person doing bring-up, who can check it against the
+# root hash it prints and rebuild it themselves with `make image`.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'provisioning/**'
+      - '.github/workflows/card.yml'
+  pull_request:
+    paths:
+      - 'provisioning/**'
+      - '.github/workflows/card.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NPM_CONFIG_IGNORE_SCRIPTS: 'true'
+
+jobs:
+  card:
+    name: a card that boots, and refuses itself modified
+    # ARM64 NATIVELY. The build container is linux/arm64, and on an x86 runner
+    # it runs under binfmt emulation; the boot test then runs qemu-system
+    # inside that, an emulator inside an emulator. On an arm64 runner the
+    # container is native and only the guest is emulated.
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+
+      - name: Build the card
+        run: make image-system
+
+      # Boots the card under QEMU, requires the daemon to start on the verity
+      # root, then flips a byte in the system partition and requires the boot
+      # to stop. verify-runtime judges the console log against the profiles.
+      - name: Boot it, and boot a modified copy
+        run: make image-boot-test
+
+      - name: Checksums
+        run: |
+          cd out/system
+          sha256sum nullroute.img root-hash > SHA256SUMS
+          cat SHA256SUMS
+          echo "verity root hash: $(cat root-hash)"
+
+      - name: Keep the card for bring-up
+        uses: actions/upload-artifact@v7
+        with:
+          name: nullroute-card-UNSIGNED-${{ github.sha }}
+          path: |
+            out/system/nullroute.img
+            out/system/root-hash
+            out/system/SHA256SUMS
+            out/system/console-intact.log
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Console logs, when a boot fails
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: boot-console-${{ github.sha }}
+          path: out/system/*.log
+          if-no-files-found: warn
