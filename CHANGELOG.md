@@ -10,6 +10,10 @@ first, and the website's status page renders it.
 
 ## October 2026
 
+- **2026-10-27** Whether to sign is decided by one function, `signVerdict`, that
+  the signer, the review screen's Sign button and the conformance adapter all
+  call (INV-SIG-11). The signer had read `signable` alone; it now also holds a
+  review that carries a blocking warning, as the screen already did.
 - **2026-10-26** The website is rebuilt as a report: every figure on it is read
   from the repository at build time, the signer profile and conformance kit
   have their own pages, and every document states the SHA-256 of its source.

@@ -42,6 +42,45 @@ import { alreadySignedBy, signatureProgress, type SignatureProgress } from './qu
 /** Zero, always. See the note above: this is what closes the covert channel. */
 export const AUX_RAND = new Uint8Array(32)
 
+/**
+ * What may happen to a reviewed transaction: refused outright, signed, or held
+ * until the user overrides it for one signature.
+ */
+export type SignVerdict = 'refuse' | 'allow' | 'block-until-override'
+
+/**
+ * The one place that decides it (INV-SIG-11).
+ *
+ * The rule used to be written out four times: here, in the daemon, in the
+ * review screen's Sign button and in the conformance adapter, which said in a
+ * comment that it mirrored the screen. Four copies of the rule that gates the
+ * only irreversible act on the device is three chances for one of them to
+ * drift, and the copy that drifts is the one nobody tests against the others.
+ *
+ * BOTH `signable` AND THE WARNINGS ARE READ, not one taken as standing for
+ * the other. `signable` is defined in review.ts as "no blocking warning", but
+ * the screen receives it as a boolean over JSON, where nothing enforces that
+ * coupling, so a review that says signable while carrying a blocking warning
+ * is held. Typed structurally for the same reason: the screen's view of a
+ * review is not a `Review`, and it has to be able to ask. `signable` is
+ * `unknown` because over JSON it is: only `true` allows, so a string "false"
+ * cannot pass as truthy.
+ */
+export function signVerdict(
+  review: {
+    readonly signable: unknown
+    readonly warnings: readonly { readonly blocking: boolean }[]
+  },
+  ownedInputs: number
+): SignVerdict {
+  // Written as "not more than zero" so a count that is not a number refuses.
+  if (!(ownedInputs > 0)) return 'refuse'
+  if (review.signable !== true || review.warnings.some((w) => w.blocking)) {
+    return 'block-until-override'
+  }
+  return 'allow'
+}
+
 export interface SignOptions {
   readonly network: Network
   /** Derivation paths to sign with, one per input that this device owns. */
@@ -109,16 +148,16 @@ export function signTransaction(
   // The review gate. A caller that wanted to sign without reviewing would have
   // to construct a Review saying it was fine, which is a conspicuous thing to
   // find in a diff.
-  if (!review.signable && options.overrideBlockingWarnings !== true) {
+  const verdict = signVerdict(review, paths.length)
+  if (verdict === 'refuse') {
+    throw new PsbtError('No derivation paths were given, so there is nothing to sign with.')
+  }
+  if (verdict === 'block-until-override' && options.overrideBlockingWarnings !== true) {
     const blocking = review.warnings.filter((w) => w.blocking).map((w) => w.message)
     throw new PsbtError(
       `Refusing to sign. ${blocking.join(' ')} ` +
         `If you genuinely intend this, it has to be requested explicitly for this one signature.`
     )
-  }
-
-  if (paths.length === 0) {
-    throw new PsbtError('No derivation paths were given, so there is nothing to sign with.')
   }
 
   const root = rootFromSeed(seed, network)

@@ -1,5 +1,5 @@
 import { type ReactElement, type ReactNode, useState } from 'react'
-import { type ReviewWarning } from '@nullroute/core'
+import { signVerdict, type ReviewWarning } from '@nullroute/core'
 import { Screen } from '../components/Screen.js'
 import { Refusal } from '../components/Refusal.js'
 import { Info } from '../components/Info.js'
@@ -335,7 +335,8 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
   const advisory = review?.warnings.filter((w) => !w.blocking) ?? []
 
   /**
-   * Whether signing is allowed, decided here rather than taken on trust.
+   * Whether signing is allowed, decided by core's `signVerdict` rather than
+   * taken on trust (INV-SIG-11).
    *
    * `signable` arrives as a boolean over JSON. In core it is defined as "no
    * blocking warning" (see review.ts), and this screen used to rely on that
@@ -343,14 +344,17 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
    * `signable: true` would have enabled the button with the warning on screen.
    * Nothing enforces the coupling across the boundary: not TypeScript, which
    * sees whatever the response is typed as, and not the daemon, which cannot
-   * know what this screen assumes.
+   * know what this screen assumes. `signVerdict` reads both, the same way the
+   * lock screen requires a status it recognises rather than merely not
+   * recognising a failure, and it is the function the signer itself asks, so
+   * the button and the signature cannot disagree about the rule.
    *
-   * So both are required, the same way the lock screen requires a status it
-   * recognises rather than merely not recognising a failure. The override is
-   * the user's decision and is the only thing that gets past either.
+   * The override is the user's decision and is the only thing that gets past
+   * a blocked verdict. Reading to the end is this screen's own condition.
    */
-  const refused = review !== null && (review.signable !== true || blocking.length > 0)
-  const maySign = review !== null && review.ownedInputs > 0 && (!refused || override) && read
+  const verdict = review === null ? 'refuse' : signVerdict(review, review.ownedInputs)
+  const refused = verdict === 'block-until-override'
+  const maySign = read && (verdict === 'allow' || (refused && override))
 
   const doReview = async (): Promise<void> => {
     setBusy(true)
@@ -658,9 +662,9 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
                   with its reason scrolled two screens away is a control that
                   reads as broken software rather than as a refusal, and this
                   one refuses for reasons somebody needs to act on. */}
-              {(refused || review.ownedInputs === 0 || !read) && (
+              {(verdict !== 'allow' || !read) && (
                 <span className="nr-status nr-status--fail" data-testid="psbt-refusal">
-                  {review.ownedInputs === 0
+                  {verdict === 'refuse'
                     ? 'No input here is yours'
                     : refused && override
                       ? read

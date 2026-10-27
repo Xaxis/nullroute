@@ -18,7 +18,7 @@ import { MAINNET } from '../src/network/networks.js'
 import { deriveAddresses } from '../src/address/address.js'
 import { PsbtError } from '../src/psbt/review.js'
 import { reviewTransaction, SIGHASH_NONE } from '../src/psbt/review.js'
-import { AUX_RAND, signTransaction } from '../src/psbt/sign.js'
+import { AUX_RAND, signTransaction, signVerdict } from '../src/psbt/sign.js'
 import { fundedBy } from './fixtures/funding.js'
 
 const MNEMONIC =
@@ -173,6 +173,57 @@ describe('core.psbt.sign', () => {
       network: MAINNET,
       paths: [SIGNING_PATH],
       review: review(tx),
+      overrideBlockingWarnings: true,
+    })
+    expect(result.inputsSigned).toBeGreaterThan(0)
+  })
+
+  // INV-SIG-11: the rule the Sign button, the signer and the conformance
+  // adapter share. Every branch, including the inconsistent review the screen
+  // can receive over JSON and the counts that are not counts.
+  it('decides-whether-to-sign-in-one-function', () => {
+    const clean = { signable: true, warnings: [{ blocking: false }] }
+    const blocked = { signable: false, warnings: [{ blocking: true }] }
+    const saysSignable = { signable: true, warnings: [{ blocking: true }] }
+    const saysNotSignable = { signable: false, warnings: [] }
+
+    expect(signVerdict(clean, 1)).toBe('allow')
+    expect(signVerdict(clean, 3)).toBe('allow')
+    expect(signVerdict(blocked, 1)).toBe('block-until-override')
+    expect(signVerdict(saysSignable, 1)).toBe('block-until-override')
+    expect(signVerdict(saysNotSignable, 1)).toBe('block-until-override')
+    // Nothing to sign outranks a blocking warning: there is no override for
+    // "none of this is yours".
+    for (const r of [clean, blocked, saysSignable]) {
+      expect(signVerdict(r, 0)).toBe('refuse')
+      expect(signVerdict(r, -1)).toBe('refuse')
+      expect(signVerdict(r, Number.NaN)).toBe('refuse')
+    }
+  })
+
+  // INV-SIG-11: the signer asks the same function, so a Review that says
+  // signable while carrying a blocking warning is held here too, not only on
+  // the screen. Before signVerdict the signer read `signable` alone.
+  it('holds-a-review-that-says-signable-beside-a-blocking-warning', () => {
+    using seed = mnemonicToSeed(MNEMONIC, '')
+    const tx = fundedTransaction()
+    const honest = review(tx)
+    expect(honest.signable).toBe(true)
+    const inconsistent = {
+      ...honest,
+      warnings: [
+        ...honest.warnings,
+        { kind: 'high-fee-rate' as const, message: 'The fee rate is high.', blocking: true },
+      ],
+    }
+
+    expect(() =>
+      signTransaction(tx, seed, { network: MAINNET, paths: [SIGNING_PATH], review: inconsistent })
+    ).toThrow(/Refusing to sign/)
+    const result = signTransaction(tx, seed, {
+      network: MAINNET,
+      paths: [SIGNING_PATH],
+      review: inconsistent,
       overrideBlockingWarnings: true,
     })
     expect(result.inputsSigned).toBeGreaterThan(0)

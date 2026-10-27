@@ -30,6 +30,7 @@ import {
   parsePsbt,
   reviewTransaction,
   signTransaction,
+  signVerdict,
 } from '../../packages/core/dist/index.js'
 import { buildOwnedIndex, changeLookup, signingPathsFor } from '../../packages/daemon/dist/psbt.js'
 import { inputScript } from '../../packages/daemon/dist/ipc/input-script.js'
@@ -142,11 +143,10 @@ export function reviewPsbt(psbtBase64, context) {
       return { verdict: 'refuse', reason: err.message }
     }
     const { result, ownedInputs } = r
-    // The Sign control in packages/ui/src/screens/PsbtScreen.tsx (`maySign`):
-    // never with no owned input, and past a blocking warning only with the
-    // one-signature override.
-    const verdict =
-      ownedInputs.length === 0 ? 'refuse' : result.signable ? 'allow' : 'block-until-override'
+    // Asked of core, the function the screen's Sign button and the signer
+    // both ask, so this adapter cannot test a rule the device no longer has
+    // (INV-SIG-11).
+    const verdict = signVerdict(result, ownedInputs.length)
     const lockWarning = result.warnings.find((w) => w.kind === 'locktime')
     const lockIgnored = result.warnings.some((w) => w.kind === 'locktime-not-enforced')
     const unknown = result.warnings.find((w) => w.kind === 'unknown-fields')

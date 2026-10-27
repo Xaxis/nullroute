@@ -11,12 +11,17 @@ purpose: >
 
 covers:
   - packages/core/src/psbt/sign.ts::signTransaction
+  - packages/core/src/psbt/sign.ts::signVerdict
   - packages/core/src/psbt/sign.ts::AUX_RAND
 
 algorithm: >
-  The caller passes the review of this exact transaction. If the review says the
-  transaction is not signable, signing throws unless the caller asked to
-  override for this one call, which is never persisted.
+  The caller passes the review of this exact transaction. `signVerdict` turns
+  the review and the number of inputs this device owns into one of three
+  answers: refuse (nothing here is ours), block until override (the review is
+  not signable or carries a blocking warning), or allow. Signing throws on
+  refuse, and on block unless the caller asked to override for this one call,
+  which is never persisted. The review screen's Sign button and the
+  conformance adapter ask the same function.
 
   Each derivation path is derived from the seed and offered to the signer, which
   matches the key against every input itself and signs the ones it can. A path
@@ -175,6 +180,20 @@ invariants:
       - packages/core/test/vectors.bip143.test.ts::signs-the-published-single-key-inputs-through-the-signing-call
       - packages/core/test/vectors.bip143.test.ts::signs-every-published-multisig-hash-type-through-the-signing-call
       - packages/core/test/vectors.bip143.test.ts::signs-nothing-for-the-published-codeseparator-script
+
+  - id: INV-SIG-11
+    statement: >
+      Whether a reviewed transaction may be signed is decided by one function,
+      signVerdict, which the signer, the review screen's Sign button and the
+      conformance adapter all call. With no input this device owns it refuses.
+      When the review is not signable, or carries any blocking warning even
+      while it says signable, it holds the signature until a per-call
+      override. Otherwise it allows. A count of owned inputs that is not a
+      positive number refuses.
+    tests:
+      - packages/core/test/psbt.sign.test.ts::decides-whether-to-sign-in-one-function
+      - packages/core/test/psbt.sign.test.ts::holds-a-review-that-says-signable-beside-a-blocking-warning
+      - packages/ui/test/psbt-screen.test.tsx::refuses-a-blocking-warning-even-when-told-it-is-signable
 
 vectors:
   - name: BIP-340 test vectors
