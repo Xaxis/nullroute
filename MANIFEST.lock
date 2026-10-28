@@ -229,7 +229,7 @@ de95b96588128b9ffe5a07649d742582cdfbc50a4ae9d91a2a6a5a2ce6f68288  packages/ui/sr
 8d56a0b74fa80a56134457c738ecb31377a8cc82c60af43d86735c65aad42b6d  packages/ui/src/index.ts
 3d67f4588750ae2316c8d9881ab52a1ffa83fc06041bbb8daa6a05a5908d1d9f  packages/ui/src/journeys.ts
 14848a2761528d2e22bf709cb692a17a0ae4fa2c32ebf60c8af46a9878056de6  packages/ui/src/lib/client.ts
-0cede89a6d3bec704d817b4685316443d1d4ac7f7756ccd7dfbfe7283cc72751  packages/ui/src/lib/idle.ts
+16fe890a4c166fef0bd438336d3c3bdf87d7a262509021813c261005bfd531d6  packages/ui/src/lib/idle.ts
 c0236334c36f43e9a52a509821ba733bf2da43c50d077e710337432ab1936eb9  packages/ui/src/lib/scanner.ts
 ecc639bf3dfb3b8c80a4b7c884e528ed4ba87070f43a408a5cc9e022a6054c3d  packages/ui/src/lib/scroll.ts
 427040384aab9295461a6e708b43fab322d6b7fa25bd2c5945bbbf0a7e8ce804  packages/ui/src/lib/tier.ts
@@ -265,7 +265,7 @@ c3a28c1de6a6ee3ba18e4f4f2d633c9c8d4723eddaa796cd121941f3adec55bc  packages/ui/sr
 2c9916b2102e67c443cbe4eb5436738b8c7b02417989657a3ed368222ae063d9  packages/ui/src/screens/WalletScreen.tsx
 465efc652305e44dbe7f8b14dd1fdee4c00b23fab2fb0c5ad83e3738a880cae6  packages/ui/src/screens/WalletsScreen.tsx
 eb6cd298dcdf0a9784d2c41a5e9baa76398388b62bd251909edb2b4cfbe175e8  packages/ui/src/styles.css
-2c7c95edf9d91c9d568e0032e6c627d59fc5bc1d9d39ed6d83b20186bbf50b9b  packages/ui/src/ui.spec.yaml
+3b0a00bc67f726a9fb69f63ef8122a46a6a63cce438adae8e64bc3d3252dc212  packages/ui/src/ui.spec.yaml
 97ae49d649fe5993e69685f6f0d7f7449a0a999a61d6597f9a7ab46971932cdc  packages/ui/src/vite-env.d.ts
 5e8309a81e3617457d1aea658c01779e5f7e30a53434bef338b138adf1101e34  packages/ui/test/app.test.tsx
 4531ee1249a87f86511419cbfec960197bfa490d4d737a407604ee0813aaef2f  packages/ui/test/assemble-quorum-screen.test.tsx
@@ -278,7 +278,7 @@ b2f5a544be9bd9b12f58c9785b793381f4d831da7e46bd9a3ad11c098c89c78b  packages/ui/te
 441944803b9d60ad5e3c123645fbd305bfdfba2edb78604df663ba155b1bea33  packages/ui/test/fleet-screen.test.tsx
 42e83253890d39461f0d3c429cf6ff754e7e2c602b166147567bbcbb7b3d1cb2  packages/ui/test/hash.test.tsx
 6aff262d575313f7b0751ff028857f00f6aa99e505e93faa369b015bc8753610  packages/ui/test/idle-banner.test.tsx
-8d73a47ff8820957f503a6e2173a1d98eca1f53f680cc4e245312feeadf05724  packages/ui/test/idle-lock.test.tsx
+3de247f0f5e5d4b76d5040cd5501025470fc6a0b049b15f19e99bb2c154cfcfa  packages/ui/test/idle-lock.test.tsx
 2dc39dba02b00c7aed8d73f5de5cf32a2cc797612392229938653c3e22a751ae  packages/ui/test/keyboard.test.tsx
 335f533a1a91f28aa11764e729cc9f0a448a14b6782acc0df9810541d28702bb  packages/ui/test/labels-screen.test.tsx
 62328699b4537025a39112cde96f7b883bfc8746422701ae3826c4c425ca0a96  packages/ui/test/lock-screen.test.tsx

@@ -81,6 +81,19 @@ export function useIdleLock(options: UseIdleLockOptions): IdleState {
   const lastBeat = useRef(0)
   const deadline = useRef<number | null>(null)
 
+  // WHETHER ANYONE IS LEFT TO TELL. A heartbeat's answer can arrive after the
+  // screen that asked has gone, and then it has nothing to update. Updating
+  // anyway is not harmless: React reads `window.event` on every state update,
+  // so under test, once the environment was torn down, the late answer threw
+  // "window is not defined" into whichever file ran next.
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+
   const send = useCallback(
     (force: boolean): void => {
       const now = Date.now()
@@ -88,7 +101,7 @@ export function useIdleLock(options: UseIdleLockOptions): IdleState {
       lastBeat.current = now
       void beat().then(
         (found) => {
-          if (found === null) return
+          if (found === null || !mounted.current) return
           setWindow(found)
           deadline.current = Date.now() + found.seconds * 1000
         },

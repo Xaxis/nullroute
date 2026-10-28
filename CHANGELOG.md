@@ -10,6 +10,10 @@ first, and the website's status page renders it.
 
 ## October 2026
 
+- **2026-10-27** A heartbeat answered after the screen that sent it had gone
+  updated that screen anyway. Under test that threw "window is not defined"
+  into whichever file ran next, which is why `make ui-race` failed about one
+  run in several under load. The answer now updates nothing (INV-UI-98).
 - **2026-10-27** INV-PROV-13 says no wireless kernel module is on the card,
   and the prune behind it removed 802.11 and Bluetooth only. Both kernels also
   shipped a Realtek SDIO Wi-Fi driver in staging, 802.15.4, NFC, packet radio,

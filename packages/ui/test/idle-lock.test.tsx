@@ -110,3 +110,51 @@ describe('the idle lock', () => {
     expect(getByTestId('remaining').textContent).toBe('null')
   })
 })
+
+describe('a heartbeat answered after the hook is gone', () => {
+  /**
+   * INV-UI-98. The answer to a heartbeat can arrive after the screen that asked
+   * has unmounted, and it then has nothing to update. Calling setState anyway
+   * is not harmless: React reads `window.event` on every update, and once a
+   * test environment is torn down there is no window, so the late answer threw
+   * "window is not defined" into whichever test file ran next. It surfaced as
+   * an unhandled error in `make ui-race` about one run in several under load,
+   * where every answer arrives 50ms late.
+   *
+   * Torn down here on purpose: unmount, take window away as teardown does,
+   * then answer.
+   */
+  it('ignores-the-answer-instead-of-updating-an-unmounted-screen', async () => {
+    let answer: (found: { seconds: number; warnAt: number }) => void = () => undefined
+    const beat = vi.fn(
+      async () =>
+        new Promise<{ seconds: number; warnAt: number } | null>((resolve) => {
+          answer = resolve
+        })
+    )
+    const { unmount } = render(<Harness unlocked beat={beat} />)
+    await waitFor(() => {
+      expect(beat).toHaveBeenCalled()
+    })
+    unmount()
+
+    const thrown: unknown[] = []
+    const record = (reason: unknown): void => {
+      thrown.push(reason)
+    }
+    const saved = Object.getOwnPropertyDescriptor(globalThis, 'window')
+    process.on('unhandledRejection', record)
+    Reflect.deleteProperty(globalThis, 'window')
+    try {
+      answer({ seconds: 600, warnAt: 60 })
+      // Past the 50ms ui-race adds to every answer, and a macrotask beyond it
+      // so an unhandled rejection has been reported if there is one.
+      await new Promise((resolve) => setTimeout(resolve, 120))
+      await new Promise((resolve) => setImmediate(resolve))
+    } finally {
+      if (saved !== undefined) Object.defineProperty(globalThis, 'window', saved)
+      process.off('unhandledRejection', record)
+    }
+    expect(thrown).toEqual([])
+  })
+})
