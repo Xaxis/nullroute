@@ -392,6 +392,15 @@ Stated so they can be challenged:
 - The Raspberry Pi's radios stay off once their drivers, firmware and packages
   are removed from the image (INV-PROV-13). The radio hardware is still on the
   board, and nothing disables it at the device tree level.
+- On a Pi 5, Raspberry Pi's kernel is what its archive says it is. The Pi 4
+  boots Debian's kernel. The Pi 5 boots Raspberry Pi's 6.18.50, because no
+  other kernel drives the official 7 inch panel there: the panel sits behind
+  RP1's DSI block and mainline has no driver for it. That adds a second
+  organisation to trust. The package is pinned by SHA-256 to the digest in
+  Raspberry Pi's signed archive index as read on 27 October 2026, so a
+  substituted download fails the build. Its binary has not been rebuilt from
+  source here, and Raspberry Pi has not shown its kernel builds reproducible.
+  Debian's kernel is pinned the same way and not rebuilt here either.
 
 ---
 

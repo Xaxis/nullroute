@@ -318,6 +318,31 @@ FIRMWARE_SHA=f95a3d3c41df10bac33580be91b595efa1e126ad5e4b7eca75ce26fbbc69af06
 KERNEL_VERSION=6.12.94+deb13-arm64
 KERNEL_DIR=usr/lib/linux-image-6.12.94+deb13-arm64/broadcom
 
+# THE PI 5 BOOTS RASPBERRY PI'S KERNEL, and this is the one place the card
+# trusts an archive other than Debian's. The device is built around the
+# official 7 inch panel, and on a Pi 5 that panel hangs off RP1's DSI block,
+# which only Raspberry Pi's kernel drives: mainline has no RP1 DSI driver,
+# binding or node in any release or in linux-next (research/pi-boards.md).
+# The owner runs a Pi 5 with that panel, so the choice was this or no screen.
+#
+# The rpi-v8 flavour, not rpi-2712. Both carry the RP1 DSI driver and the
+# Pi 5 trees, and Raspberry Pi's firmware documents kernel8.img as a kernel
+# the Pi 5 boots. rpi-v8 uses 4K pages, as Debian's kernel does on the Pi 4,
+# so the Debian userland on this card runs on one page size on both boards
+# rather than meeting 16K pages for the first time on hardware.
+#
+# WHERE THE PIN CAME FROM. archive.raspberrypi.com has no snapshot service, so
+# the digest is the whole pin. It was read on 27 October 2026 from the trixie
+# arm64 Packages.gz, whose SHA-256 (c845dbaf...281f) is listed in an InRelease
+# that verifies under the Raspberry Pi Archive Signing Key,
+# CF8A 1AF5 02A2 AA2D 763B AE7E 82B1 2992 7FA3 303E. When Raspberry Pi drops
+# this version from its pool the download fails here, loudly, and moving the
+# pin is a decision rather than a drift.
+RPI_KERNEL_DEB=linux-image-6.18.50+rpt-rpi-v8_6.18.50-1+rpt1_arm64.deb
+RPI_KERNEL_SHA=8d44827fea22875e0f801252bdbc0f541c03144e970caafa3115bf485ff3c4bd
+RPI_KERNEL_VERSION=6.18.50+rpt-rpi-v8
+RPI_POOL=https://archive.raspberrypi.com/debian/pool/main/l/linux
+
 BOOT="$WORK/boot"
 mkdir -p "$BOOT" "$WORK/debs"
 
@@ -326,8 +351,9 @@ apt-get update >/dev/null 2>&1
 ( cd "$WORK/debs" && apt-get download \
     "linux-image-6.12.94+deb13-arm64=6.12.94-1" \
     "raspi-firmware=1.20240424+ds-6" >/dev/null 2>&1 )
+curl -fsSL -o "$WORK/debs/$RPI_KERNEL_DEB" "$RPI_POOL/$RPI_KERNEL_DEB"
 
-for pair in "$KERNEL_DEB:$KERNEL_SHA" "$FIRMWARE_DEB:$FIRMWARE_SHA"; do
+for pair in "$KERNEL_DEB:$KERNEL_SHA" "$FIRMWARE_DEB:$FIRMWARE_SHA" "$RPI_KERNEL_DEB:$RPI_KERNEL_SHA"; do
   file="${pair%%:*}"
   want="${pair##*:}"
   got=$(sha256sum "$WORK/debs/$file" | cut -d" " -f1)
@@ -342,14 +368,16 @@ done
 
 dpkg-deb -x "$WORK/debs/$KERNEL_DEB" "$WORK/kernel"
 dpkg-deb -x "$WORK/debs/$FIRMWARE_DEB" "$WORK/firmware"
+dpkg-deb -x "$WORK/debs/$RPI_KERNEL_DEB" "$WORK/rpi-kernel"
+RPI_DTB="$WORK/rpi-kernel/usr/lib/modules/$RPI_KERNEL_VERSION/dtb"
 
 # The kernel, under the name the firmware looks for and config.txt names.
 cp "$WORK/kernel/boot/vmlinuz-$KERNEL_VERSION" "$BOOT/kernel8.img"
 
-# ONLY THE BOARDS THE PROFILE CLAIMS, and only the ones Debian can actually
-# boot. `boards` used to list raspberrypi-cm5 and this kernel has no
-# bcm2712-rpi-cm5 device tree: it ships exactly four Pi trees and that is not
-# one of them. A board named in a profile that the artifact cannot start is the
+# ONLY THE BOARDS THE PROFILE CLAIMS OR IS BRINGING UP, and for the Pi 4 the
+# tree Debian's own kernel ships. `boards` used to list raspberrypi-cm5 and
+# this kernel has no bcm2712-rpi-cm5 device tree among the nine Pi trees it
+# carries. A board named in a profile that the artifact cannot start is the
 # same class of claim as a hardening rule nobody applies.
 cp "$WORK/kernel/$KERNEL_DIR/bcm2711-rpi-4-b.dtb" "$BOOT/"
 
@@ -409,10 +437,70 @@ grep -q 'edt,edt-ft5406' "$WORK/merged-check.dts" || {
 rm -f "$WORK/merged-check.dtb" "$WORK/merged-check.dts"
 echo "panel overlay: applies to bcm2711-rpi-4-b.dtb, dsi1 okay, panel and touch present"
 
-# The initramfs that opens the dm-verity mapping. Built from the same kernel
-# tree the card carries, so its modules and the kernel cannot be a version
-# apart, which is a boot failure with no console to read it on.
+# --- the Pi 5 -----------------------------------------------------------------
+#
+# Raspberry Pi's kernel, under a name of its own so the Pi 4's kernel8.img is
+# untouched; config.txt points each board at its own. Gzip-compressed, as
+# Raspberry Pi ships it and as its firmware decompresses it.
+cp "$WORK/rpi-kernel/boot/vmlinuz-$RPI_KERNEL_VERSION" "$BOOT/kernel8-rpi.img"
+
+# THREE TREES FOR ONE BOARD. A C1-stepping Pi 5 loads bcm2712-rpi-5-b.dtb. A
+# D0 board loads bcm2712d0-rpi-5-b.dtb, except under bootloader EEPROMs from
+# 21 October 2026 on the latest channel, which ask for bcm2712-d-rpi-5-b.dtb
+# instead. Which stepping and which EEPROM a given Pi 5 has is not knowable
+# from here, and a Pi 5 that finds no tree does not boot.
+for tree in bcm2712-rpi-5-b.dtb bcm2712d0-rpi-5-b.dtb bcm2712-d-rpi-5-b.dtb; do
+  cp "$RPI_DTB/broadcom/$tree" "$BOOT/"
+done
+
+# RASPBERRY PI'S OVERLAYS, FROM THE SAME PACKAGE AS THE TREES, rather than one
+# written here as the Pi 4's is. The Pi 4's base tree is mainline, which the
+# Raspberry Pi overlays are not written against, so that overlay had to be
+# ours. The Pi 5's tree is Raspberry Pi's, built in the same tree as these.
+#
+# vc4-kms-v3d-pi5 turns on the GPU, which this tree ships disabled: without it
+# there is no v3d for Mesa to render with. The panel overlay is not named in
+# config.txt at all. The firmware detects an official DSI display and loads its
+# overlay itself (display_auto_detect), which is what lets one card serve
+# Touch Display 1 and Touch Display 2 on either DSI connector. Both overlays it
+# can choose for a 7 inch panel are here, because a detected panel whose
+# overlay is missing is a dark screen with nothing logged.
+for overlay in vc4-kms-v3d-pi5 vc4-kms-dsi-7inch vc4-kms-dsi-ili9881-7inch; do
+  cp "$RPI_DTB/overlays/$overlay.dtbo" "$BOOT/overlays/"
+done
+
+# EVERY LABEL THEY REFERENCE EXISTS IN EVERY PI 5 TREE ON THE CARD. That is the
+# failure the Pi 4 check above exists for: an overlay that compiles and names a
+# label the base tree lacks, which the firmware skips without a word.
+#
+# Not a merge, as the Pi 4's check is, because fdtoverlay cannot apply these:
+# they use the firmware's own extensions (symbols that name fragments,
+# fragments that target the overlay's own nodes, parameter tables), and libfdt
+# refuses vc4-kms-dsi-7inch with FDT_ERR_NOTFOUND. Raspberry Pi's dtmerge
+# implements those semantics and this build does not carry it. What a merge
+# would add is the status of each node afterwards, and only the board answers
+# whether the panel lights up in any case.
+for tree in bcm2712-rpi-5-b.dtb bcm2712d0-rpi-5-b.dtb bcm2712-d-rpi-5-b.dtb; do
+  for overlay in vc4-kms-v3d-pi5 vc4-kms-dsi-7inch vc4-kms-dsi-ili9881-7inch; do
+    labels=$(fdtget -p "$BOOT/overlays/$overlay.dtbo" /__fixups__) || {
+      echo "$overlay.dtbo has no __fixups__ node, so what it targets cannot be checked" >&2
+      exit 1
+    }
+    for label in $labels; do
+      fdtget -t s "$BOOT/$tree" /__symbols__ "$label" >/dev/null 2>&1 || {
+        echo "$overlay targets &$label and $tree has no such label" >&2
+        exit 1
+      }
+    done
+  done
+done
+echo "pi 5 overlays:  every label resolves in all three Pi 5 trees"
+
+# The initramfs that opens the dm-verity mapping, one per kernel. Each is built
+# from the kernel tree it boots with, so its modules and the kernel cannot be a
+# version apart, which is a boot failure with no console to read it on.
 /work/provisioning/build/build-initramfs.sh "$BOOT" "$WORK/kernel" "$KERNEL_VERSION"
+/work/provisioning/build/build-initramfs.sh "$BOOT" "$WORK/rpi-kernel" "$RPI_KERNEL_VERSION" initramfs-rpi.img
 
 # No splash, for the same reason the kernel command line has no `quiet`: a
 # device whose whole claim is that you can watch it verify itself should not
@@ -432,14 +520,29 @@ echo "panel overlay: applies to bcm2711-rpi-4-b.dtb, dsi1 okay, panel and touch 
 # for why the overlay is written here rather than taken from Raspberry Pi, and
 # INV-PROV-25 for the assertion that this line exists at all.
 #
-# No vc4-kms-v3d line, deliberately: the mainline tree this kernel ships already
-# has the GPU node at status okay, so KMS is on and /dev/dri/card0 exists. That
-# overlay is a Raspberry Pi OS habit and there is nothing here for it to enable.
+# No vc4-kms-v3d line for the Pi 4, deliberately: the mainline tree Debian's
+# kernel ships already has the GPU node at status okay, so KMS is on without
+# it. The Pi 5's tree is Raspberry Pi's, which ships the GPU disabled, so there
+# it is needed and named.
+#
+# ONE SECTION PER BOARD. The firmware applies [pi4] on a Pi 4 and [pi5] on a
+# Pi 5, so each board gets its own kernel, initramfs and display setup and
+# neither sees the other's. The Pi 4's overlay targets labels only the mainline
+# tree has, and display_auto_detect on a Pi 4 would load Raspberry Pi's DSI
+# overlay into that same mainline tree; both are kept to the board they fit.
 CONFIG_TXT='arm_64bit=1
+disable_splash=1
+
+[pi4]
 kernel=kernel8.img
 initramfs initramfs.img followkernel
-disable_splash=1
-dtoverlay=nullroute-7inch-dsi'
+dtoverlay=nullroute-7inch-dsi
+
+[pi5]
+kernel=kernel8-rpi.img
+initramfs initramfs-rpi.img followkernel
+dtoverlay=vc4-kms-v3d-pi5
+display_auto_detect=1'
 
 printf '%s\n' "$CONFIG_TXT" > "$BOOT/config.txt"
 mkdir -p "$ROOTFS/boot/firmware"
@@ -471,6 +574,13 @@ printf '%s\n' "${NULLROUTE_CMDLINE:?run through the Makefile}" > "$ROOTFS/boot/f
 # firmware uses one block up, and for the same reason: the package that carries
 # what this device needs also carries what it must not have.
 cp -a "$WORK/kernel/usr/lib/modules" "$ROOTFS/usr/lib/"
+# The Pi 5's modules beside the Pi 4's, each under its own kernel version, so
+# whichever kernel booted finds its own tree. Without the device trees and
+# overlays the package keeps under the same directory: the firmware reads
+# those off the boot partition, and four hundred of them in the root
+# filesystem would be files nothing opens.
+cp -a "$WORK/rpi-kernel/usr/lib/modules/$RPI_KERNEL_VERSION" "$ROOTFS/usr/lib/modules/"
+rm -rf "$ROOTFS/usr/lib/modules/$RPI_KERNEL_VERSION/dtb"
 
 # THE STACK AND THE RADIO, not just the drivers. Removing
 # drivers/net/wireless was the obvious half and it left cfg80211, mac80211,
@@ -502,8 +612,9 @@ rm -rf "$ROOTFS/usr/lib/firmware/brcm"
 # a device that boots an erofs root still needs ext4 for the partition its
 # wallet lives on.
 depmod -b "$ROOTFS" "$KERNEL_VERSION"
+depmod -b "$ROOTFS" "$RPI_KERNEL_VERSION"
 
-echo "  modules          $(du -sh "$ROOTFS/usr/lib/modules" | cut -f1), wireless drivers removed, depmod run"
+echo "  modules          $(du -sh "$ROOTFS/usr/lib/modules" | cut -f1) for $KERNEL_VERSION and $RPI_KERNEL_VERSION, wireless drivers removed, depmod run"
 
 # --- the application ---------------------------------------------------------
 #
@@ -703,11 +814,9 @@ echo "  root hash        $(cat "$OUT/root-hash")"
 # recipe uses, so the layout is produced the way the recipe would produce it
 # rather than by a second mechanism that might differ.
 #
-# NOT A BOOTABLE CARD. There is no firmware, no kernel and no initramfs here:
-# this exists so the image-level verifiers have a real artifact to read instead
-# of a synthetic fixture. What it does carry is the partition table, the pinned
-# GUIDs, the verity superblock and the pinned kernel command line, which is
-# every byte those four assertions read.
+# This said "NOT A BOOTABLE CARD" for a month after the card gained firmware, a
+# kernel and an initramfs, and `make image-boot-test` boots it. What has never
+# happened is a boot on a Pi; that is the limit to state, not this one.
 GEN="$WORK/gen"
 mkdir -p "$GEN/input" "$GEN/images" "$GEN/root"
 
@@ -766,8 +875,22 @@ image boot.vfat {
     # The panel. The firmware looks for dtoverlay= names under overlays/, so
     # this one file is the difference between a screen and a dark rectangle.
     file "overlays/nullroute-7inch-dsi.dtbo" { image = "overlays/nullroute-7inch-dsi.dtbo" }
+    # The Pi 5: Raspberry Pi's kernel, its initramfs, a tree per stepping and
+    # EEPROM generation, the GPU overlay config.txt names and the two panel
+    # overlays display_auto_detect can choose between.
+    file "kernel8-rpi.img" { image = "kernel8-rpi.img" }
+    file "initramfs-rpi.img" { image = "initramfs-rpi.img" }
+    file "bcm2712-rpi-5-b.dtb" { image = "bcm2712-rpi-5-b.dtb" }
+    file "bcm2712d0-rpi-5-b.dtb" { image = "bcm2712d0-rpi-5-b.dtb" }
+    file "bcm2712-d-rpi-5-b.dtb" { image = "bcm2712-d-rpi-5-b.dtb" }
+    file "overlays/vc4-kms-v3d-pi5.dtbo" { image = "overlays/vc4-kms-v3d-pi5.dtbo" }
+    file "overlays/vc4-kms-dsi-7inch.dtbo" { image = "overlays/vc4-kms-dsi-7inch.dtbo" }
+    file "overlays/vc4-kms-dsi-ili9881-7inch.dtbo" { image = "overlays/vc4-kms-dsi-ili9881-7inch.dtbo" }
   }
-  size = 64M
+  # 128M, up from 64M when the Pi 5's kernel arrived. Two kernels, two
+  # initramfs and the Pi 4's GPU firmware come to about 61MB, which would have
+  # left one kernel update of room.
+  size = 128M
 }
 image nullroute.img {
   hdimage {
@@ -775,9 +898,17 @@ image nullroute.img {
     gpt-location = 1M
     disk-uuid = "${NULLROUTE_DISK_GUID:?}"
   }
+  # TYPED AS FAT AND MARKED BOOTABLE, as Raspberry Pi's own builder marks its
+  # boot partitions (rpi-image-gen, image/gpt/ab_userdata: partition-type-uuid F
+  # and bootable = true). Left to genimage's default this was "Linux filesystem"
+  # with no attributes, on the one partition the bootloader has to recognise
+  # before anything else happens, and no card had been put in a Pi to find out
+  # whether it minds. INV-PROV-35 checks both.
   partition boot {
     image = "boot.vfat"
     partition-uuid = "${NULLROUTE_BOOT_PART_GUID:?}"
+    partition-type-uuid = "EBD0A0A2-B9E5-4433-87C0-68B6B72699C7"
+    bootable = true
   }
   partition system {
     image = "system.img"

@@ -38,25 +38,25 @@ stop() {
 }
 
 # Modules rather than built-ins: Debian's arm64 kernel has DM_VERITY=m and
-# EROFS_FS=m, so nothing below works until these are loaded.
+# EROFS_FS=m, and so does Raspberry Pi's, so nothing below works until these
+# are loaded.
 #
-# IN DEPENDENCY ORDER, BY HAND, because modprobe would need a module database in
-# here and this is a fixed list of seven. The order is not arbitrary and each
-# entry earns its place: dm-verity will not link without reed_solomon, which
-# provides its forward error correction, and erofs will not link without the
-# crc32c symbol that libcrc32c exports over the crc32c_generic algorithm. Both
-# were missing on the first boot and the kernel said so.
+# IN THE ORDER THE BUILD WROTE DOWN, because modprobe would need a module
+# database in here. build-initramfs.sh asked the kernel's own dependency data
+# what vfat, the two codepages, dm-verity and erofs need and wrote the answer
+# to /modules/required, one name per line in an order that loads. That answer
+# differs by kernel: Debian's needs eleven, among them reed_solomon for
+# dm-verity's error correction and the crc32c pair under erofs, both of which
+# were missing on the first boot; Raspberry Pi's builds most of that in and
+# needs four.
 #
 # A FAILED insmod IS FATAL. This loop used to print "already present or built
 # in" and carry on, which is what it said while dm-verity was failing to link
 # against three missing symbols. A reassuring message on an error path is the
 # defect this project treats as a security bug, in the one file where the next
 # thing to happen is mounting a root filesystem.
-# fat and vfat before the rest: the boot partition is FAT and the root hash is
-# read off it, so a kernel that cannot mount it gets no further. nls_cp437 and
-# nls_ascii are what vfat decodes short names with, and vfat refuses to mount
-# without a codepage.
-for module in fat vfat nls_cp437 nls_ascii dm-mod dm-bufio reed_solomon dm-verity crc32c_generic libcrc32c erofs; do
+[ -f /modules/required ] || stop "the initramfs has no /modules/required list."
+while read -r module; do
   [ -f "/modules/${module}.ko" ] || stop "the initramfs has no ${module}.ko."
   # Into a variable rather than a file. The first version redirected to
   # /tmp/insmod.err, an initramfs has no /tmp, so the redirect failed and every
@@ -68,23 +68,24 @@ for module in fat vfat nls_cp437 nls_ascii dm-mod dm-bufio reed_solomon dm-verit
       *) stop "could not load ${module}: ${err}" ;;
     esac
   fi
-done
+done < /modules/required
 say "device mapper, verity and erofs loaded"
 
 # STORAGE, and this group is tolerant where the group above is not.
 #
 # The card is not readable until the controller driving it has a driver, and
 # which one that is depends on the board: sdhci-iproc drives the SD controller
-# on a Pi 4 and 5, bcm2835 the older host, and virtio_blk is what the QEMU
-# harness presents. A board needs its own and none of the others, so a missing
-# module here is normal and is not fatal.
+# on a Pi 4 under Debian's kernel, bcm2835 the older host, and virtio_blk is
+# what the QEMU harness presents. Raspberry Pi's kernel builds its SD drivers
+# in, so on a Pi 5 this list is empty. A board needs its own and none of the
+# others, so a module that will not load here is normal and is not fatal.
 #
 # It is not silent either. The first boot of this file found no block device at
 # all and said "no boot partition found", which was true and useless: the disk
 # was there and nothing could see it, because virtio_blk is a module in Debian's
 # kernel and the initramfs did not carry it.
 loaded=""
-for module in virtio_mmio virtio_blk mmc_core sdhci sdhci-pltfm sdhci-iproc bcm2835; do
+while read -r module; do
   [ -f "/modules/${module}.ko" ] || continue
   if err=$(insmod "/modules/${module}.ko" 2>&1); then
     loaded="${loaded} ${module}"
@@ -94,7 +95,7 @@ for module in virtio_mmio virtio_blk mmc_core sdhci sdhci-pltfm sdhci-iproc bcm2
       *) say "note: ${module} did not load, which is expected on a board that has no use for it" ;;
     esac
   fi
-done
+done < /modules/storage
 say "storage drivers loaded:${loaded:- none}"
 
 # WAITED FOR, NOT ASSUMED. Block devices appear asynchronously: the first boot

@@ -290,6 +290,21 @@ const built = implemented()
 // ships, but a second profile claiming a board is still a board this repository
 // says it supports.
 const BOARDS = [...new Set(loaded.flatMap(({ profile }) => profile.boards ?? []))]
+// Boards the card carries boot files for while nothing has booted there. Not
+// a claim, and kept apart from one: a board is in one list or the other.
+const BRING_UP = [...new Set(loaded.flatMap(({ profile }) => profile.bring_up ?? []))]
+
+for (const { file, profile } of loaded) {
+  for (const id of profile.bring_up ?? []) {
+    if ((profile.boards ?? []).includes(id)) {
+      fail(
+        file,
+        `${id} is in both boards: and bring_up:. A board that has booted is claimed, and ` +
+          `one that has not is being brought up; it cannot be both.`
+      )
+    }
+  }
+}
 
 const BOARD_PROSE = {
   'raspberrypi-4': /Raspberry Pi 4\b/,
@@ -311,7 +326,15 @@ for (const where of ['README.md', 'docs/VERIFICATION.md']) {
   for (const [id, pattern] of Object.entries(BOARD_PROSE)) {
     const named = pattern.test(table)
     const claimed = BOARDS.includes(id)
-    if (named && !claimed) {
+    // A board being brought up may be named on a line that says so, which is
+    // a status and not a purchasing instruction.
+    const statedAsBringUp =
+      BRING_UP.includes(id) &&
+      table
+        .split('\n')
+        .filter((line) => pattern.test(line))
+        .every((line) => /\bbring-up\b/iu.test(line))
+    if (named && !claimed && !statedAsBringUp) {
       fail(
         where,
         `its hardware table names ${id} and the profile does not claim it. A table ` +
@@ -357,7 +380,7 @@ for (const where of DOCS) {
   const text = readFileSync(join(ROOT, where), 'utf8')
   for (const [soc, boards] of Object.entries(SOC)) {
     if (!new RegExp(`\\b${soc}\\b`, 'u').test(text)) continue
-    if (boards.some((id) => BOARDS.includes(id))) continue
+    if (boards.some((id) => BOARDS.includes(id) || BRING_UP.includes(id))) continue
     fail(
       where,
       `it names the ${soc} and no board any profile claims uses that silicon. The ` +
@@ -371,15 +394,19 @@ for (const where of DOCS) {
 // kernel also ships five bcm2837 trees (Pi 3, Zero 2 W, CM3), which go in here
 // with their board ids when one is brought up. It ships no CM5 tree, which is
 // the fact that took raspberrypi-cm5 out of `boards:`.
+//
+// The Pi 5 has three: the firmware asks a C1 board for bcm2712-rpi-5-b.dtb, a
+// D0 board for bcm2712d0-rpi-5-b.dtb, and a D0 board under the newest
+// EEPROMs for bcm2712-d-rpi-5-b.dtb. The first is the one a board needs.
 const BOARD_DTB = {
-  'raspberrypi-4': 'bcm2711-rpi-4-b.dtb',
-  'raspberrypi-400': 'bcm2711-rpi-400.dtb',
-  'raspberrypi-cm4': 'bcm2711-rpi-cm4-io.dtb',
-  'raspberrypi-5': 'bcm2712-rpi-5-b.dtb',
+  'raspberrypi-4': ['bcm2711-rpi-4-b.dtb'],
+  'raspberrypi-400': ['bcm2711-rpi-400.dtb'],
+  'raspberrypi-cm4': ['bcm2711-rpi-cm4-io.dtb'],
+  'raspberrypi-5': ['bcm2712-rpi-5-b.dtb', 'bcm2712d0-rpi-5-b.dtb', 'bcm2712-d-rpi-5-b.dtb'],
 }
 
 for (const { file, profile } of loaded) {
-  const claims = profile.boards ?? []
+  const claims = [...(profile.boards ?? []), ...(profile.bring_up ?? [])]
   for (const assertion of profile.assertions ?? []) {
     for (const v of assertion.verify ?? []) {
       if (v.check !== 'boot-files-exact') continue
@@ -387,11 +414,14 @@ for (const { file, profile } of loaded) {
       const trees = files.filter((name) => /^bcm\d+-rpi-[\w-]+\.dtb$/u.test(name))
       const where = `${file}  ${assertion.id}`
 
-      for (const [id, dtb] of Object.entries(BOARD_DTB)) {
-        if (trees.includes(dtb) && !claims.includes(id)) {
+      for (const [id, dtbs] of Object.entries(BOARD_DTB)) {
+        const dtb = dtbs[0]
+        const carried = dtbs.find((name) => trees.includes(name))
+        if (carried !== undefined && !claims.includes(id)) {
           fail(
             where,
-            `the boot partition carries ${dtb} and the profile does not claim ${id}. ` +
+            `the boot partition carries ${carried} and the profile neither claims nor is ` +
+              `bringing up ${id}. ` +
               `A device tree for a board this image does not support is either dead ` +
               `weight on the one partition dm-verity cannot cover, or the board list ` +
               `is wrong.`
@@ -400,14 +430,14 @@ for (const { file, profile } of loaded) {
         if (claims.includes(id) && !trees.includes(dtb)) {
           fail(
             where,
-            `the profile claims ${id} and the boot partition carries no ${dtb}, so the ` +
+            `the profile claims or is bringing up ${id} and the boot partition carries no ${dtb}, so the ` +
               `firmware has no device tree for a board this profile says it supports.`
           )
         }
       }
 
       for (const tree of trees) {
-        if (Object.values(BOARD_DTB).includes(tree)) continue
+        if (Object.values(BOARD_DTB).flat().includes(tree)) continue
         fail(
           where,
           `the boot partition carries ${tree}, which belongs to no board this check ` +

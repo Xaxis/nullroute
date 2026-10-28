@@ -31,6 +31,11 @@ Requires=nullrouted.service
 # The man page's own answer is this pair. INV-PROV-27 checks both.
 Wants=modprobe@videodev.service
 After=modprobe@videodev.service
+# The same for the panel's class, "drm", which the drm module registers. The
+# GPU driver loads it early on any board with a display, so this pair is
+# insurance rather than a fix, and it is the same rule stated once more.
+Wants=modprobe@drm.service
+After=modprobe@drm.service
 
 [Service]
 Type=simple
@@ -176,9 +181,17 @@ IPAddressAllow=localhost
 
 # The panel, the input devices and the camera, and nothing else. No hardware
 # random number generator here: entropy is the daemon's business.
+#
+# THE PANEL AS A CLASS, NOT AS card0. This named /dev/dri/card0 and
+# /dev/dri/renderD128, which assumes the display is the first DRM device to
+# probe. On a Pi 5 it is not and cannot be: the GPU, the HDMI controller and
+# RP1's DSI block are three DRM devices, and the panel is on the last. On a
+# Pi 4 the mainline tree gives v3d and vc4 a device each, in probe order, so
+# card0 could be the GPU with no display at all. cage would then open nothing
+# it is allowed to and the panel would stay dark. Every node in the class is a
+# GPU or a display, which is what this line was for.
 DevicePolicy=closed
-DeviceAllow=/dev/dri/card0 rw
-DeviceAllow=/dev/dri/renderD128 rw
+DeviceAllow=char-drm rw
 DeviceAllow=char-input r
 # THE CAMERA, WHICH IS A USB (UVC) WEBCAM. The browser reads QR codes through
 # getUserMedia, so it needs /dev/video*, and under DevicePolicy=closed the

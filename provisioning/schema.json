@@ -30,6 +30,13 @@
       "description": "Board identifiers this profile targets. A tier 2 profile may list only boards whose silicon supports a verified boot chain."
     },
 
+    "bring_up": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string" },
+      "description": "Boards the card carries boot files for so the image can be brought up on them, which the profile does not claim because nothing has booted there yet. A board is in this list or in boards, never both."
+    },
+
     "backends": {
       "type": "array",
       "description": "How to build this, per distribution. ADVISORY ONLY, and the verifier is forbidden from reading this key (INV-PROV-2). Recorded so that adding a second distribution is a matter of adding an entry rather than rewriting the tooling.",

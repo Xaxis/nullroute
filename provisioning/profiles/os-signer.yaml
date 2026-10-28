@@ -29,6 +29,19 @@ boards:
   # display pipeline does.
   - raspberrypi-4
 
+bring_up:
+  # Boards the card carries boot files for so the image can be brought up on
+  # them, which `boards:` does not claim because nothing has booted there yet.
+  # check-profiles lets a device tree on the boot partition belong to a board
+  # here, and lets a hardware table name it only on a line that says bring-up.
+  #
+  # The Pi 5 is the owner's board, with the official 7 inch panel, and that
+  # panel on a Pi 5 is driven by RP1's DSI block, which only Raspberry Pi's
+  # kernel supports. So the Pi 5 boots Raspberry Pi's 6.18.50 kernel and
+  # trees, pinned by digest in build-system.sh, while the Pi 4 keeps Debian's.
+  # It moves to `boards:` after a boot on one with the panel lit.
+  - raspberrypi-5
+
 backends:
   # ADVISORY. The verifier is forbidden from reading this key (INV-PROV-2),
   # because an abstraction where the backend can influence its own verdict is
@@ -509,8 +522,19 @@ assertions:
           # this image to name. Requiring it would have been requiring something
           # unnecessary and unobtainable, which is a check nobody can satisfy
           # rather than a check that holds.
-          overlays:
-            - nullroute-7inch-dsi
+          #
+          # PER BOARD. The Pi 4 boots Debian's mainline tree and needs the
+          # overlay written in this repository. The Pi 5 boots Raspberry Pi's
+          # tree, which ships the GPU disabled, so it needs vc4-kms-v3d-pi5;
+          # and its panel overlay is chosen by the firmware's own detection,
+          # which has to be on.
+          sections:
+            pi4:
+              overlays: [nullroute-7inch-dsi]
+            pi5:
+              overlays: [vc4-kms-v3d-pi5]
+              settings:
+                display_auto_detect: 1
     rationale: >
       This product is a screen with a signer behind it, and the screen is always
       the official 7 inch panel. Decompiling the device tree the image ships
@@ -535,13 +559,19 @@ assertions:
 
   - id: INV-PROV-26
     statement: >
-      Every overlay config.txt tells the firmware to load is present on the boot
-      partition and is a device tree blob.
+      Every overlay config.txt tells the firmware to load, by name or through
+      display_auto_detect, is present on the boot partition and is a device
+      tree blob.
     stage: image
     verify:
       - check: boot-overlays-present
         params:
           partition: boot
+          # What the Pi 5's firmware loads for an official 7 inch panel it
+          # detects: Touch Display 1, or Touch Display 2.
+          autoDetect:
+            - vc4-kms-dsi-7inch
+            - vc4-kms-dsi-ili9881-7inch
     rationale: >
       The firmware reads dtoverlay= out of config.txt, looks for the matching
       file under overlays/, and if it is not there carries on booting without
@@ -566,9 +596,12 @@ assertions:
       build-system.sh merges this overlay into the bcm2711-rpi-4-b.dtb the image
       ships with fdtoverlay, then reads the result back and refuses to build
       unless dsi@7e700000 came out okay and the merged tree carries both the
-      panel and its touch controller. Whether the panel then lights up is
-      answered only by a boot with the panel attached, and nothing in this
-      repository can do it.
+      panel and its touch controller. The Pi 5's overlays are Raspberry Pi's
+      and fdtoverlay cannot apply them, so for those the build checks that
+      every label each one targets exists in every Pi 5 tree on the card, which
+      catches the same mismatch without the merge. Whether the panel then
+      lights up is answered only by a boot with the panel attached, and
+      nothing in this repository can do it.
 
   # --- The camera ------------------------------------------------------------
   # A USB (UVC) webcam, and not a Raspberry Pi CSI camera module. The pinned
@@ -585,9 +618,9 @@ assertions:
   # actually streaming frames into the scan screen. That has not happened yet.
   - id: INV-PROV-27
     statement: >
-      The kiosk unit's device cgroup is closed and allows exactly the panel, the
-      input devices and the video4linux class, and it loads videodev before it
-      starts so that the video4linux class exists to be allowed.
+      The kiosk unit's device cgroup is closed and allows exactly the display
+      class, the input devices and the video4linux class, and it loads drm and
+      videodev before it starts so that both classes exist to be allowed.
     stage: image
     verify:
       - check: unit-device-allow
@@ -596,12 +629,17 @@ assertions:
           policy: closed
           # The whole list, so an entry added beside the camera's is a failure
           # rather than a pass.
+          #
+          # char-drm replaced /dev/dri/card0 and /dev/dri/renderD128, which
+          # assumed the display is the first DRM device to probe. On a Pi 5 the
+          # panel is RP1's DSI block, the third DRM device, and on a Pi 4 the
+          # mainline tree gives the GPU and the display a device each.
           allow:
-            - /dev/dri/card0 rw
-            - /dev/dri/renderD128 rw
+            - char-drm rw
             - char-input r
             - char-video4linux rw
           modules:
+            char-drm: drm
             char-video4linux: videodev
     rationale: >
       The browser reads QR codes from the camera, and DevicePolicy=closed
@@ -698,6 +736,37 @@ assertions:
       a node on a running device has the group; only a Pi with a camera plugged
       in shows that.
 
+  - id: INV-PROV-35
+    statement: >
+      The boot partition is typed as a FAT partition in the GPT and carries the
+      bootable attribute, as Raspberry Pi's own image builder marks its boot
+      partitions.
+    stage: image
+    verify:
+      - check: partition-present
+        params:
+          expect:
+            - name: boot
+              # Microsoft basic data, which genimage calls F and which is what
+              # rpi-image-gen gives every boot partition it writes.
+              type: EBD0A0A2-B9E5-4433-87C0-68B6B72699C7
+              bootable: true
+    rationale: >
+      The bootloader has to find a FAT partition holding config.txt before
+      anything on the card runs. Every card built until 27 October 2026 typed
+      that partition "Linux filesystem" with no attributes, because that is
+      genimage's default and nothing asked for anything else, and none of
+      those cards had been put in a Pi. Raspberry Pi's builder
+      (rpi-image-gen, image/gpt/ab_userdata) sets partition-type-uuid F and
+      bootable = true on every boot partition, so the card now matches the
+      layout Raspberry Pi itself ships rather than one it has never been seen
+      to accept.
+    does_not_cover: >
+      Whether the bootloader requires either. Raspberry Pi's bootloader is not
+      open source and its documentation says only that it looks for a FAT
+      partition, so this pins the layout known to work rather than the
+      bootloader's actual rule. A boot on each board answers the rest.
+
   - id: INV-PROV-22
     statement: >
       The boot partition holds exactly the pinned set of files and no others.
@@ -718,9 +787,9 @@ assertions:
             - cmdline.txt
             - config.txt
             - kernel8.img
-            # Only the boards `boards:` above claims. Debian's 6.12 kernel ships
-            # exactly four Pi device trees and no bcm2712-rpi-cm5, which is why
-            # raspberrypi-cm5 is no longer in that list.
+            # Only the boards `boards:` and `bring_up:` above name. Debian's
+            # 6.12 kernel ships nine Pi device trees and no bcm2712-rpi-cm5,
+            # which is why raspberrypi-cm5 is in neither list.
             - bcm2711-rpi-4-b.dtb
             # Pi 4 loads these from the card.
             - start4.elf
@@ -734,6 +803,16 @@ assertions:
             # boots this under QEMU and requires that a card with one byte
             # changed inside the system partition fails.
             - initramfs.img
+            # THE PI 5, a board in `bring_up:` rather than `boards:`. Raspberry
+            # Pi's kernel and the initramfs built from its modules, which QEMU
+            # cannot boot: the kernel has no virtio, and no QEMU machine is a
+            # Pi 5. Three trees because the firmware asks for C1 and D0 boards,
+            # and for D0 under the newest EEPROMs, by three names.
+            - kernel8-rpi.img
+            - initramfs-rpi.img
+            - bcm2712-rpi-5-b.dtb
+            - bcm2712d0-rpi-5-b.dtb
+            - bcm2712-d-rpi-5-b.dtb
             # The directory holding the panel overlay, and what is inside it.
             # The verifier follows the directory's cluster chain, so both the
             # directory and each name within it are accounted for here. It read
@@ -746,6 +825,11 @@ assertions:
             # line that INV-PROV-25 pins, so the two now have to agree: the
             # overlay the firmware is told to load is the overlay that is here.
             - overlays/nullroute-7inch-dsi.dtbo
+            # Raspberry Pi's, from the kernel package: the Pi 5's GPU, and the
+            # two panel overlays its firmware chooses between on detection.
+            - overlays/vc4-kms-v3d-pi5.dtbo
+            - overlays/vc4-kms-dsi-7inch.dtbo
+            - overlays/vc4-kms-dsi-ili9881-7inch.dtbo
     rationale: >
       Every other region of the card is under the dm-verity hash tree. This one
       cannot be, because it is where the firmware reads the root hash from. An

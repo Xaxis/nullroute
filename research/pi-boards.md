@@ -92,6 +92,38 @@ trust root and kernel builds nobody has shown to be reproducible (option (b)
 below). That is the owner's decision, and it is recorded in
 `docs/THREAT-MODEL.md` if taken.
 
+**Taken, 27 October 2026.** The owner's Pi 5 has the official 7 inch panel, so
+the Pi 5 boots Raspberry Pi's kernel and the Pi 4 keeps Debian's. What was
+checked before building on it:
+
+- Raspberry Pi's trixie archive carries 6.18.50 in two arm64 flavours,
+  `rpi-2712` (16K pages) and `rpi-v8` (4K). Both ship `drm-rp1-dsi.ko`, the
+  Touch Display 1 drivers (`panel-raspberrypi-touchscreen`, `tc358762`,
+  `rpi-panel-attiny-regulator`, `edt-ft5x06`) and Touch Display 2's
+  (`panel-ilitek-ili9881c`, `rpi-panel-v2-regulator`), the Pi 5 trees and the
+  overlays. The card uses `rpi-v8`: the firmware documentation says a Pi 5
+  boots `kernel8.img`, and 4K pages match the page size the Debian userland
+  runs on the Pi 4.
+- Neither flavour builds virtio, so `make image-boot-test` cannot boot this
+  kernel and keeps testing the Pi 4's. The Pi 5 path has no emulator at all.
+- In Raspberry Pi's Pi 5 tree the GPU, HVS and both DSI blocks ship disabled;
+  `vc4-kms-v3d-pi5` enables the first two and the panel overlay the third. The
+  SD controller has `mmc0` as its alias, so the card is `mmcblk0`, and the RNG
+  is the same `iproc-rng200` block, built in, so `/dev/hwrng` is there.
+- The firmware detects both official panels on either connector
+  (`display_auto_detect`, documented for Touch Display 1 and 2 on "Raspberry
+  Pi B+ and later"), so the card names no panel overlay for the Pi 5.
+- fdtoverlay cannot apply Raspberry Pi's overlays. dtc 1.7.2 applies
+  `vc4-kms-v3d-pi5` and Touch Display 2's, and refuses Touch Display 1's with
+  FDT_ERR_NOTFOUND: they use firmware extensions such as symbols that name
+  fragments. The build checks instead that every label each overlay targets
+  exists in each Pi 5 tree, and that check fails against a Pi 4 tree.
+- Mesa 25.0.7, trixie's, falls back to `kmsro` for a display driver it does
+  not know, which is how it renders through v3d onto `drm-rp1-dsi`.
+
+Touch Display 2 is 720x1280 portrait and every screen is laid out at 800x480
+landscape, so it lights up and is not supported.
+
 ## What the device actually needs
 
 | Capability | Why | Where it is pinned |

@@ -896,11 +896,22 @@ export function fileModes(root, params) {
  * pi4-spidev; the kernel's forty eight overlays are all TI, MediaTek, Renesas
  * and Rockchip. So config.txt has to name an overlay and the card has to carry
  * it, and until it does this fails, which is the correct answer.
+ *
+ * PER BOARD, since the Pi 5 arrived. The Pi 5 boots Raspberry Pi's kernel and
+ * tree, which ship the GPU disabled, and its panel overlay is loaded by the
+ * firmware's display_auto_detect rather than by name. So each board's section
+ * of config.txt is read as that board's firmware reads it, the lines outside
+ * any filter plus its own, and an overlay named for the wrong board does not
+ * count for this one.
  */
 export function bootConfigDisplay(root, params) {
-  const wanted = params.overlays ?? []
-  if (wanted.length === 0) {
-    return verdict('boot-config-display', false, 'the assertion named no overlays to require')
+  const wanted = Object.entries(params.sections ?? {})
+  if (wanted.length === 0 || wanted.some(([, want]) => (want.overlays ?? []).length === 0)) {
+    return verdict(
+      'boot-config-display',
+      false,
+      'the assertion named no board sections, or a section with no overlays to require'
+    )
   }
 
   const path = join(root, 'boot/firmware/config.txt')
@@ -911,31 +922,74 @@ export function bootConfigDisplay(root, params) {
     )
   }
 
-  const lines = readFileSync(path, 'utf8')
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line !== '' && !line.startsWith('#'))
-
-  const named = new Set(
-    lines.map((line) => /^dtoverlay=([^,\s]+)/.exec(line)?.[1]).filter((name) => name !== undefined)
-  )
-  const missing = wanted.filter((name) => !named.has(name))
+  const sections = configSections(readFileSync(path, 'utf8'))
+  const problems = []
+  const found = []
+  for (const [board, want] of wanted) {
+    // What a board reads is every line outside a filter plus its own section.
+    const lines = [...(sections.get('') ?? []), ...(sections.get(board) ?? [])]
+    const named = new Set(
+      lines
+        .map((line) => /^dtoverlay=([^,\s]+)/u.exec(line)?.[1])
+        .filter((name) => name !== undefined)
+    )
+    const missing = (want.overlays ?? []).filter((name) => !named.has(name))
+    if (missing.length > 0) {
+      problems.push(
+        `[${board}] names no ${missing.join(' and no ')}; it names ` +
+          `${named.size === 0 ? 'no overlay at all' : [...named].join(', ')}`
+      )
+    }
+    for (const [key, value] of Object.entries(want.settings ?? {})) {
+      // The last assignment wins in config.txt, as it does for the firmware.
+      const set = lines
+        .map((line) => new RegExp(`^${key}=(.*)$`, 'u').exec(line)?.[1]?.trim())
+        .filter((v) => v !== undefined)
+        .pop()
+      if (set !== String(value)) {
+        problems.push(`[${board}] sets ${key} to ${set ?? 'nothing'}, not ${String(value)}`)
+      }
+    }
+    if (problems.length === 0) found.push(`[${board}] ${(want.overlays ?? []).join(' and ')}`)
+  }
 
   const limits = [
     'reads config.txt only. It says the overlay is NAMED, not that the .dtbo is on the card, and not that the panel lights up. Only the hardware answers the last one.',
     'the panel is the official 7 inch DSI touchscreen. A different display needs a different overlay and this assertion is about that one.',
+    'understands model filters such as [pi4] and [pi5] and [all]. A section opened by any other filter is read as that filter, so a combined condition like [pi5][tryboot] would be misread.',
   ]
 
-  return missing.length === 0
-    ? verdict('boot-config-display', true, `config.txt names ${wanted.join(' and ')}`, limits)
+  return problems.length === 0
+    ? verdict('boot-config-display', true, `config.txt names ${found.join(', ')}`, limits)
     : verdict(
         'boot-config-display',
         false,
-        `config.txt names no ${missing.join(' and no ')}, so the DSI interface stays disabled and ` +
-          `nothing describes the panel or its touch controller: the screen stays dark. ` +
-          `It names ${named.size === 0 ? 'no overlay at all' : [...named].join(', ')}`,
+        `config.txt does not switch the panel on for every board: ${problems.join('; ')}. ` +
+          `Without it the DSI interface stays disabled and nothing describes the panel or ` +
+          `its touch controller: the screen stays dark`,
         limits
       )
+}
+
+/**
+ * config.txt's lines by the filter section they sit under, with '' for lines
+ * every board reads. Comments and blank lines are dropped. [all] returns to ''.
+ */
+function configSections(text) {
+  const sections = new Map([['', []]])
+  let current = ''
+  for (const raw of text.split('\n')) {
+    const line = raw.trim()
+    if (line === '' || line.startsWith('#')) continue
+    const filter = /^\[([^\]]+)\]$/u.exec(line)?.[1]
+    if (filter !== undefined) {
+      current = filter === 'all' ? '' : filter
+      if (!sections.has(current)) sections.set(current, [])
+      continue
+    }
+    sections.get(current)?.push(line)
+  }
+  return sections
 }
 
 /** The text of one shipped unit file with line continuations joined, or null. */

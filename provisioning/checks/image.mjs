@@ -125,6 +125,8 @@ export function readGpt(path) {
         partGuid: guid(entry.subarray(16, 32)),
         firstLba: Number(entry.readBigUInt64LE(32)),
         lastLba: Number(entry.readBigUInt64LE(40)),
+        // Bit 2 is "legacy BIOS bootable", the flag genimage's `bootable` sets.
+        bootable: (entry.readBigUInt64LE(48) & 4n) !== 0n,
         // 72 bytes of UTF-16LE, NUL padded.
         name: entry.subarray(56, 128).toString('utf16le').split('\u0000')[0],
       })
@@ -572,11 +574,18 @@ export async function hashFile(path) {
 // --- Verifiers --------------------------------------------------------------
 
 /**
- * The partitions the profile names are present, and large enough.
+ * The partitions the profile names are present, large enough, and typed as the
+ * profile says.
  *
- * Params: `expect`, a list of `{ name, minMiB }`. Matched by name rather than
- * by position, because a layout that gained a partition would otherwise shift
- * every assertion silently by one.
+ * Params: `expect`, a list of `{ name, minMiB, type, bootable }`, every field
+ * but the name optional. Matched by name rather than by position, because a
+ * layout that gained a partition would otherwise shift every assertion
+ * silently by one.
+ *
+ * `type` and `bootable` exist for the boot partition, which the bootloader has
+ * to recognise before anything else happens. genimage's default typed it
+ * "Linux filesystem" with no flags, where Raspberry Pi's own builder types its
+ * boot partitions as FAT and marks them bootable.
  */
 export function partitionPresent(context, params) {
   const gpt = readGpt(context.image)
@@ -599,6 +608,16 @@ export function partitionPresent(context, params) {
       problems.push(`no partition named ${want.name}`)
       continue
     }
+    if (want.type !== undefined && found.typeGuid !== String(want.type).toUpperCase()) {
+      problems.push(
+        `${want.name} is typed ${found.typeGuid}, not ${String(want.type).toUpperCase()}`
+      )
+    }
+    if (want.bootable !== undefined && found.bootable !== want.bootable) {
+      problems.push(
+        `${want.name} is ${found.bootable ? '' : 'not '}marked bootable, and the profile says it ${want.bootable ? 'is' : 'is not'}`
+      )
+    }
     if (want.minMiB !== undefined) {
       const mib = ((found.lastLba - found.firstLba + 1) * SECTOR) / (1024 * 1024)
       if (mib < want.minMiB) {
@@ -617,7 +636,7 @@ export function partitionPresent(context, params) {
       : problems.join('; '),
     [
       'reads the primary GPT only. A damaged primary with an intact backup reads as no GPT at all here.',
-      'says a partition exists and is large enough. It says nothing about what is in it.',
+      'says a partition exists, is large enough, and carries the type and bootable flag the profile names. It says nothing about what is in it.',
     ]
   )
 }
@@ -965,6 +984,12 @@ export function bootFilesExact(context, params) {
  * looks like. This asserts the relation itself, from the card, so neither pin
  * has to be maintained for it to hold.
  *
+ * A Pi 5 asks for its panel's overlay without naming it: display_auto_detect
+ * has the firmware load the overlay for whichever official display it finds.
+ * Those are `autoDetect` in the params, required on the card whenever
+ * config.txt turns detection on, because a detected panel whose overlay is
+ * missing is the same dark screen.
+ *
  * It reads config.txt off the boot partition rather than the copy in the root
  * filesystem. Those are written from the same source by build-system.sh and
  * this is the one the firmware actually reads.
@@ -993,13 +1018,28 @@ export function bootOverlaysPresent(context, params) {
     )
   }
 
-  const wanted = config
+  const lines = config
     .toString('utf8')
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => !line.startsWith('#'))
+  const named = lines
     .map((line) => /^dtoverlay=([^,\s]+)/u.exec(line)?.[1])
     .filter((overlay) => overlay !== undefined)
+
+  // DETECTED, NOT NAMED, is still told to load. With display_auto_detect=1 the
+  // firmware picks the overlay for whichever official panel it finds, so
+  // config.txt asks for those files without spelling them. Under any board's
+  // section, because whichever board reads it is one that will ask.
+  const detects = lines.some((line) => /^display_auto_detect=1$/u.test(line))
+  const detectable = (params?.autoDetect ?? []).map(String)
+  if (detects && detectable.length === 0) {
+    return cannotRun(
+      'boot-overlays-present',
+      'config.txt turns on display_auto_detect and the assertion names no overlays the firmware may detect, so what it may load is not known here'
+    )
+  }
+  const wanted = [...new Set([...named, ...(detects ? detectable : [])])]
 
   if (wanted.length === 0) {
     // Not a pass. A config.txt naming no overlay is either a device with no
@@ -1014,7 +1054,9 @@ export function bootOverlaysPresent(context, params) {
   for (const overlay of wanted) {
     const blob = readFatFile(context.image, offset, `overlays/${overlay}.dtbo`)
     if (blob === null) {
-      problems.push(`config.txt loads ${overlay} and overlays/${overlay}.dtbo is not on the card`)
+      problems.push(
+        `config.txt ${named.includes(overlay) ? 'loads' : 'may detect'} ${overlay} and overlays/${overlay}.dtbo is not on the card`
+      )
       continue
     }
     // 0xd00dfeed is the flattened device tree magic. A .dtbo that is not one is
@@ -1028,7 +1070,7 @@ export function bootOverlaysPresent(context, params) {
     'boot-overlays-present',
     problems.length === 0,
     problems.length === 0
-      ? `${String(wanted.length)} overlay(s) named by config.txt, each present on ${name} and a device tree blob: ${wanted.join(', ')}`
+      ? `${String(wanted.length)} overlay(s) config.txt names${detects ? ' or may detect' : ''}, each present on ${name} and a device tree blob: ${wanted.join(', ')}`
       : problems.join('; '),
     [
       "says the file is there and is a device tree blob. It does not say the overlay applies cleanly to this board's base tree, which fdtoverlay at build time answers, and it does not say the panel lights up, which only the hardware answers.",

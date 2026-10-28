@@ -66,14 +66,14 @@ Compute the root hash:
 
 ```console
 $ sha256sum MANIFEST.lock
-bfd3635f76f4cbd5082d240fa2a08ca24b2b0adf9f5c53a24380b173563f49fb  MANIFEST.lock
+c7a04243d7c5e2e118793dd4639620f1e25bc15f9c7e72de20a7aab8ec8ed09d  MANIFEST.lock
 ```
 
 Regenerate the manifest from scratch and confirm it matches what is committed:
 
 ```console
 $ git ls-files -z package.json package-lock.json packages spec provisioning | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum
-bfd3635f76f4cbd5082d240fa2a08ca24b2b0adf9f5c53a24380b173563f49fb  -
+c7a04243d7c5e2e118793dd4639620f1e25bc15f9c7e72de20a7aab8ec8ed09d  -
 ```
 
 On macOS use `shasum -a 256` in place of `sha256sum`. The values are identical.
@@ -364,8 +364,9 @@ Target build is under $120.
 
 | Part | Choice | Notes |
 | --- | --- | --- |
-| Board | Raspberry Pi 4 (4GB) | The only board this image supports, and the only device tree on the card. |
-| Display | Official Raspberry Pi 7 inch touchscreen | The DSI panel, described by `provisioning/build/overlays/nullroute-7inch-dsi.dts`. INV-PROV-25 says config.txt names the overlay, INV-PROV-26 says the overlay is on the card and is a device tree blob, and the build refuses to finish unless merging it into this image's `bcm2711-rpi-4-b.dtb` leaves `dsi@7e700000` enabled with the panel and its touch controller present. Whether the panel lights up is answered only by a boot with it attached. Every screen is measured at exactly 800x480 and no other size. |
+| Board | Raspberry Pi 4 (4GB) | The only board this image supports. |
+| Board, in bring-up | Raspberry Pi 5 | The owner's board. The card carries its boot files, on Raspberry Pi's own kernel because that is the only kernel that drives the 7 inch panel on a Pi 5, and nothing has booted on one yet: bring-up, not support. |
+| Display | Official Raspberry Pi 7 inch touchscreen | The DSI panel, described by `provisioning/build/overlays/nullroute-7inch-dsi.dts`. INV-PROV-25 says config.txt names the overlay in the Pi 4's section, INV-PROV-26 says the overlay is on the card and is a device tree blob, and the build refuses to finish unless merging it into this image's `bcm2711-rpi-4-b.dtb` leaves `dsi@7e700000` enabled with the panel and its touch controller present. On a Pi 5 the firmware detects the panel and loads Raspberry Pi's own overlay for it; INV-PROV-26 says both overlays it can choose are on the card, and the build refuses to finish unless every label they target exists in all three Pi 5 trees. Touch Display 2 is detected and driven too, but it is a 720x1280 portrait panel, so it is not a supported screen. Whether the panel lights up is answered only by a boot with it attached. Every screen is measured at exactly 800x480 and no other size. |
 | Camera | A USB (UVC) webcam | CSI camera modules come later. The pinned kernel (`linux-image-6.12.94+deb13-arm64`) builds no IMX708 sensor driver, since it is not in mainline, no IMX219 driver, and leaves the Pi 4's CSI receiver (`VIDEO_BCM2835_UNICAM`) unset, so on the card only a USB (UVC) camera has a driver. INV-PROV-29 says `uvcvideo` and everything `modules.dep` says it needs are on the card, INV-PROV-27 says the kiosk's device cgroup allows `char-video4linux` and nothing new beside it, and INV-PROV-28 says the browser's managed policy grants the camera to `http://127.0.0.1:5180` alone with audio off. INV-PROV-30 says the card carries `systemd-udevd` and the two rules that load the driver on hotplug and give the node the `video` group; it failed against the image built before udev was added. No camera has streamed on a Pi yet. Without a camera the device shows codes and receives nothing: an SD card transport is planned and not built. |
 | Storage | 16GB+ SD card, A2 class | The image is small; the class rating matters for Argon2id-adjacent I/O, not capacity. |
 | Case | Any | Consider one that makes tampering visible rather than one that looks nice. |
@@ -590,8 +591,10 @@ from snapshot.debian.org at one timestamp, `NULLROUTE_SNAPSHOT` in
 kernel and firmware alike, so a version Debian supersedes stays fetchable and a
 later build of the same commit sees the same archive. This moved the dependency
 rather than removing it: the build now relies on snapshot.debian.org being up
-and serving what it served. The kernel and firmware packages are checked against
-pinned digests; the rest are checked by apt against Debian's signed indices for
+and serving what it served. The Pi 5's kernel is the exception: it comes from
+Raspberry Pi's archive, which keeps no snapshots, so when Raspberry Pi drops
+6.18.50 from its pool the build stops until someone moves the pin. The kernel
+and firmware packages are checked against pinned digests; the rest are checked by apt against Debian's signed indices for
 that moment, and their hashes are not yet recorded in the repository. Two builds
 on different days have not yet been compared.
 

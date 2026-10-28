@@ -10,6 +10,14 @@ first, and the website's status page renders it.
 
 ## October 2026
 
+- **2026-10-27** The card carries a Pi 5 bring-up path beside the Pi 4's. A
+  Pi 5 boots Raspberry Pi's 6.18.50 kernel, pinned by digest, because only that
+  kernel drives the official 7 inch panel there; `config.txt` gives each board
+  its own section. The Pi 5 is listed under `bring_up:` and not `boards:`
+  until it boots with the panel lit. The initramfs now asks the kernel's own
+  dependency data which modules to load. The boot partition is typed FAT and
+  marked bootable, as Raspberry Pi's builder marks it (INV-PROV-35); every
+  earlier card had it typed "Linux filesystem".
 - **2026-10-27** BIP-387 and BIP-389's published descriptor vectors are run,
   so every descriptor document the signer profile claims now has its vectors
   run. BIP-389's found a defect: multipath elements of different lengths, and

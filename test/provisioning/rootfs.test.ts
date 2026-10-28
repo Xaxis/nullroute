@@ -165,7 +165,38 @@ describe('provisioning.absent-packages', () => {
 })
 
 describe('provisioning.boot-config-display', () => {
-  const OVERLAYS = ['nullroute-7inch-dsi']
+  const SECTIONS = {
+    pi4: { overlays: ['nullroute-7inch-dsi'] },
+    pi5: { overlays: ['vc4-kms-v3d-pi5'], settings: { display_auto_detect: 1 } },
+  }
+  /** The config.txt build-system.sh writes, line for line. */
+  const CARD = [
+    'arm_64bit=1',
+    'disable_splash=1',
+    '',
+    '[pi4]',
+    'kernel=kernel8.img',
+    'initramfs initramfs.img followkernel',
+    'dtoverlay=nullroute-7inch-dsi',
+    '',
+    '[pi5]',
+    'kernel=kernel8-rpi.img',
+    'initramfs initramfs-rpi.img followkernel',
+    'dtoverlay=vc4-kms-v3d-pi5',
+    'display_auto_detect=1',
+    '',
+  ].join('\n')
+  const run = (text: string) => {
+    put('boot/firmware/config.txt', text)
+    return bootConfigDisplay(root, { sections: SECTIONS })
+  }
+
+  it('passes-the-config-the-card-carries', () => {
+    const result = run(CARD)
+    expect(result.ok).toBe(true)
+    expect(result.detail).toContain('[pi4] nullroute-7inch-dsi')
+    expect(result.detail).toContain('[pi5] vc4-kms-v3d-pi5')
+  })
 
   /**
    * INV-PROV-25. The state the image was actually in when this was written.
@@ -176,11 +207,9 @@ describe('provisioning.boot-config-display', () => {
    * provisioned. The screen is dark.
    */
   it('fails-a-config-that-names-no-overlay-at-all', () => {
-    put(
-      'boot/firmware/config.txt',
+    const result = run(
       'arm_64bit=1\nkernel=kernel8.img\ninitramfs initramfs.img followkernel\ndisable_splash=1\n'
     )
-    const result = bootConfigDisplay(root, { overlays: OVERLAYS })
     expect(result.ok).toBe(false)
     expect(result.detail).toContain('nullroute-7inch-dsi')
     expect(result.detail).toContain('no overlay at all')
@@ -190,19 +219,38 @@ describe('provisioning.boot-config-display', () => {
   })
 
   it('fails-a-config-that-names-a-different-overlay', () => {
-    put('boot/firmware/config.txt', 'arm_64bit=1\ndtoverlay=vc4-kms-v3d\n')
-    const result = bootConfigDisplay(root, { overlays: OVERLAYS })
+    const result = run(CARD.replace('dtoverlay=nullroute-7inch-dsi', 'dtoverlay=vc4-kms-v3d'))
     expect(result.ok).toBe(false)
-    expect(result.detail).toContain('nullroute-7inch-dsi')
+    expect(result.detail).toContain('[pi4] names no nullroute-7inch-dsi')
   })
 
-  /** Parameters after a comma are the overlay's own, and do not change its name. */
-  it('passes-a-config-that-names-both-with-parameters', () => {
-    put(
-      'boot/firmware/config.txt',
-      '# a comment\narm_64bit=1\ndtoverlay=nullroute-7inch-dsi,sizex\n'
+  /**
+   * The firmware reads only its own board's section. The Pi 4's overlay under
+   * [pi5] lights nothing on a Pi 4, whatever the file as a whole contains.
+   */
+  it('fails-an-overlay-named-only-under-the-other-board', () => {
+    const result = run(
+      CARD.replace('dtoverlay=nullroute-7inch-dsi', '').replace(
+        'display_auto_detect=1',
+        'display_auto_detect=1\ndtoverlay=nullroute-7inch-dsi'
+      )
     )
-    const result = bootConfigDisplay(root, { overlays: OVERLAYS })
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('[pi4] names no nullroute-7inch-dsi')
+  })
+
+  /** A Pi 5 that does not auto-detect loads no panel overlay at all. */
+  it('fails-a-pi-5-section-that-does-not-detect-the-display', () => {
+    const result = run(CARD.replace('display_auto_detect=1', 'display_auto_detect=0'))
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('[pi5] sets display_auto_detect to 0, not 1')
+  })
+
+  /** Lines outside any filter, and after [all], are read by every board. */
+  it('counts-lines-every-board-reads-for-each-board', () => {
+    const result = run(
+      'dtoverlay=nullroute-7inch-dsi,sizex\n[pi5]\ndisplay_auto_detect=1\n[all]\ndtoverlay=vc4-kms-v3d-pi5\n'
+    )
     expect(result.ok).toBe(true)
   })
 
@@ -212,17 +260,19 @@ describe('provisioning.boot-config-display', () => {
    * could-not-look as a pass.
    */
   it('reports-unavailable-rather-than-passing-when-there-is-no-config', () => {
-    const result = bootConfigDisplay(root, { overlays: OVERLAYS })
+    const result = bootConfigDisplay(root, { sections: SECTIONS })
     expect(result.ok).toBe(false)
     expect(result.unavailable).toBe(true)
   })
 
   it('refuses-to-decide-which-overlays-matter', () => {
     put('boot/firmware/config.txt', 'arm_64bit=1\n')
-    const result = bootConfigDisplay(root, {})
-    expect(result.ok).toBe(false)
-    expect(result.unavailable).toBeUndefined()
-    expect(result.detail).toContain('named no overlays')
+    for (const params of [{}, { sections: { pi4: { overlays: [] } } }]) {
+      const result = bootConfigDisplay(root, params)
+      expect(result.ok).toBe(false)
+      expect(result.unavailable).toBeUndefined()
+      expect(result.detail).toContain('named no board sections')
+    }
   })
 })
 
@@ -677,8 +727,8 @@ describe('provisioning.unit-device-allow', () => {
   const params = {
     unit: 'nullroute-kiosk.service',
     policy: 'closed',
-    allow: ['/dev/dri/card0 rw', '/dev/dri/renderD128 rw', 'char-input r', 'char-video4linux rw'],
-    modules: { 'char-video4linux': 'videodev' },
+    allow: ['char-drm rw', 'char-input r', 'char-video4linux rw'],
+    modules: { 'char-drm': 'drm', 'char-video4linux': 'videodev' },
   }
 
   function kiosk(text: string): void {
@@ -689,10 +739,11 @@ describe('provisioning.unit-device-allow', () => {
     '[Unit]',
     'Wants=modprobe@videodev.service',
     'After=nullrouted.service modprobe@videodev.service',
+    'Wants=modprobe@drm.service',
+    'After=modprobe@drm.service',
     '[Service]',
     'DevicePolicy=closed',
-    'DeviceAllow=/dev/dri/card0 rw',
-    'DeviceAllow=/dev/dri/renderD128   rw',
+    'DeviceAllow=char-drm   rw',
     'DeviceAllow=char-input r',
     'DeviceAllow=char-video4linux rw',
     '',
@@ -717,6 +768,18 @@ describe('provisioning.unit-device-allow', () => {
     const result = unitDeviceAllow(root, params)
     expect(result.ok).toBe(false)
     expect(result.detail).toContain('char-* rw')
+  })
+
+  /**
+   * The list before the Pi 5: the first DRM device by path. On a Pi 5 the
+   * panel is the third DRM device, so this is a dark screen, and it is an
+   * entry the list does not hold.
+   */
+  it('fails-the-panel-named-as-the-first-drm-device', () => {
+    kiosk(good.replace('DeviceAllow=char-drm   rw', 'DeviceAllow=/dev/dri/card0 rw'))
+    const result = unitDeviceAllow(root, params)
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('does not allow: char-drm rw')
   })
 
   it('fails-when-the-camera-class-is-missing', () => {

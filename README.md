@@ -111,7 +111,8 @@ Roughly $100 to $120.
 
 | Part | What to get | Notes |
 | --- | --- | --- |
-| Board | Raspberry Pi 4 (4GB) | The only board this image supports, and the only device tree on the card. |
+| Board | Raspberry Pi 4 (4GB) | The only board this image supports. |
+| Board, in bring-up | Raspberry Pi 5 | The owner's board. The card carries its boot files, on Raspberry Pi's own kernel because that is the only kernel that drives the 7 inch panel on a Pi 5, and nothing has booted on one yet: bring-up, not support. |
 | Screen | Official Raspberry Pi 7 inch touchscreen | The DSI panel. Every screen is measured at exactly 800x480 and no other size. |
 | Storage | 16GB+ A2 SD card | The image is about 1.6GB. |
 | Dice | One d6 | Casino grade if you care. Any die works. |

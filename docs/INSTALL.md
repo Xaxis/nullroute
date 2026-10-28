@@ -8,14 +8,18 @@ which is the point, and `make image` prints the checksum you verify it with.
 **Hardware bring-up is the next milestone.** The image boots under QEMU and the
 signing daemon starts on it, which is a real thing to have proven and is not yet
 the same as your board coming up. The firmware path from power-on to the kernel
-is on the card and gets its first run on a Pi 4, and so does the kiosk
-browser's display. If you flash a card now, use a spare and expect to be part of
-that bring-up.
+is on the card and gets its first run on a Pi, and so does the kiosk browser's
+display. If you flash a card now, use a spare and expect to be part of that
+bring-up.
 
-The Pi 4 is where bring-up starts, not a limit of the design. The device needs a
-64-bit Pi with enough memory, an 800x480 touchscreen and a camera, and the card
-built today carries the device tree and panel overlay for a Pi 4 with the
-official 7 inch panel. Other boards are added once the image boots on them.
+One card serves a Pi 4 or a Pi 5, each with the official 7 inch panel. The
+firmware reads its own board's section of `config.txt`: a Pi 4 boots Debian's
+kernel with the panel overlay written in this repository, and a Pi 5 boots
+Raspberry Pi's kernel, the only one that drives that panel on a Pi 5, and
+detects the panel itself. The Pi 4 is the board the profile claims; the Pi 5
+is in bring-up, and moves across once a card has booted on one with the panel
+lit. The device needs a 64-bit Pi with enough memory, an 800x480 touchscreen
+and a camera, so other boards are added once the image boots on them.
 
 The camera is a USB (UVC) webcam. A Raspberry Pi camera module on the CSI
 connector does not work on this image, because the pinned kernel has no driver
@@ -112,8 +116,9 @@ irreversible and it is the only tier that works on any board.
 
 Nothing is typed and nothing is configured.
 
-1. The Pi firmware reads `config.txt`, loads `kernel8.img` and the device tree
-   for your board, and hands over to the kernel with `initramfs.img`.
+1. The Pi firmware reads `config.txt`, loads the device tree for your board and
+   that board's kernel, `kernel8.img` on a Pi 4 or `kernel8-rpi.img` on a Pi 5,
+   and hands over to it with the initramfs built from that kernel's modules.
 2. The initramfs loads dm-verity and erofs, reads `system.roothash` off the boot
    partition, opens the system partition through a verity mapping, and mounts it
    read only. If the partition does not match that hash, it stops here and says
@@ -143,7 +148,7 @@ at, and these are the questions in order:
 ```console
 $ systemctl status nullroute-kiosk.service
 $ journalctl -u nullroute-kiosk.service -b
-$ ls -l /dev/dri/            # a card0 should be here
+$ ls -l /dev/dri/            # a card per GPU and display; on a Pi 5 the panel is the last
 $ ls -l /dev/tty1            # and a virtual terminal
 ```
 

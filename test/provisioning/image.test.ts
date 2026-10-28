@@ -195,8 +195,27 @@ function shortName(name: string): [string, string, number] | null {
   return [base, ext, (lower(base) ? 0x08 : 0) | (lower(ext) ? 0x10 : 0)]
 }
 
+/**
+ * A GUID as GPT stores it: the first three groups little-endian, the last two
+ * as written. Spelled out from the UEFI layout rather than borrowed from the
+ * parser, so a byte-order mistake there cannot be agreed with here.
+ */
+function guidBytes(text: string): Buffer {
+  const hex = text.replace(/-/gu, '')
+  const bytes = Buffer.from(hex, 'hex')
+  return Buffer.concat([
+    Buffer.from(bytes.subarray(0, 4)).reverse(),
+    Buffer.from(bytes.subarray(4, 6)).reverse(),
+    Buffer.from(bytes.subarray(6, 8)).reverse(),
+    bytes.subarray(8, 16),
+  ])
+}
+
 /** A GPT holding the given partitions, in order, written to `path`. */
-function writeImage(path: string, parts: readonly { name: string; bytes: Buffer }[]): void {
+function writeImage(
+  path: string,
+  parts: readonly { name: string; bytes: Buffer; type?: string; attributes?: bigint }[]
+): void {
   const firstLba = 64
   const total = firstLba * SECTOR + parts.reduce((sum, part) => sum + part.bytes.length, 0) + SECTOR
   const image = Buffer.alloc(total)
@@ -211,10 +230,11 @@ function writeImage(path: string, parts: readonly { name: string; bytes: Buffer 
   let lba = firstLba
   for (const [index, part] of parts.entries()) {
     const entry = image.subarray(2 * SECTOR + index * 128, 2 * SECTOR + (index + 1) * 128)
-    Buffer.alloc(16, 0x22).copy(entry, 0)
+    ;(part.type === undefined ? Buffer.alloc(16, 0x22) : guidBytes(part.type)).copy(entry, 0)
     Buffer.alloc(16, 0x33 + index).copy(entry, 16)
     entry.writeBigUInt64LE(BigInt(lba), 32)
     entry.writeBigUInt64LE(BigInt(lba + part.bytes.length / SECTOR - 1), 40)
+    entry.writeBigUInt64LE(part.attributes ?? 0n, 48)
     entry.write(part.name, 56, 'utf16le')
     part.bytes.copy(image, lba * SECTOR)
     lba += part.bytes.length / SECTOR
@@ -483,6 +503,56 @@ describe('boot-overlays-present', () => {
     expect(result.ok).toBe(false)
     expect(result.unavailable).toBe(true)
   })
+
+  describe('with display_auto_detect, as the Pi 5 section has it', () => {
+    const DETECTABLE = ['vc4-kms-dsi-7inch', 'vc4-kms-dsi-ili9881-7inch']
+    const DETECTING = Buffer.from(
+      '[pi4]\ndtoverlay=nullroute-7inch-dsi\n[pi5]\ndtoverlay=vc4-kms-v3d-pi5\ndisplay_auto_detect=1\n'
+    )
+    const card = (overlays: readonly string[]) => {
+      writeBootImage(
+        image,
+        buildFat16([
+          { name: 'config.txt', contents: DETECTING },
+          {
+            name: 'overlays',
+            contents: null,
+            children: overlays.map((name) => ({ name: `${name}.dtbo`, contents: FDT })),
+          },
+        ])
+      )
+    }
+    const detect = (autoDetect?: readonly string[]) =>
+      bootOverlaysPresent(
+        { image },
+        autoDetect === undefined ? { partition: 'boot' } : { partition: 'boot', autoDetect }
+      )
+
+    it('passes-when-every-overlay-it-may-detect-is-there', () => {
+      card(['nullroute-7inch-dsi', 'vc4-kms-v3d-pi5', ...DETECTABLE])
+      const result = detect(DETECTABLE)
+      expect(result.ok).toBe(true)
+      expect(result.detail).toContain('4 overlay(s) config.txt names or may detect')
+    })
+
+    /** A Touch Display 2 found on a card that only carries Touch Display 1's overlay. */
+    it('fails-when-an-overlay-it-may-detect-is-not-on-the-card', () => {
+      card(['nullroute-7inch-dsi', 'vc4-kms-v3d-pi5', 'vc4-kms-dsi-7inch'])
+      const result = detect(DETECTABLE)
+      expect(result.ok).toBe(false)
+      expect(result.detail).toContain(
+        'may detect vc4-kms-dsi-ili9881-7inch and overlays/vc4-kms-dsi-ili9881-7inch.dtbo is not on the card'
+      )
+    })
+
+    /** Detection on and nothing said about what it detects is not agreement. */
+    it('cannot-run-when-the-assertion-names-nothing-it-may-detect', () => {
+      card(['nullroute-7inch-dsi', 'vc4-kms-v3d-pi5', ...DETECTABLE])
+      const result = detect()
+      expect(result.ok).toBe(false)
+      expect(result.unavailable).toBe(true)
+    })
+  })
 })
 
 describe('partition-present', () => {
@@ -521,6 +591,38 @@ describe('partition-present', () => {
     const result = run([{ name: 'boot' }])
     expect(result.ok).toBe(false)
     expect(result.unavailable).toBe(true)
+  })
+
+  describe('the boot partition the bootloader has to recognise', () => {
+    const FAT = 'EBD0A0A2-B9E5-4433-87C0-68B6B72699C7'
+    const LINUX = '0FC63DAF-8483-4772-8E79-3D69D8477DE4'
+    const boot = (type: string, attributes: bigint) => {
+      writeImage(image, [{ name: 'boot', bytes: Buffer.alloc(8 * SECTOR), type, attributes }])
+      return partitionPresent({ image }, { expect: [{ name: 'boot', type: FAT, bootable: true }] })
+    }
+
+    it('passes-a-fat-typed-bootable-partition', () => {
+      expect(boot(FAT, 4n).ok).toBe(true)
+    })
+
+    /** genimage's default, which is what every card built before this had. */
+    it('fails-a-partition-typed-linux-filesystem', () => {
+      const result = boot(LINUX, 4n)
+      expect(result.ok).toBe(false)
+      expect(result.detail).toContain(`boot is typed ${LINUX}, not ${FAT}`)
+    })
+
+    it('fails-a-partition-without-the-bootable-flag', () => {
+      const result = boot(FAT, 0n)
+      expect(result.ok).toBe(false)
+      expect(result.detail).toContain('boot is not marked bootable')
+    })
+
+    /** Bit 2 alone is the flag. The other attribute bits say nothing about it. */
+    it('reads-only-bit-two-as-bootable', () => {
+      expect(boot(FAT, 1n | 2n | (1n << 60n)).ok).toBe(false)
+      expect(boot(FAT, 4n | (1n << 63n)).ok).toBe(true)
+    })
   })
 })
 
