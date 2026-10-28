@@ -94,7 +94,7 @@ describe('core.psbt.sign taproot', () => {
 
     const result = signTransaction(tx, seed, {
       network: MAINNET,
-      paths: [PATH],
+      inputs: [{ index: 0, path: PATH }],
       review,
       overrideBlockingWarnings: true,
     })
@@ -128,7 +128,7 @@ describe('core.psbt.sign taproot', () => {
 
     const first = signTransaction(tx, seed, {
       network: MAINNET,
-      paths: [PATH],
+      inputs: [{ index: 0, path: PATH }],
       review,
       overrideBlockingWarnings: true,
     })
@@ -143,7 +143,7 @@ describe('core.psbt.sign taproot', () => {
     })
     const again = signTransaction(returned, seed, {
       network: MAINNET,
-      paths: [PATH],
+      inputs: [{ index: 0, path: PATH }],
       review: againReview,
       overrideBlockingWarnings: true,
     })
@@ -174,7 +174,7 @@ describe('core.psbt.sign taproot', () => {
 
     const result = signTransaction(tx, seed, {
       network: MAINNET,
-      paths: [PATH],
+      inputs: [{ index: 0, path: PATH }],
       review,
       overrideBlockingWarnings: true,
     })
@@ -217,7 +217,7 @@ describe('core.psbt.sign taproot', () => {
       const review = reviewTransaction(tx, { network: MAINNET, isChange: () => undefined })
       const result = signTransaction(tx, seed, {
         network: MAINNET,
-        paths: [PATH],
+        inputs: [{ index: 0, path: PATH }],
         review,
         overrideBlockingWarnings: true,
       })

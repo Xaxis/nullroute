@@ -394,3 +394,65 @@ describe('core.descriptor.parse script expressions', () => {
     expect(() => parseKeyExpression('not-a-key-at-all')).toThrow(/neither an extended/)
   })
 })
+
+/**
+ * INV-DPARSE-12. Where a script may sit and which keys it may hold, by the
+ * BIPs' own sentences. The published invalid vectors cover most of this
+ * (vectors.bip381 to bip387); these cover the rules no vector reaches, and
+ * prove every placement the BIPs allow still parses.
+ */
+describe('core.descriptor.parse placement and key rules', () => {
+  const p = (body: string) => parseDescriptor(withChecksum(body))
+  // An x-only key: PUBKEY's x coordinate, without the parity byte.
+  const XONLY = PUBKEY.slice(2)
+  const keys = (n: number) => Array.from({ length: n }, () => PUBKEY).join(',')
+
+  it('accepts-every-placement-the-bips-allow', () => {
+    for (const body of [
+      `pk(${PUBKEY})`,
+      `sh(pk(${PUBKEY}))`,
+      `wsh(pk(${PUBKEY}))`,
+      `tr(${XONLY},pk(${XONLY}))`,
+      `pkh(${PUBKEY})`,
+      `sh(pkh(${PUBKEY}))`,
+      `wsh(pkh(${PUBKEY}))`,
+      `wpkh(${PUBKEY})`,
+      `sh(wpkh(${PUBKEY}))`,
+      `sh(wsh(multi(1,${PUBKEY})))`,
+      `multi(1,${keys(3)})`,
+      `sh(multi(1,${keys(15)}))`,
+      `wsh(multi(1,${keys(20)}))`,
+      `tr(${XONLY},{multi_a(1,${XONLY}),sortedmulti_a(1,${XONLY})})`,
+      `tr(${PUBKEY})`,
+      `combo(${PUBKEY})`,
+      'raw(deadbeef)',
+      'addr(3PUNyaW7M55oKWJ3kDukwk9bsKvryra15j)',
+    ]) {
+      expect(() => p(body), body).not.toThrow()
+    }
+  })
+
+  it('refuses-a-script-where-its-bip-does-not-allow-it', () => {
+    // pkh() is allowed at the top or inside sh() or wsh() (BIP-381), and
+    // multi() the same (BIP-383): neither inside tr().
+    expect(() => p(`tr(${XONLY},pkh(${XONLY}))`)).toThrow(/pkh\(\) cannot go inside tr\(\)/)
+    expect(() => p(`tr(${XONLY},multi(1,${XONLY}))`)).toThrow(/multi\(\) cannot go inside tr\(\)/)
+    expect(() => p(`sh(sortedmulti_a(1,${XONLY}))`)).toThrow(
+      /sortedmulti_a\(\) cannot go inside sh\(\)/
+    )
+  })
+
+  it('refuses-a-key-its-context-does-not-allow', () => {
+    // An x-only key has no parity and is defined only under tr() (BIP-386).
+    for (const body of [`pk(${XONLY})`, `wpkh(${XONLY})`, `wsh(multi(1,${XONLY}))`]) {
+      expect(() => p(body), body).toThrow(/x-only key can only go under tr\(\)/)
+    }
+  })
+
+  it('refuses-a-multisig-larger-than-its-context-allows', () => {
+    // BIP-383: three keys bare, a 520-byte redeem script in sh(), twenty in wsh().
+    expect(() => p(`multi(1,${keys(4)})`)).toThrow(/at most 3 keys, got 4/)
+    expect(() => p(`sh(multi(1,${keys(16)}))`)).toThrow(/will not fit in a bare P2SH/)
+    expect(() => p(`wsh(multi(1,${keys(21)}))`)).toThrow(/at most 20 keys, got 21/)
+  })
+})

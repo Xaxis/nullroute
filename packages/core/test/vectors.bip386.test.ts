@@ -24,7 +24,6 @@ import {
   DERIVED,
   WIF,
   XPRV,
-  atEvaluation,
   atParse,
   checkInvalid,
   checkValid,
@@ -49,9 +48,9 @@ const VALID: readonly ValidOutcome[] = [
 
 const INVALID: readonly InvalidOutcome[] = [
   atParse(/neither an extended public key nor hex/), // tr(5KYZ...)
-  atEvaluation(/cannot go under tr\(\)/), // tr(04a3...)
-  atEvaluation(/found tr/), // wsh(tr(...))
-  atEvaluation(/found tr/), // sh(tr(...))
+  atParse(/uncompressed key cannot go under tr\(\)/), // tr(04a3...)
+  atParse(/tr\(\) cannot go inside wsh\(\)/), // wsh(tr(...))
+  atParse(/tr\(\) cannot go inside sh\(\)/), // sh(tr(...))
 ]
 
 describe('core.descriptor published BIP-386 vectors', () => {

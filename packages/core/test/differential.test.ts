@@ -272,7 +272,7 @@ describe('core.psbt.sign differential', () => {
     // compares is the signature bytes, which the override does not touch.
     signTransaction(tx, seed, {
       network: MAINNET,
-      paths: [SIGNING_PATH],
+      inputs: [{ index: 0, path: SIGNING_PATH }],
       review,
       overrideBlockingWarnings: true,
     })

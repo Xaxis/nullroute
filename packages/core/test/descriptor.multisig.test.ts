@@ -283,9 +283,28 @@ describe('core.descriptor.multisig', () => {
     const inner = `sortedmulti(1,${compressed},${uncompressed})`
 
     for (const body of [`wsh(${inner})`, `sh(wsh(${inner}))`]) {
-      expect(
-        () => deriveMultisigAddresses(parse(body), { network: MAINNET }),
-        body.slice(0, 9)
+      // Refused at the boundary now (INV-DPARSE-12)...
+      expect(() => parse(body), body.slice(0, 9)).toThrow(/uncompressed key cannot go under wsh/)
+    }
+    // ...and still by the evaluator, for a tree that never went through the
+    // parser. Two layers, each tested on its own.
+    const keys = [
+      { kind: 'raw', hex: compressed, byteLength: 33 },
+      { kind: 'raw', hex: uncompressed, byteLength: 65 },
+    ] as const
+    const wsh = { kind: 'wsh', inner: { kind: 'sortedmulti', threshold: 1, keys } } as const
+    for (const script of [wsh, { kind: 'sh', inner: wsh } as const]) {
+      expect(() =>
+        deriveMultisigAddresses(
+          {
+            script,
+            body: 'built by hand',
+            checksum: undefined,
+            checksumValid: true,
+            ranged: false,
+          },
+          { network: MAINNET }
+        )
       ).toThrow(/uncompressed public key cannot go under wsh/)
     }
     // Bare sh() is legacy script, where an uncompressed key is standard, and

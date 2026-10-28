@@ -9,7 +9,7 @@
  * why they are tables rather than one switch.
  */
 
-import { buildOwnedIndex, changeLookup, signingPathsFor, thisDeviceProgress } from '../../psbt.js'
+import { buildOwnedIndex, changeLookup, ownedInputsFor, thisDeviceProgress } from '../../psbt.js'
 import {
   encodePsbt,
   formatBtc,
@@ -132,8 +132,8 @@ export function psbtMethods(ctx: HandlerContext): MethodTable {
           message: w.message,
           blocking: w.blocking,
         })),
-        /** Which inputs this device can actually sign. Zero is not an error. */
-        ownedInputs: signingPathsFor(
+        /** How many inputs this device can actually sign. Zero is not an error. */
+        ownedInputs: ownedInputsFor(
           Array.from({ length: tx.inputsLength }, (_, i) => inputScript(tx, i)),
           index,
           session.network
@@ -162,12 +162,12 @@ export function psbtMethods(ctx: HandlerContext): MethodTable {
         isChange: changeLookup(index),
       })
 
-      const paths = signingPathsFor(
+      const inputs = ownedInputsFor(
         Array.from({ length: tx.inputsLength }, (_, i) => inputScript(tx, i)),
         index,
         session.network
       )
-      if (paths.length === 0) {
+      if (inputs.length === 0) {
         throw new Error(
           'None of this transaction’s inputs belong to this wallet, so there is ' +
             'nothing here for this device to sign.'
@@ -176,7 +176,7 @@ export function psbtMethods(ctx: HandlerContext): MethodTable {
 
       const result = signTransaction(tx, seed, {
         network: session.network,
-        paths,
+        inputs,
         review,
         // Requires an explicit, per-call flag from the caller. It is never
         // persisted and there is no setting that turns it on.

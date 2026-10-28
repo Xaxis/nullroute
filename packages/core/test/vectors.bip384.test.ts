@@ -18,7 +18,6 @@ import {
   COMBO,
   WIF,
   XPRV,
-  atEvaluation,
   atParse,
   checkInvalid,
   checkValid,
@@ -40,8 +39,8 @@ const VALID: readonly ValidOutcome[] = [
 ]
 
 const INVALID: readonly InvalidOutcome[] = [
-  atEvaluation(/found combo/), // sh(combo(...))
-  atEvaluation(/found combo/), // wsh(combo(...))
+  atParse(/combo\(\) cannot go inside sh\(\)/), // sh(combo(...))
+  atParse(/combo\(\) cannot go inside wsh\(\)/), // wsh(combo(...))
   atParse(/neither an extended public key nor hex/), // combo(pkh(...))
 ]
 

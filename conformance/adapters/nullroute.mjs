@@ -32,7 +32,7 @@ import {
   signTransaction,
   signVerdict,
 } from '../../packages/core/dist/index.js'
-import { buildOwnedIndex, changeLookup, signingPathsFor } from '../../packages/daemon/dist/psbt.js'
+import { buildOwnedIndex, changeLookup, ownedInputsFor } from '../../packages/daemon/dist/psbt.js'
 import { inputScript } from '../../packages/daemon/dist/ipc/input-script.js'
 import { manifestRootHash } from '../../packages/daemon/dist/boot/attestation.js'
 import { qrFrames } from '../../packages/ui/dist/components/QrDisplay.js'
@@ -126,7 +126,7 @@ function review(psbtBase64, context, seed, network) {
   const tx = parsePsbt(psbtBase64)
   const owned = ownedIndex(context, seed, network)
   const result = reviewTransaction(tx, { network, isChange: changeLookup(owned.index) })
-  const ownedInputs = signingPathsFor(
+  const ownedInputs = ownedInputsFor(
     Array.from({ length: tx.inputsLength }, (_, i) => inputScript(tx, i)),
     owned.index,
     network
@@ -198,7 +198,7 @@ export function signPsbt(psbtBase64, context, options) {
     try {
       const signed = signTransaction(r.tx, seed, {
         network,
-        paths: r.ownedInputs,
+        inputs: r.ownedInputs,
         review: r.result,
         overrideBlockingWarnings: options?.override === true,
       })

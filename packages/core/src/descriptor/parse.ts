@@ -27,6 +27,9 @@ import { hexToBytes } from '@noble/hashes/utils.js'
 import { sha256 } from '@noble/hashes/sha2.js'
 import { base58 } from '@scure/base'
 import { HDKey } from '@scure/bip32'
+import * as btc from '@scure/btc-signer'
+import { toBtcNetwork } from '../address/address.js'
+import { NETWORKS } from '../network/networks.js'
 import { HARDENED_OFFSET, PathError, parsePath } from '../derive/path.js'
 import { verifyChecksum } from './checksum.js'
 
@@ -741,12 +744,181 @@ export function parseDescriptor(input: string, options: ParseOptions = {}): Desc
     )
   }
 
+  checkPlacement(script, 'top', { wsh: false, tr: false })
+
   return {
     script,
     body: verdict.body,
     checksum: verdict.provided,
     checksumValid: verdict.valid,
     ranged: isRanged(script),
+  }
+}
+
+/*
+ * WHERE A SCRIPT MAY SIT, AND WHICH KEYS IT MAY HOLD. INV-DPARSE-12.
+ *
+ * Each BIP that defines an expression says where it may appear and what keys
+ * it may contain, and a descriptor that breaks either rule is invalid: BIPs 381
+ * to 387 publish thirty nine invalid descriptors. This parser used to leave
+ * placement to the evaluator, which refused twenty two of them, but only on
+ * the paths that evaluate. The descriptor.parse method reported them as
+ * parsed, and the refusal held only while every route to an address went
+ * through one function. Checked here, an invalid descriptor stops at the
+ * boundary, whatever reads it next.
+ *
+ * The table is the BIPs' own sentences: pk() "can be used in any context"
+ * (381); pkh() at the top or inside sh() or wsh() (381); sh() "only as a top
+ * level expression" (381); wpkh() and wsh() at the top or inside sh() (382);
+ * multi() and sortedmulti() at the top or inside sh() or wsh() (383); combo(),
+ * raw() and addr() top level only (384, 385); tr() top level only (386);
+ * multi_a() and sortedmulti_a() "only inside of a tr() descriptor" (387).
+ */
+type Placement = 'top' | 'sh' | 'wsh' | 'tr'
+
+const PLACES: Readonly<Record<ScriptNode['kind'], readonly Placement[]>> = {
+  pk: ['top', 'sh', 'wsh', 'tr'],
+  pkh: ['top', 'sh', 'wsh'],
+  sh: ['top'],
+  wpkh: ['top', 'sh'],
+  wsh: ['top', 'sh'],
+  multi: ['top', 'sh', 'wsh'],
+  sortedmulti: ['top', 'sh', 'wsh'],
+  combo: ['top'],
+  raw: ['top'],
+  addr: ['top'],
+  tr: ['top'],
+  multi_a: ['tr'],
+  sortedmulti_a: ['tr'],
+}
+
+const AT: Readonly<Record<Placement, string>> = {
+  top: 'at the top level',
+  sh: 'inside sh()',
+  wsh: 'inside wsh()',
+  tr: 'inside tr()',
+}
+
+/** BIP-383: a bare P2SH redeem script is one script element, at most 520 bytes. */
+const MAX_SCRIPT_ELEMENT = 520
+
+function keyBytes(key: KeyExpression): number {
+  return key.kind === 'raw' ? key.byteLength : 33
+}
+
+/**
+ * BIP-382: only compressed keys under wpkh() and anywhere under wsh(). BIP-386:
+ * no uncompressed key under tr(), and an x-only key, which has no parity, only
+ * there.
+ */
+function checkKeys(
+  keys: readonly KeyExpression[],
+  fn: string,
+  under: { readonly wsh: boolean; readonly tr: boolean }
+): void {
+  for (const key of keys) {
+    if (key.kind !== 'raw') continue
+    if (key.byteLength === 65 && (fn === 'wpkh' || under.wsh || under.tr)) {
+      throw new DescriptorParseError(
+        `An uncompressed key cannot go ${fn === 'wpkh' ? 'in wpkh()' : under.tr ? 'under tr()' : 'under wsh()'}. ` +
+          `${under.tr ? 'BIP-386' : 'BIP-382'} allows only ${under.tr ? 'x-only and compressed' : 'compressed'} keys there.`
+      )
+    }
+    if (key.byteLength === 32 && !under.tr) {
+      throw new DescriptorParseError(
+        'An x-only key can only go under tr(). BIP-386 defines it there and nowhere else.'
+      )
+    }
+  }
+}
+
+function checkPlacement(
+  node: ScriptNode,
+  at: Placement,
+  under: { readonly wsh: boolean; readonly tr: boolean }
+): void {
+  const allowed = PLACES[node.kind]
+  if (!allowed.includes(at)) {
+    throw new DescriptorParseError(
+      `${node.kind}() cannot go ${AT[at]}. It is allowed only ` +
+        `${allowed.map((place) => AT[place]).join(' or ')}.`
+    )
+  }
+  switch (node.kind) {
+    case 'pk':
+    case 'pkh':
+    case 'wpkh':
+    case 'combo':
+      checkKeys([node.key], node.kind, under)
+      return
+    case 'sh':
+      checkPlacement(node.inner, 'sh', under)
+      return
+    case 'wsh':
+      checkPlacement(node.inner, 'wsh', { ...under, wsh: true })
+      return
+    case 'tr': {
+      const inside = { ...under, tr: true }
+      checkKeys([node.key], 'tr', inside)
+      if (node.tree !== undefined) {
+        for (const leaf of tapTreeLeaves(node.tree)) checkPlacement(leaf, 'tr', inside)
+      }
+      return
+    }
+    case 'multi':
+    case 'sortedmulti': {
+      checkKeys(node.keys, node.kind, under)
+      // BIP-383's limits on n: three keys bare, a 520-byte redeem script in
+      // sh(), twenty in wsh().
+      const n = node.keys.length
+      if (at === 'top' && n > 3) {
+        throw new DescriptorParseError(
+          `${node.kind}() at the top level takes at most 3 keys, got ${String(n)}. BIP-383.`
+        )
+      }
+      if (at === 'sh') {
+        const size = 3 + node.keys.reduce((sum, key) => sum + 1 + keyBytes(key), 0)
+        if (size > MAX_SCRIPT_ELEMENT) {
+          throw new DescriptorParseError(
+            `${node.kind}() with ${String(n)} keys makes a ${String(size)}-byte redeem script, ` +
+              `which will not fit in a bare P2SH redeem script of at most ` +
+              `${String(MAX_SCRIPT_ELEMENT)} bytes. BIP-383.`
+          )
+        }
+      }
+      if (at === 'wsh' && n > 20) {
+        throw new DescriptorParseError(
+          `${node.kind}() inside wsh() takes at most 20 keys, got ${String(n)}. BIP-383.`
+        )
+      }
+      return
+    }
+    case 'multi_a':
+    case 'sortedmulti_a':
+      checkKeys(node.keys, node.kind, under)
+      return
+    case 'addr': {
+      // BIP-385: addr(ADDR) names an address. Valid when it decodes on any
+      // network this device knows; the network that applies is the
+      // evaluator's question, not the parser's. A decode failure is the
+      // answer here, so it is caught rather than propagated.
+      const decodes = Object.values(NETWORKS).some((network) => {
+        try {
+          btc.Address(toBtcNetwork(network)).decode(node.address)
+          return true
+        } catch {
+          return false
+        }
+      })
+      if (!decodes) {
+        throw new DescriptorParseError(
+          `addr(${node.address}) does not name a Bitcoin address on any network.`
+        )
+      }
+      return
+    }
+    case 'raw':
+      return
   }
 }
 

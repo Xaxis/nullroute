@@ -89,7 +89,10 @@ describe('daemon.psbt this device', () => {
     using seed = mnemonicToSeed(MNEMONIC, '')
     const signed = signTransaction(tx, seed, {
       network: MAINNET,
-      paths: [a?.path ?? '', b?.path ?? ''],
+      inputs: [
+        { index: 0, path: a?.path ?? '' },
+        { index: 1, path: b?.path ?? '' },
+      ],
       review: reviewTransaction(tx, OPTIONS),
     })
 

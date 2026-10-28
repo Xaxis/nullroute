@@ -17,6 +17,7 @@
 
 import {
   type Network,
+  type OwnedInput,
   type ScriptType,
   type Secret,
   accountPath,
@@ -276,26 +277,37 @@ export function changeLookup(
 }
 
 /**
- * The derivation paths that own this transaction's inputs.
+ * The inputs this device owns, each with the path of its key.
  *
  * Each input's locking script is mapped back to an address and looked up. An
  * input we do not own contributes nothing, which is normal: this device may
- * hold one key of a quorum.
+ * hold one key of a quorum. These pairs are exactly what signing is given, so
+ * an input this lookup does not own is never signed, whatever key its script
+ * contains (INV-SIG-13).
  */
+export function ownedInputsFor(
+  scripts: readonly (Uint8Array | undefined)[],
+  index: Map<string, OwnedAddress>,
+  network: Network
+): OwnedInput[] {
+  const owned: OwnedInput[] = []
+  for (const [i, script] of scripts.entries()) {
+    if (script === undefined) continue
+    const address = addressFromScript(script, network)
+    if (address === undefined) continue
+    const entry = index.get(address)
+    if (entry !== undefined) owned.push({ index: i, path: entry.path })
+  }
+  return owned
+}
+
+/** The distinct derivation paths that own this transaction's inputs. */
 export function signingPathsFor(
   scripts: readonly (Uint8Array | undefined)[],
   index: Map<string, OwnedAddress>,
   network: Network
 ): string[] {
-  const paths = new Set<string>()
-  for (const script of scripts) {
-    if (script === undefined) continue
-    const address = addressFromScript(script, network)
-    if (address === undefined) continue
-    const owned = index.get(address)
-    if (owned !== undefined) paths.add(owned.path)
-  }
-  return [...paths]
+  return [...new Set(ownedInputsFor(scripts, index, network).map((input) => input.path))]
 }
 
 /** What signing on this device would do to a transaction's quorum. */

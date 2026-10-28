@@ -81,10 +81,27 @@ export function signVerdict(
   return 'allow'
 }
 
+/** An input this device owns, and the derivation path of the key that owns it. */
+export interface OwnedInput {
+  readonly index: number
+  readonly path: string
+}
+
 export interface SignOptions {
   readonly network: Network
-  /** Derivation paths to sign with, one per input that this device owns. */
-  readonly paths: readonly string[]
+  /**
+   * The inputs to sign, each with its key's derivation path, and nothing else
+   * is signed. INV-SIG-13.
+   *
+   * This was a list of paths, and each key was handed to the library's
+   * whole-transaction sign, which signs EVERY input whose script contains the
+   * key or its hash. An input locking this device's key under a script the
+   * review did not count as the wallet's (the same key as p2pkh, inside a
+   * stranger's multisig) was signed too, while the review showed it as
+   * someone else's money. The review is what the user agreed to, so the
+   * inputs it counted as owned are the only ones signed.
+   */
+  readonly inputs: readonly OwnedInput[]
   /**
    * The review of this exact transaction. Signing refuses unless it says the
    * transaction is signable, so a caller cannot skip the checks by not asking.
@@ -143,14 +160,14 @@ export function signTransaction(
   seed: Secret,
   options: SignOptions
 ): SignResult {
-  const { network, paths, review } = options
+  const { network, inputs, review } = options
 
   // The review gate. A caller that wanted to sign without reviewing would have
   // to construct a Review saying it was fine, which is a conspicuous thing to
   // find in a diff.
-  const verdict = signVerdict(review, paths.length)
+  const verdict = signVerdict(review, inputs.length)
   if (verdict === 'refuse') {
-    throw new PsbtError('No derivation paths were given, so there is nothing to sign with.')
+    throw new PsbtError('No owned inputs were given, so there is nothing to sign.')
   }
   if (verdict === 'block-until-override' && options.overrideBlockingWarnings !== true) {
     const blocking = review.warnings.filter((w) => w.blocking).map((w) => w.message)
@@ -167,26 +184,29 @@ export function signTransaction(
   // Recorded BEFORE signing. Afterwards the answer is always yes, so a device
   // that checked later could never tell the user their signature was already
   // there, which is the common case when a QR sequence is scanned back.
+  // One key per path, each signing only the inputs paired with it.
+  const byPath = new Map<string, number[]>()
+  for (const { index, path } of inputs) {
+    const canonical = normalizePath(path)
+    byPath.set(canonical, [...(byPath.get(canonical) ?? []), index])
+  }
   const ourKeys: Uint8Array[] = []
-  for (const path of paths) {
-    const child = root.derive(normalizePath(path))
+  for (const path of byPath.keys()) {
+    const child = root.derive(path)
     if (child.publicKey !== null) ourKeys.push(child.publicKey)
   }
   const wasAlreadySigned = alreadySignedBy(tx, ourKeys)
 
   try {
-    for (const path of paths) {
-      const canonical = normalizePath(path)
+    for (const [canonical, indexes] of byPath) {
       const child = root.derive(canonical)
       const privateKey = child.privateKey
       if (privateKey === null) {
         throw new PsbtError(`Derivation ${canonical} produced no private key.`)
       }
 
-      // The library matches the key against each input's script itself and
-      // signs only what it can. The allowed-sighash list is restricted to what
-      // the review accepted, so what gets signed cannot differ from what was
-      // reviewed.
+      // The allowed-sighash list is restricted to what the review accepted,
+      // so what gets signed cannot differ from what was reviewed.
       //
       // Both SIGHASH_ALL and SIGHASH_DEFAULT are listed when the review passed,
       // because they are the same intent expressed differently: taproot encodes
@@ -197,33 +217,30 @@ export function signTransaction(
         ? [SIGHASH_ALL, SIGHASH_DEFAULT]
         : [review.sighash.type]
 
-      const before = countSignatures(tx)
-      let signed = 0
-      try {
-        signed = tx.sign(privateKey, allowed, AUX_RAND)
-      } catch (err) {
-        // The library throws when a key matches nothing. That is not an error
-        // per path: this device may hold one of several keys in a quorum, so a
-        // path that signs nothing is normal and the aggregate is what matters.
-        if (!/No inputs signed/i.test((err as Error).message)) throw err
+      // ONE NAMED INPUT AT A TIME, and a failure is the caller's to see. The
+      // library's whole-transaction sign also discards every per-input error,
+      // so an owned input it could not sign was reported as nothing at all.
+      for (const index of indexes) {
+        if (index < 0 || index >= tx.inputsLength) {
+          throw new PsbtError(`Input ${String(index)} does not exist in this transaction.`)
+        }
+        try {
+          tx.signIdx(privateKey, index, allowed, AUX_RAND)
+        } catch (err) {
+          throw new PsbtError(
+            `Input ${String(index)} could not be signed with ${canonical}, which usually means ` +
+              `the transaction belongs to a different wallet. ${(err as Error).message}`
+          )
+        }
+        inputsSigned += 1
       }
-      if (signed > 0 || countSignatures(tx) > before) {
-        signedWith.push(canonical)
-        inputsSigned += signed
-      }
+      signedWith.push(canonical)
     }
   } finally {
     // Best effort: the library holds key bytes in arrays this module does not
     // own. What limits a copy's life is no swap, scratch in RAM and the seed
     // disposed at lock (provisioning/HARDENING.md, INV-IDLE-2).
     root.wipePrivateData()
-  }
-
-  if (inputsSigned === 0) {
-    throw new PsbtError(
-      'None of the given derivation paths matched an input of this transaction. ' +
-        'Nothing was signed. This usually means the transaction belongs to a different wallet.'
-    )
   }
 
   const signatures = signatureProgress(tx)
@@ -261,17 +278,4 @@ function finaliseCopy(
   } catch {
     return {}
   }
-}
-
-/** How many partial signatures the transaction currently carries. */
-function countSignatures(tx: btc.Transaction): number {
-  let total = 0
-  for (let i = 0; i < tx.inputsLength; i += 1) {
-    const input = tx.getInput(i)
-    const partial: unknown = input.partialSig
-    if (Array.isArray(partial)) total += partial.length
-    const schnorr: unknown = input.tapKeySig
-    if (schnorr !== undefined && schnorr !== null) total += 1
-  }
-  return total
 }

@@ -277,8 +277,12 @@ test-repro: ## Sign the same PSBT 100 times and cross-check the bytes against li
 	# implementation produces. Self-consistency alone proves nothing: a
 	# backdoored nonce is perfectly self-consistent. The second half is the half
 	# that means something.
-	@npx vitest run --project core \
-	  -t "produces-byte-identical-signatures|agrees-byte-for-byte-on-a-p2wpkh-signature"
+	#
+	# By exact name, and failing unless both ran. A vitest name filter that
+	# matches nothing passes, and the second name here was a renamed test for
+	# long enough that the cross-check had silently stopped running.
+	@node tools/run-named-tests.mjs core \
+	  produces-byte-identical-signatures agrees-byte-for-byte-on-every-p2wpkh-signature
 
 test-recovery-drill: build ## INV-INTEROP-1. Recover a wallet in Bitcoin Core alone. Needs regtest bitcoind.
 	# The most important test here, and the only one that proves this project

@@ -488,7 +488,7 @@ describe('core.psbt.review', () => {
     using seed = mnemonicToSeed(MNEMONIC, '')
     const result = signTransaction(tx, seed, {
       network: MAINNET,
-      paths: ["m/84'/0'/0'/0/0"],
+      inputs: [{ index: 0, path: "m/84'/0'/0'/0/0" }],
       review,
     })
 

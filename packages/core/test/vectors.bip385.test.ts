@@ -10,16 +10,15 @@
  *
  * raw() and addr() name a script or an address with no keys in it, so there is
  * nothing this device could sign for or recognise as its own change. Both
- * parse and deriveQuorumAddresses refuses both. The parser does not decode an
- * address, having no network to decode it for, which is why addr(asdf) is
- * refused by the evaluator rather than at parse.
+ * parse and deriveQuorumAddresses refuses both. addr(asdf) is refused at parse
+ * because asdf decodes as an address on no network (INV-DPARSE-12), and raw()
+ * or addr() anywhere but the top level is refused there too.
  */
 
 import { describe, expect, it } from 'vitest'
 import {
   ADDRESS,
   RAW_SCRIPT,
-  atEvaluation,
   atParse,
   checkInvalid,
   checkValid,
@@ -42,11 +41,11 @@ const VALID: readonly ValidOutcome[] = [
 
 const INVALID: readonly InvalidOutcome[] = [
   atParse(/takes exactly one hex script/), // raw(asdf)
-  atEvaluation(/not a multisig one/), // addr(asdf)
-  atEvaluation(/found raw/), // sh(raw(...))
-  atEvaluation(/found raw/), // wsh(raw(...))
-  atEvaluation(/found addr/), // sh(addr(...))
-  atEvaluation(/found addr/), // wsh(addr(...))
+  atParse(/does not name a Bitcoin address/), // addr(asdf)
+  atParse(/raw\(\) cannot go inside sh\(\)/), // sh(raw(...))
+  atParse(/raw\(\) cannot go inside wsh\(\)/), // wsh(raw(...))
+  atParse(/addr\(\) cannot go inside sh\(\)/), // sh(addr(...))
+  atParse(/addr\(\) cannot go inside wsh\(\)/), // wsh(addr(...))
 ]
 
 describe('core.descriptor published BIP-385 vectors', () => {

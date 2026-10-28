@@ -73,7 +73,14 @@ function signOn(device: number, psbt: Uint8Array) {
   using seed = mnemonicToSeed(SEEDS[device] ?? '', '')
   const tx = parsePsbt(psbt)
   const review = reviewTransaction(tx, OPTIONS)
-  return { review, result: signTransaction(tx, seed, { network: MAINNET, paths: [PATH], review }) }
+  return {
+    review,
+    result: signTransaction(tx, seed, {
+      network: MAINNET,
+      inputs: [{ index: 0, path: PATH }],
+      review,
+    }),
+  }
 }
 
 describe('core.psbt.quorum', () => {
@@ -198,7 +205,7 @@ describe('core.psbt.quorum', () => {
     const review = reviewTransaction(parsed, OPTIONS)
     const result = signTransaction(parsed, seed, {
       network: MAINNET,
-      paths: ["m/84'/0'/0'/0/0"],
+      inputs: [{ index: 0, path: "m/84'/0'/0'/0/0" }],
       review,
     })
     expect(result.signatures.complete).toBe(true)

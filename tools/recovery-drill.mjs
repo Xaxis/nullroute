@@ -159,7 +159,7 @@ function nullrouteWallet(scriptType, network, count) {
 }
 
 /** Sign a PSBT with nullroute, in a child process against the shipped code. */
-function nullrouteSign(psbtBase64, scriptType, network, paths) {
+function nullrouteSign(psbtBase64, scriptType, network, inputs) {
   const script = `
     import { mnemonicToSeed, signTransaction, reviewTransaction, parsePsbt,
              encodePsbt, accountPath, normalizePath, networkById, branchPath } from '@nullroute/core'
@@ -169,7 +169,7 @@ function nullrouteSign(psbtBase64, scriptType, network, paths) {
     const review = reviewTransaction(tx, { network, isChange: () => undefined })
     const result = signTransaction(tx, seed, {
       network,
-      paths: ${JSON.stringify(paths)},
+      inputs: ${JSON.stringify(inputs)},
       review,
       overrideBlockingWarnings: true,
     })
@@ -324,7 +324,7 @@ function nullrouteQuorumAddresses(descriptor, network, count) {
 }
 
 /** Sign a quorum PSBT as ONE cosigner, with that cosigner's mnemonic. */
-function nullrouteQuorumSign(psbtBase64, mnemonic, network, paths) {
+function nullrouteQuorumSign(psbtBase64, mnemonic, network, inputs) {
   const script = `
     import { mnemonicToSeed, signTransaction, reviewTransaction, parsePsbt,
              encodePsbt, networkById } from '@nullroute/core'
@@ -334,7 +334,7 @@ function nullrouteQuorumSign(psbtBase64, mnemonic, network, paths) {
     const review = reviewTransaction(tx, { network, isChange: () => undefined })
     const result = signTransaction(tx, seed, {
       network,
-      paths: ${JSON.stringify(paths)},
+      inputs: ${JSON.stringify(inputs)},
       review,
       overrideBlockingWarnings: true,
     })
@@ -505,9 +505,11 @@ async function drill(scriptType) {
   // for taproot, and Core surfaces them as two separate fields. Reading only the
   // first reports a correctly built taproot PSBT as having no derivations at
   // all, which is what happened here first.
-  const derivations = (decoded.inputs ?? []).flatMap((input) => [
-    ...(input.bip32_derivs ?? []).map((entry) => entry.path),
-    ...(input.taproot_bip32_derivs ?? []).map((entry) => entry.path),
+  // Each path paired with the input it signs: the signer signs those inputs
+  // and no others (INV-SIG-13).
+  const derivations = (decoded.inputs ?? []).flatMap((input, index) => [
+    ...(input.bip32_derivs ?? []).map((entry) => ({ index, path: entry.path })),
+    ...(input.taproot_bip32_derivs ?? []).map((entry) => ({ index, path: entry.path })),
   ])
   if (derivations.length === 0) {
     throw new Error(
@@ -674,12 +676,14 @@ async function drillQuorum(kind = 'wsh') {
   const decoded = await rpc('decodepsbt', [funded.psbt])
   // Taproot writes its derivations under a DIFFERENT key, and reading only the
   // classic field reports a correctly built taproot PSBT as having none.
-  const derivations = (decoded.inputs ?? []).flatMap((input) => [
+  const derivations = (decoded.inputs ?? []).flatMap((input, index) => [
     ...(input.bip32_derivs ?? []).map((entry) => ({
+      index,
       path: entry.path,
       fingerprint: entry.master_fingerprint,
     })),
     ...(input.taproot_bip32_derivs ?? []).map((entry) => ({
+      index,
       path: entry.path,
       fingerprint: entry.master_fingerprint,
     })),
@@ -702,7 +706,7 @@ async function drillQuorum(kind = 'wsh') {
     const key = keys[index]
     const mine = derivations
       .filter((entry) => entry.fingerprint?.toLowerCase() === key.fingerprint.toLowerCase())
-      .map((entry) => entry.path)
+      .map((entry) => ({ index: entry.index, path: entry.path }))
     if (mine.length === 0) {
       throw new Error(
         `quorum: no input names cosigner ${String(index + 1)}'s fingerprint ${key.fingerprint}, ` +

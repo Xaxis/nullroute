@@ -115,9 +115,11 @@ fi
 # nothing wanting them, so the card booted all the way to a systemd that ran
 # neither the daemon nor the frontend. The only proof against that is systemd
 # saying it started them.
-if ! grep -qE "nullrouted\.service" "$WORK/console-intact.log"; then
+# systemd's own "Started" line, not any line naming the unit: "Failed to start
+# nullrouted.service" names it too, and this check passed on it.
+if ! grep -qE "Started.*nullrouted\.service" "$WORK/console-intact.log"; then
   echo ""
-  echo "  FAILED. systemd came up and never mentioned nullrouted.service, so the"
+  echo "  FAILED. systemd came up and never reported starting nullrouted.service, so the"
   echo "  signing daemon did not start. A unit file under usr/lib/systemd/system"
   echo "  is one systemd knows how to run and will never run on its own."
   echo ""

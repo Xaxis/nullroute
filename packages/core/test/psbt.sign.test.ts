@@ -82,7 +82,7 @@ describe('core.psbt.sign', () => {
     const tx = fundedTransaction()
     const result = signTransaction(tx, seed, {
       network: MAINNET,
-      paths: [SIGNING_PATH],
+      inputs: [{ index: 0, path: SIGNING_PATH }],
       review: review(tx),
     })
 
@@ -103,7 +103,7 @@ describe('core.psbt.sign', () => {
     tx.addInput(fundedBy(stranger, 50_000n, 9))
     const result = signTransaction(tx, seed, {
       network: MAINNET,
-      paths: [SIGNING_PATH],
+      inputs: [{ index: 0, path: SIGNING_PATH }],
       review: review(tx),
     })
 
@@ -132,7 +132,7 @@ describe('core.psbt.sign', () => {
       const tx = fundedTransaction()
       const result = signTransaction(tx, seed, {
         network: MAINNET,
-        paths: [SIGNING_PATH],
+        inputs: [{ index: 0, path: SIGNING_PATH }],
         review: review(tx),
       })
       signatures.add(bytesToHex(result.psbt))
@@ -158,10 +158,18 @@ describe('core.psbt.sign', () => {
     expect(verdict.signable).toBe(false)
 
     expect(() =>
-      signTransaction(tx, seed, { network: MAINNET, paths: [SIGNING_PATH], review: verdict })
+      signTransaction(tx, seed, {
+        network: MAINNET,
+        inputs: [{ index: 0, path: SIGNING_PATH }],
+        review: verdict,
+      })
     ).toThrow(PsbtError)
     expect(() =>
-      signTransaction(tx, seed, { network: MAINNET, paths: [SIGNING_PATH], review: verdict })
+      signTransaction(tx, seed, {
+        network: MAINNET,
+        inputs: [{ index: 0, path: SIGNING_PATH }],
+        review: verdict,
+      })
     ).toThrow(/Refusing to sign/)
   })
 
@@ -171,7 +179,7 @@ describe('core.psbt.sign', () => {
     // Deliberately awkward, applies to this one call, and is never persisted.
     const result = signTransaction(tx, seed, {
       network: MAINNET,
-      paths: [SIGNING_PATH],
+      inputs: [{ index: 0, path: SIGNING_PATH }],
       review: review(tx),
       overrideBlockingWarnings: true,
     })
@@ -218,15 +226,81 @@ describe('core.psbt.sign', () => {
     }
 
     expect(() =>
-      signTransaction(tx, seed, { network: MAINNET, paths: [SIGNING_PATH], review: inconsistent })
+      signTransaction(tx, seed, {
+        network: MAINNET,
+        inputs: [{ index: 0, path: SIGNING_PATH }],
+        review: inconsistent,
+      })
     ).toThrow(/Refusing to sign/)
     const result = signTransaction(tx, seed, {
       network: MAINNET,
-      paths: [SIGNING_PATH],
+      inputs: [{ index: 0, path: SIGNING_PATH }],
       review: inconsistent,
       overrideBlockingWarnings: true,
     })
     expect(result.inputsSigned).toBeGreaterThan(0)
+  })
+
+  /**
+   * INV-SIG-13. The signer used to hand each key to the library's
+   * whole-transaction sign, which signs every input whose script contains the
+   * key or its hash. Here input 1 locks this device's own key, once as p2pkh
+   * and once inside a 1-of-2 multisig with a stranger, under scripts the
+   * review does not count as the wallet's. Only input 0 was named, so only
+   * input 0 is signed.
+   */
+  it('signs-only-the-inputs-it-was-told-it-owns', () => {
+    using seed = mnemonicToSeed(MNEMONIC, '')
+    const root = rootFromSeed(seed, MAINNET)
+    const ours = root.derive(SIGNING_PATH).publicKey
+    root.wipePrivateData()
+    if (ours === null) throw new Error('no public key at SIGNING_PATH')
+    // A stranger's key for the multisig: any valid point will do, and this is
+    // the compressed generator.
+    const generator = Uint8Array.from(
+      Buffer.from('0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798', 'hex')
+    )
+    const multisig = btc.p2wsh(btc.p2ms(1, [ours, generator]), btc.NETWORK)
+    const sameKeyElsewhere = [
+      { utxo: fundedBy(btc.p2pkh(ours, btc.NETWORK).script, 50_000n, 7), extra: {} },
+      {
+        utxo: fundedBy(multisig.script, 50_000n, 8),
+        extra: { witnessScript: multisig.witnessScript },
+      },
+    ]
+
+    for (const { utxo, extra } of sameKeyElsewhere) {
+      const tx = fundedTransaction()
+      tx.addInput({ ...utxo, ...extra })
+      const result = signTransaction(tx, seed, {
+        network: MAINNET,
+        inputs: [{ index: 0, path: SIGNING_PATH }],
+        review: review(tx),
+        overrideBlockingWarnings: true,
+      })
+      const signed = btc.Transaction.fromPSBT(result.psbt)
+      expect(signed.getInput(0).partialSig).toHaveLength(1)
+      expect(signed.getInput(1).partialSig ?? []).toHaveLength(0)
+      expect(result.inputsSigned).toBe(1)
+    }
+  })
+
+  /** INV-SIG-13. An owned input the key cannot sign is an error, never a skip. */
+  it('refuses-rather-than-skips-an-owned-input-it-cannot-sign', () => {
+    using seed = mnemonicToSeed(MNEMONIC, '')
+    const tx = fundedTransaction()
+    tx.addInput(fundedBy(btc.OutScript.encode(btc.Address(btc.NETWORK).decode(STRANGER)), 1n, 9))
+    expect(() =>
+      signTransaction(tx, seed, {
+        network: MAINNET,
+        inputs: [
+          { index: 0, path: SIGNING_PATH },
+          { index: 1, path: SIGNING_PATH },
+        ],
+        review: review(tx),
+        overrideBlockingWarnings: true,
+      })
+    ).toThrow(/Input 1 could not be signed/)
   })
 
   // INV-SIG-4: signing something that is not ours fails loudly rather than
@@ -238,7 +312,7 @@ describe('core.psbt.sign', () => {
       signTransaction(tx, seed, {
         network: MAINNET,
         // A real path, but not the one that owns this input.
-        paths: [`${ACCOUNT}/1/47`],
+        inputs: [{ index: 0, path: `${ACCOUNT}/1/47` }],
         review: review(tx),
       })
     ).toThrow(/different wallet/)
@@ -248,8 +322,8 @@ describe('core.psbt.sign', () => {
     using seed = mnemonicToSeed(MNEMONIC, '')
     const tx = fundedTransaction()
     expect(() =>
-      signTransaction(tx, seed, { network: MAINNET, paths: [], review: review(tx) })
-    ).toThrow(/nothing to sign with/)
+      signTransaction(tx, seed, { network: MAINNET, inputs: [], review: review(tx) })
+    ).toThrow(/nothing to sign/)
   })
 
   // A different seed must produce a different signature, which is the trivial
@@ -260,7 +334,7 @@ describe('core.psbt.sign', () => {
     using seedA = mnemonicToSeed(MNEMONIC, '')
     const a = signTransaction(txA, seedA, {
       network: MAINNET,
-      paths: [SIGNING_PATH],
+      inputs: [{ index: 0, path: SIGNING_PATH }],
       review: review(txA),
     })
 
@@ -271,7 +345,7 @@ describe('core.psbt.sign', () => {
     expect(() =>
       signTransaction(txB, seedB, {
         network: MAINNET,
-        paths: [SIGNING_PATH],
+        inputs: [{ index: 0, path: SIGNING_PATH }],
         review: review(txB),
       })
     ).toThrow(/different wallet/)

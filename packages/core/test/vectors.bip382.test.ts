@@ -9,11 +9,11 @@
  *   node tools/extract-descriptor-vectors.mjs bip-0382.mediawiki <commit>
  *
  * Every valid descriptor here holds a single key, which this device parses and
- * derives no address from, or a private key, which it refuses. Six of the
- * invalid ones parse and are refused by deriveQuorumAddresses: the parser does
- * not check where wpkh() and wsh() may appear, nor that the keys under them
- * are compressed. That last rule is enforced where this device does derive
- * from wsh(), in multisigShape (INV-MULTI-14).
+ * derives no address from, or a private key, which it refuses. Every invalid
+ * one is refused at parse: the parser checks where wpkh() and wsh() may appear
+ * and that the keys under them are compressed (INV-DPARSE-12). The key rule is
+ * also enforced where this device derives from wsh(), in multisigShape
+ * (INV-MULTI-14), as a second layer.
  */
 
 import { describe, expect, it } from 'vitest'
@@ -21,7 +21,6 @@ import {
   SINGLE_KEY,
   WIF,
   XPRV,
-  atEvaluation,
   atParse,
   checkInvalid,
   checkValid,
@@ -55,13 +54,13 @@ const INVALID: readonly InvalidOutcome[] = [
   // private key is not read at all.
   atParse(/neither an extended public key nor hex/), // wpkh(5KYZ...)
   atParse(/neither an extended public key nor hex/), // sh(wpkh(5KYZ...))
-  atEvaluation(/not a multisig one/), // wpkh(04...)
-  atEvaluation(/found wpkh/), // sh(wpkh(04...))
+  atParse(/uncompressed key cannot go in wpkh\(\)/), // wpkh(04...)
+  atParse(/uncompressed key cannot go in wpkh\(\)/), // sh(wpkh(04...))
   atParse(/neither an extended public key nor hex/), // wsh(pk(5KYZ...))
-  atEvaluation(/found pk/), // wsh(pk(04...))
-  atEvaluation(/found wpkh/), // wsh(wpkh(...))
-  atEvaluation(/found wsh/), // wsh(wsh(pkh(...)))
-  atEvaluation(/found wsh/), // sh(wsh(wsh(pkh(...))))
+  atParse(/uncompressed key cannot go under wsh\(\)/), // wsh(pk(04...))
+  atParse(/wpkh\(\) cannot go inside wsh\(\)/), // wsh(wpkh(...))
+  atParse(/wsh\(\) cannot go inside wsh\(\)/), // wsh(wsh(pkh(...)))
+  atParse(/wsh\(\) cannot go inside wsh\(\)/), // sh(wsh(wsh(pkh(...))))
   atParse(/neither an extended public key nor hex/), // wpkh(wsh(pkh(...)))
   atParse(/not a script expression/), // wsh(KEY)
 ]

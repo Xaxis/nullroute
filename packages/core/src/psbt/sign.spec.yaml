@@ -204,6 +204,22 @@ invariants:
     tests:
       - packages/core/test/vectors.bip174.test.ts::reproduces-the-published-finalizer-and-extractor-steps
 
+  - id: INV-SIG-13
+    statement: >
+      Only the inputs the caller names as owned, each with its key's path, are
+      signed, one at a time, and an owned input that key cannot sign is an
+      error rather than a skip. The daemon names an input as owned only when
+      its script maps to an address the wallet derives. The signer used to
+      pass each key to the library's whole-transaction sign, which signs every
+      input whose script contains the key or its hash, so an input locking
+      this device's key under a script the review did not count as the
+      wallet's, as p2pkh or inside a stranger's multisig, was signed while the
+      review showed it as someone else's. That sign also discarded every
+      per-input error.
+    tests:
+      - packages/core/test/psbt.sign.test.ts::signs-only-the-inputs-it-was-told-it-owns
+      - packages/core/test/psbt.sign.test.ts::refuses-rather-than-skips-an-owned-input-it-cannot-sign
+
 vectors:
   - name: BIP-340 test vectors
     file: spec/vectors/bip340-test-vectors.csv

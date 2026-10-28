@@ -33,6 +33,7 @@ export {
   SCRIPT_TYPES,
   buildOwnedIndex,
   changeLookup,
+  ownedInputsFor,
   signingPathsFor,
   thisDeviceProgress,
 } from './psbt.js'

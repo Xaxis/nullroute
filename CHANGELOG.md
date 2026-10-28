@@ -10,6 +10,26 @@ first, and the website's status page renders it.
 
 ## October 2026
 
+- **2026-10-28** The verification guide is shorter and 23 statements in it
+  that the code contradicts are corrected. Among them: the command for
+  recomputing the verity salt used version 0.4.0 and could never match a
+  build, and the manual Bitcoin Core recovery imported no change descriptor,
+  which Core 31 needs to build a spend. `make test-repro` named a test by an
+  old name and had silently stopped running the cross-check against
+  libsecp256k1; it now fails unless every named test ran. The boot test now
+  needs systemd to report starting the daemon, not merely to mention it.
+- **2026-10-28** The signer signs only the inputs the review counted as the
+  wallet's (INV-SIG-13). It passed each key to a library call that signs every
+  input whose script contains the key, so an input locking this device's key
+  under another script, as p2pkh or inside a stranger's multisig, was signed
+  while the review showed it as someone else's money; that call also dropped
+  every per-input error. Found by checking the threat model against the code.
+- **2026-10-28** The descriptor parser refuses what BIPs 381 to 387 call
+  invalid: a script where its BIP does not allow it, a key its context does
+  not allow, and a multisig past its context's limit (INV-DPARSE-12). Twenty
+  two of the BIPs' published invalid descriptors used to parse and be refused
+  only by the evaluator, and the device's own descriptor.parse method reported
+  them as parsed.
 - **2026-10-28** The docs can be searched (the header, Ctrl K, Cmd K or "/"),
   from an index this build writes, with nothing sent anywhere. Code blocks have
   a copy button. The install guide opens with the three ways in, and the user

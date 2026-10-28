@@ -94,8 +94,29 @@ describe('core.descriptor.taproot', () => {
   // deriving anyway would produce a wallet whose addresses are wrong with
   // nothing on screen to reveal it.
   it('refuses-a-leaf-it-cannot-sign-for', () => {
-    expect(() => address(`tr(${INTERNAL},{pk(${A}),wpkh(${A})})`)).toThrow(/not supported/)
-    expect(() => address(`tr(${INTERNAL},{pk(${A}),wpkh(${A})})`)).toThrow(DescriptorParseError)
+    // BIP-382 puts wpkh() nowhere under tr(), so the parser refuses it first
+    // (INV-DPARSE-12)...
+    expect(() => parse(`tr(${INTERNAL},{pk(${A}),wpkh(${A})})`)).toThrow(
+      /wpkh\(\) cannot go inside tr\(\)/
+    )
+    // ...and the evaluator still refuses the leaf in a tree built by hand.
+    const tree = [
+      { leaf: { kind: 'pk', key: { kind: 'raw', hex: A, byteLength: 32 } } },
+      { leaf: { kind: 'wpkh', key: { kind: 'raw', hex: `02${A}`, byteLength: 33 } } },
+    ] as const
+    const handBuilt = {
+      script: { kind: 'tr', key: { kind: 'raw', hex: INTERNAL, byteLength: 32 }, tree },
+      body: 'built by hand',
+      checksum: undefined,
+      checksumValid: true,
+      ranged: false,
+    } as const
+    expect(() => deriveTaprootAddresses(handBuilt, { network: MAINNET, count: 1 })).toThrow(
+      /not supported/
+    )
+    expect(() => deriveTaprootAddresses(handBuilt, { network: MAINNET, count: 1 })).toThrow(
+      DescriptorParseError
+    )
   })
 
   it('refuses-a-branch-that-is-not-binary', () => {
@@ -108,7 +129,9 @@ describe('core.descriptor.taproot', () => {
 
   it('refuses-a-descriptor-that-is-not-taproot', () => {
     expect(() =>
-      deriveTaprootAddresses(parse(`wpkh(${INTERNAL})`), { network: MAINNET, count: 1 })
+      // 02 before the x coordinate: the same point, compressed, because an
+      // x-only key is only valid under tr() (INV-DPARSE-12).
+      deriveTaprootAddresses(parse(`wpkh(02${INTERNAL})`), { network: MAINNET, count: 1 })
     ).toThrow(/not a tr\(\) one/)
   })
 

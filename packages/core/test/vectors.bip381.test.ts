@@ -18,7 +18,6 @@ import {
   SINGLE_KEY,
   WIF,
   XPRV,
-  atEvaluation,
   atParse,
   checkInvalid,
   checkValid,
@@ -56,7 +55,7 @@ const INVALID: readonly InvalidOutcome[] = [
   atParse(/neither an extended public key nor hex/), // pk(pk(...))
   atParse(/neither an extended public key nor hex/), // pkh(pk(...))
   atParse(/not a script expression/), // sh(KEY)
-  atEvaluation(/found sh/), // sh(sh(pkh(...)))
+  atParse(/sh\(\) cannot go inside sh\(\)/), // sh(sh(pkh(...)))
 ]
 
 describe('core.descriptor published BIP-381 vectors', () => {

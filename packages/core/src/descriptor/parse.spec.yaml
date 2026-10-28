@@ -177,6 +177,35 @@ invariants:
       - packages/core/test/descriptor.parse.test.ts::refuses-multipath-tuples-bip389-forbids
       - packages/core/test/vectors.bip389.test.ts::refuses-every-published-invalid-multipath-descriptor
 
+  - id: INV-DPARSE-12
+    statement: >
+      A descriptor is refused at parse when a script sits where its BIP does
+      not allow it, when a key is a form its context does not allow, or when a
+      multisig exceeds its context's limit, as BIPs 381 to 387 define each:
+      sh(), tr(), combo(), raw() and addr() only at the top level; wpkh() and
+      wsh() at the top or inside sh(); pkh(), multi() and sortedmulti() at the
+      top or inside sh() or wsh(); pk() anywhere; multi_a() and
+      sortedmulti_a() only inside tr(); only compressed keys under wpkh() and
+      wsh(), no uncompressed key under tr(), and an x-only key nowhere else; at
+      most three keys in a bare multi(), a 520-byte redeem script in sh() and
+      twenty keys in wsh(); and addr() only over a string that decodes as an
+      address on some network. Every invalid descriptor BIPs 381 to 387
+      publish is now refused at parse. Twenty two of them used to parse and be
+      refused only by the evaluator, which held only on the paths that
+      evaluate; the descriptor.parse IPC method reported them as parsed.
+    tests:
+      - packages/core/test/descriptor.parse.test.ts::accepts-every-placement-the-bips-allow
+      - packages/core/test/descriptor.parse.test.ts::refuses-a-script-where-its-bip-does-not-allow-it
+      - packages/core/test/descriptor.parse.test.ts::refuses-a-key-its-context-does-not-allow
+      - packages/core/test/descriptor.parse.test.ts::refuses-a-multisig-larger-than-its-context-allows
+      - packages/core/test/vectors.bip381.test.ts::refuses-every-published-invalid-descriptor
+      - packages/core/test/vectors.bip382.test.ts::refuses-every-published-invalid-descriptor
+      - packages/core/test/vectors.bip383.test.ts::refuses-every-published-invalid-descriptor
+      - packages/core/test/vectors.bip384.test.ts::refuses-every-published-invalid-descriptor
+      - packages/core/test/vectors.bip385.test.ts::refuses-every-published-invalid-descriptor
+      - packages/core/test/vectors.bip386.test.ts::refuses-every-published-invalid-descriptor
+      - packages/core/test/vectors.bip387.test.ts::refuses-every-published-invalid-descriptor
+
 vectors:
   - name: BIP-380 key expression test vectors, extracted from the BIP text
     file: spec/vectors/bip380-key-expressions.json
@@ -216,16 +245,15 @@ security_notes: >
   WIF private keys are not accepted at all, and an extended private key is
   refused with an explicit message rather than parsed and ignored.
 
-  THE PARSER DOES NOT CHECK CONTEXT. Where a script may appear (sh() only at
-  the top, wpkh() and wsh() only at the top or inside sh(), tr(), combo(),
-  raw() and addr() only at the top, multi_a() only under tr()) and which keys
-  a context allows (compressed only under wpkh() and wsh(), no uncompressed
-  key under tr()) are left to the evaluator that consumes the tree, which
-  refuses anything it does not derive. Of the thirty nine invalid descriptors
-  BIPs 381 to 387 publish, twenty two parse and are refused there, each
-  listed in its vector test (INV-DESC-10). That holds only while every path from a descriptor to an
-  address goes through deriveQuorumAddresses or the functions it dispatches
-  to. The 'descriptor.parse' IPC method reports such a descriptor as parsed.
+  THE PARSER CHECKS CONTEXT (INV-DPARSE-12). Where a script may appear and
+  which keys a context allows are refused at parse, by the BIPs' own rules,
+  so every invalid descriptor BIPs 381 to 387 publish stops at the boundary.
+  It used to leave this to the evaluator, which refused twenty two of those
+  descriptors, but only on the paths that evaluate: the 'descriptor.parse'
+  IPC method reported them as parsed, and the refusal held only while every
+  route to an address went through deriveQuorumAddresses. The evaluators keep
+  their own checks as a second layer, and refuse kinds the BIPs allow and
+  this device does not derive.
 
   H AS A HARDENED MARKER WAS ACCEPTED until the BIP-380 vectors were run. The
   BIP has listed it as invalid since bitcoin/bips 3cc71d7c (July 2025), and

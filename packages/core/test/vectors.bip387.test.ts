@@ -27,7 +27,6 @@ import {
   DERIVED,
   WIF,
   XPRV,
-  atEvaluation,
   atParse,
   checkInvalid,
   checkValid,
@@ -51,12 +50,12 @@ const VALID: readonly ValidOutcome[] = [
 ]
 
 const INVALID: readonly InvalidOutcome[] = [
-  atEvaluation(/not a multisig one/), // multi_a(1,...) at the top level
-  atEvaluation(/goes under tr\(\)/), // sh(multi_a(1,...))
-  atEvaluation(/goes under tr\(\)/), // wsh(multi_a(1,...))
+  atParse(/multi_a\(\) cannot go at the top level/), // multi_a(1,...) at the top level
+  atParse(/multi_a\(\) cannot go inside sh\(\)/), // sh(multi_a(1,...))
+  atParse(/multi_a\(\) cannot go inside wsh\(\)/), // wsh(multi_a(1,...))
   atParse(/is not a number/), // multi_a(a,...)
   atParse(/out of range/), // multi_a(0,...)
-  atEvaluation(/cannot go under tr\(\)/), // multi_a(1,04a3...), INV-TR-7
+  atParse(/uncompressed key cannot go under tr\(\)/), // multi_a(1,04a3...), INV-TR-7
   // The BIP's defect is the threshold; the keys are read first, and a WIF
   // private key is not read at all.
   atParse(/neither an extended public key nor hex/), // multi_a(3,L4rK...,5KYZ...)

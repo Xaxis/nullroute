@@ -402,7 +402,7 @@ export function reviewTransaction(tx: btc.Transaction, options: ReviewOptions): 
     // INV-PSBT-3.
     warnings.push({
       kind: 'sighash',
-      message: `${sighash.name}. ${sighash.meaning} nullroute refuses this unless advanced sighash mode is enabled for this one signature.`,
+      message: `${sighash.name}. ${sighash.meaning} nullroute refuses this unless you override it for this one signature, and the override is never remembered.`,
       blocking: true,
     })
   }

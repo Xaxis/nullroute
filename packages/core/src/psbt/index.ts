@@ -23,7 +23,7 @@ export type {
 export { parsePsbt, encodePsbt, addressFromScript } from './parse.js'
 
 export { signTransaction, signVerdict, AUX_RAND } from './sign.js'
-export type { SignOptions, SignResult, SignVerdict } from './sign.js'
+export type { OwnedInput, SignOptions, SignResult, SignVerdict } from './sign.js'
 
 export { signatureProgress, alreadySignedBy } from './quorum.js'
 export type { SignatureProgress, InputSignatures } from './quorum.js'

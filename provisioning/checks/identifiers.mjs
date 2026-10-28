@@ -20,7 +20,7 @@
  * checking our work needs `sha256sum` and this file, not our tool. That is the
  * same argument the manifest format rests on.
  *
- *     printf 'nullroute/verity-salt/0.4.0' | sha256sum
+ *     printf 'nullroute/verity-salt/0.1.0' | sha256sum
  *
  * NONE OF THIS IS A SECRET AND NONE OF IT IS SECURITY. A verity salt is public,
  * published, and part of what a user compares. Deriving it from a version

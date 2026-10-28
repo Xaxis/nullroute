@@ -21,7 +21,6 @@ import {
   DERIVED,
   WIF,
   XPRV,
-  atEvaluation,
   atParse,
   checkInvalid,
   checkValid,
@@ -48,7 +47,7 @@ const VALID: readonly ValidOutcome[] = [
 ]
 
 const INVALID: readonly InvalidOutcome[] = [
-  atEvaluation(/will not fit in a bare P2SH redeem script/), // sh(multi(16,...))
+  atParse(/will not fit in a bare P2SH redeem script/), // sh(multi(16,...))
   atParse(/is not a number/), // multi(a,...)
   atParse(/out of range/), // multi(0,...)
   // The BIP's defect is the threshold; the keys are read first, and a WIF
