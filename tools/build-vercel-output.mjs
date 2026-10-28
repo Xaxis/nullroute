@@ -92,12 +92,29 @@ for (const file of htmlFiles) {
   if (clean.length > 0 && clean !== file) overrides[file] = { path: clean }
 }
 
+const MOVED = [
+  ['/check', '/docs/verification'],
+  ['/device', '/#hardware'],
+  ['/device/interop', '/docs/interop'],
+  ['/profile/spec', '/docs/signer-profile'],
+  ['/profile/kit', '/docs/conformance'],
+]
+
 const config = {
   version: 3,
   routes: [
     // `continue: true` applies the headers and then keeps routing, rather than
     // terminating the match here.
     { src: '/(.*)', headers, continue: true },
+    // PAGES THAT MOVED INTO THE DOCS on 28 October 2026, when the site went
+    // from report pages to a product page and a documentation set. They were
+    // public for two days and may be linked from somewhere, so each one sends
+    // its reader to where that content lives now rather than to a 404.
+    ...MOVED.map(([from, to]) => ({
+      src: `^${from}/?$`,
+      status: 308,
+      headers: { Location: to },
+    })),
     { handle: 'filesystem' },
     // Anything unmatched is a 404, served with the site's own not-found page.
     { src: '/(.*)', status: 404, dest: '/404.html' },

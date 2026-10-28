@@ -10,6 +10,12 @@ first, and the website's status page renders it.
 
 ## October 2026
 
+- **2026-10-28** nullroute.diy is a product page and a documentation set. The
+  home page says what the device is, how using it goes, how to check it and
+  what to buy, in that order. The docs are ten chapters in five groups with a
+  sidebar, one page per section: 84 pages cut from the same repository files,
+  keeping the anchors GitHub gives them, so every cross-reference resolves.
+  The check, device and profile sub-pages folded into the docs, with redirects.
 - **2026-10-27** A heartbeat answered after the screen that sent it had gone
   updated that screen anyway. Under test that threw "window is not defined"
   into whichever file ran next, which is why `make ui-race` failed about one

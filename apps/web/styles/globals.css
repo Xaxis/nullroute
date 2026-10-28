@@ -3,11 +3,12 @@
 /*
  * nullroute.diy
  *
- * LAID OUT LIKE A TEST REPORT, because that is the genre whose whole job is
- * to be checked by somebody who does not trust the author. Numbered figures,
- * a source line under every artefact, the result next to the method that
- * produced it. A reader recognises "measurement, method, source" without
- * being told, so the page never has to say the word verifiable.
+ * A PRODUCT PAGE AND A DOCUMENTATION SET. It was laid out as a test report,
+ * numbered figures and a source line under everything, and read as an audit
+ * nobody had asked to sit through. The evidence stayed (every figure is read
+ * from the repository, the manifest root is quoted whole) and the form moved
+ * to what a newcomer and a reader of docs expect: a page that says what this
+ * is, and a sidebar over the rest.
  *
  * THE DEVICE'S OWN TWO THEMES, not a third. The light tokens below are the
  * device's light theme (packages/ui/src/styles.css, `[data-theme='light']`)
@@ -32,8 +33,8 @@
  * a CDN would be a third party on the page that argues against third parties,
  * and `font-src 'self'` would refuse it anyway.
  *
- * Serif for the argument, sans for labels, mono for evidence. The split is the
- * point: what the project says and what a reader can check look different.
+ * Serif for headlines, sans for reading, mono for evidence: what the project
+ * says and what a reader can check still look different.
  *
  * HASHES ARE SET IN DEJAVU SANS MONO, the face the device draws them in, so
  * the glyphs compared on this page are the glyphs the panel shows. That file
@@ -196,9 +197,9 @@ html {
 body {
   background-color: var(--paper);
   color: var(--body);
-  font-family: var(--font-serif);
-  font-size: 1.0625rem;
-  line-height: 1.6;
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.65;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   font-feature-settings: 'kern' 1;
@@ -206,7 +207,76 @@ body {
 
 @media (min-width: 640px) {
   body {
-    font-size: 1.125rem;
+    font-size: 1.0625rem;
+  }
+}
+
+/* --- Controls and surfaces -----------------------------------------------
+ *
+ * One primary action per view, drawn in ink rather than in the accent: the
+ * accent is the device's warning-adjacent orange and white text on it does not
+ * clear AA. Secondary actions are outlined. Cards are the only raised surface.
+ *
+ * In the components layer, so a utility on the same element (`card flex`)
+ * wins as it does everywhere else in Tailwind.
+ */
+@layer components {
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 0.9375rem;
+    line-height: 1;
+    white-space: nowrap;
+    border-radius: 8px;
+    padding: 0.8rem 1.15rem;
+    border: 1px solid transparent;
+    transition:
+      background-color 0.15s,
+      border-color 0.15s,
+      color 0.15s;
+  }
+  .btn-sm {
+    font-size: 0.8125rem;
+    padding: 0.55rem 0.8rem;
+    border-radius: 7px;
+  }
+  .btn-primary {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .btn-primary:hover {
+    background: color-mix(in srgb, var(--ink) 82%, var(--signal));
+  }
+  .btn-secondary {
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--ink);
+  }
+  .btn-secondary:hover {
+    border-color: var(--ink);
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+  }
+  a.card {
+    display: block;
+    transition: border-color 0.15s;
+  }
+  a.card:hover {
+    border-color: var(--border);
+  }
+  .eyebrow {
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--signal);
   }
 }
 
@@ -358,47 +428,35 @@ body {
 /* --- Long-form documents rendered from docs/ ------------------------------ */
 .prose-doc {
   color: var(--body);
-  line-height: 1.68;
+  line-height: 1.7;
 }
 .prose-doc h1,
 .prose-doc h2,
 .prose-doc h3,
 .prose-doc h4 {
   color: var(--ink);
-  scroll-margin-top: 6rem;
-}
-.prose-doc h1 {
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   font-weight: 600;
-  font-size: clamp(2rem, 5vw, 2.75rem);
-  line-height: 1.1;
-  letter-spacing: -0.015em;
-  margin-bottom: 1.5rem;
+  scroll-margin-top: 5.5rem;
 }
 .prose-doc h2 {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 1.625rem;
-  line-height: 1.2;
-  margin-top: 3.25rem;
-  margin-bottom: 1rem;
+  font-size: 1.375rem;
+  line-height: 1.3;
+  margin-top: 3rem;
+  margin-bottom: 0.875rem;
   padding-top: 1.5rem;
   border-top: 1px solid var(--line);
 }
 .prose-doc h3 {
-  font-family: var(--font-sans);
-  font-weight: 600;
-  font-size: 1.0625rem;
-  margin-top: 2.25rem;
+  font-size: 1.1875rem;
+  line-height: 1.35;
+  margin-top: 2.5rem;
   margin-bottom: 0.75rem;
 }
 .prose-doc h4 {
-  font-family: var(--font-sans);
-  font-weight: 600;
-  font-size: 0.9375rem;
+  font-size: 1rem;
   margin-top: 1.75rem;
   margin-bottom: 0.5rem;
-  color: var(--body);
 }
 .prose-doc p {
   margin-bottom: 1.125rem;
@@ -417,8 +475,6 @@ body {
 .prose-doc strong {
   color: var(--ink);
   font-weight: 600;
-  font-family: var(--font-sans);
-  font-size: 0.94em;
 }
 .prose-doc ul,
 .prose-doc ol {

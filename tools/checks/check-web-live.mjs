@@ -62,34 +62,103 @@ const ORIGIN = process.argv[2] ?? process.env['NULLROUTE_SITE'] ?? 'https://null
 const BODY_SHARE = 0.5
 
 /**
- * Every document, read out of the registry rather than listed here.
+ * Every docs section page, with the share of its own source it must render.
+ *
+ * Each registered file is a chapter and each of its second-level headings a
+ * page (apps/web/lib/docbook.ts). A page is matched to its source by its
+ * heading: the built page's h1 is the section's heading text, so the section
+ * runs from that heading to the next one in the file.
+ *
+ * MEASURED AGAINST VISIBLE TEXT, NOT RAW MARKDOWN. A section that is mostly
+ * links or a table carries link targets and table rules that never render,
+ * and against raw bytes a fully rendered references section would fail. Those
+ * are stripped before the share is taken.
  *
  * This list was four entries long while the site published six documents, so
- * the two most recent ones were live, unlinked and unchecked, and the check
- * reported all pages clean. A hardcoded list of what to check is a list that
- * silently stops covering what exists.
- *
- * Parsed with a regular expression because this file is plain Node with no
- * build step, and the shape it reads is a literal array of string fields.
+ * the two most recent ones were live, unlinked and unchecked. Everything here
+ * is read from the registry and the build, never listed by hand. Parsed with
+ * regular expressions because this file is plain Node with no build step.
  */
+function sectionsOf(markdown) {
+  const sections = []
+  let fenced = false
+  for (const line of markdown.split('\n')) {
+    if (line.startsWith('```')) fenced = !fenced
+    const heading = fenced ? null : /^## (.+)$/.exec(line)
+    if (heading !== null) {
+      sections.push({ text: plain(heading[1]), body: '' })
+      continue
+    }
+    const current = sections.at(-1)
+    if (current !== undefined) current.body += `${line}\n`
+  }
+  return sections
+}
+
+/** Heading text as it renders: links to their text, emphasis and code marks gone. */
+function plain(text) {
+  return text
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/[*`_]/g, '')
+    .trim()
+}
+
+function visibleLength(markdown) {
+  return markdown
+    .replace(/\]\([^)]*\)/g, ']')
+    .replace(/^\|?[\s:|-]+\|[\s:|-]*$/gm, '')
+    .replace(/\s+/g, ' ').length
+}
+
+function decode(html) {
+  return html
+    .replace(/<[^>]+>/g, '')
+    .replaceAll('&amp;', '&')
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&#x27;', "'")
+    .trim()
+}
+
 function docPages() {
   const source = readFileSync(join(ROOT, 'apps/web/lib/docs.ts'), 'utf8')
-  const found = [
-    ...source.matchAll(
-      /slug:\s*'([a-z0-9-]+)'[\s\S]{0,400}?file:\s*'([^']+)'[\s\S]{0,400}?title:\s*'([^']+)'/g
-    ),
-  ]
-  if (found.length === 0) {
+  const chapters = [...source.matchAll(/slug:\s*'([a-z0-9-]+)',\s*file:\s*'([^']+)'/g)]
+  if (chapters.length === 0) {
     console.error(
       'check-web-live: no documents parsed from apps/web/lib/docs.ts, so this is blind.'
     )
     process.exit(1)
   }
-  return found.map((m) => ({
-    path: `/docs/${m[1]}`,
-    expect: m[3],
-    minBody: Math.floor(readFileSync(join(ROOT, m[2]), 'utf8').length * BODY_SHARE),
-  }))
+  const pages = []
+  for (const [, slug, file] of chapters) {
+    const sections = sectionsOf(readFileSync(join(ROOT, file), 'utf8'))
+    const dir = join(OUT, 'docs', slug)
+    const built = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.html')) : []
+    if (built.length !== sections.length) {
+      console.error(
+        `check-web-live: ${file} has ${String(sections.length)} sections and the build has ` +
+          `${String(built.length)} pages for it. Run "make web-build".`
+      )
+      process.exit(1)
+    }
+    for (const name of built) {
+      const html = readFileSync(join(dir, name), 'utf8')
+      const heading = decode(/<h1[^>]*>([\s\S]*?)<\/h1>/.exec(html)?.[1] ?? '')
+      const section = sections.find((s) => s.text === heading)
+      if (section === undefined) {
+        console.error(`check-web-live: no section of ${file} is headed "${heading}"`)
+        process.exit(1)
+      }
+      const title = /<title>([^<]*)<\/title>/.exec(html)
+      pages.push({
+        path: `/docs/${slug}/${name.slice(0, -'.html'.length)}`,
+        expect: title ? title[1].replaceAll('&amp;', '&') : '(no title in the build)',
+        minBody: Math.floor(visibleLength(section.body) * BODY_SHARE),
+      })
+    }
+  }
+  return pages
 }
 
 const OUT = join(ROOT, 'apps/web/out')
@@ -108,15 +177,21 @@ function builtPages() {
     console.error('check-web-live: no apps/web/out. Run "make web-build" first.')
     process.exit(1)
   }
-  return readdirSync(OUT, { recursive: true })
-    .filter((f) => f.endsWith('.html') && !['404.html', '_not-found.html'].includes(f))
-    .map((f) => (f === 'index.html' ? '/' : `/${f.slice(0, -'.html'.length)}`))
-    .filter((path) => !path.startsWith('/docs/'))
-    .sort()
-    .map((path) => {
-      const title = /<title>([^<]*)<\/title>/.exec(readFileSync(builtFile(path), 'utf8'))
-      return { path, expect: title ? title[1].replaceAll('&amp;', '&') : '(no title in the build)' }
-    })
+  return (
+    readdirSync(OUT, { recursive: true })
+      .filter((f) => f.endsWith('.html') && !['404.html', '_not-found.html'].includes(f))
+      .map((f) => (f === 'index.html' ? '/' : `/${f.slice(0, -'.html'.length)}`))
+      // Section pages are docPages' to check, with a body to measure.
+      .filter((path) => !/^\/docs\/[^/]+\/[^/]+$/.test(path))
+      .sort()
+      .map((path) => {
+        const title = /<title>([^<]*)<\/title>/.exec(readFileSync(builtFile(path), 'utf8'))
+        return {
+          path,
+          expect: title ? title[1].replaceAll('&amp;', '&') : '(no title in the build)',
+        }
+      })
+  )
 }
 
 const PAGES = [...builtPages(), ...docPages()]

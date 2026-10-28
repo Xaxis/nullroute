@@ -48,14 +48,16 @@ export const VISIT_COUNTER = {
 } as const
 
 /**
- * The header, in the order a reader's questions arrive: how do I check it,
- * what is the profile, what is the device, where does it stand, where is the
- * detail. Verbs and nouns a builder uses, not "Features" and "Why us".
+ * The header: four places, not six. The detail lives in the docs, so the
+ * header names the docs, the one task a skeptic arrives to do (verify), the
+ * standard this project offers every other signer, and where it stands.
  */
 export const NAV: readonly { href: string; label: string }[] = [
-  { href: '/check', label: 'Check it' },
-  { href: '/profile', label: 'Profile' },
-  { href: '/device', label: 'Device' },
-  { href: '/status', label: 'Status' },
   { href: '/docs', label: 'Docs' },
+  { href: '/docs/verification', label: 'Verify' },
+  { href: '/profile', label: 'Signer profile' },
+  { href: '/status', label: 'Roadmap' },
 ]
+
+/** Where "Get started" goes: the first page a newcomer can act on. */
+export const START_HREF = '/docs/install'

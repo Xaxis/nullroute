@@ -76,29 +76,6 @@ export function Source({ children }: { children: ReactNode }) {
   )
 }
 
-/** A small label over a large value, the way the device's lock screen reads. */
-export function Readout({
-  label,
-  value,
-  detail,
-}: {
-  label: string
-  value: ReactNode
-  detail?: ReactNode
-}) {
-  return (
-    <div className="min-w-0 border-t border-line pt-3">
-      <dt className="label">{label}</dt>
-      <dd className="mt-1.5 font-display text-[1.75rem] leading-none text-ink tabular-nums sm:text-[2rem]">
-        {value}
-      </dd>
-      {detail !== undefined && (
-        <dd className="mt-2 font-sans text-[0.8125rem] leading-snug text-muted">{detail}</dd>
-      )}
-    </div>
-  )
-}
-
 /**
  * A shell transcript: commands and their real output.
  *
@@ -143,14 +120,12 @@ export function Transcript({
  * screens, above the content on narrow ones.
  */
 export function Section({
-  n,
   title,
   kicker,
   id,
   children,
   className = '',
 }: {
-  n: string
   title: ReactNode
   kicker?: ReactNode
   id?: string
@@ -160,22 +135,13 @@ export function Section({
   return (
     <section
       {...(id === undefined ? {} : { id })}
-      className={`scroll-mt-24 border-t border-line py-14 sm:py-20 ${className}`}
+      className={`scroll-mt-20 border-t border-line py-14 sm:py-16 ${className}`}
     >
-      <div className="grid gap-6 lg:grid-cols-[11rem_minmax(0,1fr)] lg:gap-12">
-        <div className="lg:sticky lg:top-24 lg:self-start">
-          <div aria-hidden="true" className="font-mono text-sm text-signal tabular-nums">
-            {n}
-          </div>
-          {kicker !== undefined && <div className="label mt-1.5">{kicker}</div>}
-        </div>
-        <div className="min-w-0">
-          <h2 className="font-display text-[1.875rem] leading-[1.12] tracking-[-0.01em] text-ink sm:text-[2.375rem] max-w-[24ch]">
-            {title}
-          </h2>
-          <div className="mt-6">{children}</div>
-        </div>
-      </div>
+      {kicker !== undefined && <p className="eyebrow">{kicker}</p>}
+      <h2 className="mt-2 max-w-[26ch] font-display text-[1.75rem] leading-[1.15] tracking-[-0.015em] text-ink sm:text-[2.125rem]">
+        {title}
+      </h2>
+      <div className="mt-6">{children}</div>
     </section>
   )
 }

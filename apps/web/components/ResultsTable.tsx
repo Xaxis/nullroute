@@ -1,5 +1,4 @@
 import type { Profile } from '../lib/profile'
-import { InlineMd } from './report'
 
 /**
  * The conformance kit's results, one row per vector file.
@@ -15,7 +14,21 @@ import { InlineMd } from './report'
  * puts its links where nobody finds them, which is what the responsive check
  * caught on the first version of this.
  */
-export function ResultsTable({ profile }: { profile: Profile }) {
+/** A requirement's page, or a stopped build: a chip linking nowhere is a citation to nothing. */
+export function requirementHref(hrefs: ReadonlyMap<string, string>, id: string): string {
+  const href = hrefs.get(id.toLowerCase())
+  if (href === undefined) throw new Error(`nullroute.diy: the signer profile has no ${id}`)
+  return href
+}
+
+export function ResultsTable({
+  profile,
+  hrefs,
+}: {
+  profile: Profile
+  /** Where each requirement is published, by lowercase id. */
+  hrefs: ReadonlyMap<string, string>
+}) {
   return (
     <div className="overflow-hidden rounded-[4px] border border-line bg-surface">
       <table className="w-full border-collapse font-sans text-[0.8125rem] leading-snug sm:text-[0.875rem]">
@@ -49,7 +62,7 @@ export function ResultsTable({ profile }: { profile: Profile }) {
                     {v.requirements.map((id) => (
                       <a
                         key={id}
-                        href={`/profile/spec#${id.toLowerCase()}`}
+                        href={requirementHref(hrefs, id)}
                         className="font-mono text-[0.72rem] text-link hover:text-link-hover"
                       >
                         {id}
@@ -92,25 +105,5 @@ export function ResultsTable({ profile }: { profile: Profile }) {
         </tfoot>
       </table>
     </div>
-  )
-}
-
-/**
- * Where each file's expected values came from, as the kit's README states it.
- * A list under the table rather than a column in it, because the sentences are
- * long and a column of them made the table wider than a phone.
- */
-export function SourcesList({ profile }: { profile: Profile }) {
-  return (
-    <dl className="divide-y divide-line border-y border-line">
-      {profile.vectors.map((v) => (
-        <div key={v.file} className="grid gap-1 py-3 md:grid-cols-[14rem_minmax(0,1fr)] md:gap-6">
-          <dt className="font-mono text-[0.78rem] text-ink break-all">{v.file}</dt>
-          <dd className="font-sans text-[0.875rem] leading-relaxed text-body">
-            <InlineMd text={v.sources} />
-          </dd>
-        </div>
-      ))}
-    </dl>
   )
 }

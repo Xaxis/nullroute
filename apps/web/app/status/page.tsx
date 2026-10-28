@@ -6,6 +6,9 @@ import { OG_IMAGE, REPO_URL } from '../../lib/site'
 import { PhaseTable } from '../../components/PhaseTable'
 import { A, Figure, InlineMd, Prose, Section, Source } from '../../components/report'
 
+/** The log entries shown here. The file has all of them, a link away. */
+const RECENT = 12
+
 export const metadata: Metadata = {
   title: 'Status and roadmap',
   description:
@@ -81,13 +84,13 @@ export default function StatusPage() {
   const open = profile.conformance.filter((r) => statusKind(r.status) !== 'met').length
 
   return (
-    <div className="mx-auto max-w-6xl px-4 sm:px-6">
-      <header className="pt-12 pb-12 sm:pt-16">
-        <div className="label">Status</div>
+    <div className="mx-auto max-w-7xl px-4 sm:px-6">
+      <header className="pt-14 pb-14 sm:pt-20">
+        <p className="eyebrow">Roadmap</p>
         <h1 className="mt-3 font-display text-[2.5rem] leading-[1.05] tracking-[-0.02em] text-ink sm:text-[3.5rem] max-w-[24ch]">
           Built in phases, and held to them.
         </h1>
-        <Prose className="mt-6 text-[1.1875rem]">
+        <Prose className="mt-6 text-[1.125rem]">
           <p>
             The signer is phases 1 to 4. The wallet layer, phase 5, is a lower assurance tier, and
             the companion, phase 6, runs on a networked machine and never on the device. Neither
@@ -97,7 +100,7 @@ export default function StatusPage() {
         </Prose>
       </header>
 
-      <Section n="1" kicker="Phases" title="What is built." id="phases">
+      <Section kicker="Phases" title="What is built." id="phases">
         <Figure
           n="1"
           title="Phases, as the README states them"
@@ -125,7 +128,7 @@ export default function StatusPage() {
         </Prose>
       </Section>
 
-      <Section n="2" kicker="Next" title="What comes next, and what each step proves." id="next">
+      <Section kicker="Next" title="What comes next, and what each step proves." id="next">
         <ol className="space-y-px overflow-hidden rounded-[4px] border border-line bg-line">
           {NEXT.map((step, i) => (
             <li
@@ -158,9 +161,9 @@ export default function StatusPage() {
         </Prose>
       </Section>
 
-      <Section n="3" kicker="Log" title="What has landed, and when." id="log">
+      <Section kicker="Log" title="What has landed, and when." id="log">
         <ol className="border-t border-line">
-          {log.map((entry, i) => (
+          {log.slice(0, RECENT).map((entry, i) => (
             <li
               key={`${entry.date}-${String(i)}`}
               className="grid gap-1 border-b border-line py-3.5 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:gap-6"
@@ -178,11 +181,12 @@ export default function StatusPage() {
           <A href={`${REPO_URL}/blob/main/CHANGELOG.md`} external>
             CHANGELOG.md
           </A>
-          , read when this site was built. The whole history is the repository&rsquo;s commit log.
+          , read when this site was built, has the {String(log.length)} entries in full; these are
+          the latest {String(RECENT)}. The whole history is the repository&rsquo;s commit log.
         </Source>
       </Section>
 
-      <Section n="4" kicker="Limits" title="What it does not protect against." id="limits">
+      <Section kicker="Limits" title="What it does not protect against." id="limits">
         <dl className="border-t border-line">
           {NOT_COVERED.map(([term, text]) => (
             <div

@@ -38,15 +38,15 @@ const HELP: readonly (readonly [string, string])[] = [
 
 export default function AboutPage() {
   return (
-    <div className="mx-auto max-w-6xl px-4 sm:px-6">
-      <header className="pt-12 pb-12 sm:pt-16">
-        <div className="label">About</div>
+    <div className="mx-auto max-w-7xl px-4 sm:px-6">
+      <header className="pt-14 pb-14 sm:pt-20">
+        <p className="eyebrow">About</p>
         <h1 className="mt-3 font-display text-[2.5rem] leading-[1.05] tracking-[-0.02em] text-ink sm:text-[3.5rem] max-w-[24ch]">
           One maintainer, an open method, and no lock-in.
         </h1>
       </header>
 
-      <Section n="1" kicker="Who" title="Who maintains it." id="who">
+      <Section kicker="Who" title="Who maintains it." id="who">
         <Prose>
           <p>
             nullroute is written and maintained by{' '}
@@ -71,7 +71,6 @@ export default function AboutPage() {
       </Section>
 
       <Section
-        n="2"
         kicker="If it stops"
         title="What happens to your funds if this project stops."
         id="stops"
@@ -92,7 +91,7 @@ export default function AboutPage() {
         </Prose>
       </Section>
 
-      <Section n="3" kicker="Help" title="Where help is worth most." id="help">
+      <Section kicker="Help" title="Where help is worth most." id="help">
         <dl className="grid gap-px overflow-hidden rounded-[4px] border border-line bg-line sm:grid-cols-2">
           {HELP.map(([k, v]) => (
             <div key={k} className="bg-surface px-5 py-4">
@@ -113,17 +112,12 @@ export default function AboutPage() {
         </Prose>
       </Section>
 
-      <Section
-        n="4"
-        kicker="Licence"
-        title="Free to read, run, change and redistribute."
-        id="licence"
-      >
+      <Section kicker="Licence" title="Free to read, run, change and redistribute." id="licence">
         <Prose>
           <p>
             The repository is MIT licensed. The official BIP test vectors in it are copies, and keep
             the terms of the BIPs they come from, and the wallet exports in{' '}
-            <A href="/device/interop">spec/interop</A> stay under Sparrow&rsquo;s Apache 2.0, its
+            <A href="/docs/interop">spec/interop</A> stay under Sparrow&rsquo;s Apache 2.0, its
             licence beside them. The typefaces on this site are Source Serif 4 and IBM Plex under
             the SIL Open Font Licence and DejaVu Sans Mono under its own free licence, self-hosted,
             with the licence texts beside the files.{' '}

@@ -1,96 +1,123 @@
 import { readRepoFile } from './repo'
 
 /**
- * The documentation set, rendered straight from docs/ at the repository root.
+ * The documentation set, rendered straight from files in the repository.
  *
  * The site holds no copy of its own. The page you read here and the file a
  * reviewer reads in the repository are the same bytes, so the published
  * documentation cannot drift from the documentation that ships with the code.
  * That matters more than usual for a project whose threat model is a
  * deliverable.
+ *
+ * EACH FILE IS A CHAPTER AND EACH OF ITS SECTIONS IS A PAGE. The files were
+ * published one per page, which made "Using the device" a single 48,000
+ * character scroll and gave a reader no map of the whole set. lib/docbook.ts
+ * splits every file at its second-level headings, keeping the anchors GitHub
+ * gives the whole file, so a link written in the repository still lands on
+ * the right paragraph here.
  */
+export type DocGroup = 'Start here' | 'Use it' | 'Trust it' | 'Standards' | 'Project'
+
+export const GROUPS: readonly DocGroup[] = [
+  'Start here',
+  'Use it',
+  'Trust it',
+  'Standards',
+  'Project',
+]
+
 export interface DocMeta {
   readonly slug: string
   readonly file: string
   readonly title: string
-  /**
-   * The header's name for it, which is shorter than the title on purpose.
-   *
-   * Four full titles do not fit across a phone, and a nav that scrolls sideways
-   * with no visible affordance is a nav whose last two items nobody finds. The
-   * short form is written out here rather than derived, because truncating
-   * "Entropy and seed generation" by rule gives "Entropy and seed..." and by
-   * hand gives "Entropy".
-   */
-  readonly navLabel: string
+  readonly group: DocGroup
+  /** One sentence for the docs home and the chapter's description. */
   readonly summary: string
-  /** The question a reader actually arrived with. */
-  readonly question: string
+  /** Requirement ids (SP-ENT-1) become link targets. The signer profile only. */
+  readonly requirements?: boolean
 }
 
 export const DOCS: readonly DocMeta[] = [
   {
-    slug: 'threat-model',
-    navLabel: 'Threats',
-    file: 'docs/THREAT-MODEL.md',
-    title: 'Threat model',
-    summary:
-      'What the device defends against, what it partially defends against, and the long list of what it does not, including what an air gap cannot do for you. Read this before trusting it with anything.',
-    question: 'What is this safe against, and what is it not?',
-  },
-  {
     slug: 'install',
-    navLabel: 'Install',
     file: 'docs/INSTALL.md',
-    title: 'Installing it',
+    title: 'Install',
+    group: 'Start here',
     summary:
-      'What you can run today, what the device does on its own at first boot, and the flashable image that does not exist yet. Short on purpose.',
-    question: 'How do I get this onto a device?',
-  },
-  {
-    slug: 'verification',
-    navLabel: 'Check it',
-    file: 'docs/VERIFICATION.md',
-    title: 'Checking and building a device',
-    summary:
-      'How to check, yourself, that a device runs the code it claims to, and how to build one that a stranger can check. Written for someone who does not trust this project and should not have to.',
-    question: 'How do I check the device is honest, and build one?',
+      'Run the whole device on your computer, build or download a card, flash it, and what the device does at first boot.',
   },
   {
     slug: 'using',
-    navLabel: 'Using it',
     file: 'docs/USING.md',
     title: 'Using the device',
+    group: 'Use it',
     summary:
-      'What each screen is for, what it refuses, and why, including running several devices as one multisig quorum and getting data across the gap. The other pages answer whether this is safe and how to check it; this one answers what happens when you press the thing.',
-    question: 'What are the screens, and what does each one refuse?',
-  },
-  {
-    slug: 'security',
-    navLabel: 'Security',
-    file: 'SECURITY.md',
-    title: 'Reporting a flaw',
-    summary:
-      'Report privately through GitHub, acknowledged within 72 hours. What is in scope, why a documented design limit is not a vulnerability, and why an understated one is.',
-    question: 'I found a flaw. Where does it go?',
-  },
-  {
-    slug: 'contributing',
-    navLabel: 'Contributing',
-    file: 'CONTRIBUTING.md',
-    title: 'Contributing',
-    summary:
-      'Write the spec with the code, bind every invariant to a test that exists, ask before adding a dependency, and name the spec id in security-relevant code.',
-    question: 'How do I help, and what will a change be held to?',
+      'Every screen: making a wallet, receiving, signing, multisig, backups, and what the device refuses and why.',
   },
   {
     slug: 'entropy',
-    navLabel: 'Entropy',
     file: 'docs/ENTROPY.md',
-    title: 'Entropy and seed generation',
+    title: 'Entropy and seeds',
+    group: 'Use it',
     summary:
-      'The dice procedure, the exact byte encoding, and a worked example you can reproduce with sha256sum on any machine.',
-    question: 'How do dice become a seed, and how do I check it?',
+      'How dice become a seed, byte for byte, with a worked example you can reproduce with sha256sum.',
+  },
+  {
+    slug: 'threat-model',
+    file: 'docs/THREAT-MODEL.md',
+    title: 'Threat model',
+    group: 'Trust it',
+    summary:
+      'What the device defends against, what it only mitigates, and what it cannot do, the air gap included.',
+  },
+  {
+    slug: 'verification',
+    file: 'docs/VERIFICATION.md',
+    title: 'Verification',
+    group: 'Trust it',
+    summary:
+      'Five checks you can run yourself, with or without this project’s tools, and how to build a device a stranger can check.',
+  },
+  {
+    slug: 'security',
+    file: 'SECURITY.md',
+    title: 'Security policy',
+    group: 'Trust it',
+    summary:
+      'Report a flaw privately through GitHub, acknowledged within 72 hours, and what is in scope.',
+  },
+  {
+    slug: 'signer-profile',
+    file: 'spec/signer-profile.md',
+    title: 'Signer profile',
+    group: 'Standards',
+    summary:
+      'A draft standard for what any air-gapped signer must show and refuse, written to be met by more than one device.',
+    requirements: true,
+  },
+  {
+    slug: 'conformance',
+    file: 'conformance/README.md',
+    title: 'Conformance kit',
+    group: 'Standards',
+    summary:
+      'Portable test vectors and a runner that holds any signer to the profile through an adapter of its own.',
+  },
+  {
+    slug: 'interop',
+    file: 'spec/interop/README.md',
+    title: 'Interop fixtures',
+    group: 'Standards',
+    summary:
+      'Real files from Sparrow and Bitcoin Core that the device reads or refuses, and every known gap.',
+  },
+  {
+    slug: 'contributing',
+    file: 'CONTRIBUTING.md',
+    title: 'Contributing',
+    group: 'Project',
+    summary:
+      'The rules a change is held to: a spec with the code, every invariant bound to a test, and no new dependency without asking.',
   },
 ]
 
@@ -98,18 +125,10 @@ export function docBySlug(slug: string): DocMeta | undefined {
   return DOCS.find((d) => d.slug === slug)
 }
 
+export function docByFile(file: string): DocMeta | undefined {
+  return DOCS.find((d) => d.file === file)
+}
+
 export function readDoc(meta: DocMeta): string {
   return readRepoFile(meta.file)
 }
-
-/**
- * Every repository file the site renders, and the page that renders it. A
- * link in one rendered file to another goes to that page; a link to anything
- * else goes to the file on GitHub.
- */
-export const PUBLISHED: ReadonlyMap<string, string> = new Map<string, string>([
-  ...DOCS.map((doc) => [doc.file, `/docs/${doc.slug}`] as const),
-  ['spec/signer-profile.md', '/profile/spec'],
-  ['conformance/README.md', '/profile/kit'],
-  ['spec/interop/README.md', '/device/interop'],
-])
