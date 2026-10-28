@@ -62,6 +62,15 @@ jobs:
       - name: Boot it, and boot a modified copy
         run: make image-boot-test
 
+      # The assertions that read the card's own bytes: its partition table and
+      # their types, the boot partition's exact file list, every overlay
+      # config.txt loads or lets the firmware detect, and the verity
+      # superblock. Until this step none of them had been run against a card CI
+      # built; they passed when first run by hand on 27 October 2026. REQUIRE
+      # makes "could not look" a failure rather than a quiet pass.
+      - name: Check the card against the profiles
+        run: make verify-image IMAGE=out/system/nullroute.img REQUIRE=INV-PROV-4,INV-PROV-5,INV-PROV-9,INV-PROV-22,INV-PROV-26,INV-PROV-35
+
       # Into a directory the runner owns. The build container writes
       # out/system as root, so nothing can be added beside the card there.
       - name: Checksums

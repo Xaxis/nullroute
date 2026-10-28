@@ -32,14 +32,17 @@ bring-up all the same: none has streamed on a Pi yet.
 | Run the whole device on your computer | Works today. `make dev`. |
 | Build a card and check it is reproducible | Works today, needs Docker. `make image`, `make image-repro`. |
 | Boot that card in an emulator, including a tampered copy | Works today. `make image-boot-test`. |
-| Boot it on a Pi | Untested. You would be the first. |
+| Take a card CI built and booted, without Docker | Works today, for bring-up. See [A card from CI](#a-card-from-ci-for-bring-up). |
+| Boot it on a Pi | Bring-up, starting on a Pi 5. You would be among the first. |
 
 ## What you need
 
 The parts list is in the README, under
 [What you need to build one](../README.md#what-you-need-to-build-one). One line of it matters here: the
-device never uses a network, so you do not need to give it one, and the wifi and
-Bluetooth firmware are removed from the image rather than switched off.
+device never uses a network, so you do not need to give it one, and every radio
+driver is removed from the image rather than switched off: wifi and Bluetooth
+with their firmware, and cellular, NFC, 802.15.4, packet radio, FM and software
+defined radio too.
 
 ## Running it on your computer
 
@@ -89,6 +92,29 @@ the root through it, reads every block, and starts the daemon; then it corrupts
 a single byte inside the system partition and requires that boot to fail. A
 device that cannot tell those apart is a device whose integrity check is
 decoration.
+
+## A card from CI, for bring-up
+
+Every push to `main` that touches `provisioning/` builds the card on GitHub's
+arm64 runners with the same `make image-system` you would run, boots it under
+QEMU, requires a copy with one byte changed to be refused, and keeps the card
+for 14 days as an artifact named `nullroute-card-UNSIGNED-<commit>`. No Docker
+on your side.
+
+```console
+$ gh run list --workflow card --branch main --limit 1
+$ gh run download <run id> --dir card
+$ cd card/nullroute-card-UNSIGNED-*
+$ sha256sum -c SHA256SUMS
+```
+
+It holds `nullroute.img`, its dm-verity `root-hash`, and the console log of the
+QEMU boot. Then flash it as below, using `nullroute.img`.
+
+UNSIGNED is the point of the name. Nobody but CI built it, so it answers "does
+this boot on my board" and nothing about whether it is the card it should be.
+For that, build it yourself: two honest builds of one commit are byte
+identical, and `make image-repro` is how you check.
 
 ## Flashing it
 
