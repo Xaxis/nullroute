@@ -9,7 +9,7 @@ import { A, Figure, InlineMd, Prose, Section, Source } from '../../components/re
 export const metadata: Metadata = {
   title: 'Status and roadmap',
   description:
-    'Where nullroute stands: phases 1 to 4 of 7 built, hardware bring-up on the Pi 4 next, then an outside review and a first signed release. What each milestone proves, and what the device does not protect against.',
+    'Where nullroute stands: phases 1 to 4 of 7 built, hardware bring-up on a Pi 5 and a Pi 4 next, then an outside review and a first signed release. What each milestone proves, and what the device does not protect against.',
   openGraph: { title: 'Status and roadmap | nullroute', images: [OG_IMAGE] },
 }
 
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 
 const NEXT: readonly { title: string; proves: string; changes: string }[] = [
   {
-    title: 'Hardware bring-up on the Pi 4',
+    title: 'Hardware bring-up on a Pi 5 and a Pi 4',
     proves:
       'The firmware path from power-on to the kernel, the panel and its touch controller, the webcam streaming to the kiosk, the layout on the real panel, and the Argon2id cost on the board. Each is recorded with evidence rather than a claim.',
     changes:

@@ -88,7 +88,7 @@ const STANDING: readonly (readonly [string, string])[] = [
   ],
   [
     'Hardware bring-up is next',
-    'The card boots under QEMU, opens its dm-verity mapping, refuses a partition with one byte changed, and starts the signing daemon. The next milestone is the same card on a Pi 4 with the 7 inch panel: the first run of the firmware path from power-on to the kernel, and the first time the screens are drawn on the panel itself.',
+    'The card boots under QEMU, opens its dm-verity mapping, refuses a partition with one byte changed, and starts the signing daemon. The next milestone is the same card on a Pi 5 and a Pi 4, each with the 7 inch panel: the first run of the firmware path from power-on to the kernel, and the first time the screens are drawn on the panel itself.',
   ],
   [
     'The boot partition is not covered',
@@ -142,7 +142,7 @@ export default function HomePage() {
               ['Subject', 'An air-gapped Bitcoin signer for the Raspberry Pi'],
               ['Version', `${version}, pre-release`],
               ['State', `Unaudited. Phases 1 to ${String(complete)} of 7 built; no release yet`],
-              ['Next', 'Hardware bring-up on the Pi 4'],
+              ['Next', 'Hardware bring-up on a Pi 5 and a Pi 4'],
             ].map(([k, v]) => (
               <div key={k} className="bg-surface px-3.5 py-2.5 min-w-0">
                 <dt className="label">{k}</dt>

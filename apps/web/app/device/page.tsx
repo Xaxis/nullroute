@@ -10,7 +10,7 @@ import { A, C, Figure, InlineMd, Prose, Section, Source } from '../../components
 export const metadata: Metadata = {
   title: 'The device',
   description:
-    'What you build: a Raspberry Pi 4, the official 7 inch touchscreen, a USB webcam and a card, for roughly $100 to $120. What each screen shows and refuses, and how data crosses the gap with no network at all.',
+    'What you build: a Raspberry Pi 4 or 5, the official 7 inch touchscreen, a USB webcam and a card, for roughly $100 to $120. What each screen shows and refuses, and how data crosses the gap with no network at all.',
   openGraph: { title: 'The device | nullroute', images: [OG_IMAGE] },
 }
 
@@ -41,7 +41,9 @@ export default function DevicePage() {
           <p>
             The design needs capabilities, not one model: a 64-bit Pi with enough memory for
             Argon2id and a browser with no swap, an 800x480 touchscreen, and a camera the kernel has
-            a driver for. The card built today targets the Pi 4 and the official 7 inch panel. Other
+            a driver for. One card serves a Pi 4 or a Pi 5 with the official 7 inch panel: the Pi 4
+            on Debian's kernel, and the Pi 5 on Raspberry Pi's, the only kernel that drives that
+            panel there. The Pi 4 is the board the profile claims and the Pi 5 is in bring-up. Other
             boards follow as each one is brought up.
           </p>
         </Prose>
@@ -53,8 +55,8 @@ export default function DevicePage() {
           title="Parts list"
           source={
             <>
-              the parts table in the README, read when this site was built. Hardware bring-up on the
-              Pi 4 is the next milestone, so none of this has run on the board yet.
+              the parts table in the README, read when this site was built. Hardware bring-up, on a
+              Pi 5 first, is the next milestone.
             </>
           }
         >
@@ -91,9 +93,11 @@ export default function DevicePage() {
         </Figure>
         <Prose className="mt-8">
           <p>
-            You do not need a network connection on the device, ever. The wifi and Bluetooth drivers
-            and firmware are removed from the image rather than switched off, so reverting a setting
-            does not bring them back. The radio chip itself is still on the board.
+            You do not need a network connection on the device, ever. Every radio driver is removed
+            from the image rather than switched off, wifi and Bluetooth with their firmware, and
+            also cellular modems, NFC, 802.15.4, packet radio, FM and software defined radio, so
+            reverting a setting does not bring any back. The radio chip itself is still on the
+            board.
           </p>
         </Prose>
       </Section>
