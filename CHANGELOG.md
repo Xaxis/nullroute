@@ -10,6 +10,11 @@ first, and the website's status page renders it.
 
 ## October 2026
 
+- **2026-10-27** INV-PROV-13 says no wireless kernel module is on the card,
+  and the prune behind it removed 802.11 and Bluetooth only. Both kernels also
+  shipped a Realtek SDIO Wi-Fi driver in staging, 802.15.4, NFC, packet radio,
+  cellular modems, two FM transmitters and HackRF. All are removed now, and the
+  assertion's globs fail a card that still carries any of them.
 - **2026-10-27** The card carries a Pi 5 bring-up path beside the Pi 4's. A
   Pi 5 boots Raspberry Pi's 6.18.50 kernel, pinned by digest, because only that
   kernel drives the official 7 inch panel there; `config.txt` gives each board

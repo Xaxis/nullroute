@@ -177,6 +177,9 @@ if [ -n "${NULLROUTE_SELFTEST:-}" ] || grep -q nullroute.selftest /proc/cmdline;
   # 802.11 stack and the whole Bluetooth subsystem behind.
   say "SELFTEST radio_modules=$(find /sysroot/usr/lib/modules \
         -path '*net/wireless*' -o -path '*mac80211*' -o -path '*bluetooth*' \
+        -o -path '*802154*' -o -path '*/nfc/*' -o -path '*rtl8723bs*' \
+        -o -path '*hamradio*' -o -path '*/ax25/*' -o -path '*wwan*' \
+        -o -path '*media/radio*' -o -path '*hackrf*' \
         2>/dev/null | grep -c '\.ko')"
   # THE WHOLE DEVICE, not a sample. Reading every block is what forces
   # dm-verity to verify every block, and it is the only way this harness can

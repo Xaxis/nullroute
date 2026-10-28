@@ -588,6 +588,16 @@ rm -rf "$ROOTFS/usr/lib/modules/$RPI_KERNEL_VERSION/dtb"
 # profile says "No wireless or Bluetooth kernel module is present". That was
 # found by booting the card under QEMU and asking the mounted root filesystem,
 # which is a thing no amount of reading the build script would have shown.
+#
+# AND EVERY OTHER RADIO, which the list above stopped short of for a month.
+# Read off both kernels' module trees on 27 October 2026: a Realtek SDIO Wi-Fi
+# driver living in staging rather than drivers/net/wireless, 802.15.4 (the
+# radio under Zigbee and Thread), NFC readers, amateur packet radio, the WWAN
+# framework and the USB cellular modem drivers that sit in drivers/net/usb and
+# drivers/usb/serial, FM radio including two transmitters (si4713 and Keene's
+# USB one), and software defined radio including HackRF, which transmits. The
+# rule is the profile's sentence, applied to what a radio is rather than to
+# where 802.11 happens to live.
 for tree in \
   kernel/drivers/net/wireless \
   kernel/net/wireless \
@@ -595,7 +605,29 @@ for tree in \
   kernel/net/bluetooth \
   kernel/drivers/bluetooth \
   kernel/net/6lowpan \
-  kernel/net/nfc
+  kernel/net/nfc \
+  kernel/drivers/nfc \
+  kernel/drivers/staging/rtl8723bs \
+  kernel/net/ieee802154 \
+  kernel/net/mac802154 \
+  kernel/drivers/net/ieee802154 \
+  kernel/drivers/net/hamradio \
+  kernel/net/ax25 \
+  kernel/net/netrom \
+  kernel/net/rose \
+  kernel/drivers/net/wwan \
+  kernel/drivers/net/usb/qmi_wwan.ko.xz \
+  kernel/drivers/net/usb/cdc_mbim.ko.xz \
+  kernel/drivers/net/usb/huawei_cdc_ncm.ko.xz \
+  kernel/drivers/net/usb/sierra_net.ko.xz \
+  kernel/drivers/usb/serial/option.ko.xz \
+  kernel/drivers/usb/serial/qcserial.ko.xz \
+  kernel/drivers/usb/serial/sierra.ko.xz \
+  kernel/drivers/usb/serial/usb_wwan.ko.xz \
+  kernel/drivers/media/radio \
+  kernel/drivers/media/usb/hackrf \
+  kernel/drivers/media/usb/airspy \
+  kernel/drivers/media/usb/msi2500
 do
   rm -rf "$ROOTFS/usr/lib/modules"/*/"$tree"
 done

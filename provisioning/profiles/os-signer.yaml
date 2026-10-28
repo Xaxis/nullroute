@@ -287,6 +287,33 @@ assertions:
             - 'lib/modules/*/kernel/net/mac80211/**'
             - 'lib/modules/*/kernel/net/bluetooth/**'
             - 'lib/modules/*/kernel/drivers/bluetooth/**'
+            # EVERY OTHER RADIO, added 27 October 2026 when both kernels' trees
+            # were read for the Pi 5 and turned up a staging Wi-Fi driver,
+            # 802.15.4, NFC, packet radio, cellular modems, FM transmitters and
+            # software defined radio, none of it under the two paths above.
+            - 'lib/modules/*/kernel/net/nfc/**'
+            - 'lib/modules/*/kernel/drivers/nfc/**'
+            - 'lib/modules/*/kernel/drivers/staging/rtl8723bs/**'
+            - 'lib/modules/*/kernel/net/ieee802154/**'
+            - 'lib/modules/*/kernel/net/mac802154/**'
+            - 'lib/modules/*/kernel/drivers/net/ieee802154/**'
+            - 'lib/modules/*/kernel/drivers/net/hamradio/**'
+            - 'lib/modules/*/kernel/net/ax25/**'
+            - 'lib/modules/*/kernel/net/netrom/**'
+            - 'lib/modules/*/kernel/net/rose/**'
+            - 'lib/modules/*/kernel/drivers/net/wwan/**'
+            - 'lib/modules/*/kernel/drivers/net/usb/qmi_wwan.ko*'
+            - 'lib/modules/*/kernel/drivers/net/usb/cdc_mbim.ko*'
+            - 'lib/modules/*/kernel/drivers/net/usb/huawei_cdc_ncm.ko*'
+            - 'lib/modules/*/kernel/drivers/net/usb/sierra_net.ko*'
+            - 'lib/modules/*/kernel/drivers/usb/serial/option.ko*'
+            - 'lib/modules/*/kernel/drivers/usb/serial/qcserial.ko*'
+            - 'lib/modules/*/kernel/drivers/usb/serial/sierra.ko*'
+            - 'lib/modules/*/kernel/drivers/usb/serial/usb_wwan.ko*'
+            - 'lib/modules/*/kernel/drivers/media/radio/**'
+            - 'lib/modules/*/kernel/drivers/media/usb/hackrf/**'
+            - 'lib/modules/*/kernel/drivers/media/usb/airspy/**'
+            - 'lib/modules/*/kernel/drivers/media/usb/msi2500/**'
             - 'lib/firmware/brcm/**'
     rationale: >
       Disabling a radio in configuration leaves the capability present for
