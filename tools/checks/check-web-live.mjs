@@ -153,7 +153,7 @@ function docPages() {
       const title = /<title>([^<]*)<\/title>/.exec(html)
       pages.push({
         path: `/docs/${slug}/${name.slice(0, -'.html'.length)}`,
-        expect: title ? title[1].replaceAll('&amp;', '&') : '(no title in the build)',
+        expect: title ? decode(title[1]) : '(no title in the build)',
         minBody: Math.floor(visibleLength(section.body) * BODY_SHARE),
       })
     }
@@ -188,7 +188,7 @@ function builtPages() {
         const title = /<title>([^<]*)<\/title>/.exec(readFileSync(builtFile(path), 'utf8'))
         return {
           path,
-          expect: title ? title[1].replaceAll('&amp;', '&') : '(no title in the build)',
+          expect: title ? decode(title[1]) : '(no title in the build)',
         }
       })
   )
