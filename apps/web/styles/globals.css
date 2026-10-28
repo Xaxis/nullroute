@@ -271,6 +271,38 @@ body {
   a.card:hover {
     border-color: var(--border);
   }
+  .code-wrap {
+    position: relative;
+  }
+  .code-copy {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 0.25rem 0.5rem;
+    opacity: 0;
+    transition:
+      opacity 0.15s,
+      color 0.15s;
+  }
+  .code-wrap:hover .code-copy,
+  .code-copy:focus-visible {
+    opacity: 1;
+  }
+  .code-copy:hover {
+    color: var(--ink);
+  }
+  @media (hover: none) {
+    .code-copy {
+      opacity: 1;
+    }
+  }
   .eyebrow {
     font-family: var(--font-sans);
     font-size: 0.8125rem;
@@ -290,10 +322,14 @@ body {
  * agent's outline, and a site that never put one back is invisible to anyone
  * navigating by keyboard. `:focus-visible` so a click leaves nothing behind.
  */
-:focus-visible {
-  outline: 2px solid var(--signal);
-  outline-offset: 3px;
-  border-radius: 2px;
+/* In the base layer so a control that draws its own focus state (the search
+   field) can say so with a utility. Unlayered, it beat every utility. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--signal);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
 }
 
 /* --- Small type ------------------------------------------------------------

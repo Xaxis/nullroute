@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import Link from 'next/link'
 import { Mark } from '@/components/Mark'
+import { Search } from '@/components/Search'
 import { ShortHash } from '@/components/report'
 import { readFacts } from '@/lib/facts'
 import { NAV, OG_IMAGE, REPO_URL, START_HREF, VISIT_COUNTER } from '@/lib/site'
@@ -125,6 +126,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               ))}
             </nav>
             <div className="ml-auto flex items-center gap-4 shrink-0">
+              <Search />
               <a
                 href={REPO_URL}
                 target="_blank"

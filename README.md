@@ -9,7 +9,7 @@ An air-gapped Bitcoin signing device you can check rather than trust. You roll
 100 dice, it turns them into a seed by a rule you can repeat with `sha256sum`,
 and it refuses to start unless its own code matches a published hash.
 
-> **Pre-1.0 and unaudited, with hardware bring-up on the Raspberry Pi 4 next.
+> **Pre-1.0 and unaudited, with hardware bring-up on a Raspberry Pi 5 and a Pi 4 next.
 > Keep real money off it until both are done.** See [Status](#status).
 
 <img src="apps/web/public/device/lock.png" alt="The lock screen, showing the manifest root before a PIN is entered" width="800">
@@ -56,7 +56,7 @@ decoration.
 
 Flashing, and what should appear on the console, is in
 [docs/INSTALL.md](docs/INSTALL.md). **Use a spare card.** The firmware path from
-power-on to the kernel is carried on the image and has never been executed on a
+power-on to the kernel is on the image and gets its first run at bring-up, on a
 Pi.
 
 ## Check it yourself
@@ -188,7 +188,8 @@ console and the verdict is reached on the host, against the profile. The image
 does not grade itself.
 
 **What is next: hardware bring-up.** The card boots under QEMU today, and the
-first boot on a Pi 4 with the 7 inch panel is the next milestone. That boot is
+first boot on a Pi 5 and a Pi 4, each with the 7 inch panel, is the next
+milestone. That boot is
 what exercises the firmware path from power-on to the kernel, which is built and
 on the card, and what gives the kiosk browser its first display:
 `make image-boot-test` reports that component rather than judging it, because

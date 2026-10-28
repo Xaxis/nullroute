@@ -10,6 +10,16 @@ first, and the website's status page renders it.
 
 ## October 2026
 
+- **2026-10-28** The docs can be searched (the header, Ctrl K, Cmd K or "/"),
+  from an index this build writes, with nothing sent anywhere. Code blocks have
+  a copy button. The install guide opens with the three ways in, and the user
+  manual is a third shorter with every refusal kept. Condensing it surfaced
+  seven statements the code contradicts, now corrected. Two were also on the
+  device's own screens: five places offered an SD card transport that is not
+  built, and one said every device in a quorum holds the same wallet. The read-back
+  command in the install and verification guides could never match, because
+  it read whole 4 MB blocks of an image that is not a multiple of 4 MB; it now
+  reads exactly the image's length.
 - **2026-10-28** nullroute.diy is a product page and a documentation set. The
   home page says what the device is, how using it goes, how to check it and
   what to buy, in that order. The docs are ten chapters in five groups with a

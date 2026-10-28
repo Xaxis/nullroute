@@ -284,7 +284,7 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
         <QrDisplay text={bundle} fileType="json" testId="multisig-bundle-qr" />
 
         <details className="nr-details">
-          <summary className="nr-details__summary">Show it as text, to save on a card</summary>
+          <summary className="nr-details__summary">Show it as text</summary>
           <div className="nr-field">
             <textarea
               className="nr-input nr-input--area nr-break"

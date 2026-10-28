@@ -773,9 +773,9 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
             </Button>
           )}
           <p className="nr-hint">
-            Base64, as exported by your coordinator, by camera or on an SD card. This device has no
-            network and never fetches anything about this transaction, so everything below is
-            computed from these bytes and your seed alone.
+            Base64, as exported by your coordinator. This device has no network and never fetches
+            anything about this transaction, so everything below is computed from these bytes and
+            your seed alone.
           </p>
         </div>
       )}

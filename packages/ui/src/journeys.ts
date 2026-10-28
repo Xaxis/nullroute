@@ -145,7 +145,7 @@ export const JOURNEYS: readonly Journey[] = [
     goal: 'Sign a transaction',
     summary:
       'Read what a transaction actually does, then authorise it. This is what the device is for.',
-    needs: ['The unsigned transaction, as a QR code on another screen or a file on a card.'],
+    needs: ['The unsigned transaction, as a QR code on another screen.'],
     steps: [
       { stage: 'psbt', label: 'Load the transaction' },
       { stage: 'psbt', label: 'Read what it does' },

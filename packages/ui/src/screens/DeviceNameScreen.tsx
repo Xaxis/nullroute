@@ -12,11 +12,12 @@ import { TextKeyboard } from '../components/TextKeyboard.js'
  * Spec: ui.screens.device-name
  *
  * THE QUESTION THIS ANSWERS is "which of my devices am I holding", and until
- * now nothing on the device could. Three nullroute boxes holding one 2-of-3
- * hold the same wallet, so they show the same wallet name, the same colour and
- * the same fingerprint. The cosigner position tells them apart and only inside
- * a quorum: a device with no registrations is anonymous, and a device in two
- * quorums has two positions.
+ * now nothing on the device could. Three nullroute boxes in one 2-of-3 hold
+ * different seeds, but before unlock all they show is the wallet name and
+ * colour somebody chose, and people choose the same ones. The fingerprint
+ * differs only once a wallet is open, and the cosigner position tells them
+ * apart only inside a quorum: a device with no registrations is anonymous, and
+ * a device in two quorums has two positions.
  *
  * IT IS NOT A PROFILE, and the difference matters. A profile that owned several
  * wallets and opened them together would trade away the property that each
@@ -170,9 +171,9 @@ export function DeviceNameScreen(props: DeviceNameScreenProps): ReactElement {
       </Info>
 
       <Info>
-        Useful when you hold more than one. Every device in a quorum holds the same wallet, so they
-        all show the same wallet name and the same colour: this is the only thing that tells the
-        objects apart before one is unlocked.
+        Useful when you hold more than one. Devices in one quorum can show the same wallet name and
+        colour if that is what you chose, and the fingerprint differs only once a wallet is open:
+        this is the only thing that tells the objects apart before one is unlocked.
       </Info>
     </Screen>
   )

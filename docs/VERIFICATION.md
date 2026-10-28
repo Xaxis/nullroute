@@ -66,14 +66,14 @@ Compute the root hash:
 
 ```console
 $ sha256sum MANIFEST.lock
-35316d92b1b547b9b826308e3f140b73e52137114e32a84f0d19bee18e4baaf2  MANIFEST.lock
+71ac251fbb19a1407434c8ab291459422784cc92b6c32cd71a1670b8239c65af  MANIFEST.lock
 ```
 
 Regenerate the manifest from scratch and confirm it matches what is committed:
 
 ```console
 $ git ls-files -z package.json package-lock.json packages spec provisioning | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum
-35316d92b1b547b9b826308e3f140b73e52137114e32a84f0d19bee18e4baaf2  -
+71ac251fbb19a1407434c8ab291459422784cc92b6c32cd71a1670b8239c65af  -
 ```
 
 On macOS use `shasum -a 256` in place of `sha256sum`. The values are identical.
@@ -481,10 +481,12 @@ not a signature check.
 #### After flashing
 
 Read the card back and confirm the bytes that landed are the bytes you wrote.
-This catches a failing SD card as readily as a tampered one:
+This catches a failing SD card as readily as a tampered one. Read exactly as
+many bytes as the image holds: the image is not a whole number of 4 MB blocks,
+and reading past its end changes the hash.
 
 ```console
-$ sudo dd if=/dev/<card> bs=4M count=<image size> | sha256sum
+$ sudo head -c "$(stat -c %s <image>)" /dev/<card> | sha256sum
 ```
 
 Then, at tier 1 and above, confirm the hash tree over the system partition:

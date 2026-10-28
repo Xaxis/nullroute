@@ -1,50 +1,21 @@
 # Installing it, and what happens at first boot
 
-## Where this stands today
-
-There is a card you can build and flash. There is no download: you build it,
-which is the point, and `make image` prints the checksum you verify it with.
-
-**Hardware bring-up is the next milestone.** The image boots under QEMU and the
-signing daemon starts on it, which is a real thing to have proven and is not yet
-the same as your board coming up. The firmware path from power-on to the kernel
-is on the card and gets its first run on a Pi, and so does the kiosk browser's
-display. If you flash a card now, use a spare and expect to be part of that
+This device is pre-release and unaudited. Hardware bring-up is next, starting
+on a Pi 5. If you flash a card now, use a spare and expect to be part of that
 bring-up.
 
-One card serves a Pi 4 or a Pi 5, each with the official 7 inch panel. The
-firmware reads its own board's section of `config.txt`: a Pi 4 boots Debian's
-kernel with the panel overlay written in this repository, and a Pi 5 boots
-Raspberry Pi's kernel, the only one that drives that panel on a Pi 5, and
-detects the panel itself. The Pi 4 is the board the profile claims; the Pi 5
-is in bring-up, and moves across once a card has booted on one with the panel
-lit. The device needs a 64-bit Pi with enough memory, an 800x480 touchscreen
-and a camera, so other boards are added once the image boots on them.
+Pick a way in:
 
-The camera is a USB (UVC) webcam. A Raspberry Pi camera module on the CSI
-connector does not work on this image, because the pinned kernel has no driver
-for its receiver or its sensor. The card carries udev, which loads the
-webcam's driver when it is plugged in. Expect the camera to be part of
-bring-up all the same: none has streamed on a Pi yet.
+1. [Run it on your computer](#running-it-on-your-computer) with `make dev`.
+2. Take the UNSIGNED card CI built: [A card from CI](#a-card-from-ci-for-bring-up).
+3. [Build a card yourself](#building-a-card) with Docker.
 
-| What you can do | State |
-| --- | --- |
-| Run the whole device on your computer | Works today. `make dev`. |
-| Build a card and check it is reproducible | Works today, needs Docker. `make image`, `make image-repro`. |
-| Boot that card in an emulator, including a tampered copy | Works today. `make image-boot-test`. |
-| Take a card CI built and booted, without Docker | Works today, for bring-up. See [A card from CI](#a-card-from-ci-for-bring-up). |
-| Boot it on a Pi | Bring-up, starting on a Pi 5. You would be among the first. |
-
-## What you need
-
-The parts list is in the README, under
-[What you need to build one](../README.md#what-you-need-to-build-one). One line of it matters here: the
-device never uses a network, so you do not need to give it one, and every radio
-driver is removed from the image rather than switched off: wifi and Bluetooth
-with their firmware, and cellular, NFC, 802.15.4, packet radio, FM and software
-defined radio too.
+For a card, check [What you need](#what-you-need), then
+[flash it](#flashing-it) and [boot it](#what-the-device-does-at-boot).
 
 ## Running it on your computer
+
+Needs Node 24 and git.
 
 ```console
 $ git clone https://github.com/Xaxis/nullroute
@@ -54,25 +25,58 @@ $ make dev
 ```
 
 That builds everything, runs the verification system, and opens the frontend at
-`127.0.0.1:5180`. It refuses to start if the code and the specifications
-disagree, which is the same refusal the device makes at boot.
+`127.0.0.1:5180`. Like the device at boot, it refuses to start if the code and
+the specifications disagree.
 
-Your wallet goes in `.nullroute-store/` in the checkout. It is encrypted the
-same way it is on the device, and it is not a device: your computer has a
+Your wallet goes in `.nullroute-store/` in the checkout. Your computer has a
 network, a swap file and a browser, so treat anything you create here as a toy.
 
+## What you need
+
+The parts list is in the README, under
+[What you need to build one](../README.md#what-you-need-to-build-one).
+
+- **Board.** One card serves a Pi 4 or a Pi 5. The Pi 4 is the board the
+  profile claims. The Pi 5 is in bring-up until a card boots on one with the
+  panel lit. Other boards come once the image boots on them.
+- **Screen.** The official 7 inch panel. Touch Display 2 is not supported.
+- **Camera.** A USB (UVC) webcam. A Pi camera module on the CSI connector does
+  not work: the pinned kernel has no driver for it. No camera has streamed on a
+  Pi yet.
+- **No network.** The device never uses one. Every radio driver is removed from
+  the image, not switched off.
+
+## A card from CI, for bring-up
+
+Every push to `main` that touches `provisioning/` builds the card with the same
+`make image-system` you would run. CI boots it under QEMU, requires a copy with
+one byte changed to be refused, and keeps the card for 14 days as
+`nullroute-card-UNSIGNED-<commit>`. No Docker needed.
+
+```console
+$ gh run list --workflow card --branch main --status success --limit 1
+$ gh run download <run id> --dir card
+$ cd card/nullroute-card-UNSIGNED-*
+$ sha256sum -c SHA256SUMS
+```
+
+You get `nullroute.img`, its dm-verity `root-hash` and the QEMU boot log. Flash
+`nullroute.img` as in [Flashing it](#flashing-it).
+
+**UNSIGNED is the point of the name.** Only CI built it. It answers "does this
+boot on my board" and nothing about whether it is the card it should be. For
+that, build it yourself and check with `make image-repro`.
 
 ## Building a card
 
-Needs Docker, and builds for arm64. On Apple silicon this runs natively; on an
-Intel machine it runs under emulation and takes considerably longer.
+Needs Docker. It builds for arm64: native on Apple silicon, much slower under
+emulation on Intel.
 
 ```console
 $ make image
 ```
 
-That builds the root filesystem, makes the erofs system partition, computes the
-dm-verity hash tree over it, assembles the four partitions, and writes:
+That writes:
 
 ```
 out/release/nullroute-0.1.0.img    the card
@@ -80,46 +84,23 @@ out/release/system.roothash        the dm-verity root hash
 out/release/SHA256SUMS             checksums over both
 ```
 
-Two other targets are worth running before you flash anything.
+Run both before you flash. The second matters most: a device that cannot tell
+those two boots apart has an integrity check for decoration.
 
 ```console
 $ make image-repro       # builds it twice, in separate containers, and compares
 $ make image-boot-test   # boots it, then boots a copy with one byte changed
 ```
 
-The second one is the one that matters. It opens the dm-verity mapping, mounts
-the root through it, reads every block, and starts the daemon; then it corrupts
-a single byte inside the system partition and requires that boot to fail. A
-device that cannot tell those apart is a device whose integrity check is
-decoration.
-
-## A card from CI, for bring-up
-
-Every push to `main` that touches `provisioning/` builds the card on GitHub's
-arm64 runners with the same `make image-system` you would run, boots it under
-QEMU, requires a copy with one byte changed to be refused, and keeps the card
-for 14 days as an artifact named `nullroute-card-UNSIGNED-<commit>`. No Docker
-on your side.
-
-```console
-$ gh run list --workflow card --branch main --limit 1
-$ gh run download <run id> --dir card
-$ cd card/nullroute-card-UNSIGNED-*
-$ sha256sum -c SHA256SUMS
-```
-
-It holds `nullroute.img`, its dm-verity `root-hash`, and the console log of the
-QEMU boot. Then flash it as below, using `nullroute.img`.
-
-UNSIGNED is the point of the name. Nobody but CI built it, so it answers "does
-this boot on my board" and nothing about whether it is the card it should be.
-For that, build it yourself: two honest builds of one commit are byte
-identical, and `make image-repro` is how you check.
-
 ## Flashing it
 
-Find the card. On macOS `diskutil list`, on Linux `lsblk`. Get this wrong and
-you will overwrite something else, so read the size and confirm it is the card.
+Find the card first: `diskutil list` on macOS, `lsblk` on Linux. **Get this
+wrong and you will overwrite something else.** Read the size and confirm it is
+the card.
+
+1. Check the image and write it. On Linux the device is `/dev/sdX` or
+   `/dev/mmcblkN` and the flag is `bs=4M`. For the card from CI, the image is
+   `nullroute.img` in the folder you downloaded.
 
 ```console
 $ cd out/release
@@ -128,48 +109,43 @@ $ diskutil unmountDisk /dev/diskN          # macOS
 $ sudo dd if=nullroute-0.1.0.img of=/dev/rdiskN bs=4m status=progress
 ```
 
-On Linux the device is `/dev/sdX` or `/dev/mmcblkN` and the block size flag is
-`bs=4M`. Read the card back and compare it before you boot it:
+2. Read back exactly as many bytes as the image holds, and compare the hash
+   with the image's line in `SHA256SUMS` before you boot it. A whole number of
+   4 MB blocks would not do: the image is not a multiple of 4 MB, so the extra
+   bytes would change the hash.
 
 ```console
-$ sudo dd if=/dev/rdiskN bs=4m count=<image size in 4MB blocks> | shasum -a 256
+$ sudo head -c "$(stat -f %z nullroute-0.1.0.img)" /dev/rdiskN | shasum -a 256    # macOS
+$ sudo head -c "$(stat -c %s nullroute-0.1.0.img)" /dev/sdX | sha256sum            # Linux
 ```
 
-That is provisioning tier 0: you verified the bytes you wrote. It costs nothing
-irreversible and it is the only tier that works on any board.
+That is provisioning tier 0. See
+[the tiers](#verifying-before-you-flash-and-the-tiers).
 
 ## What the device does at boot
 
-Nothing is typed and nothing is configured.
+You type nothing and configure nothing.
 
-1. The Pi firmware reads `config.txt`, loads the device tree for your board and
-   that board's kernel, `kernel8.img` on a Pi 4 or `kernel8-rpi.img` on a Pi 5,
-   and hands over to it with the initramfs built from that kernel's modules.
-2. The initramfs loads dm-verity and erofs, reads `system.roothash` off the boot
-   partition, opens the system partition through a verity mapping, and mounts it
-   read only. If the partition does not match that hash, it stops here and says
-   so rather than continuing.
-3. `nullroute-state.service` finds the fourth partition, makes a filesystem on
-   it the first time only, and mounts it at `/var/lib`.
-4. `nullrouted.service` checks its own verification report against the build it
-   is running from, prints the manifest root, and listens on a Unix socket. It
-   refuses to start if the report is missing or does not describe this build.
-5. `nullroute-bridge.service` serves the frontend on `127.0.0.1:5180` and
-   forwards to that socket.
+1. The Pi firmware reads `config.txt` and starts your board's kernel,
+   `kernel8.img` on a Pi 4 or `kernel8-rpi.img` on a Pi 5.
+2. The initramfs mounts the system partition read only through dm-verity,
+   against `system.roothash`. On a mismatch it stops and says so.
+3. `nullroute-state.service` mounts the fourth partition at `/var/lib`,
+   making its filesystem the first time only.
+4. `nullrouted.service` checks its verification report and prints the manifest
+   root. It refuses to start if the report is missing or not for this build.
+5. `nullroute-bridge.service` serves the frontend on `127.0.0.1:5180`.
 6. `nullroute-kiosk.service` starts Chromium against it, full screen.
 
-The lock screen is what you should see, showing the manifest root before you
-type a passphrase, so you can compare it against what `make image` printed.
+The lock screen should appear, showing the manifest root before you type a
+passphrase. Compare it with what `make image` printed.
 
-**The screen is the part nothing here has tested.** Everything above is proven
-under QEMU; step 6 is not, because the emulator has a serial console and no
-virtual terminal, so the compositor never starts there. On your board it should:
-`cage` takes `/dev/tty1`, Chromium draws into it through Wayland, and there is
-no getty competing for the console because both `getty@tty1` and `getty.target`
-are masked in the image.
-
-If the panel stays dark and everything else worked, that is the piece to look
-at, and these are the questions in order:
+**Steps 2 to 5 are proven under QEMU, on the Pi 4's kernel.** Step 1 and step 6
+are not: QEMU loads the kernel itself, so the firmware and `config.txt` are
+never read, and it has no virtual terminal for the screen. The Pi 5's kernel
+has not booted anywhere yet.
+`getty@tty1` and `getty.target` are masked, so no getty competes for the
+console. If the panel stays dark and the rest worked, ask these in order:
 
 ```console
 $ systemctl status nullroute-kiosk.service
@@ -178,30 +154,35 @@ $ ls -l /dev/dri/            # a card per GPU and display; on a Pi 5 the panel i
 $ ls -l /dev/tty1            # and a virtual terminal
 ```
 
-`208/STDIN` means no `/dev/tty1`. `216/GROUP` means an account or group is
-missing. A `cage` error about a seat means logind did not give it one, which is
-what `PAMName=login` in the unit is for.
+- `208/STDIN`: no `/dev/tty1`.
+- `216/GROUP`: an account or group is missing.
+- A `cage` error about a seat: logind gave it none, which `PAMName=login` in
+  the unit is for.
 
-**If it does not boot at all,** attach a serial console and read where it
-stopped. Every failure path in the initramfs prints a sentence saying what it
-was looking for. That is deliberate: a signer that fails silently is worse than
-one that fails loudly.
+**If it does not boot at all,** attach a serial console. Every failure path in
+the initramfs prints what it was looking for.
 
 ## Verifying before you flash, and the tiers
 
-Building the card yourself, checking its hash, and reading it back after writing
-is provisioning tier 0. It works on any board, it costs nothing irreversible,
-and it is what the commands above are.
+**Tier 0** is building the card yourself, checking its hash, and reading it
+back after writing. It costs nothing irreversible and is the only tier that
+works on any board.
 
-Tier 1 is the dm-verity tree the device opens at boot, and it is on this card.
-It DETECTS modification of the system partition and does not prevent it: the
-boot partition holds the root hash and cannot be under the tree that hash
-describes, so an attacker who rewrites that partition supplies their own number
-and the device displays exactly what they chose. Only tier 2, a signed boot
-chain, closes that, and it burns one-time fuses and stays in phase 7.
+**Tier 1** is the dm-verity tree on this card. It DETECTS modification of the
+system partition and does not prevent it. The root hash sits on the boot
+partition, outside the tree, so an attacker who rewrites that partition
+supplies their own hash and the device displays it.
 
-[docs/VERIFICATION.md](VERIFICATION.md#building-a-device) has what each tier
-actually proves. Read it before relying on any of them.
+Only **tier 2**, a signed boot chain, closes that. It burns one-time fuses and
+stays in phase 7.
 
-For what you can check without a Pi at all, see
+[docs/VERIFICATION.md](VERIFICATION.md#building-a-device) says what each tier
+actually proves. Read it before relying on one. To check without a Pi, see
 [Check it yourself](../README.md#check-it-yourself).
+
+## Where this stands today
+
+**Hardware bring-up is the next milestone, starting on a Pi 5.** The image
+boots under QEMU and the signing daemon starts on it. The firmware path from
+power-on to the kernel, and the kiosk display, get their first run on a Pi.
+Boot it on a Pi and you would be among the first.

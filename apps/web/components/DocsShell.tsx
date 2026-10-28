@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import type { Book, Chapter, Heading } from '../lib/docbook'
+import { CopyCode } from './CopyCode'
 import { repoBlobUrl } from '../lib/site'
 
 /**
@@ -28,7 +29,7 @@ export function DocsShell({
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6">
       <div className="lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-12 xl:grid-cols-[15rem_minmax(0,1fr)_12.5rem]">
-        <aside className="hidden lg:block sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto py-10 pr-2">
+        <aside className="hidden lg:block sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto overflow-x-hidden py-10 pl-3 pr-3 -ml-3">
           <DocsNav book={book} here={here} />
         </aside>
 
@@ -42,6 +43,7 @@ export function DocsShell({
             </div>
           </details>
           {children}
+          <CopyCode />
         </div>
 
         {shown.length > 1 ? (

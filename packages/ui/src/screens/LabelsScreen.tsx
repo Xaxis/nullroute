@@ -112,7 +112,7 @@ export function LabelsScreen(props: LabelsScreenProps): ReactElement {
         <QrDisplay text={exported} fileType="json" testId="labels-qr" />
 
         <details className="nr-details">
-          <summary className="nr-details__summary">Show it as text, to save on a card</summary>
+          <summary className="nr-details__summary">Show it as text</summary>
           <div className="nr-field">
             <textarea
               className="nr-input nr-input--area nr-break"
