@@ -44,7 +44,7 @@ mkdir -p "$WORK"
 # test should not be quietly making on behalf of the thing it is verifying.
 BOOT_START=$(
   sfdisk -d "$IMAGE" 2>/dev/null \
-    | awk -F'[=,]' '$0 ~ /name="boot"$/ { gsub(/ /, "", $2); print $2 * 512; exit }'
+    | awk -F'[=,]' '$0 ~ /name="boot"(,|$)/ { gsub(/ /, "", $2); print $2 * 512; exit }'
 )
 [ -n "$BOOT_START" ] || { echo "boot-test: could not read the boot partition offset" >&2; exit 1; }
 mcopy -n -i "${IMAGE}@@${BOOT_START}" ::initramfs.img "$WORK/initramfs.img" \
@@ -56,11 +56,15 @@ echo "  initramfs        $(wc -c < "$WORK/initramfs.img") bytes, read off the ca
 # with it instead of silently corrupting the wrong region.
 # BY NAME, NOT BY POSITION, the same rule partition-present follows: a layout
 # that gained a partition would otherwise shift this by one and corrupt whatever
-# happened to be third. The trailing anchor matters, because `name="system"`
-# without it also matches `name="system-hash"`.
+# happened to be third.
+#
+# THE NAME ENDS THE FIELD, NOT THE LINE. Both matches were anchored at the end
+# of the line, which held until the boot partition was marked bootable: sfdisk
+# then prints `attrs="LegacyBIOSBootable"` after the name, and this script
+# reported that it could not find the boot partition on a card that had one.
 SYSTEM_START=$(
   sfdisk -d "$IMAGE" 2>/dev/null \
-    | awk -F'[=,]' '$0 ~ /name="system"$/ { gsub(/ /, "", $2); print $2 * 512; exit }'
+    | awk -F'[=,]' '$0 ~ /name="system"(,|$)/ { gsub(/ /, "", $2); print $2 * 512; exit }'
 )
 [ -n "$SYSTEM_START" ] || { echo "boot-test: could not read the system partition offset" >&2; exit 1; }
 
