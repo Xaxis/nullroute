@@ -86,9 +86,8 @@ export default function StatusPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6">
       <header className="pt-14 pb-14 sm:pt-20">
-        <p className="eyebrow">Roadmap</p>
-        <h1 className="mt-3 font-display text-[2.5rem] leading-[1.05] tracking-[-0.02em] text-ink sm:text-[3.5rem] max-w-[24ch]">
-          Built in phases, and held to them.
+        <h1 className="font-display text-[2.5rem] leading-[1.05] tracking-[-0.02em] text-ink sm:text-[3.5rem] max-w-[24ch]">
+          Status and roadmap
         </h1>
         <Prose className="mt-6 text-[1.125rem]">
           <p>
@@ -100,9 +99,8 @@ export default function StatusPage() {
         </Prose>
       </header>
 
-      <Section kicker="Phases" title="What is built." id="phases">
+      <Section title="What is built" id="phases">
         <Figure
-          n="1"
           title="Phases, as the README states them"
           source={
             <>
@@ -128,7 +126,7 @@ export default function StatusPage() {
         </Prose>
       </Section>
 
-      <Section kicker="Next" title="What comes next, and what each step proves." id="next">
+      <Section title="What comes next" id="next">
         <ol className="space-y-px overflow-hidden rounded-[4px] border border-line bg-line">
           {NEXT.map((step, i) => (
             <li
@@ -161,7 +159,7 @@ export default function StatusPage() {
         </Prose>
       </Section>
 
-      <Section kicker="Log" title="What has landed, and when." id="log">
+      <Section title="What has landed" id="log">
         <ol className="border-t border-line">
           {log.slice(0, RECENT).map((entry, i) => (
             <li
@@ -186,7 +184,7 @@ export default function StatusPage() {
         </Source>
       </Section>
 
-      <Section kicker="Limits" title="What it does not protect against." id="limits">
+      <Section title="What it does not protect against" id="limits">
         <dl className="border-t border-line">
           {NOT_COVERED.map(([term, text]) => (
             <div

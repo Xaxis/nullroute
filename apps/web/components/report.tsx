@@ -41,14 +41,12 @@ export function ShortHash({ value }: { value: string }) {
  * would be an illustration, and this site does not have those.
  */
 export function Figure({
-  n,
   title,
   source,
   children,
   className = '',
   id,
 }: {
-  n: string
   title: ReactNode
   source?: ReactNode
   children: ReactNode
@@ -58,8 +56,7 @@ export function Figure({
   return (
     <figure {...(id === undefined ? {} : { id })} className={`m-0 min-w-0 ${className}`}>
       <figcaption className="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="label text-signal">Fig. {n}</span>
-        <span className="font-sans text-sm text-ink">{title}</span>
+        <span className="font-sans text-sm font-semibold text-ink">{title}</span>
       </figcaption>
       {children}
       {source !== undefined && <Source>{source}</Source>}
@@ -121,13 +118,11 @@ export function Transcript({
  */
 export function Section({
   title,
-  kicker,
   id,
   children,
   className = '',
 }: {
   title: ReactNode
-  kicker?: ReactNode
   id?: string
   children: ReactNode
   className?: string
@@ -137,8 +132,7 @@ export function Section({
       {...(id === undefined ? {} : { id })}
       className={`scroll-mt-20 border-t border-line py-14 sm:py-16 ${className}`}
     >
-      {kicker !== undefined && <p className="eyebrow">{kicker}</p>}
-      <h2 className="mt-2 max-w-[26ch] font-display text-[1.75rem] leading-[1.15] tracking-[-0.015em] text-ink sm:text-[2.125rem]">
+      <h2 className="max-w-[26ch] font-display text-[1.75rem] leading-[1.15] tracking-[-0.015em] text-ink sm:text-[2.125rem]">
         {title}
       </h2>
       <div className="mt-6">{children}</div>

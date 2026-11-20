@@ -63,11 +63,10 @@ const POSITIONS: readonly (readonly [string, string])[] = [
   ],
 ]
 
-function Head({ eyebrow, title, children }: { eyebrow: string; title: string; children?: string }) {
+function Head({ title, children }: { title: string; children?: string }) {
   return (
     <div className="max-w-2xl">
-      <p className="eyebrow">{eyebrow}</p>
-      <h2 className="mt-2 font-display text-[1.75rem] leading-[1.15] tracking-[-0.015em] text-ink sm:text-[2.125rem]">
+      <h2 className="font-display text-[1.75rem] leading-[1.15] tracking-[-0.015em] text-ink sm:text-[2.125rem]">
         {title}
       </h2>
       {children === undefined ? null : (
@@ -96,11 +95,11 @@ export default async function ProfilePage() {
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6">
       <header className="pt-14 pb-16 sm:pt-20">
-        <p className="eyebrow">Signer profile</p>
-        <h1 className="mt-3 max-w-[22ch] font-display text-[2.5rem] leading-[1.05] tracking-[-0.02em] text-ink sm:text-[3.5rem]">
-          What an air-gapped signer should have to show you.
+        <h1 className="max-w-[22ch] font-display text-[2.5rem] leading-[1.05] tracking-[-0.02em] text-ink sm:text-[3.5rem]">
+          The signer profile
         </h1>
         <p className="mt-6 max-w-2xl text-[1.125rem] leading-relaxed text-body">
+          What an air-gapped signer should have to show you, and what it should refuse to do.
           Air-gapped signers agree by convention on things no BIP writes down. The profile writes
           them down as requirements, each naming the check that decides it, and the conformance kit
           turns the testable ones into JSON vectors any signer can run.
@@ -149,7 +148,7 @@ export default async function ProfilePage() {
       </header>
 
       <section className="border-t border-line py-16">
-        <Head eyebrow="Scope" title="Four questions a user cannot answer today." />
+        <Head title="Four questions a user cannot answer today" />
         <ul className="mt-8 grid gap-4 sm:grid-cols-2">
           {QUESTIONS.map(([q, a]) => (
             <li key={q} className="card px-6 py-5">
@@ -161,7 +160,7 @@ export default async function ProfilePage() {
       </section>
 
       <section className="border-t border-line py-16" id="results">
-        <Head eyebrow="The kit" title="Expected values from outside the implementation.">
+        <Head title="Expected values from outside the implementation">
           None of these came from nullroute: review cases are PSBTs built and judged by Bitcoin
           Core, dice and manifests come from the BIP texts and coreutils, and the QR cases from
           reference encoders. Every file is pinned by a SHA256SUMS that coreutils can check.
@@ -176,7 +175,7 @@ export default async function ProfilePage() {
       </section>
 
       <section className="border-t border-line py-16" id="conformance">
-        <Head eyebrow="Coverage" title="Where nullroute meets it, and where it does not yet.">
+        <Head title="Where nullroute meets it, and where it does not yet">
           nullroute is held to the profile as one implementation among others, not as its reference.
           Most requirements are met; the rest wait on hardware or a manual procedure.
         </Head>
@@ -243,7 +242,7 @@ export default async function ProfilePage() {
       </section>
 
       <section className="border-t border-line py-16" id="positions">
-        <Head eyebrow="Disagree" title="Positions others may reject.">
+        <Head title="Positions others may reject">
           A profile nobody has argued with is not yet worth adopting. These are the positions people
           who build signers and coordinators may reasonably dispute.
         </Head>

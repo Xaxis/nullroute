@@ -43,9 +43,8 @@ export default async function DocsHome() {
   return (
     <DocsShell book={book} here="/docs">
       <header className="max-w-[46rem]">
-        <p className="eyebrow">Documentation</p>
-        <h1 className="mt-2 font-display text-[2.25rem] leading-[1.1] tracking-[-0.015em] text-ink sm:text-[2.75rem]">
-          Build it, use it, check it.
+        <h1 className="font-display text-[2.25rem] leading-[1.1] tracking-[-0.015em] text-ink sm:text-[2.75rem]">
+          Documentation
         </h1>
         <p className="mt-4 text-[1.0625rem] leading-relaxed text-body">
           Everything about nullroute, from a first run on your laptop to the threat model. Every
@@ -75,18 +74,21 @@ export default async function DocsHome() {
       {book.groups.map((group) => (
         <section key={group.name} aria-label={group.name} className="mt-12">
           <h2 className="label">{group.name}</h2>
-          <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+          <ul className="mt-3 border-t border-line">
             {group.chapters.map((chapter) => (
-              <li key={chapter.href}>
-                <Link href={chapter.href} className="card h-full px-5 py-4">
-                  <span className="flex items-baseline justify-between gap-3">
-                    <span className="font-semibold text-ink">{chapter.meta.title}</span>
-                    <span className="shrink-0 text-[0.75rem] text-muted">
-                      {chapter.sections.length} pages
-                    </span>
+              <li key={chapter.href} className="border-b border-line">
+                <Link
+                  href={chapter.href}
+                  className="group grid gap-x-6 gap-y-1 py-4 sm:grid-cols-[11rem_minmax(0,1fr)_auto] sm:items-baseline"
+                >
+                  <span className="font-semibold text-ink group-hover:text-link">
+                    {chapter.meta.title}
                   </span>
-                  <span className="mt-1 block text-[0.9375rem] leading-snug text-muted">
+                  <span className="text-[0.9375rem] leading-snug text-body">
                     {chapter.meta.summary}
+                  </span>
+                  <span className="text-[0.75rem] text-muted tabular-nums">
+                    {chapter.sections.length} pages
                   </span>
                 </Link>
               </li>

@@ -21,8 +21,7 @@ export default function ContactPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6">
       <header className="pt-14 pb-10 sm:pt-20">
-        <p className="eyebrow">Contact</p>
-        <h1 className="mt-3 font-display text-[2.5rem] leading-[1.05] tracking-[-0.02em] text-ink sm:text-[3.5rem] max-w-[24ch]">
+        <h1 className="font-display text-[2.5rem] leading-[1.05] tracking-[-0.02em] text-ink sm:text-[3.5rem] max-w-[24ch]">
           Write to the maintainer.
         </h1>
         <p className="mt-5 max-w-[60ch] text-[1.125rem] leading-relaxed text-body">
