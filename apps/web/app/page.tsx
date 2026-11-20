@@ -2,26 +2,36 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { readFacts } from '../lib/facts'
 import { readEntropyExample } from '../lib/entropy'
-import { readParts, readPhases } from '../lib/status'
+import { readParts, readPhases, type Phase } from '../lib/status'
 import { readProfile } from '../lib/profile'
 import { docHref } from '../lib/docbook'
 import { REPO_URL, START_HREF } from '../lib/site'
 import { Shot, checkedScreens, type Screen } from '../components/Device'
-import { Transcript } from '../components/report'
+import { Hash, Transcript } from '../components/report'
+import { SigningLoop } from '../components/SigningLoop'
 
 /**
- * The front page sells the product in the order a newcomer decides: what it
- * is, why it is different, how using it goes, how to check it, what to buy,
- * and where it stands. Everything longer lives in the docs, one click away.
+ * The front page, in the order a newcomer decides: what it is, the one number
+ * that makes it checkable, how using it goes, exactly what it does and does
+ * not do, what to buy, and where it stands. Everything longer is in the docs.
+ *
+ * WRITTEN LIKE A DATASHEET, NOT A LANDING PAGE. It used to be six sections of
+ * eyebrow, headline, paragraph and a grid of cards, with a slogan in each, and
+ * read like every other template. Each section now has the shape of its
+ * content: a band for the hash, a diagram for the loop, a table for the
+ * specification, a bill of materials for the parts, a rail for the phases.
+ *
+ * EVERY SPECIFICATION ROW CITES ITS DOCUMENT, through docHref, which stops the
+ * build if the anchor is gone. A claim on the front page with no document
+ * behind it is the overclaiming `make prose` exists to catch, in a place that
+ * check cannot read.
  *
  * THE NUMBERS ARE STILL READ, NOT WRITTEN. The manifest root, the counts, the
- * parts list and the profile figures all come from the repository at build
- * time, and the root is quoted whole because check-site-root holds the built
- * page to the tree it was built from.
+ * parts and the phases come from the repository at build time, and the root is
+ * quoted whole because check-site-root holds the built page to its tree.
  *
  * HONEST ABOUT STATE IN THE FIRST SCREEN. Pre-release and unaudited is said
- * beside the call to action, not in a footer, because that is where somebody
- * decides whether to trust it.
+ * beside the call to action, where somebody decides whether to trust it.
  */
 
 function screenFor(screens: readonly Screen[], file: string): Screen {
@@ -30,31 +40,28 @@ function screenFor(screens: readonly Screen[], file: string): Screen {
   return screen
 }
 
-function SectionHead({
-  eyebrow,
-  title,
-  children,
-  id,
-}: {
-  eyebrow: string
-  title: string
-  children?: ReactNode
-  id?: string
-}) {
+function Heading({ id, children }: { id: string; children: ReactNode }) {
   return (
-    <div className="max-w-2xl">
-      <p className="eyebrow">{eyebrow}</p>
-      <h2
-        id={id}
-        className="mt-2 font-display text-[1.875rem] leading-[1.12] tracking-[-0.015em] text-ink sm:text-[2.375rem] scroll-mt-20"
-      >
-        {title}
-      </h2>
-      {children === undefined ? null : (
-        <p className="mt-4 text-[1.0625rem] leading-relaxed text-body">{children}</p>
-      )}
-    </div>
+    <h2
+      id={id}
+      className="font-display text-[1.875rem] leading-[1.1] tracking-[-0.015em] text-ink sm:text-[2.25rem] scroll-mt-20"
+    >
+      {children}
+    </h2>
   )
+}
+
+interface Row {
+  readonly term: string
+  readonly body: ReactNode
+  readonly cite: string
+  readonly href: string
+}
+
+const PHASE_STATE: Record<Phase['kind'], { label: string; bar: string; dot: string }> = {
+  complete: { label: 'Built', bar: 'bg-verify-line', dot: 'bg-verify-line' },
+  partial: { label: 'Partly built', bar: 'bg-signal', dot: 'bg-signal' },
+  'not-started': { label: 'Not started', bar: 'bg-border', dot: 'bg-border' },
 }
 
 export default async function Home() {
@@ -70,78 +77,121 @@ export default async function Home() {
   // release signing, which is why this is not a count of complete phases.
   const built = Math.max(...phases.filter((p) => p.kind !== 'not-started').map((p) => p.number))
 
-  const features = [
+  const steps = [
+    { title: 'Roll a die a hundred times', screen: screenFor(screens, 'dice') },
+    { title: 'Write the 24 words down, once', screen: screenFor(screens, 'seed') },
+    { title: 'Read the transaction, then sign', screen: screenFor(screens, 'review') },
+  ]
+
+  const spec: readonly Row[] = [
     {
-      title: 'No network, at all',
-      body: 'No Wi-Fi, Bluetooth, cellular or NFC driver is on the card. Transactions cross the gap as QR codes you can see.',
-      href: await docHref('docs/THREAT-MODEL.md', 'what-the-air-gap-does-and-does-not-do'),
+      term: 'Network',
+      body: 'The image carries no Wi-Fi or Bluetooth driver, firmware or supplicant, and no SSH or DHCP client. The radio chip is still on the board, so anyone who can rewrite the card can put them back.',
+      cite: 'VERIFICATION.md',
+      href: await docHref('docs/VERIFICATION.md', 'hardware'),
     },
     {
-      title: 'Dice you can check',
-      body: 'Your seed is the SHA-256 of your dice rolls. Reproduce it on any computer with one command.',
+      term: 'Transport',
+      body: 'QR codes, both ways: a USB webcam reads them and the screen shows them. A transaction too big for one code goes as animated BBQr or UR, which Sparrow, Nunchuk, Coldcard, SeedSigner, Jade and Keystone read.',
+      cite: 'USING.md',
+      href: await docHref('docs/USING.md', 'codes-too-large-for-one-frame'),
+    },
+    {
+      term: 'Seed',
+      body: 'SHA-256 of a hundred d6 rolls, as ASCII digits with no trailing newline, so printf and sha256sum reproduce it anywhere. The device can choose instead, and says first that its choice cannot be checked by hand.',
+      cite: 'ENTROPY.md',
       href: await docHref('docs/ENTROPY.md', 'mode-a-dice-only'),
     },
     {
-      title: 'Read before you sign',
-      body: 'Every output, the fee and the change on the device’s own screen. A suspicious transaction is held until you override it.',
+      term: 'Review',
+      body: 'Every output and which of them are change, the fee three ways, and a quorum’s signatures so far, all on the device’s own screen. A blocking warning disables Sign; going past it takes a tick for that one signature.',
+      cite: 'USING.md',
       href: await docHref('docs/USING.md', 'signing-a-transaction'),
     },
     {
-      title: 'Multisig across devices',
-      body: 'Run several devices as one quorum. Each re-derives its own key and refuses a quorum it is not part of.',
+      term: 'Signatures',
+      body: (
+        <>
+          Deterministic: RFC 6979 for ECDSA, BIP-340 with <code className="code">aux_rand</code>{' '}
+          fixed to 32 zero bytes for Schnorr. Anyone with the seed can recompute the identical bytes
+          and confirm nothing was hidden in them.
+        </>
+      ),
+      cite: 'VERIFICATION.md',
+      href: await docHref('docs/VERIFICATION.md', '4-reproducing-a-signature'),
+    },
+    {
+      term: 'Multisig',
+      body: (
+        <>
+          Builds native segwit quorums, <code className="code">wsh(sortedmulti)</code>, and signs
+          taproot quorums a coordinator registers. Each device re-derives its own key and refuses a
+          quorum it is not part of.
+        </>
+      ),
+      cite: 'USING.md',
       href: await docHref('docs/USING.md', 'multisig'),
     },
     {
-      title: 'One number to compare',
-      body: 'The lock screen shows the hash of every file that ships. Build from source and compare it before you type a PIN.',
-      href: await docHref('docs/VERIFICATION.md', '1-the-manifest-and-the-root-hash'),
+      term: 'Also',
+      body: 'BIP-322 message signing, and checking someone else’s proof with the wallet locked. BIP-85 child seeds. BIP-329 labels.',
+      cite: 'USING.md',
+      href: await docHref('docs/USING.md', 'proving-an-address-and-checking-a-proof'),
     },
     {
-      title: 'An open standard',
-      body: 'A draft signer profile and conformance kit that any air-gapped signer, not only this one, can be tested against.',
-      href: '/profile',
-    },
-  ]
-
-  const steps = [
-    {
-      title: 'Roll the dice',
-      body: 'A hundred rolls of an ordinary die become your seed, by arithmetic you can repeat on any computer.',
-      screen: screenFor(screens, 'dice'),
+      term: 'Storage',
+      body: 'No secure element. The seed is encrypted on the card with AES-256-GCM, under a key stretched from your passphrase by Argon2id at 64 MiB and three passes. Someone who copies the card is held back by your passphrase and nothing else.',
+      cite: 'THREAT-MODEL.md',
+      href: await docHref('docs/THREAT-MODEL.md', 'out-of-scope'),
     },
     {
-      title: 'Write the words once',
-      body: 'The 24 words are shown once. On paper they are your backup, and they restore in other wallets too.',
-      screen: screenFor(screens, 'seed'),
+      term: 'Integrity',
+      body: 'Before the PIN, the lock screen shows the manifest root of the application and the dm-verity root of the system partition, read from the live kernel table. dm-verity detects modification of that partition; without a signed boot chain it does not prevent it.',
+      cite: 'USING.md',
+      href: await docHref('docs/USING.md', 'the-lock-screen'),
     },
     {
-      title: 'Review, then sign',
-      body: 'Scan your wallet’s QR code with a USB webcam. The device lays out what it would sign, refuses what it should not, and hands back a signed QR code.',
-      screen: screenFor(screens, 'review'),
+      term: 'Recovery',
+      body: 'Your words and a standard BIP-380 descriptor recover every wallet in other software, with no nullroute code in the path. The docs walk through it against Bitcoin Core.',
+      cite: 'VERIFICATION.md',
+      href: await docHref('docs/VERIFICATION.md', '5-recovering-without-nullroute'),
     },
-  ]
-
-  const stats = [
-    { value: facts.specs, label: 'module specifications' },
-    { value: facts.invariants, label: 'invariants, each bound to tests' },
-    { value: facts.tests, label: 'tests in the suite' },
-    { value: facts.files, label: 'files under one hash' },
+    {
+      term: 'Cryptography',
+      body: (
+        <>
+          Every primitive comes from Paul Miller&rsquo;s <code className="code">@noble</code> and{' '}
+          <code className="code">@scure</code> libraries. None is written here, and no signature is
+          ever randomised.
+        </>
+      ),
+      cite: 'CONTRIBUTING.md',
+      href: await docHref('CONTRIBUTING.md', 'the-pinned-stack'),
+    },
+    {
+      term: 'Checked by',
+      body: `${String(facts.specs)} module specifications and ${String(facts.invariants)} invariants, each bound to tests, and ${String(facts.tests)} tests in the suite. CI runs all of it on every push.`,
+      cite: 'VERIFICATION.md',
+      href: await docHref('docs/VERIFICATION.md', '3-the-verification-report'),
+    },
   ]
 
   return (
     <>
-      {/* --- Hero ------------------------------------------------------- */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 pt-14 pb-20 sm:pt-20 lg:pt-24">
-        <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-center">
+      {/* --- What it is ------------------------------------------------- */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 pt-12 pb-16 sm:pt-16 lg:pt-20 lg:pb-24">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-14 lg:items-center">
           <div className="min-w-0">
-            <p className="eyebrow">Open source air-gapped Bitcoin signer</p>
-            <h1 className="mt-3 font-display text-[2.75rem] leading-[1.02] tracking-[-0.025em] text-ink sm:text-[3.75rem] lg:text-[4.25rem]">
-              Built to be checked, not to be trusted.
+            <p className="font-mono text-[0.8125rem] text-muted">
+              Raspberry Pi &middot; 7 inch touchscreen &middot; USB webcam &middot; one die
+            </p>
+            <h1 className="mt-4 font-display text-[2.5rem] leading-[1.04] tracking-[-0.025em] text-ink sm:text-[3.5rem] lg:text-[3.875rem]">
+              An air-gapped Bitcoin signer you build from a Raspberry&nbsp;Pi.
             </h1>
-            <p className="mt-6 max-w-xl text-[1.125rem] leading-relaxed text-body sm:text-[1.1875rem]">
-              nullroute turns a Raspberry Pi and the official 7 inch touchscreen into a Bitcoin
-              signing device with no network of any kind. Roll dice for your seed, move transactions
-              by QR code, and read every one on the device before it signs.
+            <p className="mt-6 max-w-xl text-[1.0625rem] leading-relaxed text-body sm:text-[1.1875rem]">
+              Your seed comes from a hundred rolls of a die, by arithmetic you can redo on any
+              computer. Transactions cross by QR code. Before the device asks for a PIN, it shows
+              one hash covering every file it runs, so you can check it against the source.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link href={START_HREF} className="btn btn-primary">
@@ -154,263 +204,281 @@ export default async function Home() {
                 href={REPO_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-2 py-3 text-[0.9375rem] font-semibold text-body hover:text-ink transition-colors"
+                className="py-3 sm:px-2 text-[0.9375rem] font-semibold text-body hover:text-ink transition-colors"
               >
-                View on GitHub <span aria-hidden="true">&#8599;</span>
+                Source on GitHub <span aria-hidden="true">&#8599;</span>
               </a>
             </div>
-            <p className="mt-6 inline-flex items-center gap-2 text-[0.875rem] text-muted">
-              <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-signal" />
+            <p className="mt-7 flex items-start gap-2.5 text-[0.875rem] leading-snug text-muted">
+              <span aria-hidden="true" className="mt-1.5 size-2 shrink-0 rounded-full bg-signal" />
               Pre-release and unaudited. Hardware bring-up on a Pi 5 and a Pi 4 is next.
             </p>
           </div>
           <figure className="min-w-0">
             <Shot screen={screenFor(screens, 'lock')} eager link={false} />
             <figcaption className="mt-3 text-[0.8125rem] leading-snug text-muted">
-              The first screen: the hash of the software it is about to run, shown before it asks
-              for anything. Rendered from the device frontend at 800x480.
+              The lock screen, rendered from the device frontend at 800x480. The two hashes in it
+              are sample values; the real ones are below and on your own device.
             </figcaption>
           </figure>
         </div>
       </section>
 
-      {/* --- Features --------------------------------------------------- */}
-      <section className="border-t border-line bg-surface">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-20">
-          <SectionHead eyebrow="Why nullroute" title="Every claim is one you can check.">
-            Most hardware wallets ask you to trust a chip and a company. nullroute is built from
-            parts you can buy, code you can read, and a seed you can recompute by hand.
-          </SectionHead>
-          <ul className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {features.map((feature) => (
-              <li key={feature.title}>
-                <Link href={feature.href} className="card h-full px-6 py-5 bg-paper">
-                  <span className="block font-semibold text-ink text-[1.0625rem]">
-                    {feature.title}
-                  </span>
-                  <span className="mt-2 block text-[0.9375rem] leading-relaxed text-body">
-                    {feature.body}
-                  </span>
-                  <span className="mt-3 block text-[0.875rem] font-semibold text-link">
-                    Learn more <span aria-hidden="true">&rarr;</span>
-                  </span>
+      {/* --- The number ------------------------------------------------- */}
+      <section className="on-plate border-y border-line" aria-labelledby="root">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-16 sm:py-20">
+          <h2 id="root" className="font-mono text-[0.8125rem] text-muted">
+            Manifest root of this build &middot; SHA-256 over {facts.files} files
+          </h2>
+          <Hash
+            value={facts.rootHash}
+            className="hash-grid mt-6 grid-cols-[repeat(4,auto)] gap-y-[0.18em] text-ink leading-[1.15] text-[clamp(1.25rem,7.8vw,2rem)] sm:grid-cols-[repeat(8,auto)] sm:text-[clamp(1.5rem,3.9vw,3.25rem)]"
+          />
+          <div className="mt-12 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-14">
+            <div className="min-w-0 max-w-xl">
+              <p className="text-[1.0625rem] leading-relaxed text-body">
+                The device shows this number on its lock screen before it asks for anything. It is
+                the SHA-256 of a plain <code className="code">sha256sum</code> listing of every file
+                the device runs, so standard tools recompute it and our own tools are not needed.
+                Build the source, run one command, and compare. If the two differ, do not type your
+                PIN.
+              </p>
+              <p className="mt-4 text-[0.875rem] leading-relaxed text-muted">
+                Nothing has been released yet, so this is the root of the code as it stands, read
+                from the repository when this page was built. Signed releases are planned, not
+                built.
+              </p>
+              <p className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-[0.9375rem] font-semibold">
+                <Link
+                  href={await docHref('docs/VERIFICATION.md', 'the-five-things-you-can-check')}
+                  className="link"
+                >
+                  The five checks you can run
                 </Link>
-              </li>
-            ))}
-          </ul>
+                <Link href={await docHref('docs/THREAT-MODEL.md')} className="link">
+                  The threat model
+                </Link>
+              </p>
+            </div>
+            <div className="min-w-0">
+              <Transcript
+                label="Recomputing this build's manifest root"
+                lines={[
+                  { cmd: 'git clone https://github.com/Xaxis/nullroute && cd nullroute' },
+                  {
+                    cmd: 'sha256sum MANIFEST.lock',
+                    out: <span className="text-ink">{`${facts.rootHash}  MANIFEST.lock`}</span>,
+                  },
+                ]}
+              />
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* --- How it works ----------------------------------------------- */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-20">
-        <SectionHead eyebrow="How it works" title="From dice to a signature.">
-          Your wallet software on a networked computer prepares transactions. The device holds the
-          keys, shows you what you are signing, and has no network to reach.
-        </SectionHead>
-        <ol className="mt-12 grid gap-8 lg:grid-cols-3">
+      {/* --- How you use it --------------------------------------------- */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-20 sm:py-24">
+        <div className="max-w-2xl">
+          <Heading id="use">How you use it</Heading>
+          <p className="mt-4 text-[1.0625rem] leading-relaxed text-body">
+            Your wallet software stays on your everyday computer and never sees a key. The device
+            holds the keys and never sees a network. Every transaction crosses between them as a QR
+            code you can watch.
+          </p>
+        </div>
+        <div className="mt-12">
+          <SigningLoop />
+        </div>
+        <ol className="mt-16 grid gap-x-8 gap-y-14 lg:grid-cols-3">
           {steps.map((step, index) => (
             <li key={step.title} className="min-w-0">
               <Shot screen={step.screen} link={false} />
-              <div className="mt-5 flex items-baseline gap-3">
+              <h3 className="mt-5 flex items-baseline gap-3 text-[1.125rem] font-semibold text-ink">
                 <span className="font-mono text-[0.8125rem] text-signal">
                   {String(index + 1).padStart(2, '0')}
                 </span>
-                <h3 className="font-semibold text-ink text-[1.125rem]">{step.title}</h3>
-              </div>
-              <p className="mt-2 text-[0.9375rem] leading-relaxed text-body">{step.body}</p>
+                {step.title}
+              </h3>
+              <p className="mt-2 text-[0.9375rem] leading-relaxed text-body">
+                {step.screen.detail}
+              </p>
+              {step.screen.file === 'dice' ? (
+                <Transcript
+                  className="mt-4"
+                  label="The seed rule, repeated with coreutils"
+                  lines={[
+                    {
+                      cmd: `printf '%s' '${dice.rolls}' | sha256sum`,
+                      out: <span className="text-ink break-all">{`${dice.digest}  -`}</span>,
+                    },
+                  ]}
+                />
+              ) : null}
+              {step.screen.file === 'dice' ? (
+                <p className="mt-2 text-[0.8125rem] leading-snug text-muted">
+                  The public example rolls from the entropy document, recomputed when this page was
+                  built. Never use them for money.
+                </p>
+              ) : null}
             </li>
           ))}
         </ol>
-        <p className="mt-10">
-          <Link href={await docHref('docs/USING.md')} className="link font-semibold">
+        <p className="mt-12 text-[0.9375rem] font-semibold">
+          <Link href={await docHref('docs/USING.md')} className="link">
             Every screen, and what each one refuses
           </Link>
         </p>
       </section>
 
-      {/* --- Verify ----------------------------------------------------- */}
+      {/* --- Specification ---------------------------------------------- */}
       <section className="border-y border-line bg-surface">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-20 grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-start">
-          <div className="min-w-0">
-            <SectionHead
-              eyebrow="Don’t trust, verify"
-              title="One hash for every line of code that ships."
-            >
-              Before it asks for a PIN, the device shows the SHA-256 of a plain listing of all{' '}
-              {facts.files} files it runs. Build the source, run one command with standard tools,
-              and compare. If the two differ, do not enter your PIN.
-            </SectionHead>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link
-                href={await docHref('docs/VERIFICATION.md', 'the-five-things-you-can-check')}
-                className="btn btn-primary"
-              >
-                Five checks you can run
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-20 sm:py-24 grid gap-10 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,2fr)] lg:gap-16">
+          <div className="min-w-0 lg:sticky lg:top-24 lg:self-start">
+            <Heading id="specification">Specification</Heading>
+            <p className="mt-4 text-[1rem] leading-relaxed text-body">
+              What it does, what it refuses, and where it is weak. Each line names the document that
+              says it in full.
+            </p>
+            <p className="mt-6 text-[0.9375rem] font-semibold">
+              <Link href={await docHref('docs/THREAT-MODEL.md')} className="link">
+                What it does not protect against
               </Link>
-              <Link href={await docHref('docs/THREAT-MODEL.md')} className="btn btn-secondary">
-                Read the threat model
+            </p>
+          </div>
+          <dl className="min-w-0 border-t border-line">
+            {spec.map((row) => (
+              <div
+                key={row.term}
+                className="grid gap-x-8 gap-y-1 border-b border-line py-5 sm:grid-cols-[8.5rem_minmax(0,1fr)]"
+              >
+                <dt className="font-semibold text-ink text-[0.9375rem]">{row.term}</dt>
+                <dd className="min-w-0 text-[0.9375rem] leading-relaxed text-body">
+                  {row.body}{' '}
+                  <Link
+                    href={row.href}
+                    className="whitespace-nowrap font-mono text-[0.75rem] text-muted underline decoration-border underline-offset-2 hover:text-link hover:decoration-current"
+                  >
+                    {row.cite}
+                  </Link>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </section>
+
+      {/* --- Parts ------------------------------------------------------ */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-20 sm:py-24 grid gap-10 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,2fr)] lg:gap-16">
+        <div className="min-w-0">
+          <Heading id="hardware">Parts, roughly {cost}</Heading>
+          <p className="mt-4 text-[1rem] leading-relaxed text-body">
+            Off the shelf, with nothing exotic and nothing to solder. Flash the image to the card,
+            check it, and assemble.
+          </p>
+          <p className="mt-6 text-[0.9375rem] font-semibold">
+            <Link href={START_HREF} className="link">
+              How to build one
+            </Link>
+          </p>
+        </div>
+        <div className="min-w-0 overflow-x-auto">
+          <table className="w-full border-collapse text-left text-[0.9375rem]">
+            <thead>
+              <tr className="border-b border-ink">
+                <th
+                  scope="col"
+                  className="py-2.5 pr-6 font-mono text-[0.75rem] font-normal uppercase tracking-[0.08em] text-muted"
+                >
+                  Part
+                </th>
+                <th
+                  scope="col"
+                  className="py-2.5 font-mono text-[0.75rem] font-normal uppercase tracking-[0.08em] text-muted"
+                >
+                  What to get
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {parts.map((part) => (
+                <tr key={`${part.part}-${part.what}`} className="border-b border-line">
+                  <th
+                    scope="row"
+                    className="py-3.5 pr-6 align-top font-normal text-muted whitespace-nowrap"
+                  >
+                    {part.part}
+                  </th>
+                  <td className="py-3.5 align-top font-semibold text-ink">{part.what}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* --- The profile ------------------------------------------------ */}
+      <section className="border-y border-line bg-surface">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-14 grid gap-8 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,2fr)] lg:gap-16 lg:items-center">
+          <Heading id="profile">For every signer</Heading>
+          <div className="min-w-0 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+            <p className="max-w-2xl text-[1rem] leading-relaxed text-body">
+              The draft signer profile says what any air-gapped signer should show you and refuse to
+              do: {profile.requirementCount} requirements and {profile.caseCount} portable test
+              cases, in a kit that runs against any signer through an adapter. Not only this one.
+            </p>
+            <div className="flex shrink-0 flex-wrap gap-3">
+              <Link href="/profile" className="btn btn-secondary">
+                The profile
+              </Link>
+              <Link href={await docHref('conformance/README.md')} className="btn btn-secondary">
+                The kit
               </Link>
             </div>
           </div>
-          <div className="min-w-0">
-            <Transcript
-              label="Recomputing this build's manifest root"
-              lines={[
-                { cmd: 'git clone https://github.com/Xaxis/nullroute && cd nullroute' },
-                {
-                  cmd: 'sha256sum MANIFEST.lock',
-                  out: (
-                    <span className="text-ink break-all">{`${facts.rootHash}  MANIFEST.lock`}</span>
-                  ),
-                },
-              ]}
-            />
-            <p className="mt-3 text-[0.8125rem] leading-snug text-muted">
-              This build&rsquo;s root, read from the repository when this site was built. Nothing
-              has been released yet, so there is no published value to compare against.
-            </p>
-            <Transcript
-              className="mt-6"
-              label="The seed rule, repeated with coreutils"
-              lines={[
-                {
-                  cmd: `printf '%s' '${dice.rolls}' | sha256sum`,
-                  out: <span className="text-ink break-all">{`${dice.digest}  -`}</span>,
-                },
-              ]}
-            />
-            <p className="mt-3 text-[0.8125rem] leading-snug text-muted">
-              The seed rule with no code of ours: a hundred public example rolls from the entropy
-              document, recomputed when this site was built. Never use these rolls for money.
-            </p>
-            <dl className="mt-8 grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-4">
-              {stats.map((stat) => (
-                <div key={stat.label} className="min-w-0">
-                  <dt className="sr-only">{stat.label}</dt>
-                  <dd>
-                    <span className="block font-display text-[2rem] leading-none text-ink tabular-nums">
-                      {stat.value}
-                    </span>
-                    <span className="mt-2 block text-[0.8125rem] leading-snug text-muted">
-                      {stat.label}
-                    </span>
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </div>
         </div>
       </section>
 
-      {/* --- Hardware --------------------------------------------------- */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-20">
-        <SectionHead
-          id="hardware"
-          eyebrow="What you need"
-          title={`Off-the-shelf parts, roughly ${cost}.`}
-        >
-          No secure element and nothing exotic. The device needs a 64-bit Raspberry Pi, the 800x480
-          touchscreen it is laid out for, a webcam and an SD card.
-        </SectionHead>
-        <ul className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {parts.map((part) => (
-            <li key={`${part.part}-${part.what}`} className="card px-5 py-4">
-              <span className="block text-[0.8125rem] text-muted">{part.part}</span>
-              <span className="mt-1 block font-semibold text-ink">{part.what}</span>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-8">
-          <Link href={START_HREF} className="link font-semibold">
-            How to build one
-          </Link>
-        </p>
-      </section>
-
-      {/* --- The standard ----------------------------------------------- */}
-      <section className="border-t border-line bg-surface">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-20 grid gap-10 lg:grid-cols-2 lg:items-center">
-          <SectionHead eyebrow="For every signer" title="Not just a device: an open standard.">
-            The signer profile says what any air-gapped signer must show you and refuse to do:{' '}
-            {profile.requirementCount} requirements, with {profile.caseCount} portable test cases in
-            a conformance kit that runs against any signer through an adapter.
-          </SectionHead>
-          <div className="flex flex-wrap gap-3 lg:justify-end">
-            <Link href="/profile" className="btn btn-primary">
-              See the profile
-            </Link>
-            <Link href={await docHref('conformance/README.md')} className="btn btn-secondary">
-              Run the kit
-            </Link>
-          </div>
+      {/* --- Where it stands -------------------------------------------- */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-20 sm:py-24">
+        <div className="max-w-2xl">
+          <Heading id="status">Where it stands</Heading>
+          <p className="mt-4 text-[1.0625rem] leading-relaxed text-body">
+            Phases 1 to {built} of {phases.length} are built, apart from signing and publishing a
+            release. Hardware bring-up is next. One person has written it and nobody else has
+            reviewed it yet, so keep real money off it until bring-up and an outside review are both
+            done.
+          </p>
         </div>
-      </section>
-
-      {/* --- Status ----------------------------------------------------- */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-20">
-        <SectionHead eyebrow="Where it stands" title="Honest about what is not done.">
-          Phases 1 to {built} of {phases.length} are built, apart from signing and publishing a
-          release, and hardware bring-up is next. It has not been audited, so keep real money off it
-          until bring-up and an outside review are both done.
-        </SectionHead>
-        <ol className="mt-10 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          {phases.map((phase) => (
-            <li key={phase.number} className="card px-5 py-4">
-              <span className="flex items-center gap-2 text-[0.8125rem] text-muted">
-                <span
-                  aria-hidden="true"
-                  className={`size-2 shrink-0 rounded-full ${
-                    phase.kind === 'complete'
-                      ? 'bg-verify-line'
-                      : phase.kind === 'partial'
-                        ? 'bg-signal'
-                        : 'bg-border'
-                  }`}
-                />
-                Phase {phase.number},{' '}
-                {phase.kind === 'complete'
-                  ? 'built'
-                  : phase.kind === 'partial'
-                    ? 'partly built'
-                    : 'not started'}
-              </span>
-              <span className="mt-1.5 block text-[0.9375rem] font-semibold leading-snug text-ink">
-                {phase.scope}
-              </span>
-            </li>
-          ))}
+        <ol className="mt-12 grid gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-7">
+          {phases.map((phase) => {
+            const state = PHASE_STATE[phase.kind]
+            return (
+              <li key={phase.number} className="min-w-0">
+                <span aria-hidden="true" className={`block h-1 rounded-full ${state.bar}`} />
+                <p className="mt-3 flex items-center gap-2 font-mono text-[0.75rem] text-muted">
+                  Phase {phase.number} &middot; {state.label}
+                </p>
+                <p className="mt-1.5 text-[0.875rem] leading-snug text-ink">{phase.scope}</p>
+              </li>
+            )
+          })}
         </ol>
-        <p className="mt-8">
-          <Link href="/status" className="link font-semibold">
+        <p className="mt-12 flex flex-wrap gap-x-6 gap-y-2 text-[0.9375rem] font-semibold">
+          <Link href="/status" className="link">
             The roadmap
           </Link>
+          <Link href="/about" className="link">
+            Who maintains it
+          </Link>
+          <a
+            href={`${REPO_URL}/tree/main/packages/core`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="link"
+          >
+            Read the code that holds keys <span aria-hidden="true">&#8599;</span>
+          </a>
         </p>
-      </section>
-
-      {/* --- Close ------------------------------------------------------ */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6">
-        <div className="card px-6 py-12 sm:px-12 text-center">
-          <h2 className="font-display text-[1.875rem] leading-[1.15] tracking-[-0.015em] text-ink sm:text-[2.25rem]">
-            Build one, or start by reading the code.
-          </h2>
-          <p className="mx-auto mt-4 max-w-xl text-body">
-            MIT licensed, built in the open, and written to be read by people who do not trust its
-            author.
-          </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Link href={START_HREF} className="btn btn-primary">
-              Get started
-            </Link>
-            <a
-              href={REPO_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-secondary"
-            >
-              View on GitHub <span aria-hidden="true">&#8599;</span>
-            </a>
-          </div>
-        </div>
       </section>
     </>
   )

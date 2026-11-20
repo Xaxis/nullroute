@@ -160,6 +160,32 @@
   }
 }
 
+/*
+ * THE PLATE AS A PLACE ON THE PAGE. The device screenshots sit on black in
+ * both themes because the panel is black, and the band that carries the
+ * manifest root is the same black, so the number reads as the one the panel
+ * shows. Inside it the tokens take the dark values whatever the reader's
+ * setting, which keeps every utility under it at the contrast checked above.
+ */
+.on-plate {
+  --paper: #000000;
+  --surface: #08090b;
+  --sunk: #101216;
+  --line: #1f232b;
+  --border: #2d323d;
+  --ink: #f4f6f9;
+  --body: #c2c8d2;
+  --muted: #949cab;
+  --signal: #e8833a;
+  --link: #f39c5c;
+  --link-hover: #f7b884;
+  --verify: #86c9b2;
+  --verify-line: #4fa88a;
+  color-scheme: dark;
+  background-color: var(--paper);
+  color: var(--body);
+}
+
 @theme inline {
   --color-paper: var(--paper);
   --color-surface: var(--surface);
