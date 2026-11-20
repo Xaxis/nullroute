@@ -56,6 +56,13 @@ export const VISIT_COUNTER = {
 export const CONTACT_ENDPOINT = 'https://nullroute-admin.vercel.app/api/contact'
 
 /**
+ * The maintainer's way into the admin console, linked quietly from the footer.
+ * Moves to https://admin.nullroute.diy/signin with CONTACT_ENDPOINT, once that
+ * name resolves.
+ */
+export const ADMIN_SIGNIN_URL = 'https://nullroute-admin.vercel.app/signin'
+
+/**
  * What a message is about. The admin console holds the same list and refuses a
  * topic it does not know, so a value here that it lacks fails loudly in testing.
  */

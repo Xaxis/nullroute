@@ -4,7 +4,7 @@ import { Mark } from '@/components/Mark'
 import { Search } from '@/components/Search'
 import { ShortHash } from '@/components/report'
 import { readFacts } from '@/lib/facts'
-import { NAV, OG_IMAGE, REPO_URL, START_HREF, VISIT_COUNTER } from '@/lib/site'
+import { ADMIN_SIGNIN_URL, NAV, OG_IMAGE, REPO_URL, START_HREF, VISIT_COUNTER } from '@/lib/site'
 import '../styles/globals.css'
 
 export const metadata: Metadata = {
@@ -163,6 +163,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 Built from manifest root <ShortHash value={facts.rootHash} /> after a verification
                 run that {facts.passed ? 'passed' : 'FAILED'}. Every figure on this site is read
                 from the repository at build time.
+              </p>
+              <p className="font-sans text-[0.8125rem] text-muted">
+                <a href={ADMIN_SIGNIN_URL} className="hover:text-ink transition-colors">
+                  Maintainer sign-in
+                </a>
               </p>
             </div>
             <div className="min-w-0 grid grid-cols-2 gap-x-8 gap-y-8 font-sans text-[0.875rem] sm:grid-cols-3">
