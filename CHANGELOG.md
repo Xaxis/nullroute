@@ -10,6 +10,15 @@ first, and the website's status page renders it.
 
 ## November 2026
 
+- **2026-11-20** nullroute.diy has a contact page, and the maintainer has a
+  console at admin.nullroute.diy (`apps/admin`): sign-in by emailed code for
+  listed addresses only, grant applications with their milestones, references,
+  checklists and documents, and the contact inbox. The console is a server
+  with its own lockfile, outside the root workspaces and so outside
+  `MANIFEST.lock`, and lint holds it to the website's rule against importing
+  device code. The site's CSP gains exactly one URL, the contact endpoint, and
+  the page says what the form keeps. `make admin-live-check` asks the deployed
+  console what a stranger would.
 - **2026-11-20** On a Pi, the daemon could never read the hardware RNG: the
   kernel makes `/dev/hwrng` root only, the daemon is not root, and nothing in
   the image said otherwise, so the entropy health check failed and a

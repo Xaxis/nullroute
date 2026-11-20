@@ -72,6 +72,8 @@ packages/
   wallet/   Phase 5. Lower assurance tier. Compile-time removable.
   bridge/   Phase 6. Runs on a NETWORKED machine. Never on the device.
 apps/web/   nullroute.diy. Never ships to the device.
+apps/admin/ admin.nullroute.diy, the owner's console: grants, contact inbox.
+            Its own lockfile, not a root workspace, outside the manifest.
 tools/      check-prose, gen-sbom, check-reproducible, build-image
 ```
 
@@ -94,6 +96,15 @@ a Next.js site that obviously uses the network. It never ships to the Pi,
 rule does not apply to it. `apps/web` must never import from `packages/daemon`.
 If you want to show device behaviour on the site, generate a static artifact
 into `docs/`, do not import the code.
+
+**The admin console is a server with secrets, kept further out still.**
+`apps/admin` holds the database password and the mail key. It is not a root
+workspace and has its own `package-lock.json`, so `npm ci` at the root never
+installs it and nothing it pulls in can reach `MANIFEST.lock`. Lint holds it to
+the website's import rule. `make lint` installs its dependencies first, because
+type-aware rules cannot resolve its imports without them. Its Postgres
+connection pins Supabase's root certificate (`src/server/supabase-ca.ts`);
+never relax that to `rejectUnauthorized: false`.
 
 **Excluding the website from the manifest is a security decision.** Folding it
 in would mean a change to a marketing page altered the hash a user compares
@@ -173,6 +184,12 @@ running system, only in the docs.
 `NEXT_PUBLIC_SITE_URL` and a Vercel CLI token, and that is all it should hold.
 Nothing in `packages/` reads environment variables for anything security
 relevant.
+
+`apps/admin/.env` holds the console's own settings (database, mail key, owner
+addresses), documented by `apps/admin/.env.example`. Production values live in
+the Vercel project `nullroute-admin`, never in a file.
+`apps/admin/.vercelignore` keeps the local file out of uploads, because
+Vercel's default ignore list does not.
 
 ## Commits
 

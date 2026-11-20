@@ -48,6 +48,27 @@ export const VISIT_COUNTER = {
 } as const
 
 /**
+ * Where the contact form sends a message: the admin console (apps/admin), which
+ * stores it and then emails the maintainer. The CSP allows exactly this URL
+ * (CONTACT_ENDPOINT in tools/lib/site-headers.mjs), so the two change together.
+ * Nothing is sent until the reader presses Send.
+ */
+export const CONTACT_ENDPOINT = 'https://nullroute-admin.vercel.app/api/contact'
+
+/**
+ * What a message is about. The admin console holds the same list and refuses a
+ * topic it does not know, so a value here that it lacks fails loudly in testing.
+ */
+export const CONTACT_TOPICS: readonly (readonly [string, string])[] = [
+  ['question', 'A question'],
+  ['feedback', 'Feedback on the device or the docs'],
+  ['review', 'Reviewing or contributing'],
+  ['funding', 'Funding or grants'],
+  ['press', 'Press'],
+  ['other', 'Something else'],
+]
+
+/**
  * The header: four places, not six. The detail lives in the docs, so the
  * header names the docs, the one task a skeptic arrives to do (verify), the
  * standard this project offers every other signer, and where it stands.

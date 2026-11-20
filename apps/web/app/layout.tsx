@@ -68,6 +68,7 @@ const FOOTER: readonly { title: string; links: readonly { href: string; label: s
       { href: '/docs/contributing', label: 'Contributing' },
       { href: '/docs/security', label: 'Report a flaw' },
       { href: '/about', label: 'About' },
+      { href: '/contact', label: 'Contact' },
       { href: `${REPO_URL}/blob/main/LICENSE`, label: 'MIT licence' },
     ],
   },

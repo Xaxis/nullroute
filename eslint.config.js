@@ -17,6 +17,8 @@ export default tseslint.config(
       'apps/web/.next/**',
       'apps/web/.next-dev/**',
       'apps/web/out/**',
+      'apps/admin/.next/**',
+      'apps/admin/.next-dev/**',
       'packages/ui/dist-app/**',
       // Build artifacts from `make image-system`: an exported Debian root
       // filesystem, which now contains the daemon's own compiled output and the
@@ -171,8 +173,10 @@ export default tseslint.config(
   // so the no-network rule does not apply. The tier rule still does: the site
   // must never import device code.
   // ---------------------------------------------------------------------------
+  // admin.nullroute.diy, the owner's console, is the same kind of thing and gets
+  // the same rule.
   {
-    files: ['apps/web/**/*.{ts,tsx}'],
+    files: ['apps/web/**/*.{ts,tsx}', 'apps/admin/**/*.{ts,tsx}'],
     plugins: { nullroute },
     rules: {
       'nullroute/no-cross-tier-import': 'error',

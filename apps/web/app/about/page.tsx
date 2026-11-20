@@ -102,12 +102,13 @@ export default function AboutPage() {
         </dl>
         <Prose className="mt-8">
           <p>
-            Report a flaw privately through the <A href="/docs/security">security policy</A>.
-            Anything else is an issue or a pull request on{' '}
+            Report a flaw privately through the <A href="/docs/security">security policy</A>. Code
+            is an issue or a pull request on{' '}
             <A href={REPO_URL} external>
               GitHub
             </A>
-            .
+            , and anything else, from a question to a review offer, goes through the{' '}
+            <A href="/contact">contact page</A>.
           </p>
         </Prose>
       </Section>

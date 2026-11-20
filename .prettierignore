@@ -16,3 +16,4 @@ conformance/fixtures/
 # build regardless. Formatting it makes `make format-check` fail on a clean
 # tree the first time anyone builds the website.
 apps/web/next-env.d.ts
+apps/admin/next-env.d.ts

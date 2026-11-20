@@ -27,6 +27,8 @@
  *   - `packages/core` must stay pure: no daemon, no ui, no bridge.
  *   - `apps/web` (the public website) must never import device code, so a
  *     change to a marketing page cannot alter what runs on the Pi.
+ *   - `apps/admin` (the owner's console) is held to the same line, for the
+ *     same reason and because it is a server holding credentials.
  */
 
 import { dirname, resolve } from 'node:path'
@@ -75,6 +77,11 @@ const FORBIDDEN = [
     from: 'apps/web/',
     deny: ['@nullroute/daemon', '@nullroute/wallet', '@nullroute/bridge', '@nullroute/ui'],
     why: 'nullroute.diy is a networked Next.js site that never ships to the device. Importing device code would fold the website into the artifact whose hash users check before entering a PIN. Render docs/ instead, or generate a static artifact.',
+  },
+  {
+    from: 'apps/admin/',
+    deny: ['@nullroute/daemon', '@nullroute/wallet', '@nullroute/bridge', '@nullroute/ui'],
+    why: 'admin.nullroute.diy is a networked server with its own lockfile, outside MANIFEST.lock. Device code reached from here would run beside a database and a mail key, and a change to it would never show in the hash users check.',
   },
 ]
 

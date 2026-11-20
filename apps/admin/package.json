@@ -1,0 +1,41 @@
+{
+  "name": "@nullroute/admin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "admin.nullroute.diy: the maintainer's console for grants, messages and project status. Never ships to the device, and is outside the manifest.",
+  "license": "MIT",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "dev": "next dev --port 3471",
+    "build": "next build",
+    "start": "next start --port 3471",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "migrate": "node --env-file=.env scripts/migrate.mjs"
+  },
+  "dependencies": {
+    "next": "16.4.5",
+    "pg": "8.23.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "rehype-stringify": "10.0.1",
+    "remark-gfm": "4.0.1",
+    "remark-parse": "11.0.0",
+    "remark-rehype": "11.1.2",
+    "unified": "11.0.5",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.5",
+    "@types/node": "24.19.2",
+    "@types/pg": "8.23.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "tailwindcss": "4.3.5",
+    "typescript": "6.0.3",
+    "vitest": "4.1.12"
+  }
+}

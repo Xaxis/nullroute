@@ -15,7 +15,7 @@
   },
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/web"
   ],
   "engines": {
     "node": "24.x"

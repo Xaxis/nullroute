@@ -1,0 +1,7 @@
+# Production settings live in Vercel's own store. A local .env holds the database
+# password and the mail key, and Vercel's default ignore list does not cover it.
+.env
+.env.*
+node_modules
+.next
+.next-dev

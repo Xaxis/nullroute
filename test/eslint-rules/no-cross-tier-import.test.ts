@@ -32,6 +32,7 @@ const ruleTester = new RuleTester({
 const CORE = '/repo/packages/core/src/derive/path.ts'
 const WALLET = '/repo/packages/wallet/src/coin-select.ts'
 const WEB = '/repo/apps/web/app/page.tsx'
+const ADMIN = '/repo/apps/admin/src/app/(admin)/page.tsx'
 const VERIFY = '/repo/packages/verify/src/manifest.ts'
 
 ruleTester.run('nullroute/no-cross-tier-import (INV-WALLET-1)', noCrossTierImport, {
@@ -93,6 +94,17 @@ ruleTester.run('nullroute/no-cross-tier-import (INV-WALLET-1)', noCrossTierImpor
     {
       code: `import { selectCoins } from "@nullroute/wallet";`,
       filename: WEB,
+      errors: [{ messageId: 'wrongDirection' }],
+    },
+    // The owner's console is held to the same line, by name and by path.
+    {
+      code: `import { signPsbt } from "@nullroute/daemon";`,
+      filename: ADMIN,
+      errors: [{ messageId: 'wrongDirection' }],
+    },
+    {
+      code: `import { WalletStore } from "../../../../../packages/daemon/src/store/store.js";`,
+      filename: ADMIN,
       errors: [{ messageId: 'wrongDirection' }],
     },
 

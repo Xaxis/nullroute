@@ -61,6 +61,11 @@ jobs:
       - name: Lint, including the no-network rule
         run: make lint
 
+      # admin.nullroute.diy, the owner's console. Its own lockfile, outside the
+      # manifest; `make lint` above has already installed it.
+      - name: Admin console types and unit tests
+        run: make admin-check
+
       # THE BUG THIS STEP EXISTS FOR was a comment placed between a line ending
       # in a backslash and the line it continued onto, inside the mmdebstrap
       # call that builds the root filesystem. Shell ends the command there, so

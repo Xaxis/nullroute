@@ -66,6 +66,16 @@ export function inlineScriptHashes(htmlDocuments) {
 export const VISIT_COUNTER_SCRIPT = 'https://overlook.technology/s.js'
 export const VISIT_COUNTER_ENDPOINT = 'https://overlook.technology/e'
 
+/**
+ * The contact form's endpoint (CONTACT_ENDPOINT in apps/web/lib/site.ts), the
+ * second off-origin allowance and the only one a reader triggers: the page
+ * sends nothing there until someone presses Send. An exact URL, not the
+ * admin's origin, so nothing else the admin console serves can be reached
+ * from a page on this site. The vercel.app address works without the admin
+ * CNAME; when admin.nullroute.diy resolves, both constants move to it together.
+ */
+export const CONTACT_ENDPOINT = 'https://nullroute-admin.vercel.app/api/contact'
+
 /** The Content-Security-Policy, given the inline script hashes to allow. */
 export function buildPolicy(hashes) {
   return [
@@ -76,10 +86,11 @@ export function buildPolicy(hashes) {
     "style-src 'self'",
     "img-src 'self' data:",
     "font-src 'self'",
-    // The visit counter posts each visit to its endpoint, the only off-origin
-    // request the site makes. 'self' keeps Next's client router from tripping
-    // the policy if a future page prefetches a route payload.
-    `connect-src 'self' ${VISIT_COUNTER_ENDPOINT}`,
+    // The visit counter posts each visit to its endpoint, and the contact form
+    // posts a message to its own when the reader sends one. Those are the only
+    // off-origin requests the site makes. 'self' keeps Next's client router
+    // from tripping the policy if a future page prefetches a route payload.
+    `connect-src 'self' ${VISIT_COUNTER_ENDPOINT} ${CONTACT_ENDPOINT}`,
     "manifest-src 'self'",
     // No <base> rewriting, no form posts anywhere, no embedding in a frame.
     "base-uri 'none'",

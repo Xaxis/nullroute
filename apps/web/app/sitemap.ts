@@ -9,6 +9,7 @@ const PAGES: readonly (readonly [string, number])[] = [
   ['/profile', 0.9],
   ['/status', 0.8],
   ['/about', 0.6],
+  ['/contact', 0.5],
 ]
 
 /** Every page the site builds: the product pages, then every docs page. */

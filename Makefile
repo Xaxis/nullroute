@@ -20,6 +20,14 @@ SHELL := /bin/bash
 # dependency left that value alone and only the image checksum noticed.
 MANIFEST_ROOTS := package.json package-lock.json packages spec provisioning
 
+# The admin console's installed dependencies (see admin-check). Defined up
+# here because `lint` names it as a prerequisite, and make expands those as it
+# reads each rule.
+ADMIN_DEPS := apps/admin/node_modules/.package-lock.json
+# Where admin-live-check looks. Override with the vercel.app address until the
+# admin CNAME exists: make admin-deploy ADMIN_ORIGIN=https://nullroute-admin.vercel.app
+ADMIN_ORIGIN ?= https://admin.nullroute.diy
+
 .PHONY: help install dev build check check-fast verify manifest manifest-check \
 	contrast ui-roles \
 	qr-readback badges invariant-ids \
@@ -30,7 +38,8 @@ MANIFEST_ROOTS := package.json package-lock.json packages spec provisioning
         screens screen-fit ui-race ui-constants dev-check verify-image docs-reachable no-dead-ends \
         image-env image-shell image-system image-repro journeys \
         web-isolation web-csp web-responsive web-site-links device-shots device-shots-check brand brand-check \
-        web-check web-root web-live-check deploy image image-boot-test verify-runtime slow-feedback typeable
+        web-check web-root web-live-check deploy image image-boot-test verify-runtime slow-feedback typeable \
+        admin-check admin-deploy admin-live-check
 
 help: ## List available targets
 	@grep -hE '^[a-z][a-z-]*:.*?## ' $(MAKEFILE_LIST) \
@@ -306,7 +315,10 @@ test-recovery-drill: build ## INV-INTEROP-1. Recover a wallet in Bitcoin Core al
 	# unrecoverable and nothing said so.
 	@node tools/recovery-drill.mjs
 
-lint: ## ESLint, including the no-network rule that enforces INV-NET-2
+lint: $(ADMIN_DEPS) ## ESLint, including the no-network rule that enforces INV-NET-2
+	# The admin console's dependencies first. Type-aware rules resolve its
+	# imports from apps/admin/node_modules, and without them every `pg` or
+	# `next` import is `any` and the lint fails on code that is fine.
 	@npx eslint .
 
 format: ## Apply .prettierrc to everything .prettierignore does not exclude
@@ -945,8 +957,34 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 	@npx vercel deploy --prebuilt --prod
 	@$(MAKE) --no-print-directory web-live-check
 
+# --- admin.nullroute.diy -----------------------------------------------------
+# The owner's console: sign-in, grants, and the contact form's inbox. A server
+# with its own lockfile, outside the root workspaces and so outside
+# MANIFEST.lock: nothing it installs can move the hash a user compares before
+# entering a PIN. Its settings live in apps/admin/.env, never committed.
+
+# npm writes this file at the end of every install, so it is older than the
+# lockfile exactly when the installed tree may not match it.
+$(ADMIN_DEPS): apps/admin/package-lock.json
+	@cd apps/admin && npm ci --no-audit --no-fund --loglevel=error
+
+admin-check: $(ADMIN_DEPS) ## The admin console's types and unit tests
+	@cd apps/admin && npx tsc --noEmit && npx vitest run
+
+admin-deploy: admin-check ## Build the admin console, deploy it, and prove it answers as it should
+	# A local production build first, as the gate. Vercel then builds the same
+	# source on its own runners with the settings it holds; unlike the static
+	# site there are no hashes pinned to the build output, so nothing here
+	# depends on the two builds being byte-identical.
+	@cd apps/admin && npx next build
+	@cd apps/admin && npx vercel deploy --prod --yes
+	@node tools/checks/check-admin-live.mjs $(ADMIN_ORIGIN)
+
+admin-live-check: ## Ask the DEPLOYED admin console what a stranger would
+	@node tools/checks/check-admin-live.mjs $(ADMIN_ORIGIN)
+
 # --- aggregates --------------------------------------------------------------
 
-check-fast: lint shell format-check ci-parity ui-race ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims invariant-ids make-targets ipc-reachable slow-feedback typeable device-csp qr-readback test manifest-check manifest-recipe ## Everything except the slow suites
+check-fast: lint shell format-check ci-parity ui-race ui-classes ui-constants no-dead-ends header-rule type-check prose links docs-reachable profiles invariant-claims invariant-ids make-targets ipc-reachable slow-feedback typeable device-csp qr-readback test admin-check manifest-check manifest-recipe ## Everything except the slow suites
 
 check: check-fast build verify badges test-vectors test-differential conformance repro-check sbom device-ui screen-fit contrast ui-roles journeys dev-check device-shots-check brand-check web-check ## Everything CI runs
