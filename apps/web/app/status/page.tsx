@@ -4,7 +4,7 @@ import { readLog, readPhases } from '../../lib/status'
 import { readProfile, statusKind } from '../../lib/profile'
 import { OG_IMAGE, REPO_URL } from '../../lib/site'
 import { PhaseTable } from '../../components/PhaseTable'
-import { A, Figure, InlineMd, Prose, Section, Source } from '../../components/report'
+import { A, Figure, InlineMd, Prose, Ruled, Section, Source } from '../../components/report'
 
 /** The log entries shown here. The file has all of them, a link away. */
 const RECENT = 12
@@ -185,17 +185,7 @@ export default function StatusPage() {
       </Section>
 
       <Section title="What it does not protect against" id="limits">
-        <dl className="border-t border-line">
-          {NOT_COVERED.map(([term, text]) => (
-            <div
-              key={term}
-              className="grid gap-1.5 border-b border-line py-5 sm:grid-cols-[14rem_minmax(0,1fr)] sm:gap-8"
-            >
-              <dt className="font-sans text-[0.9375rem] font-semibold text-ink">{term}</dt>
-              <dd className="text-[1rem] leading-relaxed text-body">{text}</dd>
-            </div>
-          ))}
-        </dl>
+        <Ruled items={NOT_COVERED} />
         <Prose className="mt-8">
           <p>
             The full list is in the <A href="/docs/threat-model">threat model</A>, and it is long on

@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { OG_IMAGE, REPO_URL } from '../../lib/site'
-import { A, C, Prose, Section } from '../../components/report'
+import { A, C, Prose, Ruled, Section } from '../../components/report'
 
 export const metadata: Metadata = {
   title: 'About',
@@ -144,14 +144,7 @@ export default function AboutPage() {
           </Section>
 
           <Section title="Where help is worth most" id="help">
-            <dl className="grid gap-px overflow-hidden rounded-[4px] border border-line bg-line sm:grid-cols-2">
-              {HELP.map(([k, v]) => (
-                <div key={k} className="bg-surface px-5 py-4">
-                  <dt className="font-display text-[1.25rem] leading-snug text-ink">{k}</dt>
-                  <dd className="mt-2 text-[1rem] leading-relaxed text-body">{v}</dd>
-                </div>
-              ))}
-            </dl>
+            <Ruled items={HELP} />
             <Prose className="mt-8">
               <p>
                 Report a flaw privately through the <A href="/docs/security">security policy</A>.

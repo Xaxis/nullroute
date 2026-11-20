@@ -140,6 +140,33 @@ export function Section({
   )
 }
 
+/**
+ * Named things and what each means, as ruled rows: the site's one way of
+ * listing them. It replaced grids of cards, which read as a template and gave
+ * a two-word term the same weight as the paragraph explaining it.
+ */
+export function Ruled({
+  items,
+  className = '',
+}: {
+  items: readonly (readonly [string, ReactNode])[]
+  className?: string
+}) {
+  return (
+    <dl className={`border-t border-line ${className}`}>
+      {items.map(([term, text]) => (
+        <div
+          key={term}
+          className="grid gap-1.5 border-b border-line py-5 sm:grid-cols-[14rem_minmax(0,1fr)] sm:gap-8"
+        >
+          <dt className="font-sans text-[0.9375rem] font-semibold text-ink">{term}</dt>
+          <dd className="min-w-0 text-[1rem] leading-relaxed text-body">{text}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
 /** Running prose at a readable measure. */
 export function Prose({ children, className = '' }: { children: ReactNode; className?: string }) {
   return <div className={`max-w-[38rem] space-y-4 ${className}`}>{children}</div>

@@ -4,6 +4,7 @@ import { readProfile, statusKind } from '../../lib/profile'
 import { docHref, requirementHrefs } from '../../lib/docbook'
 import { OG_IMAGE, REPO_URL } from '../../lib/site'
 import { ResultsTable, requirementHref } from '../../components/ResultsTable'
+import { Ruled } from '../../components/report'
 
 export const metadata: Metadata = {
   title: 'Air-gapped signer profile and conformance kit',
@@ -124,7 +125,7 @@ export default async function ProfilePage() {
         {/* THE DOCUMENT'S STATE, AT THE TOP, the way a standards body puts it
             on a draft. A reader should not have to reach the change log to
             learn that nobody has adopted this yet. */}
-        <dl className="mt-12 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <dl className="mt-12 grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-3 lg:grid-cols-6">
           {[
             ['State', `Draft ${profile.header.version}`],
             ['Date', profile.header.date],
@@ -139,8 +140,10 @@ export default async function ProfilePage() {
             ['Adopted by', 'No one yet'],
             ['Discussion', 'GitHub issues'],
           ].map(([k, v]) => (
-            <div key={k} className="card min-w-0 px-4 py-3">
-              <dt className="text-[0.75rem] text-muted">{k}</dt>
+            <div key={k} className="min-w-0 border-t border-ink pt-3">
+              <dt className="font-mono text-[0.75rem] uppercase tracking-[0.08em] text-muted">
+                {k}
+              </dt>
               <dd className="mt-1 text-[0.9375rem] font-semibold leading-snug text-ink">{v}</dd>
             </div>
           ))}
@@ -149,14 +152,7 @@ export default async function ProfilePage() {
 
       <section className="border-t border-line py-16">
         <Head title="Four questions a user cannot answer today" />
-        <ul className="mt-8 grid gap-4 sm:grid-cols-2">
-          {QUESTIONS.map(([q, a]) => (
-            <li key={q} className="card px-6 py-5">
-              <span className="block font-semibold text-ink">{q}</span>
-              <span className="mt-2 block text-[0.9375rem] leading-relaxed text-body">{a}</span>
-            </li>
-          ))}
-        </ul>
+        <Ruled items={QUESTIONS} className="mt-8" />
       </section>
 
       <section className="border-t border-line py-16" id="results">
@@ -226,9 +222,12 @@ export default async function ProfilePage() {
         </div>
 
         <h3 className="label mt-10">Not yet met without qualification</h3>
-        <ul className="mt-3 grid gap-2 lg:grid-cols-2">
+        <ul className="mt-3 grid gap-x-10 border-t border-line lg:grid-cols-2">
           {openRows.map((row) => (
-            <li key={row.id} className="card grid grid-cols-[6rem_minmax(0,1fr)] gap-3 px-4 py-3">
+            <li
+              key={row.id}
+              className="grid grid-cols-[6rem_minmax(0,1fr)] gap-3 border-b border-line py-2.5"
+            >
               <a
                 href={requirementHref(hrefs, row.id)}
                 className="font-mono text-[0.8125rem] text-link hover:text-link-hover"
@@ -246,14 +245,7 @@ export default async function ProfilePage() {
           A profile nobody has argued with is not yet worth adopting. These are the positions people
           who build signers and coordinators may reasonably dispute.
         </Head>
-        <ul className="mt-8 grid gap-4 sm:grid-cols-2">
-          {POSITIONS.map(([k, v]) => (
-            <li key={k} className="card px-6 py-5">
-              <span className="block font-semibold text-ink">{k}</span>
-              <span className="mt-2 block text-[0.9375rem] leading-relaxed text-body">{v}</span>
-            </li>
-          ))}
-        </ul>
+        <Ruled items={POSITIONS} className="mt-8" />
         <p className="mt-8 max-w-2xl text-body">
           If you build a signer or a coordinator, the most useful thing you can do is run the kit
           against it, or tell us which requirement is wrong.{' '}
