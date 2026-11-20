@@ -60,17 +60,19 @@ export default async function ChapterPage({ params }: Props) {
         )}
 
         <h2 className="label mt-10">In this chapter</h2>
-        <ol className="mt-3 grid gap-3">
+        <ol className="mt-3 border-t border-line">
           {chapter.sections.map((section, index) => (
-            <li key={section.href}>
-              <Link href={section.href} className="card flex gap-4 px-5 py-4">
+            <li key={section.href} className="border-b border-line">
+              <Link href={section.href} className="group flex gap-4 py-4">
                 <span className="w-6 shrink-0 font-mono text-[0.8125rem] text-muted tabular-nums">
                   {String(index + 1).padStart(2, '0')}
                 </span>
                 <span className="min-w-0">
-                  <span className="block font-semibold text-ink leading-snug">{section.title}</span>
+                  <span className="block font-semibold text-ink leading-snug group-hover:text-link">
+                    {section.title}
+                  </span>
                   {section.summary === '' ? null : (
-                    <span className="mt-1 block text-[0.9375rem] leading-snug text-muted">
+                    <span className="mt-1 block text-[0.9375rem] leading-snug text-body">
                       {section.summary}
                     </span>
                   )}

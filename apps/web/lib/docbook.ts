@@ -94,9 +94,16 @@ function summarise(nodes: readonly RootContent[]): string {
   // show, so it ends at the clause instead.
   const text =
     first === undefined ? '' : textOf(first).replace(/\s+/g, ' ').trim().replace(/:$/, '.')
-  if (text.length <= 180) return text
-  const cut = text.slice(0, 180)
-  return `${cut.slice(0, cut.lastIndexOf(' '))}...`
+  // Whole sentences, never a cut one. A summary that stopped mid-clause with an
+  // ellipsis read as machine-truncated, and could drop the half of a sentence
+  // that qualifies the first half, which on this site is an overclaim.
+  const sentences = text.split(/(?<=[.!?])\s+(?=[A-Z])/)
+  let summary = sentences[0] ?? ''
+  for (const next of sentences.slice(1)) {
+    if (summary.length + 1 + next.length > 180) break
+    summary = `${summary} ${next}`
+  }
+  return summary
 }
 
 function stringify(nodes: readonly RootContent[]): string {
