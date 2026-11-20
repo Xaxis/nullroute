@@ -170,7 +170,7 @@ function cardPage() {
     .host { font-family: 'Card Mono', monospace; font-size: 22px; color: ${T.muted}; }
     h1 {
       margin: 0; font-family: 'Card Display', serif; font-weight: 600;
-      font-size: 92px; line-height: 1.0; letter-spacing: -0.02em;
+      font-size: 78px; line-height: 1.04; letter-spacing: -0.02em;
     }
     h1 span { display: block; color: ${T.muted}; }
     .head {
@@ -188,10 +188,10 @@ function cardPage() {
       <div class="name">${glyph}<span class="word">nullroute</span></div>
       <span class="host">nullroute.diy</span>
     </div>
-    <h1>Built to be checked,<span>not to be trusted.</span></h1>
+    <h1>An air-gapped Bitcoin signer<span>you build from a Raspberry Pi.</span></h1>
     <div class="head">
-      <div><div class="k">Subject</div><div class="v">Air-gapped Bitcoin signer for the Raspberry Pi</div></div>
-      <div><div class="k">Method</div><div class="v">Specs the build checks</div></div>
+      <div><div class="k">Seed</div><div class="v">SHA-256 of a hundred dice rolls</div></div>
+      <div><div class="k">Transport</div><div class="v">QR codes, both ways</div></div>
       <div><div class="k">Licence</div><div class="v">MIT, open source</div></div>
     </div>
   </body></html>`

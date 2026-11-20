@@ -10,14 +10,14 @@ import '../styles/globals.css'
 export const metadata: Metadata = {
   metadataBase: new URL('https://nullroute.diy'),
   title: {
-    default: 'nullroute: an air-gapped Bitcoin signer built to be checked',
+    default: 'nullroute: an air-gapped Bitcoin signer you build from a Raspberry Pi',
     template: '%s | nullroute',
   },
   description:
-    'An air-gapped Bitcoin signer for the Raspberry Pi, built to be checked rather than trusted. Dice entropy you can reproduce by hand, byte-identical signatures, a machine-checkable specification for every module, and a draft signer profile with a conformance kit any signer can run. Pre-1.0, unaudited, hardware bring-up next.',
+    'An air-gapped Bitcoin signer you build from a Raspberry Pi. A seed from dice rolls you can recompute by hand, transactions by QR code, deterministic signatures, and one hash over every file it runs. A draft signer profile and conformance kit any signer can run. Pre-release, unaudited, hardware bring-up next.',
   openGraph: {
     title: 'nullroute',
-    description: 'An air-gapped Bitcoin signer built to be checked, not trusted.',
+    description: 'An air-gapped Bitcoin signer you build from a Raspberry Pi.',
     url: 'https://nullroute.diy',
     siteName: 'nullroute',
     type: 'website',
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'nullroute',
-    description: 'An air-gapped Bitcoin signer built to be checked, not trusted.',
+    description: 'An air-gapped Bitcoin signer you build from a Raspberry Pi.',
     images: [OG_IMAGE],
   },
   robots: { index: true, follow: true },

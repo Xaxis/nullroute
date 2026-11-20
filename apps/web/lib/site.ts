@@ -24,7 +24,7 @@ export const OG_IMAGE = {
   url: '/brand/og.png',
   width: 1200,
   height: 630,
-  alt: 'nullroute. Built to be checked, not to be trusted. Air-gapped Bitcoin signer for the Raspberry Pi.',
+  alt: 'nullroute. An air-gapped Bitcoin signer you build from a Raspberry Pi.',
   type: 'image/png',
 } as const
 

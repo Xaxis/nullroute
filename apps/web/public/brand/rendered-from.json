@@ -1,9 +1,9 @@
 {
-  "source": "e52830f6d9491783ce5dc2b1e40fe0439daea0f58be89f1b927119f40351a1b8",
+  "source": "79826480d774f78ff8a1bd4a91aac2bffd48ea188799ba6123c7ffbb7e5d5317",
   "platform": "linux-x64",
   "files": {
     "app/apple-icon.png": "ad7c935bcbe8068acecf0a89a87f285359f098648ed0920500b0429b3eb1c561",
-    "public/brand/og.png": "273ef51199a2080e985adcdabf8da90528cd4e81b6d6d9395af42156098c7f6d",
+    "public/brand/og.png": "4c629c758d3e1b01962b81ba123740360eba7a1ab2cf12b7511abe9c519d2802",
     "public/favicon.ico": "7da8214c4c9294c94f6b74cf9254e7506f415b88dd514b30047a437af3ef8e70"
   }
 }
