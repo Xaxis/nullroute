@@ -2,12 +2,12 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { readFacts } from '../lib/facts'
 import { readEntropyExample } from '../lib/entropy'
-import { readParts, readPhases, type Phase } from '../lib/status'
+import { readLog, readParts, readPhases, type Phase } from '../lib/status'
 import { readProfile } from '../lib/profile'
 import { docHref } from '../lib/docbook'
 import { REPO_URL, START_HREF } from '../lib/site'
 import { Shot, checkedScreens, type Screen } from '../components/Device'
-import { Hash, Transcript } from '../components/report'
+import { Hash, InlineMd, Transcript } from '../components/report'
 import { SigningLoop } from '../components/SigningLoop'
 
 /**
@@ -40,6 +40,15 @@ function screenFor(screens: readonly Screen[], file: string): Screen {
   return screen
 }
 
+/**
+ * The opening sentence of a changelog entry, whole. The entries run to a
+ * paragraph each, and the front page shows only that they happened and when;
+ * the roadmap page has them in full.
+ */
+function firstSentence(text: string): string {
+  return text.split(/(?<=[.!?])\s+(?=[A-Z])/)[0] ?? text
+}
+
 function Heading({ id, children }: { id: string; children: ReactNode }) {
   return (
     <h2
@@ -67,6 +76,9 @@ const PHASE_STATE: Record<Phase['kind'], { label: string; bar: string; dot: stri
 export default async function Home() {
   const facts = readFacts()
   const phases = readPhases()
+  // The latest entries as they are, not a selection: picking the flattering
+  // ones would make this a claim about momentum rather than a record of it.
+  const recent = readLog().slice(0, 4)
   const profile = readProfile()
   const { parts, cost } = readParts()
   const screens = checkedScreens(facts.has)
@@ -463,7 +475,28 @@ export default async function Home() {
             )
           })}
         </ol>
+        <div className="mt-16 grid gap-6 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,2fr)] lg:gap-16">
+          <h3 className="text-[1.0625rem] font-semibold text-ink">Recently landed</h3>
+          <ol className="min-w-0 border-t border-line">
+            {recent.map((entry, i) => (
+              <li
+                key={`${entry.date}-${String(i)}`}
+                className="grid gap-1 border-b border-line py-3.5 sm:grid-cols-[7rem_minmax(0,1fr)] sm:gap-6"
+              >
+                <span className="pt-0.5 font-mono text-[0.8125rem] text-muted tabular-nums">
+                  {entry.date}
+                </span>
+                <span className="min-w-0 text-[0.9375rem] leading-relaxed text-body">
+                  <InlineMd text={firstSentence(entry.text)} />
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
         <p className="mt-12 flex flex-wrap gap-x-6 gap-y-2 text-[0.9375rem] font-semibold">
+          <Link href="/status#log" className="link">
+            Everything that has landed
+          </Link>
           <Link href="/status" className="link">
             The roadmap
           </Link>
