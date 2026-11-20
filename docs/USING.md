@@ -88,7 +88,7 @@ Only rolling by hand avoids trusting the device.
 
 ### Letting the device choose
 
-No dice: what every other hardware wallet does by default. It is unverifiable,
+No dice: what most hardware wallets do by default. It is unverifiable,
 because a correct generator and a backdoored one both hand you 24 words. The
 device checks that its generator is present, is not returning a constant, and
 that the kernel pool is seeded. That catches a broken generator, not a
@@ -416,7 +416,9 @@ address belongs to your quorum, and re-register the quorum after restoring the
 seed from your mnemonic.
 
 Restoring shows what the file claims before asking for a passphrase, and says
-all of it is unverified at that point.
+all of it is unverified at that point. Once the file opens, the label, the
+network and whether it holds a seed are read from inside the encryption, so an
+edit to the outside of the file changes nothing that is restored.
 
 ### Proving an address, and checking a proof
 

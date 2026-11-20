@@ -83,7 +83,7 @@ invariants:
 
   - id: INV-PSBT-7
     statement: >
-      Replaceability and any timelock are surfaced in human terms.
+      Replaceability and a non-zero nLockTime are surfaced in human terms.
     tests:
       - packages/core/test/psbt.review.test.ts::reports-replaceability-and-locktime
       - packages/core/test/psbt.review.test.ts::counts-one-signalling-input-as-replaceable
@@ -97,6 +97,17 @@ invariants:
       transaction cannot confirm before it.
     tests:
       - packages/core/test/psbt.review.test.ts::reports-a-locktime-that-final-inputs-leave-unenforced
+
+  - id: INV-PSBT-21
+    statement: >
+      A BIP-68 relative lock on any input is surfaced, in blocks or in seconds
+      with an approximate duration, as a delay counted from the confirmation of
+      the coin that input spends. It is read only where consensus enforces it:
+      transaction version 2 or above, compared unsigned, and the input's
+      sequence with bit 31 clear and a non-zero count. BIP-125 signalling and
+      final sequences set no lock and produce no such warning.
+    tests:
+      - packages/core/test/psbt.review.test.ts::reports-a-relative-lock-where-consensus-enforces-one
 
   - id: INV-PSBT-15
     statement: >

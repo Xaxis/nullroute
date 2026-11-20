@@ -128,6 +128,18 @@ if ! grep -qE "Started.*nullrouted\.service" "$WORK/console-intact.log"; then
   exit 1
 fi
 
+# THE WALLET LIVES ON THE CARD THAT BOOTED. prepare-state once took the first
+# partition named "state" on any disk, USB included. It now names the disk it
+# derived from the dm-verity mapping, and a run that does not say so did not
+# take that path.
+if ! grep -q "on vda, the disk the system was verified from" "$WORK/console-intact.log"; then
+  echo ""
+  echo "  FAILED. prepare-state did not report taking the state partition from the"
+  echo "  disk the verified system was opened from."
+  grep "nullroute-state" "$WORK/console-intact.log" | head -6 | sed 's/^/     /'
+  exit 1
+fi
+
 # THE TWO READINGS OF THE ROOT HASH HAVE TO AGREE.
 #
 # The initramfs reads system.roothash off the boot partition and opens the

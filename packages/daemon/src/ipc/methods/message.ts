@@ -23,15 +23,7 @@ export function messageMethods(ctx: HandlerContext): MethodTable {
   const { session, activeWallet } = ctx
 
   return {
-    /**
-     * Read a message before anything signs it.
-     *
-     * The only method in this group today. core.message.bip322 implements the
-     * commitment and the review; the transaction pair and the witness
-     * encoding are not built, so there is deliberately no `message.sign` here
-     * to call. A method that existed and threw would read as a broken feature
-     * rather than an absent one.
-     */
+    /** Read a message before anything signs it. */
     'message.review': (request) => {
       return reviewMessage(requireString(request, 'message'))
     },
@@ -44,9 +36,11 @@ export function messageMethods(ctx: HandlerContext): MethodTable {
      * the signature, and this device is the only thing that knows which
      * address a path produced.
      *
-     * The review is run again here rather than trusted from an earlier call.
-     * A caller that reviewed one message and signed another would produce a
-     * proof over text nobody read, which is the entire risk on this path.
+     * The review is run again rather than trusted from an earlier call: core's
+     * signMessage and signLegacyMessage refuse what message.review would, before
+     * they derive a key (INV-MSG-7). A caller that reviewed one message and
+     * signed another would produce a proof over text nobody read, which is the
+     * entire risk on this path.
      */
     'message.sign': (request) => {
       const message = requireString(request, 'message')

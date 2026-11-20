@@ -74,12 +74,14 @@ interface BuildOptions {
   readonly sighashType?: number
   readonly sequence?: number
   readonly locktime?: number
+  readonly version?: number
 }
 
 function build(options: BuildOptions): btc.Transaction {
   const tx = new btc.Transaction({
     allowUnknownOutputs: true,
     ...(options.locktime === undefined ? {} : { lockTime: options.locktime }),
+    ...(options.version === undefined ? {} : { version: options.version }),
   })
   const { receive } = ourAddresses()
   const fundingScript = btc.OutScript.encode(
@@ -297,6 +299,43 @@ describe('core.psbt.review', () => {
    * says so, which is what makes the first half a statement about sequences
    * rather than about the number.
    */
+  /**
+   * INV-PSBT-21. The sequence values below are read the way BIP-68 defines
+   * them, and the expected words follow from the BIP's own arithmetic: bit 31
+   * disables, bit 22 selects 512 second units, the low 16 bits count.
+   */
+  it('reports-a-relative-lock-where-consensus-enforces-one', () => {
+    const { changePathOf } = ourAddresses()
+    const relative = (sequence: number, version = 2) =>
+      reviewTransaction(
+        build({ outputs: [{ address: STRANGER, amount: 90_000n }], sequence, version }),
+        { network: MAINNET, isChange: changePathOf }
+      ).warnings.find((w) => w.kind === 'relative-locktime')
+
+    // 144 blocks, the common one-day CSV delay.
+    const blocks = relative(144)
+    expect(blocks?.blocking).toBe(false)
+    expect(blocks?.message).toContain('input 0 144 blocks after the coin it spends confirmed')
+    expect(relative(1)?.message).toContain('input 0 1 block after')
+
+    // Type flag set: 0x00400000 | 169 is 169 * 512 = 86528 seconds, a day.
+    expect(relative(0x00400000 | 169)?.message).toContain('86528 seconds (about 24.0 hours)')
+    expect(relative(0x00400000 | 0xffff)?.message).toContain('33553920 seconds (about 388.4 days)')
+
+    // Bits between 16 and 22, and above 22, carry no meaning and change nothing.
+    expect(relative(0x00010000 | 144)?.message).toContain('144 blocks')
+
+    // No lock: the disable flag (every BIP-125 and final value has it), a zero
+    // count, and a version 1 transaction, which BIP-68 does not apply to.
+    for (const sequence of [0xfffffffd, 0xfffffffe, 0xffffffff, 0x80000090, 0, 0x00400000]) {
+      expect(relative(sequence)).toBeUndefined()
+    }
+    expect(relative(144, 1)).toBeUndefined()
+    // Compared unsigned, as Core does. The library holds the field signed, so
+    // 0xffffffff on the wire is -1 here, and that is above 2 to consensus.
+    expect(relative(144, -1)?.message).toContain('144 blocks')
+  })
+
   it('reports-a-locktime-that-final-inputs-leave-unenforced', () => {
     const { changePathOf } = ourAddresses()
     for (const locktime of [800_000, 1_767_225_600]) {

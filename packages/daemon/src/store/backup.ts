@@ -103,6 +103,16 @@ interface SealedBackup {
    * class of bug as 8cb9494 and fed1a51, by a third route.
    */
   readonly bip39Passphrase?: boolean
+  /**
+   * SEALED COPIES of the outer label and version, and the ones a restore uses.
+   * The label names the restored wallet on the device, and the outer copy is
+   * editable by anyone holding the file: a seed backup relabelled "signet test,
+   * discard" is a way to get one treated as worthless. The outer copies stay
+   * for a human choosing which passphrase to type. Optional so a backup
+   * written before they were sealed still opens; it restores unnamed.
+   */
+  readonly label?: string
+  readonly createdWith?: string
 }
 
 /**
@@ -124,6 +134,8 @@ export function createBackup(
     v: BACKUP_VERSION,
     network: contents.network.id,
     registrations: contents.registrations,
+    label: contents.label,
+    createdWith: version,
     // bytesToHex, not Buffer.from: a Buffer copy of the seed lands in Node's
     // shared pool and outlives this call (INV-STORE-9).
     ...(contents.seed === undefined
@@ -159,9 +171,10 @@ export function createBackup(
  * Read a backup.
  *
  * Everything about the outer document is a hint until the envelope opens.
- * `hasSeed` and `network` sit in plaintext and an attacker with the file can
- * edit them, so the restored values come from the sealed payload and the outer
- * ones are used only to explain the file before a passphrase is entered.
+ * `label`, `network`, `hasSeed` and `createdWith` sit in plaintext and an
+ * attacker with the file can edit them, so the restored values come from the
+ * sealed payload and the outer ones are used only to explain the file before a
+ * passphrase is entered.
  */
 export function restoreBackup(text: string, passphrase: string): RestoredBackup {
   let parsed: unknown
@@ -238,9 +251,19 @@ export function restoreBackup(text: string, passphrase: string): RestoredBackup 
     throw new StoreError('The backup holds a passphrase flag this build cannot read.')
   }
 
-  const label = typeof document['label'] === 'string' ? document['label'] : 'restored wallet'
-  const createdWith =
-    typeof document['createdWith'] === 'string' ? document['createdWith'] : 'unknown'
+  // From inside the ciphertext, like the network, and for the same reason
+  // (INV-BACKUP-3). The outer copies are never read here: a backup sealed
+  // before these fields existed restores unnamed rather than trusting them.
+  const sealedLabel = sealed['label']
+  const sealedCreatedWith = sealed['createdWith']
+  if (sealedLabel !== undefined && typeof sealedLabel !== 'string') {
+    throw new StoreError('The backup holds a label this build cannot read.')
+  }
+  if (sealedCreatedWith !== undefined && typeof sealedCreatedWith !== 'string') {
+    throw new StoreError('The backup holds a version field this build cannot read.')
+  }
+  const label = sealedLabel ?? 'restored wallet'
+  const createdWith = sealedCreatedWith ?? 'unknown'
 
   return {
     network: networkById(networkId),

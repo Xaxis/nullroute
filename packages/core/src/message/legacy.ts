@@ -143,6 +143,8 @@ export function signLegacyMessage(
   path: string,
   message: string
 ): LegacySignature & { readonly path: string } {
+  // Refused before the key exists, as on the BIP-322 path. INV-MSG-7.
+  assertSignable(message)
   const normalised = normalizePath(path)
   const child = rootFromSeed(seed, network).derive(normalised)
   if (child.privateKey === null) {

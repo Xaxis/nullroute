@@ -2,8 +2,8 @@
 
 Workstream E. A plain-language summary for a reader who knows Bitcoin and has
 never seen this project. Every number below says where it came from. Numbers
-from a command were produced on `main` at commit `09dce4c` on 26 October
-2026.
+from a command were produced on 20 November 2026, on the tree of the commit
+that last changed this file (`git log -1 -- research/proposal-summary.md`).
 
 ## Status
 
@@ -13,11 +13,12 @@ from a command were produced on `main` at commit `09dce4c` on 26 October
   code.
 - **Where it runs today.** The whole device (signing daemon and touchscreen
   interface) runs on a Mac or a Linux machine with `make dev`. It also builds as
-  an SD card image for a Raspberry Pi 4, and that image boots under QEMU, where
-  `make image-boot-test` checks that a copy with one byte changed fails to boot.
-- **Next milestone: hardware bring-up.** The first boot on a Raspberry Pi 4 with
-  the official 7 inch touchscreen has not happened yet. It is the next piece of
-  work, and it is what exercises the firmware path, the panel, the touch
+  an SD card image for a Raspberry Pi 4 or 5. CI builds that card on every push
+  that touches `provisioning/`, boots it under QEMU, and checks that a copy with
+  one byte changed fails to boot.
+- **Next milestone: hardware bring-up**, on the maintainer's Pi 5 with the
+  official 7 inch touchscreen, flashed from the card CI built. It is what
+  exercises the firmware path, the panel, the touch
   controller and the camera.
 - **Keep real money off it** until an outside review and hardware bring-up are
   both done. The [README](../README.md#status) says the same.
@@ -87,13 +88,13 @@ Output of `make verify` on this branch:
 
 | Check | Result |
 | --- | --- |
-| Coverage | 272 of 272 runtime exports of `packages/core` named by a spec |
-| Invariants | 354 invariants bound to 1058 tests, each of which ran and passed; 1376 tests in the suite |
+| Coverage | 273 of 273 runtime exports of `packages/core` named by a spec |
+| Invariants | 355 invariants bound to 1061 tests, each of which ran and passed; 1383 tests in the suite |
 | Vectors | 38 of 38 vector files match their pinned hash |
 | Differential | 3 modules cross-checked against `bitcoinjs-lib` |
-| Integrity | 438 files, root `f08ead186b9eb2a84e77e5850cccad26b7eb7486757d0911558ff296113e7d0c` |
+| Integrity | 439 files, root `34d83088e00e7501d212a61918512b8c2179e48391ae92eef46f47d45565e6c8`, and no tracked file under those paths left out |
 
-Totals: 39 specs, 354 invariants. The README badges state the same two numbers,
+Totals: 39 specs, 355 invariants. The README badges state the same two numbers,
 and `make badges` checks that they match.
 
 What this proves and what it does not: the code does what its specs say, on the
@@ -115,7 +116,7 @@ $ git ls-files -z package.json package-lock.json packages spec provisioning | LC
 ```
 
 For this summary the three were run with GNU coreutils 9.4 on Linux, after an
-earlier check with macOS `shasum -a 256`. All 438 files
+earlier check with macOS `shasum -a 256`. All 439 files
 matched, and both roots were the value in the table above.
 
 The screen also says what the number does not prove. It is drawn by the software
@@ -265,8 +266,8 @@ and the multi-frame PSBT sent as base64 text instead of binary (G1, `a0ed400`).
 
 ### Waiting on hardware bring-up
 
-Everything below exists as code or as a build-time check, and none of it has
-run on a Raspberry Pi.
+Everything below exists as code or as a build-time check, and bring-up is what
+runs it on a Raspberry Pi.
 
 - The firmware path from power-on to the kernel, which is built and on the card.
 - The DSI panel and its touch controller (SP-HW-1, SP-HW-4). The build refuses
@@ -283,8 +284,10 @@ run on a Raspberry Pi.
   QEMU.
 - Network interfaces on the running device (SP-HW-6). Radio drivers and
   firmware are removed from the image; the radio chip is still on the board.
-- Argon2id cost on the board: the spec states roughly half a second per guess on
-  a Pi 4 (SP-HW-10).
+- Argon2id cost on the board: not timed on any board (SP-HW-10).
+- The hardware RNG read by the daemon's health check. The card gives the node
+  to the daemon's group (INV-PROV-36), a rule added after a fact-check found the
+  daemon could not have read it.
 
 ### Out of scope by design, and not built
 
@@ -300,7 +303,18 @@ full list is in [docs/THREAT-MODEL.md](../docs/THREAT-MODEL.md#out-of-scope).
 
 ### Documents that disagreed with the code
 
-Writing this summary found four, all corrected in the commit that added it:
+Every long document has now been checked against the code by reading each
+statement and finding what implements it. On 28 October the verification guide
+had 23 statements the code contradicted and the user manual seven; the threat
+model had 18, one of which was a real signing-path bug (INV-SIG-13: the signer
+signed an input the review showed as someone else's). On 20 November the entropy
+guide had 16, one of which was a real bring-up bug (INV-PROV-36: the daemon
+could never have read the Pi's hardware RNG). Each was corrected by narrowing the
+document or fixing the code, never by widening a claim. The CHANGELOG lists
+them.
+
+Writing this summary in October found four, all corrected in the commit that
+added it:
 the SD card transport described as available in the README and the threat
 model, two stale rows in `spec/signer-profile.md`, the failure count in
 `conformance/README.md`, and INV-PSBT-1, which was named in the threat model

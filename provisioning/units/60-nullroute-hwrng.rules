@@ -1,0 +1,10 @@
+# The hardware RNG, readable by the signing daemon and nobody else.
+#
+# The kernel creates /dev/hwrng as root:root 0600, and nullrouted.service runs
+# as the nullroute account. DeviceAllow=/dev/hwrng in that unit permits the
+# device in the cgroup; it grants no file permission. Without this line the
+# entropy health check (daemon.entropy.health) could never open the node on a
+# Pi, reported the hardware RNG as failed, and a machine-only seed was refused
+# on every device ever built. Read only, because nothing here writes to it.
+# INV-PROV-36.
+SUBSYSTEM=="misc", KERNEL=="hw_random", GROUP="nullroute", MODE="0440"

@@ -3,7 +3,7 @@
 [![CI](https://github.com/Xaxis/nullroute/actions/workflows/ci.yml/badge.svg)](https://github.com/Xaxis/nullroute/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Specs](https://img.shields.io/badge/specs-39-informational)](packages/verify)
-[![Invariants](https://img.shields.io/badge/invariants-354-informational)](docs/THREAT-MODEL.md)
+[![Invariants](https://img.shields.io/badge/invariants-355-informational)](docs/THREAT-MODEL.md)
 
 An air-gapped Bitcoin signing device you can check rather than trust. You roll
 100 dice, it turns them into a seed by a rule you can repeat with `sha256sum`,
@@ -112,7 +112,7 @@ Roughly $100 to $120.
 | Part | What to get | Notes |
 | --- | --- | --- |
 | Board | Raspberry Pi 4 (4GB) | The only board this image supports. |
-| Board, in bring-up | Raspberry Pi 5 | The owner's board. The card carries its boot files, on Raspberry Pi's own kernel because that is the only kernel that drives the 7 inch panel on a Pi 5, and nothing has booted on one yet: bring-up, not support. |
+| Board, in bring-up | Raspberry Pi 5 | The maintainer's board, and the first hardware bring-up. The card carries its boot files, on Raspberry Pi's own kernel because that is the only kernel that drives the 7 inch panel on a Pi 5. It moves to supported once a card boots on one with the panel lit. |
 | Screen | Official Raspberry Pi 7 inch touchscreen | The DSI panel. Every screen is measured at exactly 800x480 and no other size. |
 | Storage | 16GB+ A2 SD card | The image is about 1.6GB. |
 | Dice | One d6 | Casino grade if you care. Any die works. |

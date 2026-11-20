@@ -145,22 +145,49 @@ are not: QEMU loads the kernel itself, so the firmware and `config.txt` are
 never read, and it has no virtual terminal for the screen. The Pi 5's kernel
 has not booted anywhere yet.
 `getty@tty1` and `getty.target` are masked, so no getty competes for the
-console. If the panel stays dark and the rest worked, ask these in order:
+console, and there is no shell to log in to.
 
-```console
-$ systemctl status nullroute-kiosk.service
-$ journalctl -u nullroute-kiosk.service -b
-$ ls -l /dev/dri/            # a card per GPU and display; on a Pi 5 the panel is the last
-$ ls -l /dev/tty1            # and a virtual terminal
+**If the panel stays dark, or it does not boot at all, read the boot over
+serial.** On a Pi 5, connect a 3.3 V serial adapter to the three-pin debug UART
+connector between the two HDMI ports (Raspberry Pi's Debug Probe fits it) and
+open it at 115200 baud. On another computer, add this to the end of the single
+line in `cmdline.txt` on the card's boot partition:
+
 ```
+console=ttyAMA10,115200 systemd.journald.forward_to_console=1
+```
+
+Every initramfs step, every unit that starts or fails, and the kiosk's own
+errors then print on the serial line. The boot partition is outside dm-verity,
+so the edit changes neither number the lock screen shows; take it out when you
+are done. The Pi 4's serial console on Debian's kernel has not been worked out
+yet.
+
+In that log, for the kiosk:
 
 - `208/STDIN`: no `/dev/tty1`.
 - `216/GROUP`: an account or group is missing.
 - A `cage` error about a seat: logind gave it none, which `PAMName=login` in
   the unit is for.
 
-**If it does not boot at all,** attach a serial console. Every failure path in
-the initramfs prints what it was looking for.
+### What to record when it boots
+
+Bring-up is evidence for everyone else, so keep:
+
+1. A photo of the lock screen with both numbers on it, beside the manifest root
+   `make image` printed or the card's `SHA256SUMS`.
+2. The serial log from power-on to the lock screen, saved to a file.
+3. The verdict on that log for what only a running device can answer, mount
+   flags in force, swap and listening sockets:
+
+   ```console
+   $ node tools/verify-image.mjs --console boot.log --require-checked INV-PROV-11,INV-PROV-12,INV-PROV-15
+   ```
+
+4. Touch, the camera reading a QR code, and the entropy health screen, which
+   should report the hardware RNG as read (INV-PROV-36).
+
+Open an issue with what you found, working or not.
 
 ## Verifying before you flash, and the tiers
 

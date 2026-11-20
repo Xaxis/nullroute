@@ -41,7 +41,7 @@ algorithm: >
   Those 32 bytes are then standard BIP-39 entropy for a 24-word mnemonic, with
   no nullroute-specific behaviour anywhere in the conversion.
 
-  The minimum is 100 rolls, from ceil(256 / log2(6)) = ceil(99.033) = 100. Note
+  The minimum is 100 rolls, from ceil(256 / log2(6)) = ceil(99.034) = 100. Note
   that 99 rolls yields 255.911 bits and is therefore short of 256; the project
   brief stated 99 was sufficient and was wrong by 0.089 bits.
 

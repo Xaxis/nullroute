@@ -51,12 +51,14 @@ invariants:
 
   - id: INV-BACKUP-3
     statement: >
-      The network and whether a seed is present are taken from inside the
-      ciphertext. Editing the plaintext copies in the outer document changes
-      nothing about what is restored.
+      The network, the label, the writing version and whether a seed is
+      present are taken from inside the ciphertext. Editing the plaintext
+      copies in the outer document changes nothing about what is restored; they
+      are read only to describe the file before it is opened.
     tests:
       - packages/daemon/test/backup.test.ts::takes-the-network-from-inside-the-ciphertext
       - packages/daemon/test/backup.test.ts::takes-whether-there-is-a-seed-from-inside-the-ciphertext
+      - packages/daemon/test/backup.test.ts::takes-the-label-from-inside-the-ciphertext
 
   - id: INV-BACKUP-4
     statement: >

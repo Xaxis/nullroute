@@ -34,6 +34,10 @@ export interface IntegrityResult {
   readonly rootHash: string
   readonly mismatched: readonly { path: string; expected: string; actual: string }[]
   readonly missing: readonly string[]
+  /** Tracked under a root the manifest covers, and absent from it. */
+  readonly unlisted: readonly string[]
+  /** Whether a tracked-file list was available to check completeness against. */
+  readonly completeness: 'checked' | 'not-checked'
   readonly ok: boolean
 }
 
@@ -83,7 +87,11 @@ export function rootHashOf(manifestText: string): string {
  * a verifier computes with `LC_ALL=C sort`, and the mismatch would look like
  * tampering rather than like a locale bug.
  */
-export function checkIntegrity(root: string, manifestPath = 'MANIFEST.lock'): IntegrityResult {
+export function checkIntegrity(
+  root: string,
+  manifestPath = 'MANIFEST.lock',
+  tracked?: readonly string[]
+): IntegrityResult {
   const text = readFileSync(join(root, manifestPath), 'utf8')
   const entries = parseManifest(text)
 
@@ -130,11 +138,27 @@ export function checkIntegrity(root: string, manifestPath = 'MANIFEST.lock'): In
     lowered.set(key, entry.path)
   }
 
+  // COMPLETENESS. Every check above asks whether the listed files are intact,
+  // and none asks whether the list is whole: a file committed without running
+  // `make manifest` sat outside the root hash while every row passed. The roots
+  // are read from the manifest itself (each entry's first path segment), so
+  // this needs no second copy of the Makefile's MANIFEST_ROOTS to drift from it.
+  const listed = new Set(entries.map((e) => e.path))
+  const roots = new Set(entries.map((e) => e.path.split('/')[0] ?? e.path))
+  const unlisted =
+    tracked === undefined
+      ? []
+      : tracked
+          .filter((p) => roots.has(p.split('/')[0] ?? p) && !listed.has(p))
+          .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
+
   return {
     entries,
     rootHash: rootHashOf(text),
     mismatched,
     missing,
-    ok: mismatched.length === 0 && missing.length === 0,
+    unlisted,
+    completeness: tracked === undefined ? 'not-checked' : 'checked',
+    ok: mismatched.length === 0 && missing.length === 0 && unlisted.length === 0,
   }
 }

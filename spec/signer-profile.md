@@ -719,9 +719,9 @@ sentence; manual review for the second.
 
 **SP-HW-10.** Cost parameters tuned to one board (key stretching, parse size
 limits) SHOULD be re-measured on each board a profile adds. nullroute's
-Argon2id at 64 MiB and three passes is stated as "roughly half a second per
-guess on a Pi 4" (`packages/daemon/src/store/store.spec.yaml`). Check: manual
-timing on the board.
+Argon2id at 64 MiB and three passes has not been timed on any board
+(`packages/daemon/src/store/store.spec.yaml`). Check: manual timing on the
+board.
 
 ### 5.2 Hardware assumptions already in nullroute
 
@@ -744,7 +744,7 @@ overlay, and a second panel needs a layout that passes SP-HW-2 at its size.
 | SP-HW-7 | Met | INV-STORE-1, INV-PROV-11 |
 | SP-HW-8 | Met in the build; unverified on hardware | `os-verity.yaml`, INV-BOOT-1 |
 | SP-HW-9 | Met | INV-DICE-7, INV-SIG-1, INV-SIG-2 |
-| SP-HW-10 | Measured on Pi 4 per its spec | `store.spec.yaml` |
+| SP-HW-10 | Unverified until bring-up | The cost has not been timed on any board (`store.spec.yaml`) |
 
 ## 6. Transport
 

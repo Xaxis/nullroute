@@ -51,40 +51,41 @@ this document is theatre.
 
 ## In scope: threats the design must defend against
 
-Each row has a corresponding invariant in the codebase and a test that fails
-loudly if the defence regresses. Invariant identifiers are listed in the
-[Invariants](#invariants) section and enforced by `npm run verify`.
+Each row names the invariants behind it. Most are spec invariants bound to
+tests that `make verify` requires to pass; a few are enforced by lint, a check
+script or the CI recovery drill instead, and the [Invariants](#invariants)
+section says which.
 
 | Threat | Mitigation | Invariant |
 | --- | --- | --- |
-| Malicious or compromised RNG | Dice-only entropy path, hand-reproducible derivation, HKDF combiner that survives one bad source | INV-ENT-1..4 |
-| Key exfiltration through signature nonces | RFC 6979 deterministic ECDSA, BIP-340 Schnorr with `aux_rand` fixed to 32 zero bytes, third-party reproducibility verifier | INV-SIG-1, INV-SIG-2 |
+| Malicious or compromised RNG | Dice-only entropy path whose derivation you can reproduce by hand, and an HKDF combiner for dice plus machine entropy that a stuck second source cannot weaken | INV-DICE-1..3, INV-ENT-4 |
+| Key exfiltration through signature nonces | RFC 6979 deterministic ECDSA, BIP-340 Schnorr with `aux_rand` fixed to 32 zero bytes, and ECDSA signatures checked byte for byte against libsecp256k1 (`make test-repro`). No Schnorr signature is compared with another implementation | INV-SIG-1, INV-SIG-2 |
 | Change address substitution in a malicious PSBT | Every change output re-derived from a registered descriptor and compared exactly | INV-PSBT-2 |
 | Fee drain | Fee derived from inputs minus outputs and shown in sats, BTC, sat/vB, and as a percentage of spend, with a warning above a threshold (a warning, not a block). A segwit v0 input whose PSBT does not carry the transaction it spends blocks until overridden, because its amount could be understated | INV-PSBT-4, INV-PSBT-5, INV-PSBT-17 |
-| Sighash abuse | `SIGHASH_ALL` and `SIGHASH_DEFAULT` enforced, anything else refused unless advanced mode is explicitly enabled for that one operation and never persisted | INV-PSBT-3 |
-| Hidden timelock or RBF state | `nLockTime` and `nSequence` surfaced in human terms on the review screen | INV-PSBT-7 |
-| Signing for a script we do not own | Refuse any input whose script does not match a registered descriptor | INV-PSBT-1 |
-| Hostile input parsing (PSBT, QR, SD, snapshot) | Strict size limits, defensive parsers, fuzzing, fail closed | INV-PSBT-1 |
+| Sighash abuse | Any flag other than `SIGHASH_ALL` or `SIGHASH_DEFAULT` blocks signing. The block, like every blocking warning, lifts only for a request that carries an explicit override for that one signature, and nothing stores it | INV-PSBT-3, INV-SIG-3 |
+| Hidden timelock or RBF state | BIP-125 replaceability, an `nLockTime` that consensus enforces (and one it ignores, said as ignored), and BIP-68 relative locks on inputs, in human terms on the review screen | INV-PSBT-7, INV-PSBT-20, INV-PSBT-21 |
+| Signing for a script we do not own | Only inputs whose script the wallet derives are signed, one at a time by index. Every other input is left unsigned, and a transaction with none of ours is refused | INV-PSBT-1, INV-SIG-13 |
+| Hostile input parsing (PSBT, QR) | Size limits, parsers that fail closed, published invalid vectors, and a memory-safe language. No fuzz or property tests run against the PSBT or QR parsers, and no SD card parser exists | INV-PSBT-1 |
 | Network exfiltration | No network code paths at all, enforced by a lint rule and a runtime listener assertion, not by convention. The one listener is a loopback bridge on 127.0.0.1, whose host is a constant | INV-NET-1, INV-NET-2, INV-NET-3, INV-BRIDGE-1 |
-| Key material reaching the frontend | Frontend receives only xpubs, addresses, descriptors, and PSBTs. Asserted against serialized responses. | INV-KEY-1 |
+| Key material reaching the frontend | The frontend receives xpubs, addresses, descriptors and PSBTs, plus three named exceptions: the mnemonic once at setup so you can write it down, a BIP-85 child mnemonic, and a backup you asked to include the seed, sealed under your passphrase. Asserted against serialized responses | INV-KEY-1 |
 | Data remanence in memory | Typed `Secret` wrapper with explicit `dispose()`, tested for zeroization. Its use is enforced by convention and review, not by lint, and there is no heap snapshot test | INV-KEY-2 |
 | Data remanence on disk | No swap, tmpfs for scratch, seed encrypted at rest under Argon2id and AES-256-GCM | INV-KEY-2, INV-STORE-1 |
 | A coordinator substituting a cosigner key | Registration re-derives this device's key and refuses a quorum it is not in; fingerprints are displayed, never trusted | INV-MULTI-6, INV-MULTI-7 |
 | Offline guessing of a stolen card | Argon2id at 64 MiB, parameters authenticated so they cannot be weakened in the file | INV-STORE-3 |
-| Supply chain tampering | Exact version pins, committed lockfile, `ignore-scripts=true`, SBOM, dependency review on every lockfile change | INV-BUILD-1 |
+| Supply chain tampering | Exact version pins, committed lockfile, `ignore-scripts=true`, an SBOM, and the lockfile inside the manifest root hash. Reviewing each dependency change is a process the maintainer follows, not a check | INV-BUILD-1 |
 | Build tampering | Reproducible builds, manifest root hash displayed at boot and comparable against one you compute from the source. Nothing has been released, so there is no published hash to compare against yet | INV-BUILD-1 |
 | Casual physical access | Seed encrypted under an Argon2id-derived key, passphrase gate, failed-attempt counter that erases the sealed blob | INV-STORE-1, INV-STORE-4 |
-| Operator error | Address verification mode, descriptor checksums, forced scroll-through review, fingerprint display before funds actions | INV-INTEROP-1 |
+| Operator error | Address verification mode, descriptor checksums, forced scroll-through review, and the wallet fingerprint at unlock. The signing review does not show it | INV-INTEROP-1 |
 | Vendor lock-in becoming a loss vector | Every wallet recoverable from the mnemonic and a standard descriptor with third-party software, proved in CI against Bitcoin Core | INV-INTEROP-1 |
 | A message signature being replayable as a transaction | BIP-322 signs a transaction pair that cannot exist on chain: `to_spend` references an all-zeros outpoint at index `0xffffffff`, so the signature commits to something no consensus rule will ever accept. The older signmessage scheme, used for legacy addresses, is not a transaction at all: it commits to a fixed magic string and the message, which no sighash algorithm ever produces | INV-MSG-5, INV-MSG-11 |
 | A proof of one scheme being accepted as a proof of the other | The signing scheme is chosen from the script type and the verifying scheme from the address, never from a parameter a caller passes, so no request can ask for one and receive the other. A legacy address presented to the BIP-322 verifier is named as the wrong scheme rather than reported as malformed | INV-MSG-12, INV-DAEMON-23 |
 | A valid signature by the wrong key reading as a proof | The key is checked against the address before the signature is checked. This matters most in the legacy scheme, where recovery ALWAYS produces some valid public key, so the signature verifying means nothing until the recovered key is shown to produce the address being claimed | INV-MSG-9, INV-MSG-12 |
 | An unlocked device being left, with a seed resident in daemon memory | The wallet closes and the seed is zeroized after ten minutes with nobody touching the screen. Only a touch resets the clock: an IPC request does not, because a screen that polls would otherwise hold the seed open indefinitely. See the section on an unlocked device that has been left for the three things this does not do | INV-IDLE-1, INV-IDLE-2 |
-| A message that displays differently from what is signed | Refused before anything is derived, on the review path and on the signing path, rather than signed with a warning | INV-MSG-1, INV-MSG-7 |
+| A message that displays differently from what is signed | Refused rather than signed with a warning, on the review path and on the signing path, before any key is derived | INV-MSG-2, INV-MSG-7 |
 | A label rendering as text it does not contain, beside an amount on the signing screen | Refused rather than repaired, so a file that tried is visible as a skipped line instead of being quietly cleaned up | INV-LABEL-3 |
 | A backup file being a second copy of the money that nobody realised was one | Seedless by default; including the seed changes the action and states what it means beforehand and again on the written file | INV-BACKUP-1 |
-| A backup's outer envelope lying about what is inside it | Network, seed presence and identity are read from inside the ciphertext; the header is authenticated as AAD, so editing it fails the tag rather than changing what is restored | INV-BACKUP-2, INV-BACKUP-3 |
-| A BIP-85 child being treated as independent of its parent | The screen states, beside the words themselves, that anyone holding the parent mnemonic derives every child it has produced, and names rolling dice as the alternative | INV-BIP85-2 |
+| A backup's outer document lying about what is inside it | The label, network, seed presence and writing version outside the ciphertext are unauthenticated, and are only shown to describe the file before it is opened. A restore reads all four from inside the ciphertext, so editing the outside changes nothing restored. The envelope's own header (format, version, KDF parameters and cipher) is authenticated as AAD | INV-BACKUP-2, INV-BACKUP-3, INV-STORE-3 |
+| A BIP-85 child being treated as independent of its parent | The screen states, beside the words themselves, that anyone holding the parent mnemonic derives every child it has produced, and names rolling dice as the alternative | INV-UI-49 |
 
 ### On the exfiltration threat specifically
 
@@ -132,9 +133,10 @@ What it actually buys you is time and plausibility against an unsophisticated
 adversary, for example a thief who wants a quick win and moves on. That is a
 real but narrow benefit.
 
-The device says this in the UI, not just in this document. Nothing in the
-running system uses the word "duress", because a screen that says "duress PIN"
-tells the adversary what to ask for.
+When it is built, the device has to say this in the UI and not only here;
+today no screen mentions coercion at all. Nothing in the running system uses the
+word "duress", because a screen that says "duress PIN" tells the adversary what
+to ask for.
 
 **If you are under credible physical threat, give them the money.**
 
@@ -177,22 +179,27 @@ warning exists because a lock that arrives with no warning is indistinguishable
 from a crash, and a security feature that interrupts somebody mid-review is one
 they will find a way around.
 
-### Malicious QR or SD payloads
+### Malicious QR payloads
 
-Parsers are fuzzed, size-limited, and fail closed. This is real hardening and it
-raises the bar considerably.
+The PSBT and QR parsers enforce size limits, fail closed, and are tested against
+published invalid vectors and real coordinator exports. They are not fuzzed:
+no fuzz or property-based test runs against them, and saying otherwise here for
+months was an overclaim. There is no SD card transport, so there is no SD
+parser to attack.
 
 It used to credit removable media being mounted `noexec,nosuid,nodev` as well.
-Nothing in this repository mounts removable media: there is no automount, no
-udev rule that mounts removable media and no mount unit, the daemon contains no mount call and is forbidden
-the syscall group, and the only filesystems carrying those options are the
-`/tmp`, `/var/tmp` and `/run` tmpfs mounts, which are not where a payload
-arrives. Claiming a control the tree does not implement is the failure this
-document exists to avoid, so it is struck rather than softened.
+Nothing in this repository mounts removable media for a payload: there is no
+automount, no udev rule that mounts removable media and no mount unit, and the
+daemon contains no mount call and is forbidden the syscall group. The mounts
+that do carry some of those options are the `/tmp`, `/var/tmp` and `/run`
+tmpfs mounts and the boot partition, none of which is where a payload arrives.
+The state partition that holds the wallet is mounted `nosuid,nodev`, and only
+from the disk the verified system booted from: until 20 November 2026 the
+script took the first partition named "state" on any disk, USB included.
 
 It is not a proof. These are hand-written parsers in a memory-safe language
 processing attacker-controlled input, and the honest claim is "defensively
-written and fuzzed", not "cannot be exploited".
+written and tested against hostile vectors", not "cannot be exploited".
 
 ---
 
@@ -204,8 +211,11 @@ includes one of them, this is the wrong device.
 **No secure element.** This is the most important line in this document. The
 seed is encrypted at rest with AES-256-GCM under a key stretched from your
 passphrase by Argon2id at 64 MiB and three passes, and that is all. An attacker
-holding the SD card is limited only by your passphrase strength and that cost,
-which is roughly half a second per guess on this class of hardware. There is no
+holding the SD card is limited only by your passphrase strength and that cost.
+The time per guess has not been measured on a Pi, and an attacker would not use
+one: native Argon2id on their own hardware is faster than this device's
+JavaScript, and the 64 MiB each guess needs is what limits how many run at once.
+A short numeric PIN does not survive that. There is no
 tamper-resistant chip rate-limiting them, no key that never leaves hardware, and
 no self-destruct. A Coldcard or a BitBox02 is genuinely better than nullroute on
 this specific axis, and that is exactly why the recommended deployment is a
@@ -293,13 +303,15 @@ how much bitcoin you own are all outside what any device can fix.
 | --- | --- | --- |
 | Out | Extended public keys, addresses, output descriptors | Nothing secret |
 | Out | Signed transactions | Nothing secret |
+| Out | A backup, if you choose to include the seed | The seed, encrypted under the backup's passphrase |
 | In | Unsigned transactions (PSBT) | Untrusted |
 | In | Output descriptors and coordinator setup files | Untrusted |
 | In | Addresses to check | Untrusted |
 
-Nothing carrying a private key crosses in either direction. The seed is written
-down by you, on paper, once. A backup file can hold an encrypted copy if you ask
-for one, and it says so in those words before it writes anything.
+Nothing carrying a private key crosses unencrypted. The seed is shown once at
+setup and written down by you, on paper. A backup can hold an encrypted copy if
+you ask for one, it leaves as a QR code like everything else, and the device
+says what it holds in those words before it writes anything.
 
 ### What it stops, and what it does not
 
@@ -409,8 +421,11 @@ Stated so they can be challenged:
 The full list lives in the spec files and is checked by `make verify`. The
 security-critical ones are below.
 
-Every row here is enforced by a spec and its tests unless it is marked
-*Planned*, which means the design is on record and nothing implements it yet. A
+Every row here is enforced unless it is marked *Planned*, which means the
+design is on record and nothing implements it yet. Most rows are spec
+invariants bound to tests. INV-NET-2, INV-ENT-7, INV-UI-102 and INV-WALLET-1
+are enforced by lint, INV-NET-3 by `make device-csp`, and INV-INTEROP-1 and
+INV-INTEROP-2 by the recovery drill in CI. A
 planned invariant is a statement about a future build and protects you from
 nothing today. `make invariant-claims` checks that this page and the spec files
 agree about which is which, so a row cannot quietly become a promise the code
@@ -420,17 +435,18 @@ does not keep.
 | --- | --- |
 | INV-NET-1 | The daemon binds only to a Unix domain socket or `127.0.0.1`. No listener exists on any external interface. |
 | INV-NET-2 | No source file imports `http`, `https`, `net`, `dgram`, `dns`, or `fetch` outside an allowlisted loopback IPC layer. Enforced by lint. |
-| INV-NET-3 | The frontend CSP is `default-src 'none'` and `connect-src 'self'`, so nothing can be fetched from anywhere. No CDN, no remote fonts, no telemetry. Three narrower allowances exist and are asserted by `make device-csp`: `'wasm-unsafe-eval'` in `script-src` for the QR decoder, `data:` in `img-src` for the codes this device draws, and `blob:` in `media-src` for the camera preview. None of them can reach the network. |
+| INV-NET-3 | The frontend CSP is `default-src 'none'` and `connect-src 'self'`, so nothing can be fetched from anywhere. No CDN, no remote fonts, no telemetry. Two narrower allowances exist, and `make device-csp` fails on any other: `'wasm-unsafe-eval'` in `script-src` for the QR decoder, and `data:` in `img-src` for the codes this device draws. Neither can reach the network. The camera preview needs no grant, because a camera stream assigned to a video element fetches nothing. |
 | INV-BRIDGE-1 | The loopback bridge that serves the kiosk browser binds `127.0.0.1` and nothing else. The host is a constant in `packages/daemon/src/bridge/server.ts`, not a parameter, so no caller and no environment variable can widen it. It exists because a page in a browser speaks HTTP and cannot open a Unix socket. Not numbered INV-NET-4: that id is taken by a `core` invariant about Bitcoin network version bytes, which is a different meaning of the word sharing the same prefix. |
 | INV-KEY-1 | Private key material and seed bytes never leave the daemon process, with three named exceptions: `seed.reveal`, which shows a mnemonic only between generation and confirmation and never for a seed loaded from storage; `bip85.derive`, which returns a hardened child mnemonic because writing it down is the point of BIP-85, capped per unlock; and `backup.create` with `includeSeed`, which seals the seed under a caller-chosen passphrase and says so in its response. |
 | INV-KEY-2 | All buffers holding secrets are zeroized after use, through a typed `Secret` wrapper with explicit `dispose()`. |
 | INV-SIG-1 | Every ECDSA signature uses RFC 6979 deterministic nonces. Every Schnorr signature uses BIP-340 with `aux_rand` set to 32 zero bytes. |
 | INV-SIG-2 | The same seed and the same PSBT produce byte-identical output, confirmed against an independent implementation. |
-| INV-PSBT-1 | The device refuses to sign any input whose script cannot be matched to a registered descriptor. |
+| INV-PSBT-1 | The device signs only inputs whose script it derives from its own seed or a registered quorum. Any other input is left unsigned, and a transaction with none of ours is refused. |
+| INV-SIG-13 | Only inputs the daemon names as owned, each with its key's path, are signed, one at a time, and an owned input that key cannot sign is an error. Until 28 October 2026 the signer signed every input whose script contained the key, including one the review had shown as someone else's. |
 | INV-PSBT-2 | Any output not provably derivable from a registered descriptor at a known change path is displayed as an external payment. |
-| INV-PSBT-3 | Sighash types other than `SIGHASH_ALL` / `SIGHASH_DEFAULT` are refused unless advanced mode is explicitly enabled, per operation, never persisted. |
-| INV-BUILD-1 | `npm run verify` must pass before the app starts. On failure the UI shows the error and refuses to load the wallet. |
-| INV-ENT-7 | No file in `packages/core` or `packages/daemon` calls `Math.random()`, and the frontend calls neither it nor `crypto.getRandomValues()`. Entropy is collected in the daemon or it is not collected. Enforced by lint. |
+| INV-PSBT-3 | Any sighash flag other than `SIGHASH_ALL` or `SIGHASH_DEFAULT` blocks signing, including every ANYONECANPAY variant and a mixed set. A request may override a blocking warning for that one signature; nothing stores the override (INV-SIG-3). |
+| INV-BUILD-1 | The daemon starts only on a passing verification report that names the SHA-256 of the `MANIFEST.lock` beside it. The report is produced by `make verify` at build time, not re-run at boot. On failure the daemon exits, and the screen shows that the daemon is not reachable rather than the verification error. |
+| INV-ENT-7 | No file in `packages/core` or `packages/daemon` calls `Math.random()`, and the frontend calls neither it nor `crypto.getRandomValues()`, so the frontend generates no randomness. It does carry the dice rolls to the daemon, which does all hashing and derivation. Enforced by lint. |
 | INV-UI-102 | A verdict field that crossed the IPC boundary is compared to `true` rather than read for truthiness, so a value that is not a boolean reads as no. Enforced by lint on the frontend, where responses are cast to an interface without being checked. |
 | INV-WALLET-1 | `packages/wallet` may import `packages/core`, never the reverse. Removing it leaves a functional signer. |
 | INV-WALLET-2 | *Planned, phase 5, not enforced today.* The wallet layer proposes but never signs. `packages/wallet` does not exist yet, so there is nothing to constrain. |

@@ -107,7 +107,11 @@ BOOT_DEV="${NULLROUTE_BOOT_DEV:-}"
 if [ -z "$BOOT_DEV" ]; then
   attempt=0
   while [ "$attempt" -lt 100 ]; do
-    for candidate in /dev/mmcblk0p1 /dev/vda1 /dev/sda1; do
+    # The SD card on a Pi, the virtio disk in the QEMU harness, and nothing
+    # else. /dev/sda1 was on this list with no reason recorded, and it meant a
+    # USB stick that enumerated before the card could become the boot partition,
+    # root hash included. The device boots from its card.
+    for candidate in /dev/mmcblk0p1 /dev/vda1; do
       [ -b "$candidate" ] && { BOOT_DEV="$candidate"; break; }
     done
     [ -n "$BOOT_DEV" ] && break

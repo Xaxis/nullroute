@@ -13,7 +13,8 @@
  * the report and in the summary.
  */
 
-import { writeFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { existsSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { sha256 } from '@noble/hashes/sha2.js'
@@ -23,6 +24,26 @@ import { checkCoverage, enumerateExports } from './coverage.js'
 import { checkBindings, loadReport } from './tests.js'
 import { checkIntegrity } from './manifest.js'
 import { checkVectors, checkDifferential } from './vectors.js'
+
+/**
+ * Every file git tracks, or undefined outside a git checkout.
+ *
+ * The manifest is generated from `git ls-files`, so the question "did it leave
+ * anything out" can only be asked of git. Run on a tree with no .git, the
+ * integrity row says completeness was not checked rather than passing quietly.
+ */
+function trackedFiles(root: string): readonly string[] | undefined {
+  if (!existsSync(join(root, '.git'))) return undefined
+  try {
+    const out = execFileSync('git', ['ls-files', '-z'], { cwd: root, maxBuffer: 64 * 1024 * 1024 })
+    return out
+      .toString('utf8')
+      .split('\0')
+      .filter((p) => p.length > 0)
+  } catch {
+    return undefined
+  }
+}
 
 const REPO_ROOT =
   process.env['NULLROUTE_ROOT'] ?? fileURLToPath(new URL('../../..', import.meta.url))
@@ -121,9 +142,13 @@ function main(): number {
       name: 'invariants',
       status: bindings.ok ? 'passed' : 'failed',
       detail: `${String(allInvariants.length)} invariants bound to ${String(bindings.bindings.length)} tests, ${String(bindings.totalTests)} tests in the suite`,
-      failures: bindings.bindings
-        .filter((b) => !b.ok)
-        .map((b) => `${b.invariantId} -> ${b.selector}: ${b.detail ?? b.status}`),
+      failures: [
+        ...(bindings.bindings.length === 0 ? ['no invariant is bound to any test'] : []),
+        ...bindings.unbound.map((id) => `${id} names no test, so nothing proves it`),
+        ...bindings.bindings
+          .filter((b) => !b.ok)
+          .map((b) => `${b.invariantId} -> ${b.selector}: ${b.detail ?? b.status}`),
+      ],
     })
   } catch (err) {
     outcomes.push({
@@ -187,13 +212,18 @@ function main(): number {
   // --- 5. Integrity -------------------------------------------------------
   let rootHash = ''
   try {
-    const integrity = checkIntegrity(REPO_ROOT)
+    const integrity = checkIntegrity(REPO_ROOT, 'MANIFEST.lock', trackedFiles(REPO_ROOT))
     rootHash = integrity.rootHash
     outcomes.push({
       name: 'integrity',
       status: integrity.ok ? 'passed' : 'failed',
-      detail: `${String(integrity.entries.length)} files, root ${integrity.rootHash.slice(0, 8)}...${integrity.rootHash.slice(-8)}`,
+      detail:
+        `${String(integrity.entries.length)} files, root ${integrity.rootHash.slice(0, 8)}...${integrity.rootHash.slice(-8)}` +
+        (integrity.completeness === 'checked'
+          ? ', every tracked file under its roots listed'
+          : ', completeness NOT checked: not a git checkout'),
       failures: [
+        ...integrity.unlisted.map((p) => `tracked file missing from the manifest: ${p}`),
         ...integrity.missing.map((p) => `file in manifest is missing: ${p}`),
         ...integrity.mismatched.map(
           (m) =>

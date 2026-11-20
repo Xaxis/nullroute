@@ -7,7 +7,7 @@
  *
  * Argon2 parameters are turned right down in these tests. That is safe because
  * what is under test is the plumbing, not the cost, and the cost is what makes
- * the real thing take half a second per attempt. One test pins the shipped
+ * the real thing expensive per attempt. One test pins the shipped
  * defaults so that turning them down here cannot quietly turn them down there.
  */
 
@@ -159,8 +159,8 @@ describe('daemon.store.envelope', () => {
    *
    * These tests run with the cost turned down, so nothing else here would
    * notice if the defaults were lowered. Argon2id at 64 MiB and three passes is
-   * roughly half a second on a Pi 4, and the whole protection a stolen card
-   * gets is that number multiplied by the size of the guess space.
+   * the whole protection a stolen card gets, multiplied by the size of the
+   * guess space. Its time per guess has not been measured on a board.
    */
   it('ships-a-real-work-factor', () => {
     expect(KDF_DEFAULTS.m).toBeGreaterThanOrEqual(65536)

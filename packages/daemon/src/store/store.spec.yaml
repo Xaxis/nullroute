@@ -217,8 +217,10 @@ security_notes: >
 
   A stolen card is therefore protected by the passphrase and by Argon2id, and by
   nothing else. That makes passphrase strength the whole game. Argon2id at 64
-  MiB and three passes costs roughly half a second per guess on a Pi 4, so a six
-  digit PIN is about a week of one machine's time and rather less of several.
+  MiB and three passes makes each guess cost that memory and three passes over
+  it. The time has not been measured on a Pi, and an attacker would not use one:
+  native code on their own hardware is faster than this JavaScript, and a six
+  digit PIN does not survive a million guesses at that rate for long.
   The device does not enforce a passphrase policy, because a policy that pushed
   users toward a memorable-but-short string would make this worse, and the honest
   answer is that this device is designed to be one signer of several.

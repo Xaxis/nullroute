@@ -763,6 +763,35 @@ assertions:
       a node on a running device has the group; only a Pi with a camera plugged
       in shows that.
 
+  # Found on 20 November 2026 by fact-checking docs/ENTROPY.md, before any
+  # card had booted on a Pi: the kernel's default for this node is root only,
+  # the daemon is not root, and nothing in the image said otherwise.
+  - id: INV-PROV-36
+    statement: >
+      The hardware RNG node is given to the signing daemon's group with read
+      permission only, so the daemon's entropy health check can read it without
+      running as root.
+    stage: image
+    verify:
+      - check: udev-rules
+        params:
+          daemon: /usr/lib/systemd/systemd-udevd
+          rules:
+            - { match: 'KERNEL=="hw_random"', assigns: 'GROUP="nullroute"' }
+            - { match: 'KERNEL=="hw_random"', assigns: 'MODE="0440"' }
+    rationale: >
+      The kernel creates /dev/hwrng as root:root 0600, and nullrouted.service
+      runs as the nullroute account. DeviceAllow=/dev/hwrng in that unit admits
+      the device to the service's cgroup and grants no file permission, so the
+      health check's open failed with a permission error, the hardware RNG
+      check reported failed, and daemon.entropy.health refused a machine-only
+      seed on every device. Measured on a Debian host, where the node is 0600
+      and no shipped udev rule touches it.
+    does_not_cover: >
+      udev's rule semantics, for the reason INV-PROV-30 gives, or whether the
+      node has that group on a running Pi. The entropy health screen on a
+      booted device answers that.
+
   - id: INV-PROV-35
     statement: >
       The boot partition is typed as a FAT partition in the GPT and carries the

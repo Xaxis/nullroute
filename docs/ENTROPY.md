@@ -1,14 +1,15 @@
 # Entropy and seed generation
 
 This document specifies exactly how nullroute turns physical dice rolls into a
-BIP-39 seed phrase, in enough detail that you can reproduce the result by hand
-on a different machine with nothing but `sha256sum`.
+BIP-39 seed phrase, in enough detail that you can reproduce the result on a
+different machine: the entropy with nothing but `sha256sum`, and the words with
+any offline BIP-39 tool.
 
 That property is the point. A hardware wallet that generates a seed inside a
 black box asks you to trust the box. nullroute asks you to trust arithmetic you
 can check yourself.
 
-**Spec:** `packages/core/src/entropy/dice.spec.yaml`, `packages/core/src/entropy/combine.spec.yaml`
+**Spec:** `packages/core/src/entropy/dice.spec.yaml`, `packages/core/src/entropy/combine.spec.yaml`, `packages/daemon/src/entropy/health.spec.yaml`, `packages/daemon/src/entropy/modes.spec.yaml`
 
 ---
 
@@ -21,9 +22,10 @@ distinguishes them. The usual answer to this is a better black box, which is the
 same offer with more assurance attached.
 
 That is the wrong answer. The right answer is that you should not have to take
-anyone's word for where your key came from. If you roll the dice, and the device
-shows you an arithmetic step you can repeat on any computer, then the device
-cannot lie to you about your seed without you catching it.
+anyone's word for where your key came from. If you roll the dice, and the rule
+from the rolls the device shows you to the words it shows you is arithmetic you
+can repeat on any computer, then the device cannot lie to you about your seed
+without you being able to catch it.
 
 Every mode below is judged against one question: can the user independently
 confirm that the seed on screen is the seed the inputs imply?
@@ -36,7 +38,7 @@ confirm that the seed on screen is the seed the inputs imply?
 | --- | --- | --- | --- |
 | A | Dice only, rolled by you | Yes | **Yes, this is the default** |
 | A' | Dice, rolled by the device | The arithmetic yes, the rolls no | Only if you will not roll |
-| B | Dice plus machine sources | Only if you record every source | Acceptable |
+| B | Dice plus machine entropy | No | Acceptable |
 | C | Machine only | No | Discouraged, refused unless acknowledged |
 | D | Import an existing BIP-39 mnemonic | Not applicable | For recovery |
 
@@ -48,7 +50,7 @@ rest in one go, and the digit string it produces hashes exactly as a hand-rolled
 one does, so everything downstream stays checkable. What is not checkable is the
 string itself: you did not watch those dice land. A device that wanted to hand
 you a seed it had already chosen would do it precisely there, and you could not
-tell. It exists because rolling 100 dice takes ten minutes and somebody who will
+tell. It exists because rolling 100 dice takes a while and somebody who will
 not spend it is better served by an honest option than by picking whichever mode
 is quickest. The screen counts how many rolls came from the device and says so.
 
@@ -67,7 +69,7 @@ log2(6) = 2.584962500721156 bits
 To reach a full 256 bits of entropy you need:
 
 ```
-256 / 2.584962500721156 = 99.033...  ->  100 rolls
+256 / 2.584962500721156 = 99.034...  ->  100 rolls
 ```
 
 **nullroute requires 100 rolls and refuses to proceed with fewer.**
@@ -80,7 +82,7 @@ claim is checkable arithmetic should not round in its own favour. The device
 counts to 100.
 
 The running total shown on screen during collection is `floor(n * log2(6))`,
-displayed as "213 of 256 bits" and similar. It is truncated rather than rounded,
+displayed as "214 of 256 bits" and similar. It is truncated rather than rounded,
 so the display never claims more entropy than has been collected.
 
 ### The canonical encoding
@@ -126,7 +128,8 @@ here, so the output is full strength. Hashing 258.5 bits into 256 loses nothing
 that matters.
 
 The same rule, SHA-256 of the ASCII roll string, is what Coldcard, SeedSigner
-and Krux use when a seed comes from dice alone, so a user can cross-check
+(0.8.7) and Krux use when a seed comes from dice alone, according to their
+source as cited in the [signer profile](../spec/signer-profile.md), so a user can cross-check
 nullroute against an unrelated implementation. Two differences matter. They
 accept 99 rolls, so a 99-roll seed from any of them cannot be reproduced here,
 where 100 is the minimum; and SeedSigner takes exactly 99, so a 100-roll seed
@@ -135,8 +138,8 @@ with its own entropy, hashes differently and is not reproducible here at all.
 
 ### Worked example
 
-**Do not use this seed. It is a public demonstration sequence and the funds sent
-to it will be swept immediately.** It exists so you can confirm your copy of
+**Do not use this seed. It is a public demonstration sequence, so anyone can
+spend what is sent to it.** It exists so you can confirm your copy of
 nullroute computes what it claims to compute.
 
 The 100 rolls, `123456` repeated:
@@ -181,8 +184,9 @@ e50a429924dbdf4500fa0cf03cca5b1a5dab1524cf1cd0efe1868eee17837be0
 
 (shown on two lines for width, it is one 64-byte value)
 
-If your device shows a different hex value for the same 100 rolls, **stop and do
-not use it**. Either the device is not running the code it claims to be running,
+The device shows you the rolls it hashed and the words that resulted, never the
+hex in between. If it shows different words for the same 100 rolls, **stop and
+do not use it**. Either the device is not running the code it claims to be running,
 or you entered a roll wrongly. Check the manifest root hash on the lock screen
 against the one you compute from the source before you do anything else. No
 release hash has been published yet.
@@ -199,9 +203,9 @@ non-random:
 
 - every roll the same value
 - a short repeating cycle (the worked example above trips this)
-- a strict ascending or descending run
-- a chi-squared test on the digit distribution that falls outside a
-  wide acceptance band
+- 10 or more rolls in a row, each one step up or down from the last
+- once there are at least 30 rolls, a chi-squared statistic on the face counts
+  above 20.515. The test is one-sided: an unusually even spread never trips it
 
 These are warnings, not rejections. A fair die genuinely can produce a
 suspicious-looking sequence, and a device that silently discarded real rolls
@@ -225,14 +229,16 @@ front of a camera.
 Mode B combines the dice with machine entropy so that a weakness in either one
 alone does not sink the result.
 
-Sources:
+Exactly two inputs:
 
-- the dice rolls, encoded exactly as in Mode A
-- `/dev/urandom`, read through Node's `crypto.randomBytes`
-- the Raspberry Pi hardware RNG at `/dev/hwrng` (the BCM2711 `iproc-rng200`
-  block), when present and healthy
+- `dice`: the 32-byte SHA-256 of the roll string, computed exactly as in Mode A
+- `urandom`: 32 bytes from Node's `crypto.randomBytes`, which is OpenSSL's
+  generator seeded from the kernel
 
-These are combined with the HKDF construction specified in
+The hardware RNG at `/dev/hwrng` is not an input. The health check below reads
+it and throws the bytes away.
+
+The two are combined with the HKDF construction specified in
 `packages/core/src/entropy/combine.spec.yaml`:
 
 ```
@@ -253,46 +259,53 @@ could concatenate to the same byte string, and the combiner would map distinct
 inputs to the same seed. Sources are ordered canonically by source id so the
 combination is deterministic regardless of the order they were collected in.
 
-The security property is the standard HKDF extraction property: **the output
-retains full entropy if any single input source has full entropy.** A completely
-broken or adversarially chosen `/dev/hwrng` cannot weaken a good dice roll. That
-is the whole reason to offer this mode.
+The security argument is HKDF's extraction property as RFC 5869 models it: the
+output keeps full entropy if any single input has it. So a broken or
+adversarially chosen machine generator cannot weaken a good dice roll, which is
+the reason to offer this mode. The tests check the narrower thing they can: a
+stuck source does not reduce the output to that source (INV-ENT-4).
 
-The combiner does not, and cannot, detect a low-entropy source. That is the
-caller's job, which is why the health gates below exist.
+**Mode B is not hand-reproducible.** The device never shows the machine's 32
+bytes: it shows the words and the fingerprint, and INV-KEY-1 keeps key material
+off the screen otherwise. If you choose it, you have traded away the property
+that makes Mode A worth using, in exchange for not depending on your dice alone.
 
 ### Machine source health gates
 
-Before any machine source is used, the daemon runs
-`checkEntropyHealth` (`packages/daemon/src/entropy/health.ts`), which:
+The combiner does not, and cannot, detect a low-entropy source. Before a
+machine-only seed (Mode C), the daemon runs `checkEntropyHealth`
+(`packages/daemon/src/entropy/health.ts`). Mode B and device-rolled dice (Mode
+A') are not gated by it. Mode B does not need it, because the dice carry the
+entropy. Mode A' draws from the same generator as Mode C and is not checked;
+the screen counts the rolls the device chose.
 
-- reads `/proc/sys/kernel/random/entropy_avail` and refuses if the pool is
+The three checks:
+
+- reads `/proc/sys/kernel/random/entropy_avail` and fails if the pool is
   clearly not initialised
-- confirms `/dev/hwrng` exists and is readable
-- reads two consecutive 32-byte blocks and rejects the source if they are
-  identical, or if either is all-zero, which is what a stuck or absent hardware
+- opens `/dev/hwrng`, reads two consecutive 32-byte blocks, and fails if they
+  are identical or either is all zero, which is what a stuck or absent hardware
   RNG typically returns
-- refuses machine-source modes within 60 seconds of boot if `/dev/hwrng` is
-  unavailable, because early boot is exactly when the kernel pool is weakest
+- within 60 seconds of boot, fails if the hardware RNG check did not pass
 
-Every one of those paths is Linux-only. Where a path is absent the check reports
+All three must pass, and the hardware RNG check is one of them, so a device
+without a working, readable hardware RNG refuses Mode C at any uptime. The boot
+age check cannot change the outcome today.
+
+Every path is Linux-only. Where a path is absent or unreadable the check reports
 **unknown**, and unknown never counts as healthy: a gate that passed because it
-could not find its own evidence would be worse than no gate. That is why a
-machine-only seed cannot be generated on a development machine at all.
+could not find its own evidence would be worse than no gate. So a machine-only
+seed cannot be generated on a Mac, or on a Linux machine where `/dev/hwrng` is
+readable only by root, which is the default. On the device, a udev rule gives
+the node to the daemon's group, read only (INV-PROV-36). It has not yet been
+read on a running Pi.
 
 **What the gates do not do.** They catch a stuck generator, an unseeded pool and
-a device generating a seed in its first minute of boot. They say nothing about
-the quality of the numbers. A generator producing well-formed but predictable
-output passes all three, and that is exactly the attack rolling dice makes
-impossible. The screen says this beside the results, because three green ticks
-otherwise read as "the device checked its randomness", which is not what
-happened.
-
-Mode B remains auditable, but only if you record everything. The device offers
-to display every source value so you can save them and reproduce the derivation
-later. If you do not record them, the result is not hand-reproducible, and you
-should understand that you have traded away the property that makes Mode A
-worth using.
+a missing hardware RNG. They say nothing about the quality of the numbers. A
+generator producing well-formed but predictable output passes all three, and
+that is exactly the attack rolling dice makes impossible. The screen says this
+beside the results, because three green ticks otherwise read as "the device
+checked its randomness", which is not what happened.
 
 ---
 
@@ -300,21 +313,22 @@ worth using.
 
 Available, and refused unless you say what you are giving up.
 
-This is the mode every other hardware wallet uses by default, and it is the mode
+This is how most hardware wallets generate a seed by default, and it is the mode
 whose failure prompted this project. It is not inherently broken. It is
 unverifiable, which is different and, for this project, worse.
 
-If you use Mode C you are trusting the Pi's hardware RNG, the kernel CSPRNG, and
-nullroute's own code to have combined them honestly. You have no way to check
-any of it. The screen says exactly that, and the daemon refuses to generate
-anything unless the request carries an explicit acknowledgement, so the mode
-cannot be reached by tapping through.
+Mode C takes one draw of 32 bytes from `crypto.randomBytes` and nothing else.
+If you use it you are trusting the kernel's generator (which the kernel may seed
+from the hardware RNG) and nullroute's own code. You have no way to check any of
+it. The screen says exactly that. Generate stays disabled until you tick a box
+saying the seed cannot be checked by hand, and the daemon refuses any request
+without that acknowledgement.
 
-The health gates below run first. All of them must pass.
+The health gates described under Mode B run first, and all of them must pass.
 
 ### An honest note about how long this was fiction
 
-Everything in the two sections above, the gates and the confirmation, was
+Everything about the gates and the confirmation was
 written here in the present tense long before any of it was built. A reader
 deciding between rolling dice and letting the device choose was told the second
 path was gated when it was not. That is the overclaim this project calls a
@@ -328,10 +342,11 @@ quietly corrected because the same failure is easy to repeat.
 Standard BIP-39 import with checksum validation. Use this to recover a wallet or
 to bring a seed generated elsewhere onto the device.
 
-The checksum is validated before anything is stored, and the resulting
-fingerprint is displayed prominently so you can confirm you typed it correctly.
-A single wrong word usually fails the checksum. A wrong word that still
-checksums produces a completely different wallet, so check the fingerprint.
+The checksum is validated before anything is stored. The import screen moves
+straight on to protecting the wallet, and the fingerprint appears after that, in
+the wallet screen's subtitle and at unlock. A single wrong word usually fails
+the checksum. A wrong word that still checksums produces a completely different
+wallet, so check the fingerprint there against the one you recorded.
 
 ---
 
@@ -349,9 +364,11 @@ Two things the UI says plainly and this document repeats:
   funds with passphrase wallets.
 
 Because of the second point, nullroute shows the wallet fingerprint at unlock
-and before any funds-related action. If you have used this passphrase before,
+and in the wallet screen's subtitle. The signing review does not show it. If you have used this passphrase before,
 the fingerprint will match what you recorded. If it does not match, you typed it
-wrong. Write the fingerprint down when you first create a passphrase wallet.
+wrong. Write the fingerprint down when you first create a passphrase wallet. Only
+import takes a BIP-39 passphrase on the device today: the dice and machine
+screens never send one.
 
 ---
 
@@ -365,13 +382,14 @@ quorum instead: the failure modes are better understood, the recovery path is
 plain BIP-39 plus a descriptor, and other vendors' hardware can hold the other
 keys.
 
-nullroute will support SLIP-39 *import* in a later phase, so you can move a
-Trezor Shamir backup onto the device. It will not generate one.
+SLIP-39 *import* is planned for phase 7 and not built, so a Trezor Shamir
+backup cannot be moved onto the device today. Generation is not planned.
 
-**No entropy is ever taken from the frontend.** `crypto.getRandomValues()` is
-never called in browser JavaScript for anything security relevant. The frontend
-collects dice keystrokes and displays results. All entropy collection and all
-seed derivation happens in the daemon. See INV-KEY-1.
+**The frontend generates no randomness.** Lint bans `crypto.getRandomValues()`
+and `Math.random()` there (INV-ENT-7). It does handle the rolls: it collects the
+dice keystrokes, holds the roll string, and sends it to the daemon as you type
+and at the end, and device-rolled dice come back to it for display. All hashing
+and all seed derivation happen in the daemon.
 
 ---
 

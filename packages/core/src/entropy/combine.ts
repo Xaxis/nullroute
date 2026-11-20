@@ -25,8 +25,9 @@
  * length prefixes they cannot collide.
  *
  * This does NOT detect a low-entropy source, and cannot. Detection is the
- * caller's job, which is why the daemon health-gates the machine sources before
- * they ever reach here. See docs/ENTROPY.md.
+ * caller's job. The daemon's only caller (Mode B) does not gate its machine
+ * source, and need not: the dice carry the entropy, and this combiner's
+ * property is that a bad second source cannot weaken them. See docs/ENTROPY.md.
  */
 
 import { expand, extract } from '@noble/hashes/hkdf.js'

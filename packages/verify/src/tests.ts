@@ -82,6 +82,8 @@ export interface TestBinding {
 
 export interface BindingResult {
   readonly bindings: readonly TestBinding[]
+  /** Invariants that name no test at all, and so are proven by nothing. */
+  readonly unbound: readonly string[]
   readonly ok: boolean
   readonly totalTests: number
 }
@@ -241,9 +243,15 @@ export function checkBindings(
   const bindings = invariants.flatMap((inv) =>
     inv.tests.map((selector) => resolveBinding(root, report, inv.id, selector))
   )
+  // NOT `every` ALONE. `every` over an empty list is true, so a spec set with
+  // no invariants, or an invariant naming no tests, reported passed with
+  // nothing behind it. The schema requires a test per invariant; this is what
+  // holds if that guard is ever relaxed or the spec set fails to load.
+  const unbound = invariants.filter((inv) => inv.tests.length === 0).map((inv) => inv.id)
   return {
     bindings,
-    ok: bindings.every((b) => b.ok),
+    unbound,
+    ok: bindings.length > 0 && unbound.length === 0 && bindings.every((b) => b.ok),
     totalTests: report.numTotalTests,
   }
 }

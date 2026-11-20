@@ -28,7 +28,7 @@ const HELP: readonly (readonly [string, string])[] = [
   ],
   [
     'Bring up a board',
-    'The card targets the Pi 4 with the official 7 inch panel. Booting it on real hardware, and recording what the panel, touch, camera and network interfaces actually do, is the next milestone.',
+    'The card targets a Pi 4 or a Pi 5 with the official 7 inch panel, and boots and verifies itself under QEMU today. Booting it on a board, and recording what the panel, touch, camera and network interfaces actually do, is the next milestone.',
   ],
   [
     'Find an overclaim',

@@ -176,6 +176,7 @@ export interface ReviewWarning {
     | 'not-replaceable'
     | 'locktime'
     | 'locktime-not-enforced'
+    | 'relative-locktime'
     | 'no-change-verified'
     | 'unverified-amount'
   readonly message: string
@@ -231,6 +232,27 @@ function satsPerVbyte(feeSats: bigint, vsize: number): number {
 }
 
 /**
+ * A BIP-68 relative lock in words, or undefined when the sequence sets none.
+ *
+ * Bit 31 set disables the lock, which is every sequence BIP-125 signalling
+ * uses (0xfffffffd) and both final values. Otherwise bit 22 picks the unit:
+ * clear counts blocks, set counts 512 second intervals of median time past. The
+ * low 16 bits are the count, and a count of zero delays nothing.
+ */
+function relativeLock(sequence: number): string | undefined {
+  if ((sequence & 0x80000000) !== 0) return undefined
+  const count = sequence & 0xffff
+  if (count === 0) return undefined
+  if ((sequence & 0x00400000) === 0) {
+    return `${String(count)} block${count === 1 ? '' : 's'} after the coin it spends confirmed`
+  }
+  const seconds = count * 512
+  const hours = seconds / 3600
+  const about = hours >= 48 ? `${(hours / 24).toFixed(1)} days` : `${hours.toFixed(1)} hours`
+  return `${String(seconds)} seconds (about ${about}) after the coin it spends confirmed`
+}
+
+/**
  * Build the review a user reads before signing.
  *
  * Takes an already-parsed transaction so that parsing failures are handled by
@@ -247,6 +269,10 @@ export function reviewTransaction(tx: btc.Transaction, options: ReviewOptions): 
   let mixedSighash = false
   let replaceable = false
   let everyInputFinal = true
+  const relativeLocks: string[] = []
+  // BIP-68 applies only to version 2 and above, compared unsigned as Bitcoin
+  // Core does (SequenceLocks casts nVersion to uint32_t).
+  const enforcesRelativeLocks = tx.version >>> 0 >= 2
 
   for (let i = 0; i < tx.inputsLength; i += 1) {
     const input = tx.getInput(i)
@@ -275,6 +301,10 @@ export function reviewTransaction(tx: btc.Transaction, options: ReviewOptions): 
     const sequence = input.sequence ?? 0xffffffff
     if (sequence < 0xfffffffe) replaceable = true
     if (sequence !== 0xffffffff) everyInputFinal = false
+    if (enforcesRelativeLocks) {
+      const lock = relativeLock(sequence)
+      if (lock !== undefined) relativeLocks.push(`input ${String(i)} ${lock}`)
+    }
 
     const txid = input.txid === undefined ? '' : Buffer.from(input.txid).toString('hex')
 
@@ -459,6 +489,20 @@ export function reviewTransaction(tx: btc.Transaction, options: ReviewOptions): 
             blocking: false,
           }
     )
+  }
+
+  // INV-PSBT-21. A relative lock delays this transaction from the moment the
+  // coin it spends confirmed, and the sequence field is the only place it is
+  // written. The review used to read that field only for BIP-125, so a spend
+  // that could not confirm for a month was shown as merely replaceable.
+  if (relativeLocks.length > 0) {
+    warnings.push({
+      kind: 'relative-locktime',
+      message:
+        `This transaction cannot confirm until ${relativeLocks.join(', and ')}. ` +
+        'Each delay counts from when the coin that input spends was confirmed, not from now.',
+      blocking: false,
+    })
   }
 
   // Fields this device does not model.

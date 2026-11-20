@@ -141,17 +141,17 @@ export function entropyMethods(ctx: HandlerContext): MethodTable {
     /**
      * Mode C. A seed from the machine's CSPRNG, with no dice at all.
      *
-     * This is what every other hardware wallet does by default, and it is the
+     * This is how most hardware wallets make a seed by default, and it is the
      * mode whose failure prompted this project. It is not broken. It is
      * UNVERIFIABLE, which is different and, here, worse: nothing about the
-     * result can be checked by hand, so the user is trusting the hardware
-     * RNG, the kernel, and this code to have combined them honestly.
+     * result can be checked by hand, so the user is trusting the kernel's
+     * generator and this code. One draw of randomBytes; nothing is combined.
      *
      * Two things guard it. The health gates must pass, so a stuck generator
      * or an unseeded pool refuses rather than silently producing a weak seed.
-     * And the caller has to pass `acknowledged: true`, which the screen only
-     * sends after the user has read what they are giving up: this cannot be
-     * reached by tapping through.
+     * And the caller has to pass `acknowledged: true`. The screen keeps
+     * Generate disabled until a box saying the seed cannot be checked by hand
+     * is ticked; that is one deliberate tap, not proof anything was read.
      */
     'entropy.fromMachine': (request) => {
       if (params(request)['acknowledged'] !== true) {

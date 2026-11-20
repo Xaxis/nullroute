@@ -33,8 +33,40 @@ SEED=/run/nullroute-state-seed
 # with it built in returns success here too.
 modprobe ext4 2>/dev/null || true
 
+# ONLY ON THE DISK THE VERIFIED SYSTEM CAME FROM. This used to take the first
+# partition named "state" on any block device: SD, virtio, USB or NVMe. A USB
+# stick carrying a GPT partition with that name, plugged in while the card was
+# still being probed, would have become /var/lib, and so the home of the wallet.
+# The name is a label anyone can write; the disk the initramfs opened the
+# dm-verity mapping from is the one this device actually booted. Read from
+# sysfs rather than /dev/mapper, because that symlink is udev's, and udev is
+# exactly what the comment above says not to wait on.
+system_disk() {
+  for dm in /sys/block/dm-*; do
+    [ "$(cat "$dm/dm/name" 2>/dev/null || true)" = "nullroute-system" ] || continue
+    for slave in "$dm"/slaves/*; do
+      [ -e "$slave" ] || continue
+      # /sys/class/block/<partition> resolves to .../block/<disk>/<partition>.
+      part=$(readlink -f "/sys/class/block/${slave##*/}")
+      disk=${part%/*}
+      echo "${disk##*/}"
+      return 0
+    done
+  done
+  return 1
+}
+
+DISK=$(system_disk || true)
+if [ -z "$DISK" ]; then
+  echo "nullroute-state: no dm-verity mapping named nullroute-system, so no disk" >&2
+  echo "nullroute-state: is known to be this device's own. Refusing to pick one." >&2
+  exit 1
+fi
+
 find_state() {
-  for candidate in /dev/mmcblk0p* /dev/vd*[0-9] /dev/sd*[0-9] /dev/nvme*p[0-9]; do
+  for entry in "/sys/block/$DISK/$DISK"*; do
+    [ -f "$entry/partition" ] || continue
+    candidate="/dev/${entry##*/}"
     [ -b "$candidate" ] || continue
     name=$(blkid -p -s PART_ENTRY_NAME -o value "$candidate" 2>/dev/null || true)
     if [ "$name" = "state" ]; then
@@ -55,12 +87,16 @@ while [ "$attempt" -lt 100 ]; do
 done
 
 if [ -z "$DEVICE" ]; then
-  echo "nullroute-state: no partition named 'state' on any block device." >&2
-  echo "nullroute-state: block devices seen: $(ls /dev/vd* /dev/mmcblk* /dev/sd* 2>/dev/null | tr '\n' ' ')" >&2
+  echo "nullroute-state: no partition named 'state' on $DISK, the disk the system was verified from." >&2
+  seen=""
+  for entry in "/sys/block/$DISK/$DISK"*; do
+    [ -e "$entry" ] && seen="$seen ${entry##*/}"
+  done
+  echo "nullroute-state: partitions on $DISK:${seen:- none}" >&2
   echo "nullroute-state: the daemon cannot keep a wallet without it." >&2
   exit 1
 fi
-echo "nullroute-state: state partition is $DEVICE"
+echo "nullroute-state: state partition is $DEVICE, on $DISK, the disk the system was verified from"
 
 # ASKS FOR THE FILESYSTEM TYPE, NOT WHETHER blkid SUCCEEDS. `blkid <partition>`
 # exits 0 on a completely blank partition, because it finds PARTUUID and

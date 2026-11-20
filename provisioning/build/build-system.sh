@@ -760,6 +760,12 @@ done
 # stays 0700, so the bridge can talk to the daemon and cannot read the store.
 sed -i 's/^nullroute:!:900:$/nullroute:!:900:nullroute-bridge/' "$ROOTFS/etc/group"
 
+# The hardware RNG node, given to that group, read only. The kernel makes it
+# root:root 0600 and the daemon is not root, so its entropy health check could
+# never read it. INV-PROV-36.
+install -D -m 0644 /work/provisioning/units/60-nullroute-hwrng.rules \
+  "$ROOTFS/usr/lib/udev/rules.d/60-nullroute-hwrng.rules"
+
 echo "  application      node $NODE_VERSION, daemon, frontend, and 2 accounts"
 
 # EROFS RATHER THAN EXT4, and this reverses what the backend recipe asked for.

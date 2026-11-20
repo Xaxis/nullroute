@@ -246,5 +246,14 @@ describe('verify.bindings over a whole spec set', () => {
     expect(result.bindings).toHaveLength(1)
     expect(result.bindings[0]?.invariantId).toBe('INV-DICE-2')
     expect(result.bindings.some((b) => b.invariantId === 'INV-DICE-1')).toBe(false)
+    // And the set fails, naming it. It used to pass: the one binding there was
+    // passed, and the invariant with none was simply absent from the count.
+    expect(result.unbound).toEqual(['INV-DICE-1'])
+    expect(result.ok).toBe(false)
+  })
+
+  /** Nothing to prove is not proof. `every` over no bindings is true. */
+  it('fails-when-nothing-is-bound-at-all', () => {
+    expect(checkBindings(ROOT, oneTest('passed'), []).ok).toBe(false)
   })
 })

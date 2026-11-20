@@ -91,8 +91,6 @@ describe('daemon.store.backup', () => {
     record['label'] = 'Definitely Mainnet'
 
     const restored = restoreBackup(JSON.stringify(record), PASSPHRASE)
-    // The label is cosmetic and follows the edit. The network does not.
-    expect(restored.label).toBe('Definitely Mainnet')
     expect(restored.network.id).toBe('signet')
     expect(restored.network.isMainnet).toBe(false)
     expect(restored.network.id).not.toBe(MAINNET.id)
@@ -111,6 +109,25 @@ describe('daemon.store.backup', () => {
     hiding['hasSeed'] = false
     const restored = restoreBackup(JSON.stringify(hiding), PASSPHRASE)
     expect(restored.hasSeed).toBe(true)
+    restored.seed?.dispose()
+  })
+
+  /**
+   * The label names the restored wallet, so it is taken from inside too. It
+   * used to follow an edit to the outer copy, which let anyone holding the file
+   * rename a seed backup into something that sounds disposable.
+   */
+  it('takes-the-label-from-inside-the-ciphertext', () => {
+    const record = JSON.parse(write(true)) as Record<string, unknown>
+    record['label'] = 'signet test, safe to discard'
+    record['createdWith'] = '9.9.9'
+    // describeBackup reads the outside, and says so: it is shown before a
+    // passphrase is typed, which is all the outer copy is for.
+    expect(describeBackup(JSON.stringify(record)).label).toBe('signet test, safe to discard')
+
+    const restored = restoreBackup(JSON.stringify(record), PASSPHRASE)
+    expect(restored.label).toBe('Family Vault')
+    expect(restored.createdWith).toBe('v0.1.0-test')
     restored.seed?.dispose()
   })
 

@@ -8,6 +8,44 @@ tagged release will start them.
 The full history is `git log`. This file is the part of it worth reading
 first, and the website's status page renders it.
 
+## November 2026
+
+- **2026-11-20** On a Pi, the daemon could never read the hardware RNG: the
+  kernel makes `/dev/hwrng` root only, the daemon is not root, and nothing in
+  the image said otherwise, so the entropy health check failed and a
+  machine-only seed was refused on every device. A udev rule now gives the
+  node to the daemon's group, read only (INV-PROV-36). Found by checking the
+  entropy guide against the code, before any card had booted on a Pi.
+- **2026-11-20** The review shows BIP-68 relative locks (INV-PSBT-21). It read
+  each input's sequence only for replaceability, so a spend that could not
+  confirm for a month after its coin did was shown as merely replaceable.
+- **2026-11-20** A backup's label and writing version are restored from inside
+  the ciphertext, like its network (INV-BACKUP-3). The outer copy, which anyone
+  holding the file can edit, used to name the restored wallet.
+- **2026-11-20** The wallet's state partition is taken only from the disk the
+  verified system booted from. `prepare-state` took the first partition named
+  "state" on any disk, USB included, and the initramfs would take a USB stick's
+  first partition as the boot partition if it appeared before the card's.
+- **2026-11-20** `make verify` fails when a tracked file under the manifest
+  roots is missing from `MANIFEST.lock`, and when nothing is bound to a test;
+  both passed before. `make manifest-check`, which CI described as
+  regenerating the manifest, now does, and compares it byte for byte.
+- **2026-11-20** Message signing refuses an unsignable message or script type
+  before deriving the key, not after (INV-MSG-7). The device frontend's policy
+  no longer grants `blob:` to media, which nothing used, and `make device-csp`
+  now refuses any source it does not name.
+- **2026-11-20** The threat model and the entropy guide are checked against the
+  code and narrowed where they overstated: the parsers are not fuzzed, Mode B
+  is not hand-reproducible and its machine source is not health-gated, there is
+  no "advanced mode", the frontend does receive the mnemonic at setup, and the
+  daemon checks a build-time report rather than running `verify` at boot. The
+  passphrase screen no longer tells you a guess costs an attacker half a
+  second: that was never measured, on any board.
+- **2026-11-20** The install guide says how to read a Pi 5's boot over its
+  debug UART when the panel stays dark, and lists what to record from a first
+  boot. Masking the console getty had left no shell to run the commands it
+  suggested.
+
 ## October 2026
 
 - **2026-10-28** The verification guide is shorter and 23 statements in it

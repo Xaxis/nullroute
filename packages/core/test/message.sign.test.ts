@@ -18,7 +18,9 @@ import { base64 } from '@scure/base'
 import { MAINNET } from '../src/network/networks.js'
 import { mnemonicToSeed } from '../src/bip39/mnemonic.js'
 import { buildToSpend, signMessage, signMessageWithKey } from '../src/message/sign.js'
-import { SIMPLE_PREFIX } from '../src/message/bip322.js'
+import { MessageError, SIMPLE_PREFIX } from '../src/message/bip322.js'
+import { signLegacyMessage } from '../src/message/legacy.js'
+import { SecretDisposedError } from '../src/util/secret.js'
 
 /** The address and to_spend txid BIP-322 publishes, verbatim. */
 const VECTOR_ADDRESS = 'bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l'
@@ -270,6 +272,27 @@ describe('core.message.bip322 signing', () => {
     const b = signMessage(seed, MAINNET, 'p2tr', "m/86'/0'/0'/0/0", 'Hello World')
     expect(a.signature).toBe(b.signature)
     expect(a.address.startsWith('bc1p')).toBe(true)
+  })
+
+  /**
+   * INV-MSG-7. Refused before any key is derived, not merely before signing.
+   * A disposed seed throws on first read, so a refusal that arrives as a
+   * MessageError rather than SecretDisposedError proves the seed was never
+   * touched. Before this, the child key was derived first and then refused.
+   */
+  it('refuses-before-deriving-a-key', () => {
+    const seed = mnemonicToSeed(MNEMONIC, '')
+    seed.dispose()
+    const path = "m/84'/0'/0'/0/0"
+    expect(() => signMessage(seed, MAINNET, 'p2wpkh', path, '')).toThrow(MessageError)
+    expect(() => signMessage(seed, MAINNET, 'p2pkh', path, 'Hello World')).toThrow(
+      /not one of them/
+    )
+    expect(() => signLegacyMessage(seed, MAINNET, "m/44'/0'/0'/0/0", '')).toThrow(MessageError)
+    // And the control: a signable message does reach the seed, and fails there.
+    expect(() => signMessage(seed, MAINNET, 'p2wpkh', path, 'Hello World')).toThrow(
+      SecretDisposedError
+    )
   })
 
   it('refuses-a-message-the-review-would-refuse', () => {

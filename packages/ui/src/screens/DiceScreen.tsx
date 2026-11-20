@@ -316,8 +316,8 @@ export function DiceScreen(props: DiceScreenProps): ReactElement {
         </span>
         <span className="nr-choice__desc">
           Combines your dice with the machine random number generator. The result stays safe if
-          either source is good, but it is no longer reproducible by hand unless you record every
-          source, so the check you can perform with sha256sum no longer applies.
+          either source is good, but it is no longer reproducible by hand: the machine&apos;s part
+          is never shown, so the check you can perform with sha256sum no longer applies.
         </span>
       </button>
     </Screen>

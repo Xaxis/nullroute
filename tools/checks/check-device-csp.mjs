@@ -62,7 +62,20 @@ if ((directives.get('default-src') ?? []).join(' ') !== "'none'") {
  * not this device. A single one of these turns an air-gapped signer into a
  * device with an exfiltration path.
  */
-const FORBIDDEN = ["'unsafe-inline'", "'unsafe-eval'", 'http:', 'https:', '*', 'data:']
+const FORBIDDEN = [
+  "'unsafe-inline'",
+  "'unsafe-eval'",
+  'http:',
+  'https:',
+  '*',
+  'data:',
+  // Locally minted URLs. Not network origins, but a blob: script source runs
+  // whatever bytes the page itself assembled, and nothing on this device needs
+  // one: the camera preview is a MediaStream on srcObject, which no fetch
+  // directive governs (checked in Chromium 156 with a fake camera).
+  'blob:',
+  'filesystem:',
+]
 const DATA_ALLOWED = new Set(['img-src'])
 
 for (const [name, sources] of directives) {
@@ -119,6 +132,27 @@ const SCRIPT_ALLOWED = new Set(["'self'", "'wasm-unsafe-eval'"])
 for (const source of directives.get('script-src') ?? []) {
   if (!SCRIPT_ALLOWED.has(source))
     problems.push(`script-src allows ${source}, which is not permitted`)
+}
+
+/**
+ * Everything else is 'self' or 'none', with one named exception.
+ *
+ * The lists above refuse what is known to be dangerous. This refuses what is
+ * merely unexplained, so docs/THREAT-MODEL.md can say the two allowances below
+ * are the only ones and mean it: a new hash, nonce, scheme or keyword fails here
+ * until someone writes down why it is needed.
+ */
+const EXTRA_ALLOWED = new Map([
+  ['script-src', new Set(["'wasm-unsafe-eval'"])],
+  // The QR codes this device draws are rendered to data: URLs.
+  ['img-src', new Set(['data:'])],
+])
+for (const [name, sources] of directives) {
+  for (const source of sources) {
+    if (source === "'self'" || source === "'none'") continue
+    if (EXTRA_ALLOWED.get(name)?.has(source) === true) continue
+    problems.push(`${name} allows ${source}, which no comment here explains`)
+  }
 }
 
 if (problems.length > 0) {

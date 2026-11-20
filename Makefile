@@ -160,9 +160,21 @@ manifest-check: ## Every source under the manifest roots is tracked, and matches
 	    exit 1; \
 	  fi
 	@shasum -a 256 -c MANIFEST.lock --status \
-	  && printf 'manifest OK, root hash: ' \
-	  && shasum -a 256 MANIFEST.lock | cut -d' ' -f1 \
 	  || { echo 'MANIFEST MISMATCH'; shasum -a 256 -c MANIFEST.lock | grep -v ': OK$$'; exit 1; }
+	# AND THE LIST HAS TO BE WHOLE. Everything above passes for a file that was
+	# committed without `make manifest`: it is tracked, so it is not untracked,
+	# and it is not listed, so shasum never looks at it. Regenerated and
+	# compared byte for byte, which is what CI's step has always said it did.
+	# By hash rather than `cmp -s`, which stops at the first difference and
+	# leaves the generator dying of SIGPIPE in the middle of the report.
+	@want=$$(git ls-files -z $(MANIFEST_ROOTS) | LC_ALL=C sort -z | xargs -0 shasum -a 256 | shasum -a 256); \
+	  have=$$(shasum -a 256 < MANIFEST.lock); \
+	  [ "$$want" = "$$have" ] \
+	  || { echo 'MANIFEST.lock IS NOT WHAT `make manifest` WRITES FROM THE TRACKED SOURCES'; \
+	       git ls-files -z $(MANIFEST_ROOTS) | LC_ALL=C sort -z | xargs -0 shasum -a 256 \
+	         | diff MANIFEST.lock - | grep '^[<>]' | head -20 | sed 's/^/  /'; \
+	       exit 1; }
+	@printf 'manifest OK, root hash: ' && shasum -a 256 MANIFEST.lock | cut -d' ' -f1
 
 prose: ## No em dashes, no emoji, no overclaiming markers in docs and UI copy
 	@node tools/checks/check-prose.mjs

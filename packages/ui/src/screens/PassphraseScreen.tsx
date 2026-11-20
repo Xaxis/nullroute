@@ -16,10 +16,11 @@ import { Working } from '../components/Working.js'
  * them locks a user out of their own wallet.
  *
  * The honesty problem on this screen is that a passphrase looks like a lock and
- * is really a delay. Argon2id makes each guess cost about half a second on this
- * hardware, so what a passphrase buys is that number multiplied by how many
- * guesses an attacker has to make. Six digits is a week of one machine. A
- * sentence is longer than anyone will be alive. The screen says this in those
+ * is really a delay. Argon2id makes each guess cost 64 MiB and three passes,
+ * so what a passphrase buys is that cost multiplied by how many guesses an
+ * attacker has to make. The time per guess is not measured, and an attacker runs
+ * native code on hardware of their choosing, so a short PIN falls; a sentence
+ * multiplies the guesses past reach. The screen says this in those
  * terms rather than showing a coloured strength bar, because a bar that turns
  * green tells a user they are safe and a number of guesses tells them what they
  * actually have.
@@ -289,9 +290,9 @@ export function PassphraseScreen(props: PassphraseScreenProps): ReactElement {
         <Info label="What a passphrase is for" testId="passphrase-info">
           This encrypts the seed on this device so the card is useless to whoever picks it up. It is
           not a second backup: if you forget it, the words you wrote down are the only way back, and
-          there is no reset. Length is what matters, not symbols. Each guess costs an attacker about
-          half a second of real work, so a sentence you can remember beats a short string you
-          cannot.
+          there is no reset. Length is what matters, not symbols. Each guess costs an attacker 64
+          MiB of memory and real work, but they can make a great many, so a sentence you can
+          remember beats a short string you cannot.
         </Info>
       ) : (
         <div className="nr-card nr-card--tight">

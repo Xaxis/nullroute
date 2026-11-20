@@ -8,8 +8,8 @@ purpose: >
   Combine N independent entropy sources into a single 256-bit seed such that the
   output retains full entropy if ANY single input source has full entropy. This
   is what makes mixed-source mode worth offering: a user who does not trust the
-  Pi hardware RNG can add dice, and a broken or adversarially chosen /dev/hwrng
-  cannot weaken the result.
+  machine's generator can add dice, and a broken or adversarially chosen machine
+  source cannot weaken the result.
 
 covers:
   - packages/core/src/entropy/combine.ts::combineEntropy
@@ -99,9 +99,10 @@ security_notes: >
 
   It does NOT detect a low-entropy source, and cannot. A source supplying 32
   zero bytes is indistinguishable here from a source supplying 32 good bytes.
-  Detection is the caller's responsibility, which is why the daemon health-gates
-  machine sources (stuck-output check, entropy_avail, /dev/hwrng presence)
-  before they ever reach this function. See docs/ENTROPY.md.
+  Detection is the caller's responsibility. The daemon's one caller, Mode B,
+  passes the dice and 32 bytes of crypto.randomBytes and does not health-gate
+  the second, because the property above is what protects it. Only Mode C, which
+  does not reach this function, is gated. See docs/ENTROPY.md.
 
   It also does not protect against an attacker who controls ALL sources. The
   guarantee is one-good-source, not zero-good-sources.

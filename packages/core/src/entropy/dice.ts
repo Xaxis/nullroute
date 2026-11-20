@@ -96,7 +96,7 @@ export function validateRolls(rolls: string): void {
   }
 }
 
-/** Live entropy accounting, for the "213 of 256 bits" display during collection. */
+/** Live entropy accounting, for the "214 of 256 bits" display during collection. */
 export function accountEntropy(rolls: string): EntropyAccounting {
   const n = rolls.length
   const exactBits = n * BITS_PER_ROLL

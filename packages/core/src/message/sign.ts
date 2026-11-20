@@ -129,6 +129,17 @@ export function toSpendTxidForBuilder(toSpend: Uint8Array): Uint8Array {
 /** Script types that carry a witness, and can therefore be signed simply. */
 const WITNESS_TYPES: readonly ScriptType[] = ['p2wpkh', 'p2sh-p2wpkh', 'p2tr']
 
+function assertWitnessType(scriptType: ScriptType): void {
+  if (!WITNESS_TYPES.includes(scriptType)) {
+    throw new MessageError(
+      `This device signs BIP-322 messages for p2wpkh, p2sh-p2wpkh and p2tr addresses. ` +
+        `${scriptType} is not one of them: a legacy address uses the older signmessage scheme, ` +
+        `which is a different construction committing to different bytes, and is signed by ` +
+        `signLegacyMessage instead.`
+    )
+  }
+}
+
 export interface MessageSignature {
   readonly address: string
   readonly message: string
@@ -279,19 +290,11 @@ export function signMessageWithKey(
   scriptType: ScriptType,
   message: string
 ): MessageSignature {
-  // Refused before anything is derived. A message that cannot be displayed
-  // honestly must not reach a signing path, and throwing here rather than
-  // returning a list is what stops a caller proceeding by omission.
+  // A message that cannot be displayed honestly must not reach a signing path,
+  // and throwing here rather than returning a list is what stops a caller
+  // proceeding by omission. Repeated in signMessage, before the key exists.
   assertSignable(message)
-
-  if (!WITNESS_TYPES.includes(scriptType)) {
-    throw new MessageError(
-      `This device signs BIP-322 messages for p2wpkh, p2sh-p2wpkh and p2tr addresses. ` +
-        `${scriptType} is not one of them: a legacy address uses the older signmessage scheme, ` +
-        `which is a different construction committing to different bytes, and is signed by ` +
-        `signLegacyMessage instead.`
-    )
-  }
+  assertWitnessType(scriptType)
 
   if (scriptType === 'p2tr') return signTaproot(privateKey, network, message)
 
@@ -365,6 +368,11 @@ export function signMessage(
   path: string,
   message: string
 ): MessageSignature & { readonly path: string } {
+  // REFUSED BEFORE THE KEY EXISTS. signMessageWithKey refuses too, but by then
+  // the child private key has been derived from the seed and sits in memory for
+  // a message that was never going to be signed. INV-MSG-7.
+  assertSignable(message)
+  assertWitnessType(scriptType)
   const normalised = normalizePath(path)
   const child = rootFromSeed(seed, network).derive(normalised)
   if (child.privateKey === null) {
