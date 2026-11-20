@@ -5,9 +5,10 @@
 [![Specs](https://img.shields.io/badge/specs-39-informational)](packages/verify)
 [![Invariants](https://img.shields.io/badge/invariants-355-informational)](docs/THREAT-MODEL.md)
 
-An air-gapped Bitcoin signing device you can check rather than trust. You roll
+An air-gapped Bitcoin signing device you build from a Raspberry Pi. You roll
 100 dice, it turns them into a seed by a rule you can repeat with `sha256sum`,
-and it refuses to start unless its own code matches a published hash.
+and before it asks for a PIN it shows one hash over every file it runs, for you
+to compare with your own build.
 
 > **Pre-1.0 and unaudited, with hardware bring-up on a Raspberry Pi 5 and a Pi 4 next.
 > Keep real money off it until both are done.** See [Status](#status).
