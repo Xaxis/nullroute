@@ -175,7 +175,30 @@ async function cdp(ws, id, method, params = {}) {
   })
 }
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+/**
+ * Resolves on the next `method` event, or fails after `ms`.
+ *
+ * Measuring after a fixed sleep measured whatever had arrived by then. On a
+ * loaded machine that was a page without its stylesheet, whose code blocks
+ * had not yet become scrollers, and the check failed a page that fits
+ * (2026-11-20, /docs/entropy/mode-a-dice-only at 768px). This waits for the
+ * load event instead, as tools/gen-brand.mjs does.
+ */
+function nextEvent(ws, method, ms = 30_000) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      ws.removeEventListener('message', onMessage)
+      reject(new Error(`check-responsive: no ${method} within ${String(ms)} ms`))
+    }, ms)
+    const onMessage = (event) => {
+      if (JSON.parse(event.data).method !== method) return
+      clearTimeout(timer)
+      ws.removeEventListener('message', onMessage)
+      resolve()
+    }
+    ws.addEventListener('message', onMessage)
+  })
+}
 
 async function main() {
   await new Promise((resolve) => server.listen(PORT, resolve))
@@ -217,6 +240,8 @@ async function main() {
 
   const page = new WebSocket(target.webSocketDebuggerUrl)
   await new Promise((resolve) => page.addEventListener('open', resolve, { once: true }))
+  // Without this, Page.loadEventFired is never sent and nextEvent times out.
+  await cdp(page, ++seq, 'Page.enable')
 
   let failures = 0
   let checked = 0
@@ -230,8 +255,15 @@ async function main() {
     })
 
     for (const path of pages) {
+      const loaded = nextEvent(page, 'Page.loadEventFired')
       await cdp(page, ++seq, 'Page.navigate', { url: `http://127.0.0.1:${PORT}${path}` })
-      await sleep(350)
+      await loaded
+      // Load fires before web fonts are guaranteed to be laid out, and the
+      // fallback face is a different width.
+      await cdp(page, ++seq, 'Runtime.evaluate', {
+        expression: 'document.fonts.ready.then(() => true)',
+        awaitPromise: true,
+      })
 
       const { result } = await cdp(page, ++seq, 'Runtime.evaluate', {
         expression: MEASURE,
