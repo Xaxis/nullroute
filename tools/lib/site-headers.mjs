@@ -67,14 +67,25 @@ export const VISIT_COUNTER_SCRIPT = 'https://overlook.technology/s.js'
 export const VISIT_COUNTER_ENDPOINT = 'https://overlook.technology/e'
 
 /**
- * The contact form's endpoint (CONTACT_ENDPOINT in apps/web/lib/site.ts), the
- * second off-origin allowance and the only one a reader triggers: the page
- * sends nothing there until someone presses Send. An exact URL, not the
- * admin's origin, so nothing else the admin console serves can be reached
- * from a page on this site. The vercel.app address works without the admin
- * CNAME; when admin.nullroute.diy resolves, both constants move to it together.
+ * The admin console (apps/admin) is served at nullroute.diy/admin. It is a
+ * separate Vercel project, a server holding the database password and the mail
+ * key, and this site's deploy passes every request under ADMIN_PATH through to
+ * it (build-vercel-output.mjs, and vercel.json from gen-csp.mjs).
+ *
+ * Its responses carry its own headers, not the ones below: a page there
+ * running under two policies would have its nonce scripts blocked by this
+ * one's hash list. ADMIN_PATH matches BASE_PATH in apps/admin/src/base-path.ts,
+ * which the console is built with.
  */
-export const CONTACT_ENDPOINT = 'https://nullroute-admin.vercel.app/api/contact'
+export const ADMIN_PATH = '/admin'
+export const ADMIN_UPSTREAM = 'https://nullroute-admin.vercel.app'
+
+/**
+ * The contact form's endpoint (CONTACT_ENDPOINT in apps/web/lib/site.ts). The
+ * console answers it under ADMIN_PATH, so it is on this origin and 'self'
+ * covers it: the visit counter is the only off-origin request the site makes.
+ */
+export const CONTACT_ENDPOINT = `${ADMIN_PATH}/api/contact`
 
 /** The Content-Security-Policy, given the inline script hashes to allow. */
 export function buildPolicy(hashes) {
@@ -86,11 +97,11 @@ export function buildPolicy(hashes) {
     "style-src 'self'",
     "img-src 'self' data:",
     "font-src 'self'",
-    // The visit counter posts each visit to its endpoint, and the contact form
-    // posts a message to its own when the reader sends one. Those are the only
-    // off-origin requests the site makes. 'self' keeps Next's client router
-    // from tripping the policy if a future page prefetches a route payload.
-    `connect-src 'self' ${VISIT_COUNTER_ENDPOINT} ${CONTACT_ENDPOINT}`,
+    // The visit counter posts each visit to its endpoint: the only off-origin
+    // request the site makes. 'self' covers the contact form's endpoint
+    // (CONTACT_ENDPOINT, on this origin) and keeps Next's client router from
+    // tripping the policy if a future page prefetches a route payload.
+    `connect-src 'self' ${VISIT_COUNTER_ENDPOINT}`,
     "manifest-src 'self'",
     // No <base> rewriting, no form posts anywhere, no embedding in a frame.
     "base-uri 'none'",

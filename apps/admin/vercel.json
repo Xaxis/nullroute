@@ -3,5 +3,5 @@
   "framework": "nextjs",
   "installCommand": "npm ci",
   "regions": ["iad1"],
-  "crons": [{ "path": "/api/cron/maintain", "schedule": "17 6 * * *" }]
+  "crons": [{ "path": "/admin/api/cron/maintain", "schedule": "17 6 * * *" }]
 }

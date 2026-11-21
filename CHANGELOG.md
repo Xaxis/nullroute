@@ -10,6 +10,13 @@ first, and the website's status page renders it.
 
 ## November 2026
 
+- **2026-11-21** The maintainer's console moved from a subdomain to
+  nullroute.diy/admin. It is still its own server project, holding the
+  database password and the mail key; the site's deploy passes `/admin`
+  through to it and keeps the site's own headers off its pages, and the
+  contact form now posts on the site's own origin, so the CSP allows no
+  off-origin request beyond the visit counter. `make admin-live-check` also
+  asks that the console's redirects stay on nullroute.diy.
 - **2026-11-20** nullroute.diy has a contact page, and the maintainer has a
   console at admin.nullroute.diy (`apps/admin`): sign-in by emailed code for
   listed addresses only, grant applications with their milestones, references,

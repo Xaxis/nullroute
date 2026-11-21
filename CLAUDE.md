@@ -72,7 +72,7 @@ packages/
   wallet/   Phase 5. Lower assurance tier. Compile-time removable.
   bridge/   Phase 6. Runs on a NETWORKED machine. Never on the device.
 apps/web/   nullroute.diy. Never ships to the device.
-apps/admin/ admin.nullroute.diy, the owner's console: grants, contact inbox.
+apps/admin/ nullroute.diy/admin, the owner's console: grants, contact inbox.
             Its own lockfile, not a root workspace, outside the manifest.
 tools/      check-prose, gen-sbom, check-reproducible, build-image
 ```
@@ -104,7 +104,11 @@ installs it and nothing it pulls in can reach `MANIFEST.lock`. Lint holds it to
 the website's import rule. `make lint` installs its dependencies first, because
 type-aware rules cannot resolve its imports without them. Its Postgres
 connection pins Supabase's root certificate (`src/server/supabase-ca.ts`);
-never relax that to `rejectUnauthorized: false`.
+never relax that to `rejectUnauthorized: false`. It is served at
+nullroute.diy/admin, not a subdomain: the site's deploy passes that path
+through to the `nullroute-admin` project, so `ADMIN_PATH` in
+`tools/lib/site-headers.mjs` and `BASE_PATH` in `apps/admin/src/base-path.ts`
+change together.
 
 **Excluding the website from the manifest is a security decision.** Folding it
 in would mean a change to a marketing page altered the hash a user compares

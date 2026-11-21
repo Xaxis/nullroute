@@ -59,7 +59,13 @@ import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from '
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 // ONE DEFINITION, shared with tools/build-vercel-output.mjs. See that file.
-import { buildPolicy, inlineScriptHashes, securityHeaders } from './lib/site-headers.mjs'
+import {
+  ADMIN_PATH,
+  ADMIN_UPSTREAM,
+  buildPolicy,
+  inlineScriptHashes,
+  securityHeaders,
+} from './lib/site-headers.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const OUT = join(ROOT, 'apps/web/out')
@@ -101,7 +107,13 @@ const config = {
   // extension and we are deliberately not using it.
   cleanUrls: true,
   trailingSlash: false,
-  headers: [{ source: '/(.*)', headers: securityHeaders(csp) }],
+  // The admin console, passed through to its own project, with its own
+  // headers rather than these (see ADMIN_PATH in tools/lib/site-headers.mjs).
+  rewrites: [
+    { source: ADMIN_PATH, destination: `${ADMIN_UPSTREAM}${ADMIN_PATH}` },
+    { source: `${ADMIN_PATH}/:path*`, destination: `${ADMIN_UPSTREAM}${ADMIN_PATH}/:path*` },
+  ],
+  headers: [{ source: `/((?!${ADMIN_PATH.slice(1)}(?:/|$)).*)`, headers: securityHeaders(csp) }],
 }
 
 const serialized = `${JSON.stringify(config, null, 2)}\n`

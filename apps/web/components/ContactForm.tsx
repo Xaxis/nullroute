@@ -93,7 +93,9 @@ export function ContactForm() {
     try {
       res = await fetch(CONTACT_ENDPOINT, {
         method: 'POST',
-        mode: 'cors',
+        // The console answers under /admin on this origin. Without cookies, so
+        // a maintainer's own session never rides along with a message.
+        mode: 'same-origin',
         credentials: 'omit',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({

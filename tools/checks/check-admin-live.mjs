@@ -11,10 +11,16 @@
  * health endpoint reaches the database, which is the one failure the rest of
  * the list cannot see.
  *
- * Usage: node tools/checks/check-admin-live.mjs [origin]
+ * The console is served at nullroute.diy/admin, passed through by the site's
+ * deploy. So it also asks what that pass-through could get wrong: the site's
+ * own policy landing on the console's pages beside the console's (its hash
+ * list would block their nonce scripts), and a redirect that sends the reader
+ * to the console project's own vercel.app address instead of staying here.
+ *
+ * Usage: node tools/checks/check-admin-live.mjs [console URL]
  */
 
-const ORIGIN = process.argv[2] ?? 'https://admin.nullroute.diy'
+const ORIGIN = process.argv[2] ?? 'https://nullroute.diy/admin'
 const SITE = 'https://nullroute.diy'
 
 let failed = 0
@@ -50,6 +56,11 @@ expect(
 )
 expect(csp.includes("frame-ancestors 'none'"), 'it cannot be framed', csp)
 expect(
+  !csp.includes("default-src 'none'") && !csp.includes('sha256-'),
+  "the site's own policy is not served beside it",
+  csp
+)
+expect(
   (signin.headers.get('strict-transport-security') ?? '').includes('max-age='),
   'HSTS is set',
   signin.headers.get('strict-transport-security') ?? 'missing'
@@ -60,12 +71,15 @@ expect(
   signin.headers.get('x-robots-tag') ?? 'missing'
 )
 
-for (const path of ['/', '/grants', '/messages', '/access']) {
+const SIGNIN = `${new URL(ORIGIN).pathname.replace(/\/$/, '')}/signin`
+for (const path of ['', '/grants', '/messages', '/access']) {
   const res = await get(path)
   const to = res.headers.get('location') ?? ''
+  // Relative, or on this host: never the console project's own address.
+  const lands = to ? new URL(to, `${ORIGIN}${path}`) : undefined
   expect(
-    res.status === 307 && to.includes('/signin'),
-    `signed out, ${path} redirects to sign-in`,
+    res.status === 307 && lands?.host === new URL(ORIGIN).host && lands.pathname === SIGNIN,
+    `signed out, ${path || 'the console'} redirects to sign-in here`,
     `${String(res.status)} ${to}`
   )
 }

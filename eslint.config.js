@@ -173,7 +173,7 @@ export default tseslint.config(
   // so the no-network rule does not apply. The tier rule still does: the site
   // must never import device code.
   // ---------------------------------------------------------------------------
-  // admin.nullroute.diy, the owner's console, is the same kind of thing and gets
+  // nullroute.diy/admin, the owner's console, is the same kind of thing and gets
   // the same rule.
   {
     files: ['apps/web/**/*.{ts,tsx}', 'apps/admin/**/*.{ts,tsx}'],

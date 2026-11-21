@@ -1,3 +1,4 @@
+import { BASE_PATH } from '@/base-path'
 import { audit } from '@/server/audit'
 import { CLEAR_COOKIE, endSessionByToken, findSession } from '@/server/auth/sessions'
 import { readSessionCookie } from '@/server/auth/viewer'
@@ -15,6 +16,6 @@ export async function POST(req: Request) {
   }
   return new Response(null, {
     status: 303,
-    headers: { location: '/signin', 'set-cookie': CLEAR_COOKIE },
+    headers: { location: `${BASE_PATH}/signin`, 'set-cookie': CLEAR_COOKIE },
   })
 }

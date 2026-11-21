@@ -3,6 +3,7 @@
 // Admission's apps/admission/src/app/signin/SignInForm.tsx (see UPSTREAM.md), in nullroute's style.
 
 import { useEffect, useRef, useState } from 'react'
+import { BASE_PATH } from '@/base-path'
 import { cn } from '@/components/ui'
 
 type Step = { kind: 'email' } | { kind: 'code'; email: string }
@@ -63,7 +64,7 @@ export function SignInForm({ next }: { next: string }) {
     setBusy(true)
     setError(null)
     try {
-      const r = await post('/api/auth/code', { email: address })
+      const r = await post(`${BASE_PATH}/api/auth/code`, { email: address })
       if (!r.ok) {
         setError(messageOf(r.data, 'Something went wrong. Try again.'))
         if (typeof r.data.retry_after === 'number') setCooldown(r.data.retry_after)
@@ -84,9 +85,10 @@ export function SignInForm({ next }: { next: string }) {
     setBusy(true)
     setError(null)
     try {
-      const r = await post('/api/auth/verify', { email: step.email, code: value })
+      const r = await post(`${BASE_PATH}/api/auth/verify`, { email: step.email, code: value })
       if (r.ok) {
-        window.location.assign(next)
+        // `next` is a path inside the console, as next/navigation's redirect takes it.
+        window.location.assign(next === '/' ? BASE_PATH : `${BASE_PATH}${next}`)
         return
       }
       setError(messageOf(r.data, "That didn't work. Try again."))

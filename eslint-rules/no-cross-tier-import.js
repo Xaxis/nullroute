@@ -81,7 +81,7 @@ const FORBIDDEN = [
   {
     from: 'apps/admin/',
     deny: ['@nullroute/daemon', '@nullroute/wallet', '@nullroute/bridge', '@nullroute/ui'],
-    why: 'admin.nullroute.diy is a networked server with its own lockfile, outside MANIFEST.lock. Device code reached from here would run beside a database and a mail key, and a change to it would never show in the hash users check.',
+    why: 'The admin console (nullroute.diy/admin) is a networked server with its own lockfile, outside MANIFEST.lock. Device code reached from here would run beside a database and a mail key, and a change to it would never show in the hash users check.',
   },
 ]
 

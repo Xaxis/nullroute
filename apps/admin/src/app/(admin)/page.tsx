@@ -251,8 +251,7 @@ export default async function Overview() {
             <div className="mt-4 border-t border-line pt-4">
               <p className="mb-3 text-[0.8125rem] text-muted">
                 Add the missing records in Namecheap (Advanced DNS) for nullroute.diy. Mail from
-                signin@ and contact@nullroute.diy fails until the Resend records are in place, and
-                admin.nullroute.diy needs its CNAME.
+                signin@ and contact@nullroute.diy fails until the Resend records are in place.
               </p>
               <ul className="space-y-3">
                 {dnsMissing.map((d) => (

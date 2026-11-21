@@ -43,7 +43,14 @@ import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 // ONE DEFINITION, shared with tools/gen-csp.mjs, so the policy this deploy
 // actually serves and the policy `make web-csp` checks cannot disagree.
-import { asObject, buildPolicy, inlineScriptHashes, securityHeaders } from './lib/site-headers.mjs'
+import {
+  ADMIN_PATH,
+  ADMIN_UPSTREAM,
+  asObject,
+  buildPolicy,
+  inlineScriptHashes,
+  securityHeaders,
+} from './lib/site-headers.mjs'
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const SITE = join(ROOT, 'apps/web/out')
@@ -103,9 +110,15 @@ const MOVED = [
 const config = {
   version: 3,
   routes: [
+    // THE ADMIN CONSOLE, passed through to its own project (ADMIN_PATH in
+    // tools/lib/site-headers.mjs). First, and final when it matches, so none of
+    // the site's headers below reach its responses: they carry the console's
+    // own, a nonce policy this site's hash list would block.
+    { src: `^${ADMIN_PATH}(/.*)?$`, dest: `${ADMIN_UPSTREAM}${ADMIN_PATH}$1` },
     // `continue: true` applies the headers and then keeps routing, rather than
-    // terminating the match here.
-    { src: '/(.*)', headers, continue: true },
+    // terminating the match here. The admin path is left out here too, so the
+    // console never gets the site's policy even if the route above changes.
+    { src: `^/(?!${ADMIN_PATH.slice(1)}(?:/|$)).*$`, headers, continue: true },
     // PAGES THAT MOVED INTO THE DOCS on 28 October 2026, when the site went
     // from report pages to a product page and a documentation set. They were
     // public for two days and may be linked from somewhere, so each one sends

@@ -34,6 +34,7 @@
 import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { ADMIN_PATH } from '../lib/site-headers.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const OUT = join(ROOT, 'apps/web/out')
@@ -92,6 +93,9 @@ for (const file of pages) {
     if (/^[a-z][a-z0-9+.-]*:/i.test(href)) continue
     // Build output: hashed asset paths, verified by the build itself.
     if (href.startsWith('/_next/')) continue
+    // The admin console, passed through to its own project by the deploy and
+    // not part of this build. make admin-live-check asks it what it serves.
+    if (href === ADMIN_PATH || href.startsWith(`${ADMIN_PATH}/`)) continue
 
     checked += 1
 

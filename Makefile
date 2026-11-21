@@ -24,9 +24,9 @@ MANIFEST_ROOTS := package.json package-lock.json packages spec provisioning
 # here because `lint` names it as a prerequisite, and make expands those as it
 # reads each rule.
 ADMIN_DEPS := apps/admin/node_modules/.package-lock.json
-# Where admin-live-check looks. Override with the vercel.app address until the
-# admin CNAME exists: make admin-deploy ADMIN_ORIGIN=https://nullroute-admin.vercel.app
-ADMIN_ORIGIN ?= https://admin.nullroute.diy
+# Where admin-live-check looks: the console as readers reach it, through the
+# site's pass-through of /admin (ADMIN_PATH in tools/lib/site-headers.mjs).
+ADMIN_ORIGIN ?= https://nullroute.diy/admin
 
 .PHONY: help install dev build check check-fast verify manifest manifest-check \
 	contrast ui-roles \
@@ -957,11 +957,14 @@ deploy: web-check ## Build, hash, and ship those exact bytes to nullroute.diy
 	@npx vercel deploy --prebuilt --prod
 	@$(MAKE) --no-print-directory web-live-check
 
-# --- admin.nullroute.diy -----------------------------------------------------
+# --- nullroute.diy/admin -----------------------------------------------------
 # The owner's console: sign-in, grants, and the contact form's inbox. A server
 # with its own lockfile, outside the root workspaces and so outside
 # MANIFEST.lock: nothing it installs can move the hash a user compares before
 # entering a PIN. Its settings live in apps/admin/.env, never committed.
+# Served at nullroute.diy/admin: `make deploy` routes that path to this
+# project, so a console deployed before the site's route exists answers only
+# at its own vercel.app address.
 
 # npm writes this file at the end of every install, so it is older than the
 # lockfile exactly when the installed tree may not match it.

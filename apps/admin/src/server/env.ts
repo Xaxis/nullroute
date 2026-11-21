@@ -11,7 +11,10 @@ const split = (s: string): string[] =>
     .filter(Boolean)
 
 const schema = z.object({
-  /** This console's own origin, e.g. https://admin.nullroute.diy. */
+  /**
+   * The origin the console is served on: https://nullroute.diy, under /admin (src/base-path.ts).
+   * Sign-in requests and server actions must come from it, and emails link to it.
+   */
   PUBLIC_ORIGIN: z.url(),
   /** Who may sign in. Nobody else gets a code, and a removed address loses its sessions. */
   OWNER_EMAILS: z

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "admin.nullroute.diy: the maintainer's console for grants, messages and project status. Never ships to the device, and is outside the manifest.",
+  "description": "nullroute.diy/admin: the maintainer's console for grants, messages and project status. Never ships to the device, and is outside the manifest.",
   "license": "MIT",
   "engines": {
     "node": "24.x"

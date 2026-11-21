@@ -49,18 +49,19 @@ export const VISIT_COUNTER = {
 
 /**
  * Where the contact form sends a message: the admin console (apps/admin), which
- * stores it and then emails the maintainer. The CSP allows exactly this URL
- * (CONTACT_ENDPOINT in tools/lib/site-headers.mjs), so the two change together.
- * Nothing is sent until the reader presses Send.
+ * stores it and then emails the maintainer. It is served at /admin on this
+ * origin (ADMIN_PATH and CONTACT_ENDPOINT in tools/lib/site-headers.mjs), so
+ * the CSP's 'self' covers it. Nothing is sent until the reader presses Send.
  */
-export const CONTACT_ENDPOINT = 'https://nullroute-admin.vercel.app/api/contact'
+export const CONTACT_ENDPOINT = '/admin/api/contact'
 
 /**
  * The maintainer's way into the admin console, linked quietly from the footer.
- * Moves to https://admin.nullroute.diy/signin with CONTACT_ENDPOINT, once that
- * name resolves.
+ * Signed out, the console sends it on to its sign-in page; signed in, it opens.
+ * A plain link, not next/link: /admin is the console's, not a page of this
+ * static build, so the client router has no payload to fetch for it.
  */
-export const ADMIN_SIGNIN_URL = 'https://nullroute-admin.vercel.app/signin'
+export const ADMIN_SIGNIN_URL = '/admin'
 
 /**
  * What a message is about. The admin console holds the same list and refuses a

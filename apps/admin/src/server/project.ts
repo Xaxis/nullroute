@@ -181,8 +181,9 @@ const DKIM =
   'p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDJoxnsoiOx3RjjoumcgUf0CBi45gNZVxlzfUWKM6RbAUoK/yOM9S7nTgV6zqcrYpXRoFbqXa1pxe0IYJrC01/u4V6MNfhUxVgws7TYywk45c0QNQn33OVG3O+6Jutuz5orODY3sGIWmPiDJWU8PdWwjy+ha0yMhFoPcF706XPqpwIDAQAB'
 
 /**
- * The records Resend (domain nullroute.diy on the Xaxis team, created 20 November 2026) and this
- * console need. Resend's own dashboard is the source if they ever change.
+ * The records Resend needs for nullroute.diy (Xaxis team, domain recreated 21 November 2026), as
+ * its API listed them. Resend's dashboard is the source if they ever change. The console needs
+ * none of its own: it is served at nullroute.diy/admin.
  */
 const RECORDS: Omit<DnsCheck, 'found' | 'ok'>[] = [
   {
@@ -193,32 +194,18 @@ const RECORDS: Omit<DnsCheck, 'found' | 'ok'>[] = [
     want: DKIM.slice(0, 60),
   },
   {
-    label: 'Resend bounce MX',
+    label: 'Resend SPF (send)',
     host: 'send',
-    type: 'MX',
-    value: 'feedback-smtp.us-east-1.amazonses.com (priority 10)',
-    want: 'feedback-smtp.us-east-1.amazonses.com',
-  },
-  {
-    label: 'Resend SPF',
-    host: 'send',
-    type: 'TXT',
-    value: 'v=spf1 include:amazonses.com ~all',
-    want: 'v=spf1 include:amazonses.com',
-  },
-  {
-    label: 'Resend tracking',
-    host: 'rsend',
     type: 'CNAME',
     value: 'send.forge.rmta.net',
     want: 'send.forge.rmta.net',
   },
   {
-    label: 'Admin domain',
-    host: 'admin',
+    label: 'Resend SPF (rsend)',
+    host: 'rsend',
     type: 'CNAME',
-    value: 'cname.vercel-dns.com',
-    want: 'vercel-dns',
+    value: 'rsend.forge.rmta.net',
+    want: 'rsend.forge.rmta.net',
   },
 ]
 

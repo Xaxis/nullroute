@@ -18,9 +18,9 @@
  * This asserts the property against the built output rather than trusting that
  * nobody added a `<script src>`. Outbound `<a href>` links are fine: those are
  * navigation the reader chooses, not resources the page fetches. The contact
- * page's request is the same kind of thing: it goes to one exact URL
- * (CONTACT_ENDPOINT, allowed in connect-src and nowhere else) only when the
- * reader presses Send, and the page says what it carries.
+ * page's request stays on this origin: it goes to the admin console under
+ * /admin (CONTACT_ENDPOINT) only when the reader presses Send, and the page
+ * says what it carries.
  *
  * It also checks for inline styles and scripts, because those are what force
  * `unsafe-inline` into the Content-Security-Policy. A strict CSP is only

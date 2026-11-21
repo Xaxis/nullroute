@@ -10,6 +10,7 @@
  * owner hasn't signed in on, and a wrong guess counts only when there was a code to guess.
  */
 
+import { BASE_PATH } from '@/base-path'
 import { audit } from '../audit'
 import { randomToken, sha256 } from '../crypto'
 import { env } from '../env'
@@ -119,7 +120,8 @@ export async function requestCode(req: Request): Promise<Response> {
   const asker = sha256(token)
   await issueCode(email, asker, code)
   try {
-    await sendMail(codeMail(email, code, env().PUBLIC_ORIGIN, randomToken(16)))
+    // The console's own address, so the email's link opens sign-in rather than the public site.
+    await sendMail(codeMail(email, code, `${env().PUBLIC_ORIGIN}${BASE_PATH}`, randomToken(16)))
   } catch (e) {
     await dropCode(email, asker)
     console.error('mail failed', e instanceof MailError ? e.message : e)

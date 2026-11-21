@@ -9,6 +9,7 @@
  *   page shows whether the notification went out.
  */
 import { z } from 'zod'
+import { BASE_PATH } from '@/base-path'
 import { audit } from './audit'
 import { type Rule, take } from './auth/limits'
 import { esc, frame, MailError, sendMail } from './auth/mail'
@@ -179,7 +180,7 @@ export async function submitContact(req: Request): Promise<Response> {
 export function contactMail(id: string, c: Contact) {
   const origin = env().PUBLIC_ORIGIN
   const label = TOPICS[c.topic]
-  const link = `${origin}/messages#${id}`
+  const link = `${origin}${BASE_PATH}/messages#${id}`
   const text = `${label}, from ${c.name} <${c.email}>\n\n${c.message}\n\nReply to this email to answer them. In the admin: ${link}\n`
   const body = `<p style="margin:0 0 6px;font-size:13px;color:#5c626d;">${esc(label)}</p>
 <p style="margin:0 0 16px;font-size:15px;color:#14161a;"><strong>${esc(c.name)}</strong> &lt;${esc(c.email)}&gt;</p>

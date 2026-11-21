@@ -61,7 +61,7 @@ jobs:
       - name: Lint, including the no-network rule
         run: make lint
 
-      # admin.nullroute.diy, the owner's console. Its own lockfile, outside the
+      # nullroute.diy/admin, the owner's console. Its own lockfile, outside the
       # manifest; `make lint` above has already installed it.
       - name: Admin console types and unit tests
         run: make admin-check

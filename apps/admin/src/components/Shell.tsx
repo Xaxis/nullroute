@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react'
+import { BASE_PATH } from '@/base-path'
 import { Mark } from './Mark'
 import { Nav, type NavItem } from './Nav'
 
 function SignOut() {
   return (
-    <form action="/api/auth/signout" method="post">
+    <form action={`${BASE_PATH}/api/auth/signout`} method="post">
       <button
         type="submit"
         className="text-[0.8125rem] text-muted underline-offset-4 hover:text-ink hover:underline"
@@ -17,7 +18,7 @@ function SignOut() {
 
 function Brand() {
   return (
-    <a href="/" className="flex items-center gap-2 text-ink">
+    <a href={BASE_PATH} className="flex items-center gap-2 text-ink">
       <Mark className="size-5 text-signal" />
       <span className="font-mono text-[0.9375rem] font-medium">nullroute</span>
       <span className="rounded border border-border px-1.5 text-[0.6875rem] leading-[1.125rem] tracking-wide text-muted uppercase">
