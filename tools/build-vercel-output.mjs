@@ -85,9 +85,15 @@ const headers = asObject(securityHeaders(csp))
 // Without this /docs/threat-model 404s and only /docs/threat-model.html
 // resolves, because the Next.js framework preset is what normally strips the
 // extension and this is deliberately deployed as plain static files.
+//
+// The not-found pages keep their filenames. The last route below sends every
+// unmatched address to /404.html, and when 404.html was given the clean path
+// /404 like the rest, that destination stopped existing: every mistyped URL
+// got Vercel's own bare page, whose inline script and style the CSP refuses.
+const KEEP_FILENAME = new Set(['index.html', '404.html', '_not-found.html'])
 const overrides = {}
 for (const file of htmlFiles) {
-  if (file === 'index.html') continue
+  if (KEEP_FILENAME.has(file)) continue
   const clean = file.replace(/(?:\/index)?\.html$/, '')
   if (clean.length > 0 && clean !== file) overrides[file] = { path: clean }
 }

@@ -194,7 +194,23 @@ function builtPages() {
   )
 }
 
-const PAGES = [...builtPages(), ...docPages()]
+/*
+ * THE NOT-FOUND PAGE IS A PAGE TOO. An address that matches nothing has to
+ * answer 404 with this build's own page. For weeks it answered with Vercel's
+ * bare one instead, which the CSP blocks, because the route pointed at a file
+ * the clean-URL overrides had renamed, and this check never asked.
+ */
+function notFoundPage() {
+  const title = /<title>([^<]*)<\/title>/.exec(readFileSync(join(OUT, '404.html'), 'utf8'))
+  return {
+    path: '/no-page-has-this-address',
+    file: '404.html',
+    status: 404,
+    expect: title ? decode(title[1]) : '(no title in the build)',
+  }
+}
+
+const PAGES = [...builtPages(), ...docPages(), notFoundPage()]
 
 /** Where `next build` put the page this path serves. */
 function builtFile(path) {
@@ -300,7 +316,7 @@ async function main() {
 
   let failures = 0
 
-  for (const { path, expect, minBody } of PAGES) {
+  for (const { path, expect, minBody, file, status = 200 } of PAGES) {
     problems = []
     await send(page, state, 'Page.navigate', { url: `${ORIGIN}${path}` })
     await sleep(2500)
@@ -323,13 +339,17 @@ async function main() {
      * browser, because innerHTML is the DOM after parsing and hydration and
      * this has to compare the bytes that were served.
      */
-    const local = builtFile(path)
+    const local = file === undefined ? builtFile(path) : join(OUT, file)
     if (!existsSync(local)) {
       issues.push(`no local build at ${local.replace(ROOT, '')}. Run "make web-build" first.`)
     } else {
       let served
       try {
-        served = await (await fetch(`${ORIGIN}${path}`)).text()
+        const response = await fetch(`${ORIGIN}${path}`)
+        if (response.status !== status) {
+          issues.push(`answered ${String(response.status)}, expected ${String(status)}`)
+        }
+        served = await response.text()
       } catch (err) {
         served = null
         issues.push(`could not fetch it: ${err instanceof Error ? err.message : String(err)}`)
