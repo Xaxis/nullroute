@@ -293,10 +293,14 @@ async function main() {
   await new Promise((r) => page.addEventListener('open', r, { once: true }))
 
   let problems = []
+  // The one network error a page is allowed: its own status, when that status
+  // is the point, as on the not-found probe. Chrome logs any 4xx document.
+  let expectedStatusFor = null
   page.addEventListener('message', (event) => {
     const msg = JSON.parse(event.data)
     if (msg.method === 'Log.entryAdded') {
       const entry = msg.params.entry
+      if (entry.source === 'network' && entry.url === expectedStatusFor) return
       if (entry.level === 'error' || /Content Security Policy|Refused to/i.test(entry.text)) {
         problems.push(`[${entry.source}] ${entry.text}`)
       }
@@ -318,6 +322,7 @@ async function main() {
 
   for (const { path, expect, minBody, file, status = 200 } of PAGES) {
     problems = []
+    expectedStatusFor = status === 200 ? null : `${ORIGIN}${path}`
     await send(page, state, 'Page.navigate', { url: `${ORIGIN}${path}` })
     await sleep(2500)
 
