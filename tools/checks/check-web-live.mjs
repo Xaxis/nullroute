@@ -197,8 +197,8 @@ function builtPages() {
 /*
  * THE NOT-FOUND PAGE IS A PAGE TOO. An address that matches nothing has to
  * answer 404 with this build's own page. For weeks it answered with Vercel's
- * bare one instead, which the CSP blocks, because the route pointed at a file
- * the clean-URL overrides had renamed, and this check never asked.
+ * bare one instead, which the CSP blocks, because the route named /404.html,
+ * a spelling Vercel does not serve, and this check never asked.
  */
 function notFoundPage() {
   const title = /<title>([^<]*)<\/title>/.exec(readFileSync(join(OUT, '404.html'), 'utf8'))
