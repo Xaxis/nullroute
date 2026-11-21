@@ -46,9 +46,8 @@ export default async function ChapterPage({ params }: Props) {
   return (
     <DocsShell book={book} here={chapter.href}>
       <article className="max-w-[46rem]">
-        <Crumbs trail={[{ href: '/docs', label: 'Docs' }]} />
-        <p className="eyebrow">{chapter.meta.group}</p>
-        <h1 className="mt-2 font-display text-[2.25rem] leading-[1.1] tracking-[-0.015em] text-ink sm:text-[2.75rem]">
+        <Crumbs trail={[{ href: '/docs', label: 'Docs' }]} current={chapter.meta.group} />
+        <h1 className="font-display text-[2.25rem] leading-[1.1] tracking-[-0.015em] text-ink sm:text-[2.75rem]">
           {chapter.meta.title}
         </h1>
         <p className="mt-4 text-[1.0625rem] leading-relaxed text-body">{chapter.meta.summary}</p>
@@ -61,12 +60,11 @@ export default async function ChapterPage({ params }: Props) {
 
         <h2 className="label mt-10">In this chapter</h2>
         <ol className="mt-3 border-t border-line">
-          {chapter.sections.map((section, index) => (
+          {/* No numbers of our own: the sections that are steps carry theirs
+              in the title, and a second count beside it ran one ahead. */}
+          {chapter.sections.map((section) => (
             <li key={section.href} className="border-b border-line">
-              <Link href={section.href} className="group flex gap-4 py-4">
-                <span className="w-6 shrink-0 font-mono text-[0.8125rem] text-muted tabular-nums">
-                  {String(index + 1).padStart(2, '0')}
-                </span>
+              <Link href={section.href} className="group flex py-4">
                 <span className="min-w-0">
                   <span className="block font-semibold text-ink leading-snug group-hover:text-link">
                     {section.title}

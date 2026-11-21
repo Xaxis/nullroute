@@ -199,8 +199,8 @@ export function Search() {
           <circle cx="7" cy="7" r="4.75" stroke="currentColor" strokeWidth="1.5" />
           <path d="m10.5 10.5 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
         </svg>
-        <span className="hidden md:inline">Search docs</span>
-        <kbd className="hidden md:inline rounded border border-line px-1 font-mono text-[0.6875rem] text-muted">
+        <span className="hidden lg:inline">Search docs</span>
+        <kbd className="hidden lg:inline rounded border border-line px-1 font-mono text-[0.6875rem] text-muted">
           /
         </kbd>
       </button>

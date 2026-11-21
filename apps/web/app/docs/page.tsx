@@ -57,13 +57,20 @@ export default async function DocsHome() {
         <h2 id="tasks" className="label">
           Start with a task
         </h2>
-        <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+        <ul className="mt-3 border-t border-line">
           {tasks.map((task) => (
-            <li key={task.href}>
-              <Link href={task.href} className="card h-full px-5 py-4">
-                <span className="block font-semibold text-ink">{task.title}</span>
-                <span className="mt-1 block text-[0.9375rem] leading-snug text-muted">
-                  {task.body}
+            <li key={task.href} className="border-b border-line">
+              <Link
+                href={task.href}
+                className="group grid gap-x-6 gap-y-1 py-4 sm:grid-cols-[13rem_minmax(0,1fr)_auto] sm:items-baseline"
+              >
+                <span className="font-semibold text-ink group-hover:text-link">{task.title}</span>
+                <span className="text-[0.9375rem] leading-snug text-body">{task.body}</span>
+                <span
+                  aria-hidden="true"
+                  className="hidden text-muted group-hover:text-link sm:inline"
+                >
+                  &rarr;
                 </span>
               </Link>
             </li>
@@ -79,7 +86,7 @@ export default async function DocsHome() {
               <li key={chapter.href} className="border-b border-line">
                 <Link
                   href={chapter.href}
-                  className="group grid gap-x-6 gap-y-1 py-4 sm:grid-cols-[11rem_minmax(0,1fr)_auto] sm:items-baseline"
+                  className="group grid gap-x-6 gap-y-1 py-4 sm:grid-cols-[13rem_minmax(0,1fr)_auto] sm:items-baseline"
                 >
                   <span className="font-semibold text-ink group-hover:text-link">
                     {chapter.meta.title}

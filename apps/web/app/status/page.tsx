@@ -27,7 +27,7 @@ export const metadata: Metadata = {
 
 const NEXT: readonly { title: string; proves: string; changes: string }[] = [
   {
-    title: 'Hardware bring-up on a Pi 5 and a Pi 4',
+    title: 'Hardware bring-up on a Pi\u00a05 and a Pi\u00a04',
     proves:
       'The firmware path from power-on to the kernel, the panel and its touch controller, the webcam streaming to the kiosk, the layout on the real panel, and the Argon2id cost on the board. Each is recorded with evidence rather than a claim.',
     changes:
@@ -169,7 +169,7 @@ export default function StatusPage() {
               <span className="font-mono text-[0.8125rem] text-muted tabular-nums pt-0.5">
                 {entry.date}
               </span>
-              <span className="text-[1rem] leading-relaxed text-body">
+              <span className="max-w-[72ch] text-[1rem] leading-relaxed text-body">
                 <InlineMd text={entry.text} />
               </span>
             </li>

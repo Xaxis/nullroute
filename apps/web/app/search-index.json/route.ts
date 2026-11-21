@@ -31,12 +31,32 @@ const ENTITIES: Record<string, string> = {
   '&#39;': "'",
 }
 
+/** Tags that sit inside a line of text. Removing them must not add a space. */
+const INLINE =
+  /<\/?(?:a|abbr|b|code|del|em|i|ins|kbd|mark|q|s|samp|small|span|strong|sub|sup|time|u|var)\b[^>]*>/g
+
+/**
+ * A page as the sentences a search excerpt quotes. Every tag used to become a
+ * space, so inline code read "its multisig key , the BIP-48" and a table
+ * flattened into a run of cell words with nothing between them.
+ */
 function plain(html: string): string {
-  return html
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&(?:amp|lt|gt|quot|#x27|#39);/g, (entity) => ENTITIES[entity] ?? entity)
-    .replace(/\s+/g, ' ')
-    .trim()
+  return (
+    html
+      // A copy button is a control, not part of the text.
+      .replace(/<button\b[^>]*>[\s\S]*?<\/button>/g, ' ')
+      .replace(INLINE, '')
+      .replace(/<\/t[hd]>\s*(?=<t[hd]\b)/g, ' · ')
+      .replace(/<\/tr>/g, '. ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&(?:amp|lt|gt|quot|#x27|#39);/g, (entity) => ENTITIES[entity] ?? entity)
+      .replace(/\s+/g, ' ')
+      .replace(/\s+([,;:!?)])/g, '$1')
+      .replace(/\s+\.(?=\s|$)/g, '.')
+      .replace(/([.!?])\.(?=\s|$)/g, '$1')
+      .replace(/\(\s+/g, '(')
+      .trim()
+  )
 }
 
 /** The pages outside the docs, by what a reader would type to find them. */

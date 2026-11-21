@@ -22,11 +22,15 @@ export default function ContactPage() {
     <div className="mx-auto max-w-7xl px-4 sm:px-6">
       <header className="pt-14 pb-10 sm:pt-20">
         <h1 className="font-display text-[2.5rem] leading-[1.05] tracking-[-0.02em] text-ink sm:text-[3.5rem] max-w-[24ch]">
-          Write to the maintainer.
+          Write to the maintainer
         </h1>
         <p className="mt-5 max-w-[60ch] text-[1.125rem] leading-relaxed text-body">
           Questions about the device or the signer profile, feedback on the docs, an offer to review
-          or contribute, funding, and press.
+          or contribute, funding, and press. A security flaw goes privately through the{' '}
+          <a className="link" href="/docs/security">
+            security policy
+          </a>{' '}
+          instead.
         </p>
       </header>
 

@@ -1,10 +1,11 @@
 import type { Metadata, Viewport } from 'next'
 import Link from 'next/link'
 import { Mark } from '@/components/Mark'
+import { NavLinks } from '@/components/NavLinks'
 import { Search } from '@/components/Search'
 import { ShortHash } from '@/components/report'
 import { readFacts } from '@/lib/facts'
-import { ADMIN_SIGNIN_URL, NAV, OG_IMAGE, REPO_URL, START_HREF, VISIT_COUNTER } from '@/lib/site'
+import { ADMIN_SIGNIN_URL, OG_IMAGE, REPO_URL, START_HREF, VISIT_COUNTER } from '@/lib/site'
 import '../styles/globals.css'
 
 export const metadata: Metadata = {
@@ -114,25 +115,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Link>
             <nav
               aria-label="Site"
-              className="order-2 basis-full sm:order-none sm:basis-auto flex flex-wrap items-center gap-x-6 gap-y-1 font-sans text-[0.875rem]"
+              className="order-2 basis-full sm:order-none sm:basis-auto flex flex-wrap items-center gap-x-6 gap-y-0 font-sans text-[0.875rem]"
             >
-              {NAV.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="text-body hover:text-ink transition-colors"
-                >
-                  {item.label}
-                </Link>
-              ))}
+              <NavLinks />
             </nav>
             <div className="ml-auto flex items-center gap-4 shrink-0">
               <Search />
+              {/* Below lg the header has room for one row only if this goes;
+                  the hero and the footer both link the source. */}
               <a
                 href={REPO_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-sans text-[0.875rem] text-body hover:text-ink transition-colors"
+                className="hidden lg:inline font-sans text-[0.875rem] text-body hover:text-ink transition-colors"
               >
                 GitHub <span aria-hidden="true">&#8599;</span>
               </a>
@@ -147,7 +142,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </main>
 
-        <footer className="mt-24 border-t border-line bg-surface">
+        <footer className="mt-12 border-t border-line bg-surface">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 py-14 grid gap-12 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,2fr)]">
             <div className="min-w-0 space-y-4">
               <span className="inline-flex items-center gap-2 font-mono font-medium text-ink">
@@ -206,17 +201,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               reader of a threat model is owed the boundary between the two
               stated plainly rather than inferred from a policy header. */}
           <div className="border-t border-line">
-            <p className="mx-auto max-w-7xl px-4 sm:px-6 py-6 font-sans text-[0.75rem] leading-relaxed text-muted">
-              This website counts visits with our own privacy-friendly analytics. Each page view
-              sends the page&rsquo;s address, the referring site, your browser and device type, and
-              how long and how far down the page was read. It sets no cookies and stores nothing in
-              your browser unless you opt out; your IP address is used only to make a daily
-              anonymous count and a rough location, and is never stored. To opt out on this site,
-              open any page with <code className="code">?ov_ignore=1</code>, which leaves one flag
-              in this browser so it stays off. The device has no analytics: its frontend can reach
-              nothing but its own daemon (INV-NET-3). Type is Source Serif 4, IBM Plex and DejaVu
-              Sans Mono, served from this domain.
-            </p>
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 space-y-2 font-sans text-[0.75rem] leading-relaxed text-muted">
+              <p className="max-w-[88ch]">
+                This website counts visits with our own privacy-friendly analytics. Each page view
+                sends the page&rsquo;s address, the referring site, your browser and device type,
+                and how long and how far down the page was read. It sets no cookies and stores
+                nothing in your browser unless you opt out; your IP address is used only to make a
+                daily anonymous count and a rough location, and is never stored. To opt out on this
+                site, open any page with <code className="code">?ov_ignore=1</code>, which leaves
+                one flag in this browser so it stays off. The device has no analytics: its frontend
+                can reach nothing but its own daemon (INV-NET-3).
+              </p>
+              <p>Type is Source Serif 4, IBM Plex and DejaVu Sans Mono, served from this domain.</p>
+            </div>
           </div>
         </footer>
 

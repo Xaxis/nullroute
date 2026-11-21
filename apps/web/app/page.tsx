@@ -6,7 +6,7 @@ import { readLog, readParts, readPhases, type Phase } from '../lib/status'
 import { readProfile } from '../lib/profile'
 import { docHref } from '../lib/docbook'
 import { REPO_URL, START_HREF } from '../lib/site'
-import { Shot, checkedScreens, type Screen } from '../components/Device'
+import { Shot, ShotOverlays, checkedScreens, type Screen } from '../components/Device'
 import { Hash, InlineMd, Transcript } from '../components/report'
 import { SigningLoop } from '../components/SigningLoop'
 
@@ -68,10 +68,13 @@ interface Row {
 }
 
 const PHASE_STATE: Record<Phase['kind'], { label: string; bar: string; dot: string }> = {
-  complete: { label: 'Built', bar: 'bg-verify-line', dot: 'bg-verify-line' },
-  partial: { label: 'Partly built', bar: 'bg-signal', dot: 'bg-signal' },
+  complete: { label: 'Complete', bar: 'bg-verify-line', dot: 'bg-verify-line' },
+  partial: { label: 'Complete with exceptions', bar: 'bg-signal', dot: 'bg-signal' },
   'not-started': { label: 'Not started', bar: 'bg-border', dot: 'bg-border' },
 }
+
+/** What the hero names before anything else: the whole bill of hardware, one item per unbroken run. */
+const KIT = ['Raspberry Pi', '7 inch touchscreen', 'USB webcam', 'one die'] as const
 
 export default async function Home() {
   const facts = readFacts()
@@ -195,7 +198,14 @@ export default async function Home() {
         <div className="grid gap-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-14 lg:items-center">
           <div className="min-w-0">
             <p className="font-mono text-[0.8125rem] text-muted">
-              Raspberry Pi &middot; 7 inch touchscreen &middot; USB webcam &middot; one die
+              {KIT.map((part, i) => (
+                <span key={part}>
+                  <span className="whitespace-nowrap">
+                    {part}
+                    {i < KIT.length - 1 && <span aria-hidden="true">&nbsp;&middot;</span>}
+                  </span>{' '}
+                </span>
+              ))}
             </p>
             <h1 className="mt-4 font-display text-[2.5rem] leading-[1.04] tracking-[-0.025em] text-ink sm:text-[3.5rem] lg:text-[3.875rem]">
               An air-gapped Bitcoin signer you build from a Raspberry&nbsp;Pi.
@@ -223,7 +233,7 @@ export default async function Home() {
             </div>
             <p className="mt-7 flex items-start gap-2.5 text-[0.875rem] leading-snug text-muted">
               <span aria-hidden="true" className="mt-1.5 size-2 shrink-0 rounded-full bg-signal" />
-              Pre-release and unaudited. Hardware bring-up on a Pi 5 and a Pi 4 is next.
+              Pre-release and unaudited. Hardware bring-up on a Pi&nbsp;5 and a Pi&nbsp;4 is next.
             </p>
           </div>
           <figure className="min-w-0">
@@ -237,7 +247,7 @@ export default async function Home() {
       </section>
 
       {/* --- The number ------------------------------------------------- */}
-      <section className="on-plate border-y border-line" aria-labelledby="root">
+      <section className="on-plate border-y border-plate-line" aria-labelledby="root">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-16 sm:py-20">
           <h2 id="root" className="font-mono text-[0.8125rem] text-muted">
             Manifest root of this build &middot; SHA-256 over {facts.files} files
@@ -246,7 +256,10 @@ export default async function Home() {
             value={facts.rootHash}
             className="hash-grid mt-6 grid-cols-[repeat(4,auto)] gap-y-[0.18em] text-ink leading-[1.15] text-[clamp(1.25rem,7.8vw,2rem)] sm:grid-cols-[repeat(8,auto)] sm:text-[clamp(1.5rem,3.9vw,3.25rem)]"
           />
-          <div className="mt-12 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-14">
+          {/* Side by side only where the transcript's column holds the whole
+              79-character sha256sum line; narrower, it wrapped MANIFEST.lock
+              onto a line of its own and stopped looking like the output. */}
+          <div className="mt-12 grid gap-10 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] xl:gap-14">
             <div className="min-w-0 max-w-xl">
               <p className="text-[1.0625rem] leading-relaxed text-body">
                 The device shows this number on its lock screen before it asks for anything. It is
@@ -301,10 +314,12 @@ export default async function Home() {
         <div className="mt-12">
           <SigningLoop />
         </div>
-        <ol className="mt-16 grid gap-x-8 gap-y-14 lg:grid-cols-3">
+        {/* Three across, each panel renders near half size, so each one opens
+            full size: the screens are the evidence and should be legible. */}
+        <ol id="steps" className="mt-16 grid gap-x-8 gap-y-14 lg:grid-cols-3">
           {steps.map((step, index) => (
             <li key={step.title} className="min-w-0">
-              <Shot screen={step.screen} link={false} />
+              <Shot screen={step.screen} />
               <h3 className="mt-5 flex items-baseline gap-3 text-[1.125rem] font-semibold text-ink">
                 <span className="font-mono text-[0.8125rem] text-signal">
                   {String(index + 1).padStart(2, '0')}
@@ -335,6 +350,7 @@ export default async function Home() {
             </li>
           ))}
         </ol>
+        <ShotOverlays screens={steps.map((step) => step.screen)} closeTo="steps" />
         <p className="mt-12 text-[0.9375rem] font-semibold">
           <Link href={await docHref('docs/USING.md')} className="link">
             Every screen, and what each one refuses
@@ -486,7 +502,7 @@ export default async function Home() {
                 <span className="pt-0.5 font-mono text-[0.8125rem] text-muted tabular-nums">
                   {entry.date}
                 </span>
-                <span className="min-w-0 text-[0.9375rem] leading-relaxed text-body">
+                <span className="min-w-0 max-w-[72ch] text-[0.9375rem] leading-relaxed text-body">
                   <InlineMd text={firstSentence(entry.text)} />
                 </span>
               </li>

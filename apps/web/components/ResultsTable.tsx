@@ -30,7 +30,7 @@ export function ResultsTable({
   hrefs: ReadonlyMap<string, string>
 }) {
   return (
-    <div className="overflow-hidden rounded-[4px] border border-line bg-surface">
+    <div className="max-w-4xl overflow-hidden rounded-[4px] border border-line bg-surface">
       <table className="w-full border-collapse font-sans text-[0.8125rem] leading-snug sm:text-[0.875rem]">
         <thead>
           <tr className="bg-sunk text-left">

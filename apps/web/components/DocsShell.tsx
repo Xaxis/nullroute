@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import Link from 'next/link'
 import type { Book, Chapter, Heading } from '../lib/docbook'
 import { CopyCode } from './CopyCode'
+import { Hash } from './report'
 import { repoBlobUrl } from '../lib/site'
 
 /**
@@ -26,6 +27,7 @@ export function DocsShell({
   children: ReactNode
 }) {
   const shown = toc.filter((h) => h.depth === 3)
+  const chapter = book.chapters.find((c) => here === c.href || here.startsWith(`${c.href}/`))
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6">
       <div className="lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-12 xl:grid-cols-[15rem_minmax(0,1fr)_12.5rem]">
@@ -34,15 +36,39 @@ export function DocsShell({
         </aside>
 
         <div className="min-w-0 py-8 lg:py-10">
-          <details className="lg:hidden mb-8 card px-4 py-3">
-            <summary className="cursor-pointer font-sans text-sm font-semibold text-ink">
-              Browse the docs
+          {/* The summary says where you are, so the closed menu is wayfinding
+              too; a link at the foot of the page comes back to it. */}
+          <details id="browse" className="group lg:hidden mb-8 card scroll-mt-20">
+            <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 font-sans text-sm [&::-webkit-details-marker]:hidden">
+              <span className="font-semibold text-ink">Browse the docs</span>
+              {chapter === undefined ? null : (
+                <span className="min-w-0 truncate text-muted">{chapter.meta.title}</span>
+              )}
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 16 16"
+                className="ml-auto size-4 shrink-0 text-muted transition-transform group-open:rotate-180"
+                fill="none"
+              >
+                <path
+                  d="m4 6 4 4 4-4"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </summary>
-            <div className="mt-4">
+            <div className="border-t border-line px-4 pt-4 pb-2">
               <DocsNav book={book} here={here} />
             </div>
           </details>
           {children}
+          <p className="lg:hidden mt-8 font-sans text-sm">
+            <a href="#browse" className="link">
+              Browse the docs
+            </a>
+          </p>
           <CopyCode />
         </div>
 
@@ -128,7 +154,14 @@ function DocsNav({ book, here }: { book: Book; here: string }) {
   )
 }
 
-export function Crumbs({ trail }: { trail: readonly { href: string; label: string }[] }) {
+/** The way back up, ending in `current`, the place in the docs that has no page of its own. */
+export function Crumbs({
+  trail,
+  current,
+}: {
+  trail: readonly { href: string; label: string }[]
+  current?: string
+}) {
   return (
     <nav
       aria-label="Breadcrumb"
@@ -142,6 +175,12 @@ export function Crumbs({ trail }: { trail: readonly { href: string; label: strin
           </Link>
         </span>
       ))}
+      {current === undefined ? null : (
+        <span className="inline-flex items-center gap-2">
+          <span aria-hidden="true">/</span>
+          <span className="text-body">{current}</span>
+        </span>
+      )}
     </nav>
   )
 }
@@ -189,8 +228,8 @@ export function SourceNote({ chapter }: { chapter: Chapter }) {
       >
         {chapter.meta.file}
       </a>
-      , the same bytes that ship with the code. SHA-256{' '}
-      <code className="font-hash text-ink break-all">{chapter.digest}</code>
+      , the same bytes that ship with the code. Its SHA-256:
+      <Hash value={chapter.digest} className="mt-1.5 text-body" />
     </p>
   )
 }

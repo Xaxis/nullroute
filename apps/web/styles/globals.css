@@ -135,12 +135,15 @@
 }
 
 @media (prefers-color-scheme: dark) {
+  /* The rules are lighter than the plate's: at #1f232b on #08090b (1.25:1)
+     the ruled rows, which carry most of the site's structure, all but
+     disappeared in this theme. */
   :root {
     --paper: #08090b;
     --surface: #101216;
     --sunk: #171a20;
-    --line: #1f232b;
-    --border: #2d323d;
+    --line: #2a2f39;
+    --border: #3a404c;
     --ink: #f4f6f9;
     --body: #c2c8d2;
     --muted: #949cab;
@@ -329,13 +332,6 @@ body {
       opacity: 1;
     }
   }
-  .eyebrow {
-    font-family: var(--font-sans);
-    font-size: 0.8125rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    color: var(--signal);
-  }
 }
 
 ::selection {
@@ -355,6 +351,19 @@ body {
     outline: 2px solid var(--signal);
     outline-offset: 3px;
     border-radius: 2px;
+  }
+  /* No heading ends on one word and no paragraph strands its last. Set by hand
+     page by page, this was missed more often than not. */
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p,
+  li,
+  dd,
+  figcaption {
+    text-wrap: pretty;
   }
 }
 

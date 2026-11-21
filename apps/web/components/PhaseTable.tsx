@@ -11,11 +11,16 @@ const TONE: Record<PhaseState, { className: string; label: string }> = {
   'not-started': { className: 'bg-transparent border-muted', label: 'Not started' },
 }
 
+/*
+ * Below sm each row stacks, scope over state beside the phase number. As three
+ * columns at 390px the state, the column that matters, ran off the right edge
+ * inside a scroller nothing announced.
+ */
 export function PhaseTable({ phases }: { phases: readonly Phase[] }) {
   return (
     <div className="table-scroll">
-      <table className="w-full border-collapse font-sans text-[0.875rem] leading-snug">
-        <thead>
+      <table className="w-full border-collapse font-sans text-[0.875rem] leading-snug max-sm:block">
+        <thead className="max-sm:hidden">
           <tr className="bg-sunk text-left">
             <th scope="col" className="px-3.5 py-2.5 font-semibold text-ink w-12">
               Phase
@@ -28,14 +33,22 @@ export function PhaseTable({ phases }: { phases: readonly Phase[] }) {
             </th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="max-sm:block">
           {phases.map((phase) => {
             const tone = TONE[phase.kind]
             return (
-              <tr key={phase.number} className="border-t border-line align-top">
-                <td className="px-3.5 py-3 font-mono text-ink tabular-nums">{phase.number}</td>
-                <td className="px-3.5 py-3 text-body min-w-[12rem]">{phase.scope}</td>
-                <td className="px-3.5 py-3 min-w-[12rem]">
+              <tr
+                key={phase.number}
+                className="border-t border-line align-top first:border-t-0 sm:first:border-t max-sm:grid max-sm:grid-cols-[2.75rem_minmax(0,1fr)] max-sm:py-3"
+              >
+                <td className="px-3.5 py-3 font-mono text-ink tabular-nums max-sm:row-span-2 max-sm:py-0">
+                  <span className="sr-only sm:hidden">Phase </span>
+                  {phase.number}
+                </td>
+                <td className="px-3.5 py-3 text-body sm:min-w-[12rem] max-sm:py-0 max-sm:pl-0">
+                  {phase.scope}
+                </td>
+                <td className="px-3.5 py-3 sm:min-w-[12rem] max-sm:pb-0 max-sm:pt-1.5 max-sm:pl-0">
                   <span className="flex gap-2">
                     {/* Drawn, not typed: the subset fonts carry no geometric
                         shapes, so a circle character falls back to whatever

@@ -114,3 +114,45 @@ export function Shot({
     <div className={plate}>{image}</div>
   )
 }
+
+/**
+ * The full-size copies a linked `Shot` opens, one per screen, closed by any
+ * link back to `closeTo`: the id of whatever holds the thumbnails, so closing
+ * returns the reader to where they were. The mechanism is `:target`, described
+ * with the styles in globals.css.
+ */
+export function ShotOverlays({
+  screens,
+  closeTo,
+}: {
+  screens: readonly Screen[]
+  closeTo: string
+}) {
+  return (
+    <>
+      {screens.map((screen) => (
+        <div key={screen.file} id={`shot-${screen.file}`} className="shot">
+          <a href={`#${closeTo}`} className="shot__backdrop" tabIndex={-1} aria-label="Close" />
+          <figure className="shot__panel">
+            <img
+              src={`/device/${screen.file}.png`}
+              alt={screen.caption}
+              width={1600}
+              height={960}
+              loading="lazy"
+              className="shot__image"
+            />
+            <figcaption className="shot__caption">
+              <div className="max-w-2xl">
+                <strong>{screen.caption}.</strong> {screen.detail}
+              </div>
+              <a href={`#${closeTo}`} className="shot__close">
+                Close
+              </a>
+            </figcaption>
+          </figure>
+        </div>
+      ))}
+    </>
+  )
+}

@@ -63,7 +63,7 @@ export function SigningLoop() {
       </div>
 
       <div className="rounded-[6px] border border-ink bg-paper px-5 py-5">
-        <p className="font-mono text-[0.75rem] uppercase tracking-[0.08em] text-signal">Offline</p>
+        <p className="font-mono text-[0.75rem] uppercase tracking-[0.08em] text-muted">Offline</p>
         <p className="mt-1.5 text-[1.0625rem] font-semibold text-ink">nullroute</p>
         <p className="mt-2 text-[0.9375rem] leading-relaxed text-body">
           Holds the keys. Shows every output and the fee on its own screen before it will sign.

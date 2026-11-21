@@ -175,23 +175,25 @@ export default async function ProfilePage() {
           nullroute is held to the profile as one implementation among others, not as its reference.
           Most requirements are met; the rest wait on hardware or a manual procedure.
         </Head>
-        <div className="mt-8 table-scroll card overflow-hidden">
-          <table className="w-full border-collapse text-[0.875rem] leading-snug">
+        <div className="mt-8 max-w-4xl table-scroll card overflow-hidden">
+          <table className="w-full border-collapse text-[0.875rem] leading-snug max-sm:text-[0.8125rem]">
             <thead>
               <tr className="bg-sunk text-left">
-                <th scope="col" className="px-4 py-3 font-semibold text-ink">
+                <th scope="col" className="px-4 py-3 max-sm:px-2 font-semibold text-ink">
                   Area
                 </th>
-                <th scope="col" className="px-4 py-3 font-semibold text-ink text-right">
-                  Requirements
+                <th scope="col" className="px-4 py-3 max-sm:px-2 font-semibold text-ink text-right">
+                  <span className="sm:hidden">Total</span>
+                  <span className="max-sm:hidden">Requirements</span>
                 </th>
-                <th scope="col" className="px-4 py-3 font-semibold text-ink text-right">
+                <th scope="col" className="px-4 py-3 max-sm:px-2 font-semibold text-ink text-right">
                   Met
                 </th>
-                <th scope="col" className="px-4 py-3 font-semibold text-ink text-right">
-                  With a caveat
+                <th scope="col" className="px-4 py-3 max-sm:px-2 font-semibold text-ink text-right">
+                  <span className="sm:hidden">Caveat</span>
+                  <span className="max-sm:hidden">With a caveat</span>
                 </th>
-                <th scope="col" className="px-4 py-3 font-semibold text-ink text-right">
+                <th scope="col" className="px-4 py-3 max-sm:px-2 font-semibold text-ink text-right">
                   Open
                 </th>
               </tr>
@@ -199,20 +201,22 @@ export default async function ProfilePage() {
             <tbody>
               {byArea.map((area) => (
                 <tr key={area.prefix} className="border-t border-line">
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 max-sm:px-2">
                     <span className="text-ink">{area.title}</span>{' '}
-                    <span className="font-mono text-[0.75rem] text-muted">{area.prefix}</span>
+                    <span className="font-mono text-[0.75rem] text-muted max-sm:block">
+                      {area.prefix}
+                    </span>
                   </td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums text-ink">
+                  <td className="px-4 py-3 max-sm:px-2 text-right font-mono tabular-nums text-ink">
                     {area.requirements.length}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums text-verify">
+                  <td className="px-4 py-3 max-sm:px-2 text-right font-mono tabular-nums text-verify">
                     {area.met}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums text-signal">
+                  <td className="px-4 py-3 max-sm:px-2 text-right font-mono tabular-nums text-signal">
                     {area.qualified}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono tabular-nums text-body">
+                  <td className="px-4 py-3 max-sm:px-2 text-right font-mono tabular-nums text-body">
                     {area.open}
                   </td>
                 </tr>

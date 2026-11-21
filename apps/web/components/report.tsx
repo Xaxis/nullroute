@@ -160,7 +160,7 @@ export function Ruled({
           className="grid gap-1.5 border-b border-line py-5 sm:grid-cols-[14rem_minmax(0,1fr)] sm:gap-8"
         >
           <dt className="font-sans text-[0.9375rem] font-semibold text-ink">{term}</dt>
-          <dd className="min-w-0 text-[1rem] leading-relaxed text-body">{text}</dd>
+          <dd className="min-w-0 max-w-[68ch] text-[1rem] leading-relaxed text-body">{text}</dd>
         </div>
       ))}
     </dl>
@@ -203,6 +203,22 @@ export function A({
  * this renders are written for GitHub, where backticks mean code, and showing
  * the backticks would be showing the source instead of the text.
  */
+/** A spec id such as INV-BACKUP-3 or SP-ENT-8, which must not break at its hyphens. */
+const SPEC_ID = /\b((?:INV|SP)-[A-Z0-9]+(?:-[A-Z0-9]+)*)\b/g
+
+function KeepIds({ text }: { text: string }) {
+  const parts = text.split(SPEC_ID)
+  return parts.map((part, i) =>
+    i % 2 === 1 ? (
+      <span key={i} className="whitespace-nowrap">
+        {part}
+      </span>
+    ) : (
+      part
+    )
+  )
+}
+
 export function InlineMd({ text }: { text: string }) {
   const parts = text.split(/(`[^`]+`)/g)
   return (
@@ -213,7 +229,9 @@ export function InlineMd({ text }: { text: string }) {
             {part.slice(1, -1)}
           </code>
         ) : (
-          <span key={i}>{part}</span>
+          <span key={i}>
+            <KeepIds text={part} />
+          </span>
         )
       )}
     </>
