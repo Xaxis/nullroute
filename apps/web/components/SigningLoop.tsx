@@ -1,3 +1,5 @@
+import { QrMark } from './stage/QrMark'
+
 /**
  * How a transaction crosses the gap: built online, carried by QR code, read
  * and signed offline, carried back. The one diagram on the front page.
@@ -13,9 +15,12 @@ function Crossing({ toDevice, label, note }: { toDevice: boolean; label: string;
     <div className="min-w-0">
       <div
         aria-hidden="true"
-        className={`hidden lg:flex items-center text-ink ${toDevice ? '' : 'flex-row-reverse'}`}
+        className={`crossing__track hidden lg:flex items-center text-ink ${toDevice ? '' : 'flex-row-reverse'}`}
       >
         <span className="h-px flex-1 bg-current" />
+        <span className={`crossing__frame ${toDevice ? '' : 'crossing__frame--back'}`}>
+          <QrMark seed={toDevice ? 7 : 19} />
+        </span>
         <svg
           viewBox="0 0 10 10"
           className={`size-2.5 shrink-0 fill-current ${toDevice ? '' : 'rotate-180'}`}

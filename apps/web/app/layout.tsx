@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import Link from 'next/link'
 import { Mark } from '@/components/Mark'
 import { NavLinks } from '@/components/NavLinks'
+import { RevealObserver } from '@/components/stage/RevealObserver'
 import { Search } from '@/components/Search'
 import { ShortHash } from '@/components/report'
 import { readFacts } from '@/lib/facts'
@@ -141,8 +142,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main id="main" className="flex-1">
           {children}
         </main>
+        <RevealObserver />
 
-        <footer className="mt-12 border-t border-line bg-surface">
+        <footer className="on-plate mt-12 border-t border-line">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 py-14 grid gap-12 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,2fr)]">
             <div className="min-w-0 space-y-4">
               <span className="inline-flex items-center gap-2 font-mono font-medium text-ink">

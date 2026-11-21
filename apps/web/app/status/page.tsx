@@ -1,3 +1,5 @@
+import { PageStage } from '../../components/stage/PageStage'
+import { PhaseStack } from '../../components/stage/PhaseStack'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { readLog, readPhases } from '../../lib/status'
@@ -84,11 +86,8 @@ export default function StatusPage() {
   const open = profile.conformance.filter((r) => statusKind(r.status) !== 'met').length
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6">
-      <header className="pt-14 pb-14 sm:pt-20">
-        <h1 className="font-display text-[2.5rem] leading-[1.05] tracking-[-0.02em] text-ink sm:text-[3.5rem] max-w-[24ch]">
-          Status and roadmap
-        </h1>
+    <>
+      <PageStage title="Status and roadmap" scene={<PhaseStack phases={phases} />}>
         <Prose className="mt-6 text-[1.125rem]">
           <p>
             The signer is phases 1 to 4. The wallet layer, phase 5, is a lower assurance tier, and
@@ -97,103 +96,106 @@ export default function StatusPage() {
             until then.
           </p>
         </Prose>
-      </header>
+      </PageStage>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 pt-6">
+        <Section title="What is built" id="phases">
+          <Figure
+            title="Phases, as the README states them"
+            source={
+              <>
+                the status table in{' '}
+                <A href={`${REPO_URL}#status`} external>
+                  README.md
+                </A>
+                , read when this site was built. The state column is quoted, not summarised.
+              </>
+            }
+          >
+            <PhaseTable phases={phases} />
+          </Figure>
+          <Prose className="mt-8">
+            <p>
+              The order is the point. The tier boundary in the threat model and the phase order are
+              what keep a large feature set from eroding the assurance of the small part that holds
+              keys. The wallet layer is specified so that it can propose a transaction and never
+              sign one, and so that removing it leaves a working signer with no other change. The
+              direction of that dependency is already a lint rule with its own tests, before a line
+              of the wallet exists.
+            </p>
+          </Prose>
+        </Section>
 
-      <Section title="What is built" id="phases">
-        <Figure
-          title="Phases, as the README states them"
-          source={
-            <>
-              the status table in{' '}
-              <A href={`${REPO_URL}#status`} external>
-                README.md
-              </A>
-              , read when this site was built. The state column is quoted, not summarised.
-            </>
-          }
-        >
-          <PhaseTable phases={phases} />
-        </Figure>
-        <Prose className="mt-8">
-          <p>
-            The order is the point. The tier boundary in the threat model and the phase order are
-            what keep a large feature set from eroding the assurance of the small part that holds
-            keys. The wallet layer is specified so that it can propose a transaction and never sign
-            one, and so that removing it leaves a working signer with no other change. The direction
-            of that dependency is already a lint rule with its own tests, before a line of the
-            wallet exists.
-          </p>
-        </Prose>
-      </Section>
+        <Section title="What comes next" id="next">
+          <ol className="space-y-px overflow-hidden rounded-[4px] border border-line bg-line">
+            {NEXT.map((step, i) => (
+              <li
+                key={step.title}
+                className="grid gap-4 bg-surface px-5 py-5 md:grid-cols-[2.5rem_minmax(0,1fr)_minmax(0,1fr)] md:gap-6"
+              >
+                <span className="font-mono text-sm text-signal tabular-nums">{String(i + 1)}</span>
+                <div className="min-w-0">
+                  <h3 className="font-display text-[1.25rem] leading-snug text-ink">
+                    {step.title}
+                  </h3>
+                  <p className="mt-2 text-[1rem] leading-relaxed text-body">{step.proves}</p>
+                </div>
+                <div className="min-w-0">
+                  <div className="label">When it lands</div>
+                  <p className="mt-1.5 font-sans text-[0.9375rem] leading-relaxed text-body">
+                    {step.changes}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <Prose className="mt-8">
+            <p>
+              {open} of the profile&rsquo;s {profile.conformance.length} conformance rows for this
+              device are not yet met without qualification, most of them waiting on the board.{' '}
+              <Link href="/profile#conformance" className="link">
+                Which ones, and why
+              </Link>
+              .
+            </p>
+          </Prose>
+        </Section>
 
-      <Section title="What comes next" id="next">
-        <ol className="space-y-px overflow-hidden rounded-[4px] border border-line bg-line">
-          {NEXT.map((step, i) => (
-            <li
-              key={step.title}
-              className="grid gap-4 bg-surface px-5 py-5 md:grid-cols-[2.5rem_minmax(0,1fr)_minmax(0,1fr)] md:gap-6"
-            >
-              <span className="font-mono text-sm text-signal tabular-nums">{String(i + 1)}</span>
-              <div className="min-w-0">
-                <h3 className="font-display text-[1.25rem] leading-snug text-ink">{step.title}</h3>
-                <p className="mt-2 text-[1rem] leading-relaxed text-body">{step.proves}</p>
-              </div>
-              <div className="min-w-0">
-                <div className="label">When it lands</div>
-                <p className="mt-1.5 font-sans text-[0.9375rem] leading-relaxed text-body">
-                  {step.changes}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ol>
-        <Prose className="mt-8">
-          <p>
-            {open} of the profile&rsquo;s {profile.conformance.length} conformance rows for this
-            device are not yet met without qualification, most of them waiting on the board.{' '}
-            <Link href="/profile#conformance" className="link">
-              Which ones, and why
-            </Link>
-            .
-          </p>
-        </Prose>
-      </Section>
+        <Section title="What has landed" id="log">
+          <ol className="border-t border-line">
+            {log.slice(0, RECENT).map((entry, i) => (
+              <li
+                key={`${entry.date}-${String(i)}`}
+                className="grid gap-1 border-b border-line py-3.5 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:gap-6"
+              >
+                <span className="font-mono text-[0.8125rem] text-muted tabular-nums pt-0.5">
+                  {entry.date}
+                </span>
+                <span className="max-w-[72ch] text-[1rem] leading-relaxed text-body">
+                  <InlineMd text={entry.text} />
+                </span>
+              </li>
+            ))}
+          </ol>
+          <Source>
+            <A href={`${REPO_URL}/blob/main/CHANGELOG.md`} external>
+              CHANGELOG.md
+            </A>
+            , read when this site was built, has the {String(log.length)} entries in full; these are
+            the latest {String(RECENT)}. The whole history is the repository&rsquo;s commit log.
+          </Source>
+        </Section>
 
-      <Section title="What has landed" id="log">
-        <ol className="border-t border-line">
-          {log.slice(0, RECENT).map((entry, i) => (
-            <li
-              key={`${entry.date}-${String(i)}`}
-              className="grid gap-1 border-b border-line py-3.5 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:gap-6"
-            >
-              <span className="font-mono text-[0.8125rem] text-muted tabular-nums pt-0.5">
-                {entry.date}
-              </span>
-              <span className="max-w-[72ch] text-[1rem] leading-relaxed text-body">
-                <InlineMd text={entry.text} />
-              </span>
-            </li>
-          ))}
-        </ol>
-        <Source>
-          <A href={`${REPO_URL}/blob/main/CHANGELOG.md`} external>
-            CHANGELOG.md
-          </A>
-          , read when this site was built, has the {String(log.length)} entries in full; these are
-          the latest {String(RECENT)}. The whole history is the repository&rsquo;s commit log.
-        </Source>
-      </Section>
-
-      <Section title="What it does not protect against" id="limits">
-        <Ruled items={NOT_COVERED} />
-        <Prose className="mt-8">
-          <p>
-            The full list is in the <A href="/docs/threat-model">threat model</A>, and it is long on
-            purpose. If a limit there is understated, that is worth reporting: overclaiming in the
-            threat model is itself a security bug here.
-          </p>
-        </Prose>
-      </Section>
-    </div>
+        <Section title="What it does not protect against" id="limits">
+          <Ruled items={NOT_COVERED} />
+          <Prose className="mt-8">
+            <p>
+              The full list is in the <A href="/docs/threat-model">threat model</A>, and it is long
+              on purpose. If a limit there is understated, that is worth reporting: overclaiming in
+              the threat model is itself a security bug here.
+            </p>
+          </Prose>
+        </Section>
+      </div>
+    </>
   )
 }

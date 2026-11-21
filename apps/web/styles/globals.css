@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './motion.css';
 
 /*
  * nullroute.diy
@@ -21,8 +22,9 @@
  * This used to be dark only, reasoned as "the site should look like it
  * belongs to the same object". It still does: the device ships both themes.
  *
- * No gradients, no hero animation, no stock photography of a padlock. A site
- * that looks like a fintech landing page would be making a claim the threat
+ * Motion and depth only where they show a mechanism the docs describe (see
+ * styles/motion.css), and no stock photography of a padlock. A site that
+ * decorates its way to looking secure would be making a claim the threat
  * model spends four pages walking back.
  */
 

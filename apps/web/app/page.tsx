@@ -9,6 +9,9 @@ import { REPO_URL, START_HREF } from '../lib/site'
 import { Shot, ShotOverlays, checkedScreens, type Screen } from '../components/Device'
 import { Hash, InlineMd, Transcript } from '../components/report'
 import { SigningLoop } from '../components/SigningLoop'
+import { Die } from '../components/stage/Die'
+import { ExplodedKit } from '../components/stage/ExplodedKit'
+import { HeroScene } from '../components/stage/HeroScene'
 
 /**
  * The front page, in the order a newcomer decides: what it is, the one number
@@ -194,9 +197,9 @@ export default async function Home() {
   return (
     <>
       {/* --- What it is ------------------------------------------------- */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 pt-12 pb-16 sm:pt-16 lg:pt-20 lg:pb-24">
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-14 lg:items-center">
-          <div className="min-w-0">
+      <section className="stage on-plate">
+        <div className="relative mx-auto grid max-w-7xl gap-4 px-4 pt-12 sm:px-6 sm:pt-16 lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)] lg:items-center lg:gap-2 lg:pt-20">
+          <div className="arrive relative z-10 min-w-0">
             <p className="font-mono text-[0.8125rem] text-muted">
               {KIT.map((part, i) => (
                 <span key={part}>
@@ -207,7 +210,7 @@ export default async function Home() {
                 </span>
               ))}
             </p>
-            <h1 className="mt-4 font-display text-[2.5rem] leading-[1.04] tracking-[-0.025em] text-ink sm:text-[3.5rem] lg:text-[3.875rem]">
+            <h1 className="mt-5 font-display text-[2.625rem] leading-[1.02] tracking-[-0.03em] text-ink sm:text-[3.75rem] lg:text-[4.375rem]">
               An air-gapped Bitcoin signer you build from a Raspberry&nbsp;Pi.
             </h1>
             <p className="mt-6 max-w-xl text-[1.0625rem] leading-relaxed text-body sm:text-[1.1875rem]">
@@ -215,7 +218,7 @@ export default async function Home() {
               computer. Transactions cross by QR code. Before the device asks for a PIN, it shows
               one hash covering every file it runs, so you can check it against the source.
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
+            <div className="mt-9 flex flex-wrap items-center gap-3">
               <Link href={START_HREF} className="btn btn-primary">
                 Get started
               </Link>
@@ -231,30 +234,34 @@ export default async function Home() {
                 Source on GitHub <span aria-hidden="true">&#8599;</span>
               </a>
             </div>
-            <p className="mt-7 flex items-start gap-2.5 text-[0.875rem] leading-snug text-muted">
+            <p className="mt-8 flex items-start gap-2.5 text-[0.875rem] leading-snug text-muted">
               <span aria-hidden="true" className="mt-1.5 size-2 shrink-0 rounded-full bg-signal" />
               Pre-release and unaudited. Hardware bring-up on a Pi&nbsp;5 and a Pi&nbsp;4 is next.
             </p>
           </div>
-          <figure className="min-w-0">
-            <Shot screen={screenFor(screens, 'lock')} eager link={false} />
-            <figcaption className="mt-3 text-[0.8125rem] leading-snug text-muted">
-              The lock screen, rendered from the device frontend at 800x480. The two hashes in it
-              are sample values; the real ones are below and on your own device.
+          <figure className="min-w-0 lg:-mr-12">
+            <HeroScene />
+            <figcaption className="sr-only">
+              The lock screen, rendered from the device frontend at 800 by 480, with a transaction
+              crossing to it as QR frames and returning signed. The hashes on it are samples.
             </figcaption>
           </figure>
         </div>
+        <p className="relative mx-auto max-w-7xl px-4 pt-2 pb-6 text-right font-mono text-[0.6875rem] text-muted sm:px-6">
+          The lock screen as the device renders it. Its two hashes are samples; this build&rsquo;s
+          root is below.
+        </p>
       </section>
 
       {/* --- The number ------------------------------------------------- */}
-      <section className="on-plate border-y border-plate-line" aria-labelledby="root">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-16 sm:py-20">
+      <section className="on-plate border-b border-plate-line" aria-labelledby="root">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 pt-14 pb-20 sm:pt-16 sm:pb-24">
           <h2 id="root" className="font-mono text-[0.8125rem] text-muted">
             Manifest root of this build &middot; SHA-256 over {facts.files} files
           </h2>
           <Hash
             value={facts.rootHash}
-            className="hash-grid mt-6 grid-cols-[repeat(4,auto)] gap-y-[0.18em] text-ink leading-[1.15] text-[clamp(1.25rem,7.8vw,2rem)] sm:grid-cols-[repeat(8,auto)] sm:text-[clamp(1.5rem,3.9vw,3.25rem)]"
+            className="hash-grid hash-flap reveal mt-7 grid-cols-[repeat(4,auto)] text-ink leading-[1.15] text-[clamp(1.0625rem,6.4vw,1.75rem)] sm:grid-cols-[repeat(8,auto)] sm:text-[clamp(1.25rem,2.9vw,2.5rem)]"
           />
           {/* Side by side only where the transcript's column holds the whole
               79-character sha256sum line; narrower, it wrapped MANIFEST.lock
@@ -303,7 +310,7 @@ export default async function Home() {
 
       {/* --- How you use it --------------------------------------------- */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6 py-20 sm:py-24">
-        <div className="max-w-2xl">
+        <div className="reveal max-w-2xl">
           <Heading id="use">How you use it</Heading>
           <p className="mt-4 text-[1.0625rem] leading-relaxed text-body">
             Your wallet software stays on your everyday computer and never sees a key. The device
@@ -311,15 +318,18 @@ export default async function Home() {
             code you can watch.
           </p>
         </div>
-        <div className="mt-12">
+        <div className="reveal mt-12">
           <SigningLoop />
         </div>
         {/* Three across, each panel renders near half size, so each one opens
             full size: the screens are the evidence and should be legible. */}
-        <ol id="steps" className="mt-16 grid gap-x-8 gap-y-14 lg:grid-cols-3">
+        <ol id="steps" className="stagger mt-16 grid gap-x-8 gap-y-14 lg:grid-cols-3">
           {steps.map((step, index) => (
             <li key={step.title} className="min-w-0">
-              <Shot screen={step.screen} />
+              <div className="tilt reveal relative">
+                <Shot screen={step.screen} />
+                {step.screen.file === 'dice' ? <Die className="die--step" /> : null}
+              </div>
               <h3 className="mt-5 flex items-baseline gap-3 text-[1.125rem] font-semibold text-ink">
                 <span className="font-mono text-[0.8125rem] text-signal">
                   {String(index + 1).padStart(2, '0')}
@@ -361,7 +371,7 @@ export default async function Home() {
       {/* --- Specification ---------------------------------------------- */}
       <section className="border-y border-line bg-surface">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-20 sm:py-24 grid gap-10 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,2fr)] lg:gap-16">
-          <div className="min-w-0 lg:sticky lg:top-24 lg:self-start">
+          <div className="reveal min-w-0 lg:sticky lg:top-24 lg:self-start">
             <Heading id="specification">Specification</Heading>
             <p className="mt-4 text-[1rem] leading-relaxed text-body">
               What it does, what it refuses, and where it is weak. Each line names the document that
@@ -377,7 +387,7 @@ export default async function Home() {
             {spec.map((row) => (
               <div
                 key={row.term}
-                className="grid gap-x-8 gap-y-1 border-b border-line py-5 sm:grid-cols-[8.5rem_minmax(0,1fr)]"
+                className="reveal grid gap-x-8 gap-y-1 border-b border-line py-5 sm:grid-cols-[8.5rem_minmax(0,1fr)]"
               >
                 <dt className="font-semibold text-ink text-[0.9375rem]">{row.term}</dt>
                 <dd className="min-w-0 text-[0.9375rem] leading-relaxed text-body">
@@ -396,8 +406,8 @@ export default async function Home() {
       </section>
 
       {/* --- Parts ------------------------------------------------------ */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-20 sm:py-24 grid gap-10 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,2fr)] lg:gap-16">
-        <div className="min-w-0">
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 py-20 sm:py-24 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-x-16 lg:gap-y-8">
+        <div className="reveal min-w-0 lg:col-start-2">
           <Heading id="hardware">Parts, roughly {cost}</Heading>
           <p className="mt-4 text-[1rem] leading-relaxed text-body">
             Off the shelf, with nothing exotic and nothing to solder. Flash the image to the card,
@@ -409,7 +419,13 @@ export default async function Home() {
             </Link>
           </p>
         </div>
-        <div className="min-w-0 overflow-x-auto">
+        <figure className="min-w-0 lg:col-start-1 lg:row-span-2 lg:row-start-1 lg:self-center">
+          <ExplodedKit />
+          <figcaption className="sr-only">
+            The parts laid out: the screen above the board, the SD card, the webcam and a die.
+          </figcaption>
+        </figure>
+        <div className="min-w-0 overflow-x-auto lg:col-start-2">
           <table className="w-full border-collapse text-left text-[0.9375rem]">
             <thead>
               <tr className="border-b border-ink">
@@ -427,7 +443,7 @@ export default async function Home() {
                 </th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="reveal-rows">
               {parts.map((part) => (
                 <tr key={`${part.part}-${part.what}`} className="border-b border-line">
                   <th
@@ -468,7 +484,7 @@ export default async function Home() {
 
       {/* --- Where it stands -------------------------------------------- */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6 py-20 sm:py-24">
-        <div className="max-w-2xl">
+        <div className="reveal max-w-2xl">
           <Heading id="status">Where it stands</Heading>
           <p className="mt-4 text-[1.0625rem] leading-relaxed text-body">
             Phases 1 to {built} of {phases.length} are built, apart from signing and publishing a
@@ -477,12 +493,15 @@ export default async function Home() {
             done.
           </p>
         </div>
-        <ol className="mt-12 grid gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-7">
+        <ol className="phases reveal-rows mt-12 grid gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-7">
           {phases.map((phase) => {
             const state = PHASE_STATE[phase.kind]
             return (
               <li key={phase.number} className="min-w-0">
-                <span aria-hidden="true" className={`block h-1 rounded-full ${state.bar}`} />
+                <span
+                  aria-hidden="true"
+                  className={`phase__bar block h-1 rounded-full ${state.bar}`}
+                />
                 <p className="mt-3 flex items-center gap-2 font-mono text-[0.75rem] text-muted">
                   Phase {phase.number} &middot; {state.label}
                 </p>
@@ -493,7 +512,7 @@ export default async function Home() {
         </ol>
         <div className="mt-16 grid gap-6 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,2fr)] lg:gap-16">
           <h3 className="text-[1.0625rem] font-semibold text-ink">Recently landed</h3>
-          <ol className="min-w-0 border-t border-line">
+          <ol className="reveal-rows min-w-0 border-t border-line">
             {recent.map((entry, i) => (
               <li
                 key={`${entry.date}-${String(i)}`}

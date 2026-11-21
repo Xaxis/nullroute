@@ -1,3 +1,5 @@
+import { AreaDeck } from '../../components/stage/AreaDeck'
+import { PageStage } from '../../components/stage/PageStage'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { readProfile, statusKind } from '../../lib/profile'
@@ -94,11 +96,8 @@ export default async function ProfilePage() {
   const openRows = profile.conformance.filter((r) => statusKind(r.status) !== 'met')
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6">
-      <header className="pt-14 pb-16 sm:pt-20">
-        <h1 className="max-w-[22ch] font-display text-[2.5rem] leading-[1.05] tracking-[-0.02em] text-ink sm:text-[3.5rem]">
-          The signer profile
-        </h1>
+    <>
+      <PageStage title="The signer profile" scene={<AreaDeck areas={profile.areas} />}>
         <p className="mt-6 max-w-2xl text-[1.125rem] leading-relaxed text-body">
           What an air-gapped signer should have to show you, and what it should refuse to do.
           Air-gapped signers agree by convention on things no BIP writes down. The profile writes
@@ -121,144 +120,164 @@ export default async function ProfilePage() {
             Argue with it <span aria-hidden="true">&#8599;</span>
           </a>
         </div>
-
-        {/* THE DOCUMENT'S STATE, AT THE TOP, the way a standards body puts it
+      </PageStage>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="pb-16">
+          {/* THE DOCUMENT'S STATE, AT THE TOP, the way a standards body puts it
             on a draft. A reader should not have to reach the change log to
             learn that nobody has adopted this yet. */}
-        <dl className="mt-12 grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-3 lg:grid-cols-6">
-          {[
-            ['State', `Draft ${profile.header.version}`],
-            ['Date', profile.header.date],
-            [
-              'Requirements',
-              `${String(profile.requirementCount)} in ${String(profile.areas.length)} areas`,
-            ],
-            [
-              'Test cases',
-              `${String(profile.caseCount)} in ${String(profile.vectors.length)} files`,
-            ],
-            ['Adopted by', 'No one yet'],
-            ['Discussion', 'GitHub issues'],
-          ].map(([k, v]) => (
-            <div key={k} className="min-w-0 border-t border-ink pt-3">
-              <dt className="font-mono text-[0.75rem] uppercase tracking-[0.08em] text-muted">
-                {k}
-              </dt>
-              <dd className="mt-1 text-[0.9375rem] font-semibold leading-snug text-ink">{v}</dd>
-            </div>
-          ))}
-        </dl>
-      </header>
-
-      <section className="border-t border-line py-16">
-        <Head title="Four questions a user cannot answer today" />
-        <Ruled items={QUESTIONS} className="mt-8" />
-      </section>
-
-      <section className="border-t border-line py-16" id="results">
-        <Head title="Expected values from outside the implementation">
-          None of these came from nullroute: review cases are PSBTs built and judged by Bitcoin
-          Core, dice and manifests come from the BIP texts and coreutils, and the QR cases from
-          reference encoders. Every file is pinned by a SHA256SUMS that coreutils can check.
-        </Head>
-        <div className="mt-8">
-          <ResultsTable profile={profile} hrefs={hrefs} />
+          <dl className="mt-12 reveal-rows grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-3 lg:grid-cols-6">
+            {[
+              ['State', `Draft ${profile.header.version}`],
+              ['Date', profile.header.date],
+              [
+                'Requirements',
+                `${String(profile.requirementCount)} in ${String(profile.areas.length)} areas`,
+              ],
+              [
+                'Test cases',
+                `${String(profile.caseCount)} in ${String(profile.vectors.length)} files`,
+              ],
+              ['Adopted by', 'No one yet'],
+              ['Discussion', 'GitHub issues'],
+            ].map(([k, v]) => (
+              <div key={k} className="min-w-0 border-t border-ink pt-3">
+                <dt className="font-mono text-[0.75rem] uppercase tracking-[0.08em] text-muted">
+                  {k}
+                </dt>
+                <dd className="mt-1 text-[0.9375rem] font-semibold leading-snug text-ink">{v}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
-        <p className="mt-3 text-[0.8125rem] leading-snug text-muted">
-          From this build&rsquo;s <code className="code">make conformance</code>. The second column
-          is for your signer, and it stays empty until somebody runs the kit against one.
-        </p>
-      </section>
 
-      <section className="border-t border-line py-16" id="conformance">
-        <Head title="Where nullroute meets it, and where it does not yet">
-          nullroute is held to the profile as one implementation among others, not as its reference.
-          Most requirements are met; the rest wait on hardware or a manual procedure.
-        </Head>
-        <div className="mt-8 max-w-4xl table-scroll card overflow-hidden">
-          <table className="w-full border-collapse text-[0.875rem] leading-snug max-sm:text-[0.8125rem]">
-            <thead>
-              <tr className="bg-sunk text-left">
-                <th scope="col" className="px-4 py-3 max-sm:px-2 font-semibold text-ink">
-                  Area
-                </th>
-                <th scope="col" className="px-4 py-3 max-sm:px-2 font-semibold text-ink text-right">
-                  <span className="sm:hidden">Total</span>
-                  <span className="max-sm:hidden">Requirements</span>
-                </th>
-                <th scope="col" className="px-4 py-3 max-sm:px-2 font-semibold text-ink text-right">
-                  Met
-                </th>
-                <th scope="col" className="px-4 py-3 max-sm:px-2 font-semibold text-ink text-right">
-                  <span className="sm:hidden">Caveat</span>
-                  <span className="max-sm:hidden">With a caveat</span>
-                </th>
-                <th scope="col" className="px-4 py-3 max-sm:px-2 font-semibold text-ink text-right">
-                  Open
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {byArea.map((area) => (
-                <tr key={area.prefix} className="border-t border-line">
-                  <td className="px-4 py-3 max-sm:px-2">
-                    <span className="text-ink">{area.title}</span>{' '}
-                    <span className="font-mono text-[0.75rem] text-muted max-sm:block">
-                      {area.prefix}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 max-sm:px-2 text-right font-mono tabular-nums text-ink">
-                    {area.requirements.length}
-                  </td>
-                  <td className="px-4 py-3 max-sm:px-2 text-right font-mono tabular-nums text-verify">
-                    {area.met}
-                  </td>
-                  <td className="px-4 py-3 max-sm:px-2 text-right font-mono tabular-nums text-signal">
-                    {area.qualified}
-                  </td>
-                  <td className="px-4 py-3 max-sm:px-2 text-right font-mono tabular-nums text-body">
-                    {area.open}
-                  </td>
+        <section className="border-t border-line py-16">
+          <Head title="Four questions a user cannot answer today" />
+          <Ruled items={QUESTIONS} className="mt-8" />
+        </section>
+
+        <section className="border-t border-line py-16" id="results">
+          <Head title="Expected values from outside the implementation">
+            None of these came from nullroute: review cases are PSBTs built and judged by Bitcoin
+            Core, dice and manifests come from the BIP texts and coreutils, and the QR cases from
+            reference encoders. Every file is pinned by a SHA256SUMS that coreutils can check.
+          </Head>
+          <div className="mt-8">
+            <ResultsTable profile={profile} hrefs={hrefs} />
+          </div>
+          <p className="mt-3 text-[0.8125rem] leading-snug text-muted">
+            From this build&rsquo;s <code className="code">make conformance</code>. The second
+            column is for your signer, and it stays empty until somebody runs the kit against one.
+          </p>
+        </section>
+
+        <section className="border-t border-line py-16" id="conformance">
+          <Head title="Where nullroute meets it, and where it does not yet">
+            nullroute is held to the profile as one implementation among others, not as its
+            reference. Most requirements are met; the rest wait on hardware or a manual procedure.
+          </Head>
+          <div className="mt-8 max-w-4xl table-scroll card overflow-hidden">
+            <table className="w-full border-collapse text-[0.875rem] leading-snug max-sm:text-[0.8125rem]">
+              <thead>
+                <tr className="bg-sunk text-left">
+                  <th scope="col" className="px-4 py-3 max-sm:px-2 font-semibold text-ink">
+                    Area
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-4 py-3 max-sm:px-2 font-semibold text-ink text-right"
+                  >
+                    <span className="sm:hidden">Total</span>
+                    <span className="max-sm:hidden">Requirements</span>
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-4 py-3 max-sm:px-2 font-semibold text-ink text-right"
+                  >
+                    Met
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-4 py-3 max-sm:px-2 font-semibold text-ink text-right"
+                  >
+                    <span className="sm:hidden">Caveat</span>
+                    <span className="max-sm:hidden">With a caveat</span>
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-4 py-3 max-sm:px-2 font-semibold text-ink text-right"
+                  >
+                    Open
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {byArea.map((area) => (
+                  <tr key={area.prefix} className="border-t border-line">
+                    <td className="px-4 py-3 max-sm:px-2">
+                      <span className="text-ink">{area.title}</span>{' '}
+                      <span className="font-mono text-[0.75rem] text-muted max-sm:block">
+                        {area.prefix}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 max-sm:px-2 text-right font-mono tabular-nums text-ink">
+                      {area.requirements.length}
+                    </td>
+                    <td className="px-4 py-3 max-sm:px-2 text-right font-mono tabular-nums text-verify">
+                      {area.met}
+                    </td>
+                    <td className="px-4 py-3 max-sm:px-2 text-right font-mono tabular-nums text-signal">
+                      {area.qualified}
+                    </td>
+                    <td className="px-4 py-3 max-sm:px-2 text-right font-mono tabular-nums text-body">
+                      {area.open}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-        <h3 className="label mt-10">Not yet met without qualification</h3>
-        <ul className="mt-3 grid gap-x-10 border-t border-line lg:grid-cols-2">
-          {openRows.map((row) => (
-            <li
-              key={row.id}
-              className="grid grid-cols-[6rem_minmax(0,1fr)] gap-3 border-b border-line py-2.5"
-            >
-              <a
-                href={requirementHref(hrefs, row.id)}
-                className="font-mono text-[0.8125rem] text-link hover:text-link-hover"
+          <h3 className="label mt-10">Not yet met without qualification</h3>
+          <ul className="mt-3 grid gap-x-10 border-t border-line lg:grid-cols-2">
+            {openRows.map((row) => (
+              <li
+                key={row.id}
+                className="grid grid-cols-[6rem_minmax(0,1fr)] gap-3 border-b border-line py-2.5"
               >
-                {row.id}
-              </a>
-              <span className="text-[0.875rem] leading-snug text-body">{row.status}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
+                <a
+                  href={requirementHref(hrefs, row.id)}
+                  className="font-mono text-[0.8125rem] text-link hover:text-link-hover"
+                >
+                  {row.id}
+                </a>
+                <span className="text-[0.875rem] leading-snug text-body">{row.status}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
 
-      <section className="border-t border-line py-16" id="positions">
-        <Head title="Positions others may reject">
-          A profile nobody has argued with is not yet worth adopting. These are the positions people
-          who build signers and coordinators may reasonably dispute.
-        </Head>
-        <Ruled items={POSITIONS} className="mt-8" />
-        <p className="mt-8 max-w-2xl text-body">
-          If you build a signer or a coordinator, the most useful thing you can do is run the kit
-          against it, or tell us which requirement is wrong.{' '}
-          <a href={`${REPO_URL}/issues`} target="_blank" rel="noopener noreferrer" className="link">
-            Open an issue
-          </a>
-          .
-        </p>
-      </section>
-    </div>
+        <section className="border-t border-line py-16" id="positions">
+          <Head title="Positions others may reject">
+            A profile nobody has argued with is not yet worth adopting. These are the positions
+            people who build signers and coordinators may reasonably dispute.
+          </Head>
+          <Ruled items={POSITIONS} className="mt-8" />
+          <p className="mt-8 max-w-2xl text-body">
+            If you build a signer or a coordinator, the most useful thing you can do is run the kit
+            against it, or tell us which requirement is wrong.{' '}
+            <a
+              href={`${REPO_URL}/issues`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="link"
+            >
+              Open an issue
+            </a>
+            .
+          </p>
+        </section>
+      </div>
+    </>
   )
 }
