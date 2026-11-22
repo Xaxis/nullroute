@@ -23,18 +23,33 @@ export function Slab({ className = '', children }: { className?: string; childre
   )
 }
 
-/** The device's panel: the real 800x480 render on its black glass, as an object. */
-export function PanelSlab({ file, className = '' }: { file: string; className?: string }) {
+/**
+ * The device's panel: the real 800x480 render on its black glass, as an object.
+ * Children are laid over the render in its own coordinates, so a mark placed
+ * at a percentage lands on the same pixels of the screen at any size.
+ */
+export function PanelSlab({
+  file,
+  className = '',
+  children,
+}: {
+  file: string
+  className?: string
+  children?: ReactNode
+}) {
   return (
     <Slab className={`slab--panel ${className}`}>
-      <img
-        src={`/device/${file}.png`}
-        alt=""
-        width={1600}
-        height={960}
-        className="slab__screen"
-        decoding="async"
-      />
+      <span className="slab__display">
+        <img
+          src={`/device/${file}.png`}
+          alt=""
+          width={1600}
+          height={960}
+          className="slab__screen"
+          decoding="async"
+        />
+        {children}
+      </span>
       <span className="slab__glare" />
     </Slab>
   )

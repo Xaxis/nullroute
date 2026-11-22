@@ -49,7 +49,7 @@ function screenFor(screens: readonly Screen[], file: string): Screen {
  * the roadmap page has them in full.
  */
 function firstSentence(text: string): string {
-  return text.split(/(?<=[.!?])\s+(?=[A-Z])/)[0] ?? text
+  return text.split(/(?<=[.!?])\s+(?=[A-Z`])/)[0] ?? text
 }
 
 function Heading({ id, children }: { id: string; children: ReactNode }) {
@@ -84,7 +84,12 @@ export default async function Home() {
   const phases = readPhases()
   // The latest entries as they are, not a selection: picking the flattering
   // ones would make this a claim about momentum rather than a record of it.
-  const recent = readLog().slice(0, 4)
+  // The one exclusion is scope. This section is where the device stands, and
+  // an entry that names nullroute.diy is about this website or its console;
+  // those stay on the roadmap page with everything else.
+  const recent = readLog()
+    .filter((entry) => !entry.text.includes('nullroute.diy'))
+    .slice(0, 4)
   const profile = readProfile()
   const { parts, cost } = readParts()
   const screens = checkedScreens(facts.has)
@@ -198,7 +203,7 @@ export default async function Home() {
     <>
       {/* --- What it is ------------------------------------------------- */}
       <section className="stage on-plate">
-        <div className="relative mx-auto grid max-w-7xl gap-4 px-4 pt-12 sm:px-6 sm:pt-16 lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)] lg:items-center lg:gap-2 lg:pt-20">
+        <div className="relative mx-auto grid max-w-7xl gap-4 px-4 pt-12 pb-4 sm:px-6 sm:pt-16 lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)] lg:items-center lg:gap-2 lg:pt-20 lg:pb-12">
           <div className="arrive relative z-10 min-w-0">
             <p className="font-mono text-[0.8125rem] text-muted">
               {KIT.map((part, i) => (
@@ -239,18 +244,15 @@ export default async function Home() {
               Pre-release and unaudited. Hardware bring-up on a Pi&nbsp;5 and a Pi&nbsp;4 is next.
             </p>
           </div>
-          <figure className="min-w-0 lg:-mr-12">
+          <figure className="mx-auto w-full min-w-0 max-w-xl lg:-mr-12 lg:max-w-none">
             <HeroScene />
-            <figcaption className="sr-only">
-              The lock screen, rendered from the device frontend at 800 by 480, with a transaction
-              crossing to it as QR frames and returning signed. The hashes on it are samples.
+            <figcaption className="mt-3 pb-8 font-mono text-[0.6875rem] leading-relaxed text-muted lg:pl-[14%]">
+              The lock screen, rendered by the device&rsquo;s own frontend at
+              800&thinsp;&times;&thinsp;480. Its hashes are samples; this build&rsquo;s root is
+              below.
             </figcaption>
           </figure>
         </div>
-        <p className="relative mx-auto max-w-7xl px-4 pt-2 pb-6 text-right font-mono text-[0.6875rem] text-muted sm:px-6">
-          The lock screen as the device renders it. Its two hashes are samples; this build&rsquo;s
-          root is below.
-        </p>
       </section>
 
       {/* --- The number ------------------------------------------------- */}
@@ -261,7 +263,7 @@ export default async function Home() {
           </h2>
           <Hash
             value={facts.rootHash}
-            className="hash-grid hash-flap reveal mt-7 grid-cols-[repeat(4,auto)] text-ink leading-[1.15] text-[clamp(1.0625rem,6.4vw,1.75rem)] sm:grid-cols-[repeat(8,auto)] sm:text-[clamp(1.25rem,2.9vw,2.5rem)]"
+            className="hash-grid hash-flap hash-board reveal mt-7 grid-cols-4 text-ink leading-[1.15] text-[clamp(1.0625rem,6.4vw,1.75rem)] sm:grid-cols-8 sm:text-[clamp(1.25rem,2.9vw,2.5rem)]"
           />
           {/* Side by side only where the transcript's column holds the whole
               79-character sha256sum line; narrower, it wrapped MANIFEST.lock
@@ -326,9 +328,8 @@ export default async function Home() {
         <ol id="steps" className="stagger mt-16 grid gap-x-8 gap-y-14 lg:grid-cols-3">
           {steps.map((step, index) => (
             <li key={step.title} className="min-w-0">
-              <div className="tilt reveal relative">
+              <div className="tilt reveal">
                 <Shot screen={step.screen} />
-                {step.screen.file === 'dice' ? <Die className="die--step" /> : null}
               </div>
               <h3 className="mt-5 flex items-baseline gap-3 text-[1.125rem] font-semibold text-ink">
                 <span className="font-mono text-[0.8125rem] text-signal">
@@ -339,33 +340,45 @@ export default async function Home() {
               <p className="mt-2 text-[0.9375rem] leading-relaxed text-body">
                 {step.screen.detail}
               </p>
-              {step.screen.file === 'dice' ? (
-                <Transcript
-                  className="mt-4"
-                  label="The seed rule, repeated with coreutils"
-                  lines={[
-                    {
-                      cmd: `printf '%s' '${dice.rolls}' | sha256sum`,
-                      out: <span className="text-ink break-all">{`${dice.digest}  -`}</span>,
-                    },
-                  ]}
-                />
-              ) : null}
-              {step.screen.file === 'dice' ? (
-                <p className="mt-2 text-[0.8125rem] leading-snug text-muted">
-                  The public example rolls from the entropy document, recomputed when this page was
-                  built. Never use them for money.
-                </p>
-              ) : null}
             </li>
           ))}
         </ol>
-        <ShotOverlays screens={steps.map((step) => step.screen)} closeTo="steps" />
-        <p className="mt-12 text-[0.9375rem] font-semibold">
+        <p className="mt-10 text-[0.9375rem] font-semibold">
           <Link href={await docHref('docs/USING.md')} className="link">
             Every screen, and what each one refuses
           </Link>
         </p>
+        {/* The one step whose arithmetic you can redo, done here. It sat under
+            the first step alone, which left that column twice the length of
+            the other two and the die resting on the next step's heading. */}
+        <div className="reveal mt-16 grid gap-6 border-t border-line pt-10 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,2fr)] lg:gap-16">
+          <div className="flex min-w-0 items-start gap-5">
+            <Die className="die--rule mt-1 ml-2 shrink-0" />
+            <div className="min-w-0">
+              <h3 className="text-[1.0625rem] font-semibold text-ink">The seed rule, by hand</h3>
+              <p className="mt-2 text-[0.9375rem] leading-relaxed text-body">
+                The entropy is the SHA-256 of the rolls as ASCII digits, with no trailing newline,
+                so any computer repeats it.
+              </p>
+            </div>
+          </div>
+          <div className="min-w-0">
+            <Transcript
+              label="The seed rule, repeated with coreutils"
+              lines={[
+                {
+                  cmd: `printf '%s' '${dice.rolls}' | sha256sum`,
+                  out: <span className="text-ink break-all">{`${dice.digest}  -`}</span>,
+                },
+              ]}
+            />
+            <p className="mt-2 text-[0.8125rem] leading-snug text-muted">
+              The public example rolls from the entropy document, recomputed when this page was
+              built. Never use them for money.
+            </p>
+          </div>
+        </div>
+        <ShotOverlays screens={steps.map((step) => step.screen)} closeTo="steps" />
       </section>
 
       {/* --- Specification ---------------------------------------------- */}
@@ -493,25 +506,29 @@ export default async function Home() {
             done.
           </p>
         </div>
-        <ol className="phases reveal-rows mt-12 grid gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-7">
+        <ol className="phases reveal-rows mt-12 grid gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-7 lg:gap-y-0">
           {phases.map((phase) => {
             const state = PHASE_STATE[phase.kind]
             return (
-              <li key={phase.number} className="min-w-0">
+              <li
+                key={phase.number}
+                className="min-w-0 lg:row-span-3 lg:grid lg:grid-rows-subgrid lg:content-start"
+              >
                 <span
                   aria-hidden="true"
                   className={`phase__bar block h-1 rounded-full ${state.bar}`}
                 />
-                <p className="mt-3 flex items-center gap-2 font-mono text-[0.75rem] text-muted">
-                  Phase {phase.number} &middot; {state.label}
+                <p className="mt-3 font-mono text-[0.75rem] leading-snug text-muted">
+                  <span className="block text-ink">Phase {phase.number}</span>
+                  <span className="block">{state.label}</span>
                 </p>
-                <p className="mt-1.5 text-[0.875rem] leading-snug text-ink">{phase.scope}</p>
+                <p className="mt-2 text-[0.875rem] leading-snug text-body">{phase.scope}</p>
               </li>
             )
           })}
         </ol>
         <div className="mt-16 grid gap-6 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,2fr)] lg:gap-16">
-          <h3 className="text-[1.0625rem] font-semibold text-ink">Recently landed</h3>
+          <h3 className="text-[1.0625rem] font-semibold text-ink lg:pt-3.5">Recently landed</h3>
           <ol className="reveal-rows min-w-0 border-t border-line">
             {recent.map((entry, i) => (
               <li

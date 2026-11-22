@@ -1,15 +1,22 @@
-import { QrMark } from './QrMark'
+import { Die } from './Die'
 import { PanelSlab, Slab } from './Slab'
 
 /**
- * The opening scene: a computer on the online side showing a transaction as a
- * QR code, the device's lock screen on the offline side, and the frame
- * crossing between them through the air gap, then coming back signed.
+ * The opening scene: the device, as the kit line above the headline lists it.
+ * The 7 inch panel showing its lock screen, the USB webcam it reads QR codes
+ * with, and the die the seed comes from.
  *
- * IT SHOWS THE MECHANISM, NOT A MOOD. Every moving part is something the docs
- * describe: frames leave the online side, pass a gap nothing else crosses,
- * and the signed frame returns the same way. The panel shows the real render
- * of the lock screen, whose sample hashes the caption below says are samples.
+ * ONE OBJECT, LEGIBLE. It used to stage a laptop, a pane of light for the air
+ * gap and QR frames flying between them, all small enough that the frames
+ * landed on top of the lock screen's text and the labels under the scene
+ * pointed at nothing. The crossing is drawn properly in "How you use it";
+ * here the panel is large enough to read.
+ *
+ * WHAT MOVES IS WHAT THE COPY SAYS. The mark that comes and goes on the
+ * screen sits on the manifest root, the number the paragraph beside it tells
+ * you to compare, and the next section is that number for this build. The
+ * render is the real lock screen; its hashes are samples, which the caption
+ * under the scene says.
  *
  * Pure CSS 3D (styles/motion.css). No script, no library, nothing the CSP has
  * to make room for, and still under prefers-reduced-motion.
@@ -17,37 +24,24 @@ import { PanelSlab, Slab } from './Slab'
 export function HeroScene() {
   return (
     <div className="scene scene--hero" aria-hidden="true">
+      <div className="hero__floor" />
       <div className="scene__lens">
-        <div className="scene__world">
-          <div className="scene__pool" />
-          <div className="scene__laptop">
-            <Slab className="slab--lid">
-              <span className="laptop__screen">
-                <span className="laptop__bar" />
-                <span className="laptop__qr">
-                  <QrMark seed={7} />
-                </span>
-              </span>
-            </Slab>
-            <Slab className="slab--base" />
-          </div>
-          <div className="scene__gap" />
-          <div className="qr-card qr-card--out">
-            <QrMark seed={7} />
-          </div>
-          <div className="qr-card qr-card--back">
-            <QrMark seed={19} />
-            <span className="qr-card__stamp">Signed</span>
-          </div>
-          <div className="scene__device">
-            <PanelSlab file="lock" />
+        <div className="scene__world hero__world">
+          <div className="hero__device">
+            <div className="hero__cam">
+              <Slab className="slab--hero-cam">
+                <span className="hero__lens" />
+                <span className="hero__led" />
+              </Slab>
+            </div>
+            <PanelSlab file="lock" className="slab--hero">
+              <span className="hero__mark" />
+            </PanelSlab>
           </div>
         </div>
       </div>
-      <div className="scene__legend">
-        <span>Online</span>
-        <span>Air gap</span>
-        <span>Offline</span>
+      <div className="hero__die">
+        <Die className="die--hero" />
       </div>
     </div>
   )

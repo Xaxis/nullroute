@@ -70,7 +70,8 @@ body > header {
   position: relative;
 }
 .scene--hero {
-  aspect-ratio: 10 / 8.2;
+  aspect-ratio: 10 / 7.6;
+  isolation: isolate;
 }
 .scene__lens {
   position: absolute;
@@ -78,244 +79,17 @@ body > header {
   perspective: 240cqi;
   perspective-origin: 50% 18%;
 }
+/* Each scene turns its own world (.hero__world, .kit__world and the rest). */
 .scene__world {
   position: absolute;
   inset: 0;
   transform-style: preserve-3d;
-  transform: rotateX(14deg) rotateY(-22deg);
-  animation: world-sway 18s var(--ease-io) infinite alternate;
 }
 .scene__world > * {
   position: absolute;
   left: 50%;
   top: 50%;
   transform-style: preserve-3d;
-}
-@keyframes world-sway {
-  from {
-    transform: rotateX(15deg) rotateY(-27deg);
-  }
-  to {
-    transform: rotateX(12deg) rotateY(-16deg);
-  }
-}
-
-.scene__legend {
-  position: absolute;
-  inset: auto 0 4%;
-  display: flex;
-  font-family: var(--font-mono);
-  font-size: clamp(0.625rem, 1.9cqi, 0.75rem);
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  color: #7c8494;
-  pointer-events: none;
-}
-.scene__legend > span {
-  position: absolute;
-  translate: -50% 0;
-  white-space: nowrap;
-}
-.scene__legend > :nth-child(1) {
-  left: 12%;
-}
-.scene__legend > :nth-child(2) {
-  left: 31%;
-  color: rgb(243 156 92);
-}
-.scene__legend > :nth-child(3) {
-  left: 66%;
-  color: #c9cfd8;
-}
-.scene__pool {
-  width: 78cqi;
-  height: 46cqi;
-  transform: translate(-50%, -50%) translate3d(16cqi, 21.9cqi, 0) rotateX(90deg);
-  background: radial-gradient(closest-side, rgb(var(--amber) / 0.2), rgb(var(--amber) / 0) 100%);
-}
-
-/* The online side: a laptop, open, showing the unsigned transaction. */
-.scene__laptop {
-  transform: translate(-50%, -50%) translate3d(-46cqi, 4cqi, -4cqi) rotateY(34deg);
-}
-.slab--lid {
-  --slab-w: 30cqi;
-  --slab-h: 19cqi;
-  --slab-t: 0.9cqi;
-  transform-origin: 50% 100%;
-  transform: rotateX(-8deg);
-}
-.slab--lid .slab__face--front {
-  background: #0c0e12;
-  border-radius: 0.8cqi;
-  padding: 0.9cqi;
-  box-shadow: inset 0 0 0 1px #2d323d;
-}
-.slab--lid .slab__face--back,
-.slab--base .slab__face--back {
-  border-radius: 0.8cqi;
-}
-.laptop__screen {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  border-radius: 0.3cqi;
-  background: linear-gradient(160deg, #1b1f27, #11141a);
-  overflow: hidden;
-}
-.laptop__bar {
-  position: absolute;
-  inset: 0 0 auto;
-  height: 1.6cqi;
-  background: #232832;
-  box-shadow: inset 0 -1px 0 #2d323d;
-}
-.laptop__qr {
-  width: 11cqi;
-  aspect-ratio: 1;
-  margin-top: 1.2cqi;
-  border-radius: 0.4cqi;
-  overflow: hidden;
-  animation: show-frame var(--cycle) linear infinite;
-}
-/* The coordinator's screen holds the frame until it has crossed. */
-@keyframes show-frame {
-  0%,
-  24%,
-  92%,
-  100% {
-    opacity: 1;
-  }
-  30%,
-  86% {
-    opacity: 0.25;
-  }
-}
-.slab--base {
-  --slab-w: 30cqi;
-  --slab-h: 19cqi;
-  --slab-t: 0.9cqi;
-  position: absolute;
-  top: 100%;
-  left: 0;
-  transform-origin: 50% 0;
-  transform: rotateX(90deg);
-}
-.slab--base .slab__face--front {
-  border-radius: 0.8cqi;
-  background:
-    linear-gradient(180deg, transparent 62%, #1a1e25 62% 92%, transparent 92%) center / 34% 100%
-      no-repeat,
-    repeating-linear-gradient(90deg, #15181d 0 1.6cqi, #0e1014 1.6cqi 1.9cqi) center 12% / 86% 46%
-      no-repeat,
-    #0d0f13;
-  box-shadow: inset 0 0 0 1px #262a33;
-}
-
-/* The air gap: a pane nothing crosses but light. */
-.scene__gap {
-  width: 52cqi;
-  height: 46cqi;
-  transform: translate(-50%, -50%) translate3d(-27cqi, -1cqi, 0) rotateY(72deg);
-  background:
-    repeating-linear-gradient(180deg, rgb(var(--amber) / 0.09) 0 1px, transparent 1px 1.4cqi),
-    linear-gradient(
-      90deg,
-      rgb(var(--amber) / 0.02) 0%,
-      rgb(var(--amber) / 0.14) 50%,
-      rgb(var(--amber) / 0.02) 100%
-    );
-  border-inline: 1px solid rgb(var(--amber) / 0.6);
-  box-shadow: 0 0 4cqi rgb(var(--amber) / 0.08);
-  mask-image: linear-gradient(180deg, transparent, #000 10%, #000 100%);
-}
-.scene__gap::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    90deg,
-    rgb(var(--amber) / 0),
-    rgb(255 178 120 / 0.55) 50%,
-    rgb(var(--amber) / 0)
-  );
-  opacity: 0;
-  animation: gap-pulse var(--cycle) linear infinite;
-}
-/* Lights as each frame passes through: outbound at 20%, signed at 68%. */
-@keyframes gap-pulse {
-  0%,
-  15% {
-    opacity: 0;
-  }
-  20% {
-    opacity: 0.8;
-  }
-  27%,
-  63% {
-    opacity: 0;
-  }
-  68% {
-    opacity: 0.8;
-  }
-  75%,
-  100% {
-    opacity: 0;
-  }
-}
-
-.scene__device {
-  transform: translate(-50%, -50%) translate3d(16cqi, -2cqi, 0);
-  animation: float 7s var(--ease-io) infinite alternate;
-}
-@keyframes float {
-  from {
-    transform: translate(-50%, -50%) translate3d(16cqi, -1cqi, 0);
-  }
-  to {
-    transform: translate(-50%, -50%) translate3d(16cqi, -3.5cqi, 0) rotateZ(-0.5deg);
-  }
-}
-/* The panel lights while it holds the frame, from arrival at 36% to the
-   signed frame leaving at 52%. Opacity on a layer of its own, not an animated
-   box-shadow, so the compositor does it without repainting the screen. */
-.scene__device .slab__face--front::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow:
-    inset 0 0 0 1px rgb(var(--amber) / 0.85),
-    0 0 6cqi 0.6cqi rgb(var(--amber) / 0.32);
-  opacity: 0;
-  animation: receive var(--cycle) linear infinite;
-}
-@keyframes receive {
-  0%,
-  32%,
-  58%,
-  100% {
-    opacity: 0;
-  }
-  38%,
-  50% {
-    opacity: 1;
-  }
-}
-
-/* Single column, the scene spans the page: drawn smaller so the laptop on
-   the left and the panel on the right both stay inside it. */
-@media (max-width: 1023px) {
-  .scene--hero .scene__lens {
-    transform: translateX(3cqi) scale(0.84);
-  }
-}
-@container (max-width: 520px) {
-  .scene__legend {
-    letter-spacing: 0.16em;
-  }
 }
 
 /* --- The slab ---------------------------------------------------------------- */
@@ -408,6 +182,199 @@ body > header {
   );
 }
 
+/* --- The hero: the device, whole and legible ------------------------------------ */
+
+/* Turned toward the copy beside it, so the panel reads as facing the reader of
+   the headline, and swaying less than a degree a second. */
+.hero__world {
+  transform: rotateX(7deg) rotateY(-19deg);
+  animation: hero-sway 16s var(--ease-io) infinite alternate;
+}
+@keyframes hero-sway {
+  from {
+    transform: rotateX(8deg) rotateY(-23deg);
+  }
+  to {
+    transform: rotateX(5deg) rotateY(-13deg);
+  }
+}
+.hero__device {
+  transform: translate(-50%, -50%) translate3d(2cqi, -3cqi, 0);
+  animation: hero-float 7s var(--ease-io) infinite alternate;
+}
+@keyframes hero-float {
+  from {
+    transform: translate(-50%, -50%) translate3d(2cqi, -2cqi, 0);
+  }
+  to {
+    transform: translate(-50%, -50%) translate3d(2cqi, -4cqi, 0);
+  }
+}
+
+/* The official 7 inch panel: wider bezels at the sides than above and below,
+   and an opening exactly 5:3, so the 800x480 render fills it uncropped and a
+   mark placed by percentage lands on the pixels it names. */
+.slab--hero {
+  --slab-w: 80cqi;
+  --slab-h: 48.36cqi;
+  --slab-t: 2.6cqi;
+}
+.slab--hero .slab__face--front {
+  padding: 2.2cqi 3.2cqi;
+  border-radius: 1.4cqi;
+  box-shadow:
+    inset 0 0 0 1px #2d323d,
+    inset 0 0 0 0.35cqi #050607;
+}
+.slab--hero .slab__face--back {
+  border-radius: 1.4cqi;
+}
+
+/* The webcam, clipped to the top of the panel. */
+.hero__cam {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% - 0.3cqi);
+  translate: -50% 0;
+  transform: translateZ(0.6cqi);
+  transform-style: preserve-3d;
+}
+.slab--hero-cam {
+  --slab-w: 14cqi;
+  --slab-h: 4.4cqi;
+  --slab-t: 4.4cqi;
+}
+.slab--hero-cam .slab__face--front {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2.4cqi;
+  border-radius: 1.4cqi 1.4cqi 0.5cqi 0.5cqi;
+  background: linear-gradient(180deg, #2a2e36, #15171b);
+  box-shadow: inset 0 0 0 1px #3a404c;
+}
+.slab--hero-cam .slab__face--back {
+  border-radius: 1.4cqi 1.4cqi 0.5cqi 0.5cqi;
+}
+.hero__lens {
+  width: 2.9cqi;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 36% 32%, #8090b0 0 7%, #121722 28%, #05070b 62%);
+  box-shadow:
+    0 0 0 0.3cqi #2b3039,
+    0 0 0 0.42cqi #4a505d;
+}
+.hero__led {
+  position: absolute;
+  right: 2.2cqi;
+  width: 0.6cqi;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #3d4452;
+}
+
+/* The mark on the manifest root: the number the copy says to compare. */
+.slab__display {
+  position: relative;
+  display: block;
+  height: 100%;
+}
+.hero__mark {
+  position: absolute;
+  left: 3.4%;
+  top: 42.6%;
+  width: 32%;
+  height: 16%;
+  border-radius: 0.5cqi;
+  box-shadow:
+    0 0 0 0.28cqi rgb(var(--amber)),
+    0 0 3.2cqi 0.4cqi rgb(var(--amber) / 0.35);
+  opacity: 0;
+  animation: hero-mark var(--cycle) var(--ease-io) infinite;
+}
+@keyframes hero-mark {
+  0%,
+  10% {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+  18%,
+  62% {
+    opacity: 1;
+    transform: none;
+  }
+  72%,
+  100% {
+    opacity: 0;
+    transform: none;
+  }
+}
+
+/* Light crossing the glass once a cycle, after the mark has gone. */
+.slab--hero .slab__glare::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    104deg,
+    rgb(255 255 255 / 0) 38%,
+    rgb(255 255 255 / 0.07) 50%,
+    rgb(255 255 255 / 0) 62%
+  );
+  transform: translateX(-110%);
+  animation: glare-sweep var(--cycle) var(--ease-io) infinite;
+}
+@keyframes glare-sweep {
+  0%,
+  72% {
+    transform: translateX(-110%);
+  }
+  96%,
+  100% {
+    transform: translateX(110%);
+  }
+}
+
+/* The screen's light on the floor, and the die resting in it. */
+.hero__floor {
+  position: absolute;
+  left: 6%;
+  right: -4%;
+  bottom: 2%;
+  height: 26%;
+  background:
+    radial-gradient(closest-side, rgb(var(--amber) / 0.14), rgb(var(--amber) / 0) 100%),
+    radial-gradient(50% 30% at 50% 50%, rgb(var(--amber) / 0.08), rgb(var(--amber) / 0));
+  pointer-events: none;
+}
+/* On the lit floor in front of the panel, below its lower edge through the
+   whole sway and float, phone to desktop. */
+.hero__die {
+  position: absolute;
+  left: 27%;
+  bottom: 7%;
+}
+.hero__die::after {
+  content: '';
+  position: absolute;
+  left: -10%;
+  right: -30%;
+  bottom: -14%;
+  height: 34%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(0 0 0 / 0.75), rgb(0 0 0 / 0));
+}
+/* Scoped to the scene so it outranks .die's own size, defined further down. */
+.hero__die > .die--hero {
+  --die: 7.5cqi;
+  display: block;
+}
+.die--hero .die__body {
+  animation: tumble 1.9s var(--ease-out) 0.7s both;
+}
+
 /* --- QR frames in flight ------------------------------------------------------ */
 
 .qr {
@@ -421,86 +388,6 @@ body > header {
 .qr__mod {
   fill: #0b0c0e;
 }
-.qr-card {
-  width: 12.5cqi;
-  aspect-ratio: 1;
-  border-radius: 0.9cqi;
-  opacity: 0;
-  box-shadow:
-    0 1.4cqi 3.4cqi rgb(0 0 0 / 0.6),
-    0 0 0 1px rgb(255 255 255 / 0.1);
-  animation: var(--cycle) var(--ease-io) infinite;
-}
-.qr-card > .qr {
-  border-radius: 0.9cqi;
-}
-.qr-card--out {
-  animation-name: cross-out;
-}
-.qr-card--back {
-  animation-name: cross-back;
-  box-shadow:
-    0 1.4cqi 3.4cqi rgb(0 0 0 / 0.6),
-    0 0 0 0.45cqi rgb(var(--amber));
-}
-.qr-card__stamp {
-  position: absolute;
-  left: 50%;
-  top: calc(100% + 1.4cqi);
-  transform: translateX(-50%);
-  font-family: var(--font-mono);
-  font-size: 1.5cqi;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: rgb(243 156 92);
-  white-space: nowrap;
-}
-/* One sequence per cycle: out across the gap, into the device, held while it
-   signs, then the signed frame back out the way it came. */
-@keyframes cross-out {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -50%) translate3d(-46cqi, -5cqi, 0cqi) rotateY(34deg) scale(0.8);
-  }
-  5% {
-    opacity: 1;
-  }
-  20% {
-    transform: translate(-50%, -50%) translate3d(-27cqi, -7cqi, 11cqi) rotateY(6deg) rotateZ(-1deg);
-  }
-  32% {
-    opacity: 1;
-    transform: translate(-50%, -50%) translate3d(10cqi, -4cqi, 5cqi) rotateY(0deg) scale(0.6);
-  }
-  37%,
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -50%) translate3d(16cqi, -2cqi, 1.8cqi) scale(0.32);
-  }
-}
-@keyframes cross-back {
-  0%,
-  50% {
-    opacity: 0;
-    transform: translate(-50%, -50%) translate3d(16cqi, -2cqi, 1.8cqi) scale(0.32);
-  }
-  55% {
-    opacity: 1;
-    transform: translate(-50%, -50%) translate3d(10cqi, -4cqi, 5cqi) scale(0.6);
-  }
-  68% {
-    transform: translate(-50%, -50%) translate3d(-27cqi, -7cqi, 11cqi) rotateY(6deg) rotateZ(1deg);
-  }
-  84% {
-    opacity: 1;
-  }
-  90%,
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -50%) translate3d(-46cqi, -5cqi, 0cqi) rotateY(34deg) scale(0.8);
-  }
-}
-
 /* --- The hero's words arrive with the scene ------------------------------------ */
 
 .arrive > * {
@@ -594,6 +481,11 @@ body > header {
     inset 0 0 0 1px #20242c,
     0 0.08em 0.2em rgb(0 0 0 / 0.6);
   transform-origin: 50% 50%;
+}
+/* On the home page the board runs the width of the page, each group centred
+   on its flap, rather than stopping short of the right margin. */
+.hash-board > span {
+  text-align: center;
 }
 .motion .hash-flap.reveal:not(.is-in) {
   opacity: 1;
@@ -809,7 +701,7 @@ body > header {
   animation-delay: 0.24s;
 }
 
-/* --- The crossing, in the diagram: the same frames on the same clock as the hero ------ */
+/* --- The crossing, in the diagram: two frames on the site's one clock -------------- */
 
 .crossing__track {
   position: relative;
@@ -911,7 +803,7 @@ body > header {
   transition-delay: 0.25s;
 }
 .kit__part--die {
-  transform: translate(-50%, -50%) translate3d(30cqi, 20cqi, 3.5cqi) rotateZ(-12deg);
+  transform: translate(-50%, -50%) translate3d(30cqi, 20cqi, 0) rotateZ(-12deg);
   transition-delay: 0.3s;
 }
 /* Assembled, before it comes apart: the panel down on the board, the card in
@@ -926,7 +818,7 @@ body > header {
   transform: translate(-50%, -50%) translate3d(4cqi, 20cqi, 3cqi);
 }
 .motion .kit:not(.is-in) .kit__part--die {
-  transform: translate(-50%, -50%) translate3d(16cqi, 10cqi, 3.5cqi);
+  transform: translate(-50%, -50%) translate3d(16cqi, 10cqi, 0);
 }
 .motion .kit.reveal:not(.is-in) {
   opacity: 0;
@@ -1058,20 +950,26 @@ body > header {
     0 0 0 0.5cqi #2b3039,
     0 0 0 0.7cqi #4a505d;
 }
+/* A cube standing on the table among the other parts, not a picture of one
+   lying flat: its own perspective off, so it shares the kit's. */
 .die--kit {
-  --die: 7cqi;
+  --die: 6cqi;
+  display: block;
+  perspective: none;
+  transform-style: preserve-3d;
 }
-/* Resting on the corner of the dice screen, as if just rolled beside it. */
-.die--step {
-  --die: 3.25rem;
-  position: absolute;
-  right: -0.9rem;
-  bottom: -1.4rem;
-  filter: drop-shadow(0 10px 8px rgb(0 0 0 / 0.35));
-  pointer-events: none;
+/* Beside the seed rule it stands for, settled after its tumble. */
+.die--rule {
+  --die: 3.75rem;
+  filter: drop-shadow(0 12px 10px rgb(0 0 0 / 0.3));
 }
 .die--kit .die__body {
-  transform: rotateX(-90deg) rotateY(20deg);
+  transform: translateZ(calc(var(--die) / 2)) rotateZ(24deg);
+}
+/* It slides out with the other parts rather than tumbling. Specific enough to
+   outrank the tumble every revealed die otherwise gets. */
+.motion .kit.reveal.is-in .die__body {
+  animation: none;
 }
 .kit__part--panel > .kit__tag {
   top: auto;
@@ -1461,11 +1359,10 @@ body > header {
   .tilt > a,
   .crossing__frame,
   .scene__world,
-  .scene__device,
-  .scene__device .slab__face--front::after,
-  .laptop__qr,
-  .scene__gap::after,
-  .qr-card,
+  .hero__device,
+  .hero__mark,
+  .slab--hero .slab__glare::after,
+  .die--hero .die__body,
   .arrive > *,
   .scene--hero {
     animation: none;
@@ -1479,9 +1376,9 @@ body > header {
   .tilt > a:focus-visible {
     transform: none;
   }
-  .qr-card--out {
+  /* At rest the mark stays on, so the still picture still says which number. */
+  .hero__mark {
     opacity: 1;
-    transform: translate(-50%, -50%) translate3d(-30cqi, -7cqi, 12cqi) rotateY(8deg);
   }
 }
 
