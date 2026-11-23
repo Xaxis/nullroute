@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { readFacts } from '../lib/facts'
 import { readEntropyExample } from '../lib/entropy'
 import { readLog, readParts, readPhases, type Phase } from '../lib/status'
-import { readProfile } from '../lib/profile'
+import { changedTheProfile, countWord, readProfile } from '../lib/profile'
 import { docHref } from '../lib/docbook'
 import { REPO_URL, START_HREF } from '../lib/site'
 import { Shot, ShotOverlays, checkedScreens, type Screen } from '../components/Device'
@@ -74,6 +74,17 @@ const PHASE_STATE: Record<Phase['kind'], { label: string; bar: string; dot: stri
 
 /** What the hero names before anything else: the whole bill of hardware, one item per unbroken run. */
 const KIT = ['Raspberry Pi', '7 inch touchscreen', 'USB webcam', 'one die'] as const
+
+/** ", and three of its findings have changed the profile or its vectors", or nothing. */
+function kitChanges(profile: ReturnType<typeof readProfile>): string {
+  const n = profile.others.reduce(
+    (sum, o) => sum + changedTheProfile(profile.findings.get(o.label) ?? []),
+    0
+  )
+  if (n === 0) return ''
+  const whose = profile.others.length === 1 ? 'its' : 'their'
+  return `, and ${countWord(n)} of ${whose} findings ${n === 1 ? 'has' : 'have'} changed the profile or its vectors`
+}
 
 export default async function Home() {
   const facts = readFacts()
@@ -508,7 +519,7 @@ export default async function Home() {
               nullroute.
               {profile.others.length === 0
                 ? ' The kit runs against any signer through an adapter.'
-                : ` The kit already runs against ${profile.others.map((o) => `${o.label}\u2019s`).join(' and ')} own code, and three of its findings have changed the profile or its vectors.`}
+                : ` The kit already runs against ${profile.others.map((o) => `${o.label}\u2019s`).join(' and ')} own code${kitChanges(profile)}.`}
             </p>
             <div className="flex shrink-0 flex-wrap gap-3">
               <Link href="/profile" className="btn btn-secondary">

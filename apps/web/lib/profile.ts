@@ -319,6 +319,23 @@ function readFindings(label: string): Finding[] {
   }))
 }
 
+/**
+ * How many findings changed the profile or one of its vectors, counted from
+ * the findings tables rather than written into a page. Pages once said
+ * "three" outright, which was SeedSigner's count and would have been read as
+ * every signer's.
+ */
+export function changedTheProfile(findings: readonly Finding[]): number {
+  return findings.filter((f) => /^It changed the (?:profile|vector)/u.test(f.question)).length
+}
+
+/** "three", for a count a sentence states. */
+export function countWord(n: number): string {
+  return (
+    ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'][n] ?? String(n)
+  )
+}
+
 export function readProfile(): Profile {
   const text = readRepoFile(PROFILE)
   const header = readHeader(text)

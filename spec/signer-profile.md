@@ -127,7 +127,7 @@ whether a warning appears is not checked); nullroute INV-DICE-6, INV-UI-8.
 each face uniformly (for example by rejection sampling, not by reduction
 modulo 6), MUST hash the result by SP-ENT-1 and SP-ENT-2, and MUST state on
 screen how many rolls it chose. Check: nullroute INV-ENTMODE-1 for the
-sampling; manual for the on-screen count.
+sampling, INV-UI-76 for the on-screen count.
 
 **SP-ENT-9.** A seed from machine entropy alone MUST NOT be produced without an
 explicit acknowledgement that the result cannot be checked by the user. Check:
@@ -296,7 +296,7 @@ seed with `@scure/bip39`. All three match what `docs/ENTROPY.md` publishes.
 | SP-ENT-5 | Met | INV-DICE-5 |
 | SP-ENT-6 | Met | INV-UI-9 |
 | SP-ENT-7 | Met | INV-DICE-6, INV-UI-8 |
-| SP-ENT-8 | Met for sampling; screen copy manual | INV-ENTMODE-1 |
+| SP-ENT-8 | Met in the headless render; unverified on the panel | INV-ENTMODE-1 for the sampling; INV-UI-76 for the count on screen ("1 of 3 rolls came from the device"), which this row called manual until 23 November |
 | SP-ENT-9 | Met | INV-ENTMODE-2 |
 | SP-ENT-10 | Met | `docs/ENTROPY.md` worked example, INV-DICE-3 |
 | SP-ENT-11 | Manual | `docs/ENTROPY.md`, "What the device does not know" |

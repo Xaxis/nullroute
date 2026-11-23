@@ -2,7 +2,13 @@ import { AreaDeck } from '../../components/stage/AreaDeck'
 import { PageStage } from '../../components/stage/PageStage'
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { readProfile, statusKind } from '../../lib/profile'
+import {
+  changedTheProfile,
+  countWord,
+  readProfile,
+  statusKind,
+  type Finding,
+} from '../../lib/profile'
 import { docHref, requirementHrefs } from '../../lib/docbook'
 import { OG_IMAGE, REPO_URL } from '../../lib/site'
 import { ResultsTable, requirementHref } from '../../components/ResultsTable'
@@ -78,6 +84,14 @@ const POSITIONS: readonly (readonly [string, string])[] = [
     'Anything the PSBT merely claims is shown as a payment, with the claim reported.',
   ],
 ]
+
+/** The sentence saying how many of one signer's findings changed the profile. */
+function changedBy(findings: readonly Finding[]): string {
+  const n = changedTheProfile(findings)
+  if (n === 0) return ''
+  const word = countWord(n)
+  return ` ${word.charAt(0).toUpperCase()}${word.slice(1)} ${n === 1 ? 'has' : 'have'} already changed it or its vectors.`
+}
 
 function Head({ title, children }: { title: string; children?: string }) {
   return (
@@ -196,7 +210,7 @@ export default async function ProfilePage() {
         {profile.others.map((o) => (
           <section key={o.label} className="border-t border-line py-16" id={o.label.toLowerCase()}>
             <Head title={`What running ${o.label} found`}>
-              {`${o.name}, run against the same vectors. Some findings are gaps in ${o.label}, some are questions the profile has to answer, which is what a draft is for, and three have already changed it or its vectors.`}
+              {`${o.name}, run against the same vectors. Some findings are gaps in ${o.label}, and some are questions the profile has to answer, which is what a draft is for.${changedBy(profile.findings.get(o.label) ?? [])}`}
             </Head>
             <dl className="mt-8 max-w-4xl border-t border-line">
               {(profile.findings.get(o.label) ?? []).map((f) => (

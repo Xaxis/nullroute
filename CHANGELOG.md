@@ -15,6 +15,9 @@ status and home pages.
 
 ## November 2026
 
+- **2026-11-23** SP-ENT-8's count of the rolls the device chose is checked by
+  a test (INV-UI-76, "1 of 3 rolls came from the device"), and the profile's
+  row and the kit's coverage table say so. Both had called it a manual check.
 - **2026-11-23** `make conformance` fails when the kit's coverage table or a
   requirement's Check line in the profile leaves out a requirement some vector
   case checks. Both had drifted: the table still filed SP-REV-1 and SP-REV-22
