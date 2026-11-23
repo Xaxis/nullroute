@@ -31,6 +31,7 @@ BIPS=7c7cb232c228b258616ef64a3a079aa82996da8c
 BBQR=8dc7ef07d0d520763cc0001a885ca8d29ac8719a
 SEEDSIGNER=088b144eaebc79d12d6336030e943510d7a14f54
 URTYPES=7fb280eab3b3563dfc57d2733b0bf5cbc0a96a6a
+URTYPES_SHA256=bab06f952d9c93c8756068e2252751840b3c7ba102cdb273c4325c57e991bd2e
 BECH32=7a7d7ab158db7078a333384e0e918c90dbc42917
 # Bitcoin Core v31.1. Its Python test framework computes the sighashes and
 # signatures in sign-deterministic.json.
@@ -47,6 +48,7 @@ fi
 
 mkdir -p "$WORK/src/bbqr/python/bbqr" "$WORK/src/bbqr/test_data"
 curl -sfL -o "$WORK/src/english.txt" "$RAW/bitcoin/bips/$BIPS/bip-0039/english.txt"
+curl -sfL -o "$WORK/src/bip-0174.mediawiki" "$RAW/bitcoin/bips/$BIPS/bip-0174.mediawiki"
 curl -sfL -o "$WORK/src/segwit_addr.py" "$RAW/sipa/bech32/$BECH32/ref/python/segwit_addr.py"
 for f in python/bbqr/split.py python/bbqr/join.py python/bbqr/utils.py python/bbqr/consts.py \
   test_data/real-scan.txt test_data/1in2out.psbt test_data/1in10out.psbt test_data/1in20out.psbt; do
@@ -63,8 +65,15 @@ for f in __init__.py bytewords.py cbor_lite.py constants.py crc32.py fountain_de
   curl -sfL -o "$WORK/src/seedsigner/ur2/$f" \
     "$RAW/SeedSigner/seedsigner/$SEEDSIGNER/src/seedsigner/helpers/ur2/$f"
 done
-pip3 install --quiet --target "$WORK/py" \
-  "https://github.com/selfcustody/urtypes/archive/$URTYPES.tar.gz"
+# urtypes is unpacked, never built, after the archive's hash is checked against
+# the one SeedSigner's requirements.txt pins, as the adapter does
+# (conformance/interop/seedsigner-adapter.sh): none of its code runs here
+# except the modules gen_ur.py imports.
+curl -sfL -o "$WORK/urtypes.tar.gz" "https://github.com/selfcustody/urtypes/archive/$URTYPES.tar.gz"
+echo "$URTYPES_SHA256  $WORK/urtypes.tar.gz" | shasum -a 256 -c --quiet -
+mkdir "$WORK/urtypes"
+tar -xzf "$WORK/urtypes.tar.gz" -C "$WORK/urtypes" --strip-components=1
+cp -R "$WORK/urtypes/src/urtypes" "$WORK/py/urtypes"
 
 # Bitcoin Core's functional test framework: the sighash and signing code for
 # sign-deterministic.json, and the modules those import.
@@ -96,7 +105,7 @@ done
 cd "$WORK"
 python3 "$HERE/headers.py" "$OUT"
 python3 "$HERE/core_setup.py"
-python3 "$HERE/gen_review.py" "$OUT"
+python3 "$HERE/gen_review.py" "$OUT" "$BIPS"
 python3 "$HERE/gen_sign.py" "$OUT" "$CORE_TAG"
 python3 "$HERE/gen_dice.py" "$OUT" "$ROOT"
 python3 "$HERE/gen_manifest.py" "$OUT"

@@ -317,7 +317,9 @@ and `ui.screens.lock` in `packages/ui/src/ui.spec.yaml`.
 
 **SP-REV-1.** Input that is not a well-formed PSBT MUST be refused before any
 review is shown, including empty input, a raw transaction, a descriptor and a
-truncated PSBT. Check: nullroute INV-PSBT-9.
+truncated PSBT. Check: vector `review-malformed.json` (BIP-174's own list of
+invalid PSBTs, and its two rules on the unsigned transaction repeated on a coin
+the signer owns); nullroute INV-PSBT-9.
 
 **SP-REV-2.** Each input's amount MUST come from the UTXO record in the PSBT
 (`PSBT_IN_WITNESS_UTXO` or `PSBT_IN_NON_WITNESS_UTXO`). A PSBT missing an
@@ -489,7 +491,7 @@ Reproducing a signature".
 
 | Id | Status | Evidence |
 | --- | --- | --- |
-| SP-REV-1 | Met | INV-PSBT-9 |
+| SP-REV-1 | Met | INV-PSBT-9. Refuses every case in `review-malformed.json`, BIP-174's 20 invalid PSBTs included |
 | SP-REV-2 | Met | INV-PSBT-5 |
 | SP-REV-3 | Met, more strictly than required | Review blocks, until the user overrides, whenever any input that is not taproot arrives without its previous transaction (INV-PSBT-17, `packages/core/test/psbt.fee-attack.test.ts`), including one this device does not sign, where the profile would permit a witness UTXO. With the previous transaction present, the signing library rejects one whose TXID or output contradicts the input while parsing (`@scure/btc-signer` 2.3.0, `transaction.js` lines 305-345, 536 and 613), and the test pins that. Bitcoin Core 31's `walletcreatefundedpsbt` includes the previous transaction for segwit v0 inputs, checked on regtest, so a Core-built PSBT passes without a warning |
 | SP-REV-4 | Met | INV-PSBT-4, INV-PSBT-8, INV-UI-12 |
@@ -924,3 +926,4 @@ scope", restated without the nullroute specifics.
 | 0.1 | 26 October 2026 | Vector file `sign-override.json` added for SP-REV-22: until now every signing vector asked with no override, so nothing checked that an override lifts a block for one signature only. No requirement changed |
 | 0.1 | 23 November 2026 | SP-SIG-1 amended: ECDSA may use RFC 6979 plain or ground for a low R exactly as Bitcoin Core grinds, and the signer documents which. Running SeedSigner's code showed embit grinds that way by default, as Core's wallet does, so the old text failed SeedSigner, and any signer keeping embit's default, on a rule whose purpose, recomputable signatures, both schemes meet. Vector file `sign-deterministic.json` added, with both sets of bytes |
 | 0.1 | 23 November 2026 | SP-REV-7 amended: a signer MAY refuse a transaction with a false change claim instead of showing the output as a payment. SeedSigner refuses it as "Likely an Attack!", and the vector failed it for being stricter than the requirement. SP-TX-7 now says a receiver that refuses a foreign part MAY keep scanning, which is what SeedSigner does and what the requirement's text already allowed; the vector had demanded the whole transfer be refused. Both cases in `review-change.json` and `two-transfers` in `ur-psbt.json` accept either |
+| 0.1 | 23 November 2026 | Vector file `review-malformed.json` added for SP-REV-1, which had no portable check: BIP-174's 20 invalid PSBTs copied from the BIP, empty input, a descriptor, two truncations, and BIP-174's two rules on the unsigned transaction (empty scriptSigs, no witness serialization) on a coin the signer owns, so a parser that skips them reaches a review instead of refusing for want of an owned input |

@@ -1,0 +1,599 @@
+{
+  "format": "signer-profile-vectors",
+  "version": 1,
+  "profile": "spec/signer-profile.md, draft specification version 0.1",
+  "file": "review-malformed.json",
+  "requirements": [
+    "SP-REV-1"
+  ],
+  "operations": "review",
+  "description": "Input that is not a well-formed PSBT, which MUST be refused before any review is shown: BIP-174's own list of invalid PSBTs, empty input, a descriptor and truncated PSBTs, and the two BIP-174 rules on the unsigned transaction repeated on a coin the signer owns.",
+  "cases": [
+    {
+      "id": "bip174-network-transaction-not-psbt-format",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "level": "MUST",
+      "description": "BIP-174 test vector at line 618: \"Network transaction, not PSBT format\". The BIP lists it as invalid, so it MUST be refused before any review is shown.",
+      "input": {
+        "psbt": "AgAAAAEmgXE3Ht/yhek3re6ks3t4AAwFZsuzrWRkFxPKQhcb9gAAAABqRzBEAiBwsiRRI+a/R01gxbUMBD1MaRpdJDXwmjSnZiqdwlF5CgIgATKcqdrPKAvfMHQOwDkEIkIsgctFg5RXrrdvwS7dlbMBIQJlfRGNM1e44PTCzUbbezn22cONmnCry5st5dyNv+TOMf7///8C09/1BQAAAAAZdqkU0MWZA8W6woaHYOkP1SGkZlqnZSCIrADh9QUAAAAAF6kUNUXm4zuDLEcFDyTT7rk8nAOUi8eHsy4TAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "input and verdict: BIP-174 at bitcoin/bips 7c7cb232, \"The following are invalid PSBTs:\", line 618"
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed Invalid PSBT magic bytes: iostream error'"
+      }
+    },
+    {
+      "id": "bip174-psbt-missing-outputs",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "level": "MUST",
+      "description": "BIP-174 test vector at line 622: \"PSBT missing outputs\". The BIP lists it as invalid, so it MUST be refused before any review is shown.",
+      "input": {
+        "psbt": "cHNidP8BAHUCAAAAASaBcTce3/KF6Tet7qSze3gADAVmy7OtZGQXE8pCFxv2AAAAAAD+////AtPf9QUAAAAAGXapFNDFmQPFusKGh2DpD9UhpGZap2UgiKwA4fUFAAAAABepFDVF5uM7gyxHBQ8k0+65PJwDlIvHh7MuEwAAAQD9pQEBAAAAAAECiaPHHqtNIOA3G7ukzGmPopXJRjr6Ljl/hTPMti+VZ+UBAAAAFxYAFL4Y0VKpsBIDna89p95PUzSe7LmF/////4b4qkOnHf8USIk6UwpyN+9rRgi7st0tAXHmOuxqSJC0AQAAABcWABT+Pp7xp0XpdNkCxDVZQ6vLNL1TU/////8CAMLrCwAAAAAZdqkUhc/xCX/Z4Ai7NK9wnGIZeziXikiIrHL++E4sAAAAF6kUM5cluiHv1irHU6m80GfWx6ajnQWHAkcwRAIgJxK+IuAnDzlPVoMR3HyppolwuAJf3TskAinwf4pfOiQCIAGLONfc0xTnNMkna9b7QPZzMlvEuqFEyADS8vAtsnZcASED0uFWdJQbrUqZY3LLh+GFbTZSYG2YVi/jnF6efkE/IQUCSDBFAiEA0SuFLYXc2WHS9fSrZgZU327tzHlMDDPOXMMJ/7X85Y0CIGczio4OFyXBl/saiK9Z9R5E5CVbIBZ8hoQDHAXR8lkqASECI7cr7vCWXRC+B3jv7NYfysb3mk6haTkzgHNEZPhPKrMAAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "input and verdict: BIP-174 at bitcoin/bips 7c7cb232, \"The following are invalid PSBTs:\", line 622"
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed Outputs provided does not match the number of outputs in transaction.: iostream error'"
+      }
+    },
+    {
+      "id": "bip174-psbt-where-one-input-has-a-filled-scriptsig-in-the-unsigned-tx",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "level": "MUST",
+      "description": "BIP-174 test vector at line 626: \"PSBT where one input has a filled scriptSig in the unsigned tx\". The BIP lists it as invalid, so it MUST be refused before any review is shown.",
+      "input": {
+        "psbt": "cHNidP8BAP0KAQIAAAACqwlJoIxa98SbghL0F+LxWrP1wz3PFTghqBOfh3pbe+QAAAAAakcwRAIgR1lmF5fAGwNrJZKJSGhiGDR9iYZLcZ4ff89X0eURZYcCIFMJ6r9Wqk2Ikf/REf3xM286KdqGbX+EhtdVRs7tr5MZASEDXNxh/HupccC1AaZGoqg7ECy0OIEhfKaC3Ibi1z+ogpL+////qwlJoIxa98SbghL0F+LxWrP1wz3PFTghqBOfh3pbe+QBAAAAAP7///8CYDvqCwAAAAAZdqkUdopAu9dAy+gdmI5x3ipNXHE5ax2IrI4kAAAAAAAAGXapFG9GILVT+glechue4O/p+gOcykWXiKwAAAAAAAABASAA4fUFAAAAABepFDVF5uM7gyxHBQ8k0+65PJwDlIvHhwEEFgAUhdE1N/LiZUBaNNuvqePdoB+4IwgAAAA=",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "input and verdict: BIP-174 at bitcoin/bips 7c7cb232, \"The following are invalid PSBTs:\", line 626"
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed Unsigned tx does not have empty scriptSigs and scriptWitnesses.: iostream error'"
+      }
+    },
+    {
+      "id": "bip174-psbt-where-inputs-and-outputs-are-provided-but-without-an-unsigned-tx",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "level": "MUST",
+      "description": "BIP-174 test vector at line 630: \"PSBT where inputs and outputs are provided but without an unsigned tx\". The BIP lists it as invalid, so it MUST be refused before any review is shown.",
+      "input": {
+        "psbt": "cHNidP8AAQD9pQEBAAAAAAECiaPHHqtNIOA3G7ukzGmPopXJRjr6Ljl/hTPMti+VZ+UBAAAAFxYAFL4Y0VKpsBIDna89p95PUzSe7LmF/////4b4qkOnHf8USIk6UwpyN+9rRgi7st0tAXHmOuxqSJC0AQAAABcWABT+Pp7xp0XpdNkCxDVZQ6vLNL1TU/////8CAMLrCwAAAAAZdqkUhc/xCX/Z4Ai7NK9wnGIZeziXikiIrHL++E4sAAAAF6kUM5cluiHv1irHU6m80GfWx6ajnQWHAkcwRAIgJxK+IuAnDzlPVoMR3HyppolwuAJf3TskAinwf4pfOiQCIAGLONfc0xTnNMkna9b7QPZzMlvEuqFEyADS8vAtsnZcASED0uFWdJQbrUqZY3LLh+GFbTZSYG2YVi/jnF6efkE/IQUCSDBFAiEA0SuFLYXc2WHS9fSrZgZU327tzHlMDDPOXMMJ/7X85Y0CIGczio4OFyXBl/saiK9Z9R5E5CVbIBZ8hoQDHAXR8lkqASECI7cr7vCWXRC+B3jv7NYfysb3mk6haTkzgHNEZPhPKrMAAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "input and verdict: BIP-174 at bitcoin/bips 7c7cb232, \"The following are invalid PSBTs:\", line 630"
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed No unsigned transaction was provided: iostream error'"
+      }
+    },
+    {
+      "id": "bip174-psbt-with-duplicate-keys-in-an-input",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "level": "MUST",
+      "description": "BIP-174 test vector at line 634: \"PSBT with duplicate keys in an input\". The BIP lists it as invalid, so it MUST be refused before any review is shown.",
+      "input": {
+        "psbt": "cHNidP8BAHUCAAAAASaBcTce3/KF6Tet7qSze3gADAVmy7OtZGQXE8pCFxv2AAAAAAD+////AtPf9QUAAAAAGXapFNDFmQPFusKGh2DpD9UhpGZap2UgiKwA4fUFAAAAABepFDVF5uM7gyxHBQ8k0+65PJwDlIvHh7MuEwAAAQD9pQEBAAAAAAECiaPHHqtNIOA3G7ukzGmPopXJRjr6Ljl/hTPMti+VZ+UBAAAAFxYAFL4Y0VKpsBIDna89p95PUzSe7LmF/////4b4qkOnHf8USIk6UwpyN+9rRgi7st0tAXHmOuxqSJC0AQAAABcWABT+Pp7xp0XpdNkCxDVZQ6vLNL1TU/////8CAMLrCwAAAAAZdqkUhc/xCX/Z4Ai7NK9wnGIZeziXikiIrHL++E4sAAAAF6kUM5cluiHv1irHU6m80GfWx6ajnQWHAkcwRAIgJxK+IuAnDzlPVoMR3HyppolwuAJf3TskAinwf4pfOiQCIAGLONfc0xTnNMkna9b7QPZzMlvEuqFEyADS8vAtsnZcASED0uFWdJQbrUqZY3LLh+GFbTZSYG2YVi/jnF6efkE/IQUCSDBFAiEA0SuFLYXc2WHS9fSrZgZU327tzHlMDDPOXMMJ/7X85Y0CIGczio4OFyXBl/saiK9Z9R5E5CVbIBZ8hoQDHAXR8lkqASECI7cr7vCWXRC+B3jv7NYfysb3mk6haTkzgHNEZPhPKrMAAAAAAQA/AgAAAAH//////////////////////////////////////////wAAAAAA/////wEAAAAAAAAAAANqAQAAAAAAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "input and verdict: BIP-174 at bitcoin/bips 7c7cb232, \"The following are invalid PSBTs:\", line 634"
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed Duplicate Key, input non-witness utxo already provided: iostream error'"
+      }
+    },
+    {
+      "id": "bip174-psbt-with-invalid-global-transaction-typed-key",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "level": "MUST",
+      "description": "BIP-174 test vector at line 638: \"PSBT with invalid global transaction typed key\". The BIP lists it as invalid, so it MUST be refused before any review is shown.",
+      "input": {
+        "psbt": "cHNidP8CAAFVAgAAAAEnmiMjpd+1H8RfIg+liw/BPh4zQnkqhdfjbNYzO1y8OQAAAAAA/////wGgWuoLAAAAABl2qRT/6cAGEJfMO2NvLLBGD6T8Qn0rRYisAAAAAAABASCVXuoLAAAAABepFGNFIA9o0YnhrcDfHE0W6o8UwNvrhyICA7E0HMunaDtq9PEjjNbpfnFn1Wn6xH8eSNR1QYRDVb1GRjBDAiAEJLWO/6qmlOFVnqXJO7/UqJBkIkBVzfBwtncUaUQtBwIfXI6w/qZRbWC4rLM61k7eYOh4W/s6qUuZvfhhUduamgEBBCIAIHcf0YrUWWZt1J89Vk49vEL0yEd042CtoWgWqO1IjVaBAQVHUiEDsTQcy6doO2r08SOM1ul+cWfVafrEfx5I1HVBhENVvUYhA95V0eHayAXj+KWMH7+blMAvPbqv4Sf+/KSZXyb4IIO9Uq4iBgOxNBzLp2g7avTxI4zW6X5xZ9Vp+sR/HkjUdUGEQ1W9RhC0prpnAAAAgAAAAIAEAACAIgYD3lXR4drIBeP4pYwfv5uUwC89uq/hJ/78pJlfJvggg70QtKa6ZwAAAIAAAACABQAAgAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "input and verdict: BIP-174 at bitcoin/bips 7c7cb232, \"The following are invalid PSBTs:\", line 638"
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed Global unsigned tx key is more than one byte type: iostream error'"
+      }
+    },
+    {
+      "id": "bip174-psbt-with-invalid-input-witness-utxo-typed-key",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "level": "MUST",
+      "description": "BIP-174 test vector at line 642: \"PSBT with invalid input witness utxo typed key\". The BIP lists it as invalid, so it MUST be refused before any review is shown.",
+      "input": {
+        "psbt": "cHNidP8BAFUCAAAAASeaIyOl37UfxF8iD6WLD8E+HjNCeSqF1+Ns1jM7XLw5AAAAAAD/////AaBa6gsAAAAAGXapFP/pwAYQl8w7Y28ssEYPpPxCfStFiKwAAAAAAAIBACCVXuoLAAAAABepFGNFIA9o0YnhrcDfHE0W6o8UwNvrhyICA7E0HMunaDtq9PEjjNbpfnFn1Wn6xH8eSNR1QYRDVb1GRjBDAiAEJLWO/6qmlOFVnqXJO7/UqJBkIkBVzfBwtncUaUQtBwIfXI6w/qZRbWC4rLM61k7eYOh4W/s6qUuZvfhhUduamgEBBCIAIHcf0YrUWWZt1J89Vk49vEL0yEd042CtoWgWqO1IjVaBAQVHUiEDsTQcy6doO2r08SOM1ul+cWfVafrEfx5I1HVBhENVvUYhA95V0eHayAXj+KWMH7+blMAvPbqv4Sf+/KSZXyb4IIO9Uq4iBgOxNBzLp2g7avTxI4zW6X5xZ9Vp+sR/HkjUdUGEQ1W9RhC0prpnAAAAgAAAAIAEAACAIgYD3lXR4drIBeP4pYwfv5uUwC89uq/hJ/78pJlfJvggg70QtKa6ZwAAAIAAAACABQAAgAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "input and verdict: BIP-174 at bitcoin/bips 7c7cb232, \"The following are invalid PSBTs:\", line 642"
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed Witness utxo key is more than one byte type: iostream error'"
+      }
+    },
+    {
+      "id": "bip174-psbt-with-invalid-pubkey-length-for-input-partial-signature-typed-key",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "level": "MUST",
+      "description": "BIP-174 test vector at line 646: \"PSBT with invalid pubkey length for input partial signature typed key\". The BIP lists it as invalid, so it MUST be refused before any review is shown.",
+      "input": {
+        "psbt": "cHNidP8BAFUCAAAAASeaIyOl37UfxF8iD6WLD8E+HjNCeSqF1+Ns1jM7XLw5AAAAAAD/////AaBa6gsAAAAAGXapFP/pwAYQl8w7Y28ssEYPpPxCfStFiKwAAAAAAAEBIJVe6gsAAAAAF6kUY0UgD2jRieGtwN8cTRbqjxTA2+uHIQIDsTQcy6doO2r08SOM1ul+cWfVafrEfx5I1HVBhENVvUYwQwIgBCS1jv+qppThVZ6lyTu/1KiQZCJAVc3wcLZ3FGlELQcCH1yOsP6mUW1guKyzOtZO3mDoeFv7OqlLmb34YVHbmpoBAQQiACB3H9GK1FlmbdSfPVZOPbxC9MhHdONgraFoFqjtSI1WgQEFR1IhA7E0HMunaDtq9PEjjNbpfnFn1Wn6xH8eSNR1QYRDVb1GIQPeVdHh2sgF4/iljB+/m5TALz26r+En/vykmV8m+CCDvVKuIgYDsTQcy6doO2r08SOM1ul+cWfVafrEfx5I1HVBhENVvUYQtKa6ZwAAAIAAAACABAAAgCIGA95V0eHayAXj+KWMH7+blMAvPbqv4Sf+/KSZXyb4IIO9ELSmumcAAACAAAAAgAUAAIAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "input and verdict: BIP-174 at bitcoin/bips 7c7cb232, \"The following are invalid PSBTs:\", line 646"
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed Size of key was not the expected size for the type partial signature pubkey: iostream error'"
+      }
+    },
+    {
+      "id": "bip174-psbt-with-invalid-redeemscript-typed-key",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "level": "MUST",
+      "description": "BIP-174 test vector at line 650: \"PSBT with invalid redeemscript typed key\". The BIP lists it as invalid, so it MUST be refused before any review is shown.",
+      "input": {
+        "psbt": "cHNidP8BAFUCAAAAASeaIyOl37UfxF8iD6WLD8E+HjNCeSqF1+Ns1jM7XLw5AAAAAAD/////AaBa6gsAAAAAGXapFP/pwAYQl8w7Y28ssEYPpPxCfStFiKwAAAAAAAEBIJVe6gsAAAAAF6kUY0UgD2jRieGtwN8cTRbqjxTA2+uHIgIDsTQcy6doO2r08SOM1ul+cWfVafrEfx5I1HVBhENVvUZGMEMCIAQktY7/qqaU4VWepck7v9SokGQiQFXN8HC2dxRpRC0HAh9cjrD+plFtYLisszrWTt5g6Hhb+zqpS5m9+GFR25qaAQIEACIAIHcf0YrUWWZt1J89Vk49vEL0yEd042CtoWgWqO1IjVaBAQVHUiEDsTQcy6doO2r08SOM1ul+cWfVafrEfx5I1HVBhENVvUYhA95V0eHayAXj+KWMH7+blMAvPbqv4Sf+/KSZXyb4IIO9Uq4iBgOxNBzLp2g7avTxI4zW6X5xZ9Vp+sR/HkjUdUGEQ1W9RhC0prpnAAAAgAAAAIAEAACAIgYD3lXR4drIBeP4pYwfv5uUwC89uq/hJ/78pJlfJvggg70QtKa6ZwAAAIAAAACABQAAgAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "input and verdict: BIP-174 at bitcoin/bips 7c7cb232, \"The following are invalid PSBTs:\", line 650"
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed Input redeemScript key is more than one byte type: iostream error'"
+      }
+    },
+    {
+      "id": "bip174-psbt-with-invalid-witnessscript-typed-key",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "level": "MUST",
+      "description": "BIP-174 test vector at line 654: \"PSBT with invalid witnessscript typed key\". The BIP lists it as invalid, so it MUST be refused before any review is shown.",
+      "input": {
+        "psbt": "cHNidP8BAFUCAAAAASeaIyOl37UfxF8iD6WLD8E+HjNCeSqF1+Ns1jM7XLw5AAAAAAD/////AaBa6gsAAAAAGXapFP/pwAYQl8w7Y28ssEYPpPxCfStFiKwAAAAAAAEBIJVe6gsAAAAAF6kUY0UgD2jRieGtwN8cTRbqjxTA2+uHIgIDsTQcy6doO2r08SOM1ul+cWfVafrEfx5I1HVBhENVvUZGMEMCIAQktY7/qqaU4VWepck7v9SokGQiQFXN8HC2dxRpRC0HAh9cjrD+plFtYLisszrWTt5g6Hhb+zqpS5m9+GFR25qaAQEEIgAgdx/RitRZZm3Unz1WTj28QvTIR3TjYK2haBao7UiNVoECBQBHUiEDsTQcy6doO2r08SOM1ul+cWfVafrEfx5I1HVBhENVvUYhA95V0eHayAXj+KWMH7+blMAvPbqv4Sf+/KSZXyb4IIO9Uq4iBgOxNBzLp2g7avTxI4zW6X5xZ9Vp+sR/HkjUdUGEQ1W9RhC0prpnAAAAgAAAAIAEAACAIgYD3lXR4drIBeP4pYwfv5uUwC89uq/hJ/78pJlfJvggg70QtKa6ZwAAAIAAAACABQAAgAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "input and verdict: BIP-174 at bitcoin/bips 7c7cb232, \"The following are invalid PSBTs:\", line 654"
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed Input witnessScript key is more than one byte type: iostream error'"
+      }
+    },
+    {
+      "id": "bip174-psbt-with-invalid-pubkey-in-input-bip-32-derivation-paths-typed-key",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "level": "MUST",
+      "description": "BIP-174 test vector at line 658: \"PSBT with invalid pubkey in input BIP 32 derivation paths typed key\". The BIP lists it as invalid, so it MUST be refused before any review is shown.",
+      "input": {
+        "psbt": "cHNidP8BAFUCAAAAASeaIyOl37UfxF8iD6WLD8E+HjNCeSqF1+Ns1jM7XLw5AAAAAAD/////AaBa6gsAAAAAGXapFP/pwAYQl8w7Y28ssEYPpPxCfStFiKwAAAAAAAEBIJVe6gsAAAAAF6kUY0UgD2jRieGtwN8cTRbqjxTA2+uHIgIDsTQcy6doO2r08SOM1ul+cWfVafrEfx5I1HVBhENVvUZGMEMCIAQktY7/qqaU4VWepck7v9SokGQiQFXN8HC2dxRpRC0HAh9cjrD+plFtYLisszrWTt5g6Hhb+zqpS5m9+GFR25qaAQEEIgAgdx/RitRZZm3Unz1WTj28QvTIR3TjYK2haBao7UiNVoEBBUdSIQOxNBzLp2g7avTxI4zW6X5xZ9Vp+sR/HkjUdUGEQ1W9RiED3lXR4drIBeP4pYwfv5uUwC89uq/hJ/78pJlfJvggg71SriEGA7E0HMunaDtq9PEjjNbpfnFn1Wn6xH8eSNR1QYRDVb0QtKa6ZwAAAIAAAACABAAAgCIGA95V0eHayAXj+KWMH7+blMAvPbqv4Sf+/KSZXyb4IIO9ELSmumcAAACAAAAAgAUAAIAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "input and verdict: BIP-174 at bitcoin/bips 7c7cb232, \"The following are invalid PSBTs:\", line 658"
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed Size of key was not the expected size for the type BIP32 keypath: iostream error'"
+      }
+    },
+    {
+      "id": "bip174-psbt-with-invalid-non-witness-utxo-typed-key",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "level": "MUST",
+      "description": "BIP-174 test vector at line 662: \"PSBT with invalid non-witness utxo typed key\". The BIP lists it as invalid, so it MUST be refused before any review is shown.",
+      "input": {
+        "psbt": "cHNidP8BAJoCAAAAAljoeiG1ba8MI76OcHBFbDNvfLqlyHV5JPVFiHuyq911AAAAAAD/////g40EJ9DsZQpoqka7CwmK6kQiwHGyyng1Kgd5WdB86h0BAAAAAP////8CcKrwCAAAAAAWABTYXCtx0AYLCcmIauuBXlCZHdoSTQDh9QUAAAAAFgAUAK6pouXw+HaliN9VRuh0LR2HAI8AAAAAAAIAALsCAAAAAarXOTEBi9JfhK5AC2iEi+CdtwbqwqwYKYur7nGrZW+LAAAAAEhHMEQCIFj2/HxqM+GzFUjUgcgmwBW9MBNarULNZ3kNq2bSrSQ7AiBKHO0mBMZzW2OT5bQWkd14sA8MWUL7n3UYVvqpOBV9ugH+////AoDw+gIAAAAAF6kUD7lGNCFpa4LIM68kHHjBfdveSTSH0PIKJwEAAAAXqRQpynT4oI+BmZQoGFyXtdhS5AY/YYdlAAAAAQfaAEcwRAIgdAGK1BgAl7hzMjwAFXILNoTMgSOJEEjn282bVa1nnJkCIHPTabdA4+tT3O+jOCPIBwUUylWn3ZVE8VfBZ5EyYRGMAUgwRQIhAPYQOLMI3B2oZaNIUnRvAVdyk0IIxtJEVDk82ZvfIhd3AiAFbmdaZ1ptCgK4WxTl4pB02KJam1dgvqKBb2YZEKAG6gFHUiEClYO/Oa4KYJdHrRma3dY0+mEIVZ1sXNObTCGD8auW4H8hAtq2H/SaFNtqfQKwzR+7ePxLGDErW05U2uTbovv+9TbXUq4AAQEgAMLrCwAAAAAXqRS39fr0Dj1ApaRZsds1NfK3L6kh6IcBByMiACCMI1MXN0O1ld+0oHtyuo5C43l9p06H/n2ddJfjsgKJAwEI2gQARzBEAiBi63pVYQenxz9FrEq1od3fb3B1+xJ1lpp/OD7/94S8sgIgDAXbt0cNvy8IVX3TVscyXB7TCRPpls04QJRdsSIo2l8BRzBEAiBl9FulmYtZon/+GnvtAWrx8fkNVLOqj3RQql9WolEDvQIgf3JHA60e25ZoCyhLVtT/y4j3+3Weq74IqjDym4UTg9IBR1IhAwidwQx6xttU+RMpr2FzM9s4jOrQwjH3IzedG5kDCwLcIQI63ZBPPW3PWd25BrDe4jUpt/+57VDl6GFRkmhgIh8Oc1KuACICA6mkw39ZltOqJdusa1cK8GUDlEkpQkYLNUdT7Z7spYdxENkMak8AAACAAAAAgAQAAIAAIgICf2OZdX0u/1WhNq0CxoSxg4tlVuXxtrNCgqlLa1AFEJYQ2QxqTwAAAIAAAACABQAAgAA=",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "input and verdict: BIP-174 at bitcoin/bips 7c7cb232, \"The following are invalid PSBTs:\", line 662"
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed Non-witness utxo key is more than one byte type: iostream error'"
+      }
+    },
+    {
+      "id": "bip174-psbt-with-invalid-final-scriptsig-typed-key",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "level": "MUST",
+      "description": "BIP-174 test vector at line 666: \"PSBT with invalid final scriptsig typed key\". The BIP lists it as invalid, so it MUST be refused before any review is shown.",
+      "input": {
+        "psbt": "cHNidP8BAJoCAAAAAljoeiG1ba8MI76OcHBFbDNvfLqlyHV5JPVFiHuyq911AAAAAAD/////g40EJ9DsZQpoqka7CwmK6kQiwHGyyng1Kgd5WdB86h0BAAAAAP////8CcKrwCAAAAAAWABTYXCtx0AYLCcmIauuBXlCZHdoSTQDh9QUAAAAAFgAUAK6pouXw+HaliN9VRuh0LR2HAI8AAAAAAAEAuwIAAAABqtc5MQGL0l+ErkALaISL4J23BurCrBgpi6vucatlb4sAAAAASEcwRAIgWPb8fGoz4bMVSNSByCbAFb0wE1qtQs1neQ2rZtKtJDsCIEoc7SYExnNbY5PltBaR3XiwDwxZQvufdRhW+qk4FX26Af7///8CgPD6AgAAAAAXqRQPuUY0IWlrgsgzryQceMF9295JNIfQ8gonAQAAABepFCnKdPigj4GZlCgYXJe12FLkBj9hh2UAAAACBwDaAEcwRAIgdAGK1BgAl7hzMjwAFXILNoTMgSOJEEjn282bVa1nnJkCIHPTabdA4+tT3O+jOCPIBwUUylWn3ZVE8VfBZ5EyYRGMAUgwRQIhAPYQOLMI3B2oZaNIUnRvAVdyk0IIxtJEVDk82ZvfIhd3AiAFbmdaZ1ptCgK4WxTl4pB02KJam1dgvqKBb2YZEKAG6gFHUiEClYO/Oa4KYJdHrRma3dY0+mEIVZ1sXNObTCGD8auW4H8hAtq2H/SaFNtqfQKwzR+7ePxLGDErW05U2uTbovv+9TbXUq4AAQEgAMLrCwAAAAAXqRS39fr0Dj1ApaRZsds1NfK3L6kh6IcBByMiACCMI1MXN0O1ld+0oHtyuo5C43l9p06H/n2ddJfjsgKJAwEI2gQARzBEAiBi63pVYQenxz9FrEq1od3fb3B1+xJ1lpp/OD7/94S8sgIgDAXbt0cNvy8IVX3TVscyXB7TCRPpls04QJRdsSIo2l8BRzBEAiBl9FulmYtZon/+GnvtAWrx8fkNVLOqj3RQql9WolEDvQIgf3JHA60e25ZoCyhLVtT/y4j3+3Weq74IqjDym4UTg9IBR1IhAwidwQx6xttU+RMpr2FzM9s4jOrQwjH3IzedG5kDCwLcIQI63ZBPPW3PWd25BrDe4jUpt/+57VDl6GFRkmhgIh8Oc1KuACICA6mkw39ZltOqJdusa1cK8GUDlEkpQkYLNUdT7Z7spYdxENkMak8AAACAAAAAgAQAAIAAIgICf2OZdX0u/1WhNq0CxoSxg4tlVuXxtrNCgqlLa1AFEJYQ2QxqTwAAAIAAAACABQAAgAA=",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "input and verdict: BIP-174 at bitcoin/bips 7c7cb232, \"The following are invalid PSBTs:\", line 666"
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed Final scriptSig key is more than one byte type: iostream error'"
+      }
+    },
+    {
+      "id": "bip174-psbt-with-invalid-final-script-witness-typed-key",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "level": "MUST",
+      "description": "BIP-174 test vector at line 670: \"PSBT with invalid final script witness typed key\". The BIP lists it as invalid, so it MUST be refused before any review is shown.",
+      "input": {
+        "psbt": "cHNidP8BAJoCAAAAAljoeiG1ba8MI76OcHBFbDNvfLqlyHV5JPVFiHuyq911AAAAAAD/////g40EJ9DsZQpoqka7CwmK6kQiwHGyyng1Kgd5WdB86h0BAAAAAP////8CcKrwCAAAAAAWABTYXCtx0AYLCcmIauuBXlCZHdoSTQDh9QUAAAAAFgAUAK6pouXw+HaliN9VRuh0LR2HAI8AAAAAAAEAuwIAAAABqtc5MQGL0l+ErkALaISL4J23BurCrBgpi6vucatlb4sAAAAASEcwRAIgWPb8fGoz4bMVSNSByCbAFb0wE1qtQs1neQ2rZtKtJDsCIEoc7SYExnNbY5PltBaR3XiwDwxZQvufdRhW+qk4FX26Af7///8CgPD6AgAAAAAXqRQPuUY0IWlrgsgzryQceMF9295JNIfQ8gonAQAAABepFCnKdPigj4GZlCgYXJe12FLkBj9hh2UAAAABB9oARzBEAiB0AYrUGACXuHMyPAAVcgs2hMyBI4kQSOfbzZtVrWecmQIgc9Npt0Dj61Pc76M4I8gHBRTKVafdlUTxV8FnkTJhEYwBSDBFAiEA9hA4swjcHahlo0hSdG8BV3KTQgjG0kRUOTzZm98iF3cCIAVuZ1pnWm0KArhbFOXikHTYolqbV2C+ooFvZhkQoAbqAUdSIQKVg785rgpgl0etGZrd1jT6YQhVnWxc05tMIYPxq5bgfyEC2rYf9JoU22p9ArDNH7t4/EsYMStbTlTa5Nui+/71NtdSrgABASAAwusLAAAAABepFLf1+vQOPUClpFmx2zU18rcvqSHohwEHIyIAIIwjUxc3Q7WV37Sge3K6jkLjeX2nTof+fZ10l+OyAokDAggA2gQARzBEAiBi63pVYQenxz9FrEq1od3fb3B1+xJ1lpp/OD7/94S8sgIgDAXbt0cNvy8IVX3TVscyXB7TCRPpls04QJRdsSIo2l8BRzBEAiBl9FulmYtZon/+GnvtAWrx8fkNVLOqj3RQql9WolEDvQIgf3JHA60e25ZoCyhLVtT/y4j3+3Weq74IqjDym4UTg9IBR1IhAwidwQx6xttU+RMpr2FzM9s4jOrQwjH3IzedG5kDCwLcIQI63ZBPPW3PWd25BrDe4jUpt/+57VDl6GFRkmhgIh8Oc1KuACICA6mkw39ZltOqJdusa1cK8GUDlEkpQkYLNUdT7Z7spYdxENkMak8AAACAAAAAgAQAAIAAIgICf2OZdX0u/1WhNq0CxoSxg4tlVuXxtrNCgqlLa1AFEJYQ2QxqTwAAAIAAAACABQAAgAA=",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "input and verdict: BIP-174 at bitcoin/bips 7c7cb232, \"The following are invalid PSBTs:\", line 670"
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed Final scriptWitness key is more than one byte type: iostream error'"
+      }
+    },
+    {
+      "id": "bip174-psbt-with-invalid-pubkey-in-output-bip-32-derivation-paths-typed-key",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "level": "MUST",
+      "description": "BIP-174 test vector at line 674: \"PSBT with invalid pubkey in output BIP 32 derivation paths typed key\". The BIP lists it as invalid, so it MUST be refused before any review is shown.",
+      "input": {
+        "psbt": "cHNidP8BAJoCAAAAAljoeiG1ba8MI76OcHBFbDNvfLqlyHV5JPVFiHuyq911AAAAAAD/////g40EJ9DsZQpoqka7CwmK6kQiwHGyyng1Kgd5WdB86h0BAAAAAP////8CcKrwCAAAAAAWABTYXCtx0AYLCcmIauuBXlCZHdoSTQDh9QUAAAAAFgAUAK6pouXw+HaliN9VRuh0LR2HAI8AAAAAAAEAuwIAAAABqtc5MQGL0l+ErkALaISL4J23BurCrBgpi6vucatlb4sAAAAASEcwRAIgWPb8fGoz4bMVSNSByCbAFb0wE1qtQs1neQ2rZtKtJDsCIEoc7SYExnNbY5PltBaR3XiwDwxZQvufdRhW+qk4FX26Af7///8CgPD6AgAAAAAXqRQPuUY0IWlrgsgzryQceMF9295JNIfQ8gonAQAAABepFCnKdPigj4GZlCgYXJe12FLkBj9hh2UAAAABB9oARzBEAiB0AYrUGACXuHMyPAAVcgs2hMyBI4kQSOfbzZtVrWecmQIgc9Npt0Dj61Pc76M4I8gHBRTKVafdlUTxV8FnkTJhEYwBSDBFAiEA9hA4swjcHahlo0hSdG8BV3KTQgjG0kRUOTzZm98iF3cCIAVuZ1pnWm0KArhbFOXikHTYolqbV2C+ooFvZhkQoAbqAUdSIQKVg785rgpgl0etGZrd1jT6YQhVnWxc05tMIYPxq5bgfyEC2rYf9JoU22p9ArDNH7t4/EsYMStbTlTa5Nui+/71NtdSrgABASAAwusLAAAAABepFLf1+vQOPUClpFmx2zU18rcvqSHohwEHIyIAIIwjUxc3Q7WV37Sge3K6jkLjeX2nTof+fZ10l+OyAokDAQjaBABHMEQCIGLrelVhB6fHP0WsSrWh3d9vcHX7EnWWmn84Pv/3hLyyAiAMBdu3Rw2/LwhVfdNWxzJcHtMJE+mWzThAlF2xIijaXwFHMEQCIGX0W6WZi1mif/4ae+0BavHx+Q1Us6qPdFCqX1aiUQO9AiB/ckcDrR7blmgLKEtW1P/LiPf7dZ6rvgiqMPKbhROD0gFHUiEDCJ3BDHrG21T5EymvYXMz2ziM6tDCMfcjN50bmQMLAtwhAjrdkE89bc9Z3bkGsN7iNSm3/7ntUOXoYVGSaGAiHw5zUq4AIQIDqaTDf1mW06ol26xrVwrwZQOUSSlCRgs1R1PtnuylhxDZDGpPAAAAgAAAAIAEAACAACICAn9jmXV9Lv9VoTatAsaEsYOLZVbl8bazQoKpS2tQBRCWENkMak8AAACAAAAAgAUAAIAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "input and verdict: BIP-174 at bitcoin/bips 7c7cb232, \"The following are invalid PSBTs:\", line 674"
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed Size of key was not the expected size for the type BIP32 keypath: iostream error'"
+      }
+    },
+    {
+      "id": "bip174-psbt-with-invalid-input-sighash-type-typed-key",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "level": "MUST",
+      "description": "BIP-174 test vector at line 678: \"PSBT with invalid input sighash type typed key\". The BIP lists it as invalid, so it MUST be refused before any review is shown.",
+      "input": {
+        "psbt": "cHNidP8BAHMCAAAAATAa6YblFqHsisW0vGVz0y+DtGXiOtdhZ9aLOOcwtNvbAAAAAAD/////AnR7AQAAAAAAF6kUA6oXrogrXQ1Usl1jEE5P/s57nqKHYEOZOwAAAAAXqRS5IbG6b3IuS/qDtlV6MTmYakLsg4cAAAAAAAEBHwDKmjsAAAAAFgAU0tlLZK4IWH7vyO6xh8YB6Tn5A3wCAwABAAAAAAEAFgAUYunpgv/zTdgjlhAxawkM0qO3R8sAAQAiACCHa62DLx0WgBXtQSMqnqZaGBXZ7xPA74dZ9ktbKyeKZQEBJVEhA7fOI6AcW0vwCmQlN836uzFbZoMyhnR471EwnSvVf4qHUa4A",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "input and verdict: BIP-174 at bitcoin/bips 7c7cb232, \"The following are invalid PSBTs:\", line 678"
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed Sighash type key is more than one byte type: iostream error'"
+      }
+    },
+    {
+      "id": "bip174-psbt-with-invalid-output-redeemscript-typed-key",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "level": "MUST",
+      "description": "BIP-174 test vector at line 682: \"PSBT with invalid output redeemScript typed key\". The BIP lists it as invalid, so it MUST be refused before any review is shown.",
+      "input": {
+        "psbt": "cHNidP8BAHMCAAAAATAa6YblFqHsisW0vGVz0y+DtGXiOtdhZ9aLOOcwtNvbAAAAAAD/////AnR7AQAAAAAAF6kUA6oXrogrXQ1Usl1jEE5P/s57nqKHYEOZOwAAAAAXqRS5IbG6b3IuS/qDtlV6MTmYakLsg4cAAAAAAAEBHwDKmjsAAAAAFgAU0tlLZK4IWH7vyO6xh8YB6Tn5A3wAAgAAFgAUYunpgv/zTdgjlhAxawkM0qO3R8sAAQAiACCHa62DLx0WgBXtQSMqnqZaGBXZ7xPA74dZ9ktbKyeKZQEBJVEhA7fOI6AcW0vwCmQlN836uzFbZoMyhnR471EwnSvVf4qHUa4A",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "input and verdict: BIP-174 at bitcoin/bips 7c7cb232, \"The following are invalid PSBTs:\", line 682"
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed Output redeemScript key is more than one byte type: iostream error'"
+      }
+    },
+    {
+      "id": "bip174-psbt-with-invalid-output-witnessscript-typed-key",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "level": "MUST",
+      "description": "BIP-174 test vector at line 686: \"PSBT with invalid output witnessScript typed key\". The BIP lists it as invalid, so it MUST be refused before any review is shown.",
+      "input": {
+        "psbt": "cHNidP8BAHMCAAAAATAa6YblFqHsisW0vGVz0y+DtGXiOtdhZ9aLOOcwtNvbAAAAAAD/////AnR7AQAAAAAAF6kUA6oXrogrXQ1Usl1jEE5P/s57nqKHYEOZOwAAAAAXqRS5IbG6b3IuS/qDtlV6MTmYakLsg4cAAAAAAAEBHwDKmjsAAAAAFgAU0tlLZK4IWH7vyO6xh8YB6Tn5A3wAAQAWABRi6emC//NN2COWEDFrCQzSo7dHywABACIAIIdrrYMvHRaAFe1BIyqeploYFdnvE8Dvh1n2S1srJ4plIQEAJVEhA7fOI6AcW0vwCmQlN836uzFbZoMyhnR471EwnQbVf4qHUa4A",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "input and verdict: BIP-174 at bitcoin/bips 7c7cb232, \"The following are invalid PSBTs:\", line 686"
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed Output witnessScript key is more than one byte type: iostream error'"
+      }
+    },
+    {
+      "id": "bip174-psbt-with-unsigned-tx-serialized-with-witness-serialization-format",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "level": "MUST",
+      "description": "BIP-174 test vector at line 690: \"PSBT with unsigned tx serialized with witness serialization format\". The BIP lists it as invalid, so it MUST be refused before any review is shown.",
+      "input": {
+        "psbt": "cHNidP8BAHgCAAAAAAEBJoFxNx7f8oXpN63upLN7eAAMBWbLs61kZBcTykIXG/YAAAAAAP7///8C09/1BQAAAAAZdqkU0MWZA8W6woaHYOkP1SGkZlqnZSCIrADh9QUAAAAAF6kUNUXm4zuDLEcFDyTT7rk8nAOUi8eHALMuEwAAAQD9pQEBAAAAAAECiaPHHqtNIOA3G7ukzGmPopXJRjr6Ljl/hTPMti+VZ+UBAAAAFxYAFL4Y0VKpsBIDna89p95PUzSe7LmF/////4b4qkOnHf8USIk6UwpyN+9rRgi7st0tAXHmOuxqSJC0AQAAABcWABT+Pp7xp0XpdNkCxDVZQ6vLNL1TU/////8CAMLrCwAAAAAZdqkUhc/xCX/Z4Ai7NK9wnGIZeziXikiIrHL++E4sAAAAF6kUM5cluiHv1irHU6m80GfWx6ajnQWHAkcwRAIgJxK+IuAnDzlPVoMR3HyppolwuAJf3TskAinwf4pfOiQCIAGLONfc0xTnNMkna9b7QPZzMlvEuqFEyADS8vAtsnZcASED0uFWdJQbrUqZY3LLh+GFbTZSYG2YVi/jnF6efkE/IQUCSDBFAiEA0SuFLYXc2WHS9fSrZgZU327tzHlMDDPOXMMJ/7X85Y0CIGczio4OFyXBl/saiK9Z9R5E5CVbIBZ8hoQDHAXR8lkqASECI7cr7vCWXRC+B3jv7NYfysb3mk6haTkzgHNEZPhPKrMAAAAAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "input and verdict: BIP-174 at bitcoin/bips 7c7cb232, \"The following are invalid PSBTs:\", line 690"
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed Size of value was not the stated size: iostream error'"
+      }
+    },
+    {
+      "id": "bip174-psbt-with-an-invalid-value-data-due-to-its-size-being-not-the-stated-size",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "level": "MUST",
+      "description": "BIP-174 test vector at line 694: \"PSBT with an invalid value data due to its size being not the stated size\". The BIP lists it as invalid, so it MUST be refused before any review is shown.",
+      "input": {
+        "psbt": "cHNidP8BADN0Af8HAAEAAAABAP8BAApzMXQo/wAAAAAB/wEDAQAAAQAAAAAAAAAAdgEAAABBAAkAAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "input and verdict: BIP-174 at bitcoin/bips 7c7cb232, \"The following are invalid PSBTs:\", line 694"
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed Size of value was not the stated size: iostream error'"
+      }
+    },
+    {
+      "id": "empty-input",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "level": "MUST",
+      "description": "No bytes at all. MUST be refused.",
+      "input": {
+        "psbt": "",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "verdict: SP-REV-1 text, \"including empty input\""
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed SpanReader::read(): end of data: iostream error'"
+      }
+    },
+    {
+      "id": "descriptor-text",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "level": "MUST",
+      "description": "The signer's own receive descriptor as ASCII, as Bitcoin Core's listdescriptors prints it, which a user can scan by mistake. It is not a PSBT and MUST be refused.",
+      "input": {
+        "psbt": "d3BraChbNzNjNWRhMGEvODRoLzBoLzBoXXRwdWJEQ3hYMnNZRlM1YkRrU2U1R0tLWUhqQlc3dGd5TjFSM1VjaHBMSnZkYmY1NG9oeGVHUnRkOE1iRFVlMWNndVZIZTR2bks2OERzdUQ1TVhqeGk5RVh4MTZyYjlFbk5zYUY1S1Q5OUNpbmFKei8wLyopI3gzbTA3cHJ1",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "input: Bitcoin Core /Satoshi:31.1.0/ listdescriptors",
+        "verdict: SP-REV-1 text, \"a descriptor\""
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed Invalid PSBT magic bytes: iostream error'"
+      }
+    },
+    {
+      "id": "truncated-at-half",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "level": "MUST",
+      "description": "The first half of a PSBT that is otherwise reviewable: one owned segwit v0 input, a payment and change. MUST be refused, not reviewed from the part that arrived.",
+      "input": {
+        "psbt": "cHNidP8BAHECAAAAAQd9yvQalVltq0f33sEqpkyOOI038mf7alAl5xMWf6m0AAAAAAD9////AgDKmjsAAAAAFgAURzL7fbQu8+55PGsVchHbVNxtzonwAGvuAAAAABYAFE8mCaxSP0NsSGPyNeIFxsiXnfCQAAAAAAABAIQCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wMBMQD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "input: Bitcoin Core /Satoshi:31.1.0/ createpsbt and walletprocesspsbt, cut",
+        "verdict: SP-REV-1 text, \"a truncated PSBT\""
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed SpanReader::read(): end of data: iostream error'"
+      }
+    },
+    {
+      "id": "truncated-by-final-byte",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "level": "MUST",
+      "description": "All but the last byte (the final separator) of a PSBT that is otherwise reviewable: one owned segwit v0 input, a payment and change. MUST be refused, not reviewed from the part that arrived.",
+      "input": {
+        "psbt": "cHNidP8BAHECAAAAAQd9yvQalVltq0f33sEqpkyOOI038mf7alAl5xMWf6m0AAAAAAD9////AgDKmjsAAAAAFgAURzL7fbQu8+55PGsVchHbVNxtzonwAGvuAAAAABYAFE8mCaxSP0NsSGPyNeIFxsiXnfCQAAAAAAABAIQCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wMBMQD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+TAAAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAAiAgLoan2zlmk21d8LBi6YDfCRuHhFcIQDkqfzgoifU50HKRhzxdoKVAAAgAAAAIAAAACAAQAAAFAAAAA=",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "input: Bitcoin Core /Satoshi:31.1.0/ createpsbt and walletprocesspsbt, cut",
+        "verdict: SP-REV-1 text, \"a truncated PSBT\""
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed Separator is missing at the end of an output map: iostream error'"
+      }
+    },
+    {
+      "id": "own-coin-filled-scriptsig",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "level": "MUST",
+      "description": "A reviewable PSBT of the signer's own coin, except that the unsigned transaction's only input has a one-byte scriptSig (OP_0). As BIP-174's case at line 626, on a coin the signer owns, so a parser that skips the rule reaches a review. MUST be refused.",
+      "input": {
+        "psbt": "cHNidP8BAHICAAAAAW0+elTIphxMFpFJYdk7pJfMQvZVEChO6yHYhcw8Ry23AAAAAAEA/f///wIAypo7AAAAABYAFPVf5vrR0s7KJ7GEH9JViacgS1ce8ABr7gAAAAAWABTf9eQGVFaWnLSniTgwo7tfFZGvhQAAAAAAAQCEAgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP////8DASgA/v///wIA8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiAAAAAAAAAAAmaiSqIant4vYcP3HR3v0/qZnfo2lTdVxpBol5mWK0i+vYNpdOjPknAAAAAQEfAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4iIGAzDVT9DdQgpuX402JPXzSCyuNQ951fB1O/W+75wtka88GHPF2gpUAACAAAAAgAAAAIAAAAAAAAAAAAAAIgIC8KoOrRhc72W/pRjCQFdna4sL3U2a1Do1ZDzG5w6Rz/gYc8XaClQAAIAAAACAAAAAgAEAAABRAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "verdict: BIP-174 line 102, PSBT_GLOBAL_UNSIGNED_TX: \"The scriptSigs and witnesses for each input must be empty. The transaction must be in the old serialization format (without witnesses).\"",
+        "input: Bitcoin Core /Satoshi:31.1.0/ createpsbt and walletprocesspsbt, unsigned transaction rewritten"
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed Unsigned tx does not have empty scriptSigs and scriptWitnesses.: iostream error'"
+      }
+    },
+    {
+      "id": "own-coin-witness-serialized-unsigned-tx",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "level": "MUST",
+      "description": "A reviewable PSBT of the signer's own coin, except that the unsigned transaction is written with the segwit marker, flag and an empty witness. As BIP-174's case at line 690, on a coin the signer owns. MUST be refused.",
+      "input": {
+        "psbt": "cHNidP8BAHQCAAAAAAEBNkdk6TrYflvZOb+Wjf9L7a1EM3fGJtrO1/aKPyp6GsIAAAAAAP3///8CAMqaOwAAAAAWABTZtRwqsaFgKK+qc/qJhCApj5RulfAAa+4AAAAAFgAUQ3/hKnIPlmItInita0A6cyNVsOgAAAAAAAABAIQCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wMBHwD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+R4AAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAAiAgLDKZVEdWjHctKNEKwF781fkJ0EMe5hAEVLhcYnPZtEURhzxdoKVAAAgAAAAIAAAACAAQAAAFIAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "refuse"
+      },
+      "sources": [
+        "verdict: BIP-174 line 102, PSBT_GLOBAL_UNSIGNED_TX: \"The scriptSigs and witnesses for each input must be empty. The transaction must be in the old serialization format (without witnesses).\"",
+        "input: Bitcoin Core /Satoshi:31.1.0/ createpsbt and walletprocesspsbt, unsigned transaction rewritten"
+      ],
+      "bitcoinCore": {
+        "decodepsbt": "error: 'TX decode failed Size of value was not the stated size: iostream error'"
+      }
+    }
+  ],
+  "bitcoinCore": "/Satoshi:31.1.0/",
+  "contexts": {
+    "abandon-mainnet": {
+      "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+      "passphrase": "",
+      "network": "mainnet",
+      "masterFingerprint": "73c5da0a"
+    }
+  }
+}

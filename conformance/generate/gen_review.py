@@ -4,11 +4,12 @@ Every expected value is read from Core's own RPCs (decodepsbt, getaddressinfo,
 testmempoolaccept, getmempoolentry) or taken from BIP text. Nothing here runs
 nullroute code.
 """
-import json, sys
+import base64, json, re, sys
 from decimal import Decimal
-from lib import rpc, rpc_error, sats, Psbt, mainnet_address, path_bytes
+from lib import rpc, rpc_error, sats, Psbt, mainnet_address, path_bytes, read_compact, compact
 
 OUT = sys.argv[1]
+BIPS = sys.argv[2]
 pub = json.load(open('pub.json'))
 CORE = rpc('getnetworkinfo')['subversion']
 FP = '73c5da0a'
@@ -516,6 +517,85 @@ case(V, 'no-owned-input-not-lifted', ['SP-REV-22', 'SP-REV-25'],
      'change that.',
      p, {'withoutOverride': 'not-signed', 'withOverride': 'refuse'},
      ['verdict: SP-REV-25 text', SRC_OVERRIDE], op='signOverride')
+
+# SP-REV-1: input that is not a well-formed PSBT, refused before any review.
+# Most cases are BIP-174's own list of invalid PSBTs, copied from the BIP at the
+# pinned commit with the line each starts on. Those spend coins this signer does
+# not own, so a signer whose parser accepted one could still refuse it for not
+# owning an input, and pass for the wrong reason. The two rules a parser can
+# skip and still read the rest (empty scriptSigs, the old serialization, BIP-174
+# line 102) are therefore repeated on a PSBT of the signer's own coin, where a
+# parser that skips them reaches a review. They come last so that every earlier
+# case keeps its coin.
+M = 'review-malformed.json'
+bip = open('src/bip-0174.mediawiki').read().split('\n')
+first, last = bip.index('The following are invalid PSBTs:'), bip.index('The following are valid PSBTs:')
+SRC_BIP = f'input and verdict: BIP-174 at bitcoin/bips {BIPS[:8]}, "The following are invalid PSBTs:"'
+bip_cases = []
+for n in range(first, last):
+    if bip[n].startswith('* Case: '):
+        bip_cases.append({'name': bip[n][8:].strip(), 'line': n + 1})
+    m = re.match(r'\*\* Base64 String: <pre>(.*)</pre>', bip[n])
+    if m:
+        bip_cases[-1]['psbt'] = m.group(1)
+    m = re.match(r'\*\* Bytes in Hex: <pre>(.*)</pre>', bip[n])
+    if m:
+        bip_cases[-1]['hex'] = m.group(1)
+assert len(bip_cases) == 20, len(bip_cases)
+for b in bip_cases:
+    assert base64.b64decode(b['psbt']).hex() == b['hex'], b['name']
+    slug = re.sub(r'[^a-z0-9]+', '-', b['name'].lower()).strip('-')
+    case(M, f'bip174-{slug}', ['SP-REV-1'],
+         f'BIP-174 test vector at line {b["line"]}: "{b["name"]}". The BIP lists it as invalid, so it MUST be '
+         'refused before any review is shown.',
+         b['psbt'], {'verdict': 'refuse'}, [f'{SRC_BIP}, line {b["line"]}'])
+
+case(M, 'empty-input', ['SP-REV-1'], 'No bytes at all. MUST be refused.', '', {'verdict': 'refuse'},
+     ['verdict: SP-REV-1 text, "including empty input"'])
+desc = pub['ours.wpkh.0']
+case(M, 'descriptor-text', ['SP-REV-1'],
+     'The signer\'s own receive descriptor as ASCII, as Bitcoin Core\'s listdescriptors prints it, which a user '
+     'can scan by mistake. It is not a PSBT and MUST be refused.',
+     base64.b64encode(desc.encode()).decode(), {'verdict': 'refuse'},
+     [f'input: Bitcoin Core {CORE} listdescriptors', 'verdict: SP-REV-1 text, "a descriptor"'])
+p = build([coin('ours.w')], [(pay(80), Decimal('10')), (derive('ours.wpkh.1', 80), 'rest')])
+raw = base64.b64decode(p)
+for cid, cut, what in (('truncated-at-half', len(raw) // 2, 'the first half of'),
+                       ('truncated-by-final-byte', len(raw) - 1, 'all but the last byte (the final separator) of')):
+    case(M, cid, ['SP-REV-1'],
+         f'{what[0].upper()}{what[1:]} a PSBT that is otherwise reviewable: one owned segwit v0 input, a payment '
+         'and change. MUST be refused, not reviewed from the part that arrived.',
+         base64.b64encode(raw[:cut]).decode(), {'verdict': 'refuse'},
+         [f'input: Bitcoin Core {CORE} createpsbt and walletprocesspsbt, cut', 'verdict: SP-REV-1 text, "a truncated PSBT"'])
+
+
+def rewrite_unsigned_tx(psbt, change):
+    pp = Psbt(psbt)
+    tx = [v for k, v in pp.glob if k == b'\x00'][0]
+    nin, i = read_compact(tx, 4)
+    assert nin == 1
+    txin = tx[i:i + 36 + 1 + 4]
+    assert txin[36] == 0, 'expected an empty scriptSig'
+    rest = tx[i + 41:]
+    Psbt.put(pp.glob, b'\x00', change(tx[:4], compact(nin), txin, rest[:-4], rest[-4:]))
+    return pp.b64()
+
+
+SRC_102 = ('verdict: BIP-174 line 102, PSBT_GLOBAL_UNSIGNED_TX: "The scriptSigs and witnesses for each input must be '
+           'empty. The transaction must be in the old serialization format (without witnesses)."')
+p = build([coin('ours.w')], [(pay(81), Decimal('10')), (derive('ours.wpkh.1', 81), 'rest')])
+case(M, 'own-coin-filled-scriptsig', ['SP-REV-1'],
+     'A reviewable PSBT of the signer\'s own coin, except that the unsigned transaction\'s only input has a '
+     'one-byte scriptSig (OP_0). As BIP-174\'s case at line 626, on a coin the signer owns, so a parser that '
+     'skips the rule reaches a review. MUST be refused.',
+     rewrite_unsigned_tx(p, lambda ver, n, txin, outs, lock: ver + n + txin[:36] + b'\x01\x00' + txin[37:] + outs + lock),
+     {'verdict': 'refuse'}, [SRC_102, f'input: Bitcoin Core {CORE} createpsbt and walletprocesspsbt, unsigned transaction rewritten'])
+p = build([coin('ours.w')], [(pay(82), Decimal('10')), (derive('ours.wpkh.1', 82), 'rest')])
+case(M, 'own-coin-witness-serialized-unsigned-tx', ['SP-REV-1'],
+     'A reviewable PSBT of the signer\'s own coin, except that the unsigned transaction is written with the segwit '
+     'marker, flag and an empty witness. As BIP-174\'s case at line 690, on a coin the signer owns. MUST be refused.',
+     rewrite_unsigned_tx(p, lambda ver, n, txin, outs, lock: ver + b'\x00\x01' + n + txin + outs + b'\x00' + lock),
+     {'verdict': 'refuse'}, [SRC_102, f'input: Bitcoin Core {CORE} createpsbt and walletprocesspsbt, unsigned transaction rewritten'])
 
 for name, cases in files.items():
     doc = json.load(open(f'{OUT}/{name}'))

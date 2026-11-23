@@ -101,6 +101,10 @@ vectors:
     file: spec/vectors/bip370-psbt.json
     sha256: f86a90a928ea90aa3f208fd58c8b4aea1fe7456db1ceeef755597db39f076d72
     source: https://github.com/bitcoin/bips/blob/1e431879afd53be71a3bafe29ddae93837337f40/bip-0370.mediawiki
+  - name: Signer profile SP-REV-1, input that is not a well-formed PSBT
+    file: spec/vectors/signer-profile/review-malformed.json
+    sha256: efef8d2da42780136857699c7352309eca9c78611bcac0fe1aaf83329a9d0b1b
+    source: conformance/README.md; run by make conformance
 
 threats:
   - INV-PSBT-1

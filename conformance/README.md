@@ -157,6 +157,7 @@ that shares no code with it.
 | --- | --- | --- | --- |
 | `dice-to-entropy.json` | 17 | SP-ENT-1 to 4, 7, 10, SP-HW-9 | Digest from `printf '%s' ROLLS \| shasum -a 256` and `sha256sum`. Mnemonic from the BIP-39 algorithm and the English list in `bitcoin/bips`, written for the generator and checked against the 24 Trezor vectors first. Seed from PBKDF2-HMAC-SHA512 as BIP-39 defines it. Refusals from the requirement text. |
 | `dice-accounting.json` | 25 | SP-ENT-5 | The largest `k` with `2^k <= 6^n`, by exact integer comparison. |
+| `review-malformed.json` | 26 | SP-REV-1 | BIP-174's 20 invalid PSBTs, copied from the BIP and matching the extraction in `spec/vectors/bip174-psbt.json` byte for byte. Empty input, the signer's own descriptor from Core's `listdescriptors`, and a Core PSBT cut in half and by its final byte. BIP-174's two rules on the unsigned transaction (line 102) repeated on a Core PSBT of the signer's own coin. Core's `decodepsbt` refuses all 26; its errors are recorded. |
 | `review-fee-and-amounts.json` | 7 | SP-REV-2, 4, 13 | PSBTs built by Bitcoin Core 31.1 on regtest. Fee from `decodepsbt`. Change from the path `getaddressinfo` reports. Addresses from the scriptPubKey with the BIP-173/350 reference encoder. A negative fee rejected by `testmempoolaccept`. |
 | `review-input-amounts.json` | 7 | SP-REV-3 | Core PSBTs with UTXO records removed or altered. Verdicts from the requirement text, BIP-174 and BIP-341. Core's `decodepsbt` error for the mismatched TXID is recorded. |
 | `review-change.json` | 9 | SP-REV-6, 7, 14 | Core PSBTs. Change and path from `getaddressinfo`. The wallet key is the published BIP-84 and BIP-86 test key; the generator stops unless Core derives the addresses those BIPs print. Derivation claims use the public keys those BIPs print. |
@@ -243,7 +244,7 @@ version because the profile does not name a vector file for it.
 
 ## nullroute's results
 
-`make conformance` today: all 122 cases pass, with no SHOULD missed, and
+`make conformance` today: all 148 cases pass, with no SHOULD missed, and
 [`known-failures/nullroute.json`](known-failures/nullroute.json) is empty.
 Four requirements have failed and been fixed, which is what the list is for:
 
@@ -283,7 +284,7 @@ screens draw. A value no screen shows is left out, and the case that checks it
 fails. It needs the network once, so it is not part of `make check`.
 
 The last run, which the website shows, is
-[`results/seedsigner.json`](results/seedsigner.json): 40 cases pass, 53 are
+[`results/seedsigner.json`](results/seedsigner.json): 64 cases pass, 55 are
 listed findings, and 29 are not run, because SeedSigner has no manifest, does
 not write BBQr and shows no bit count on its dice screen. Every finding is in
 [`known-failures/seedsigner.json`](known-failures/seedsigner.json) with the
@@ -294,8 +295,12 @@ the case exists. Four QR cases end on SeedSigner's System Error screen: two
 from an exception SeedSigner raises on purpose (a BBQr total or file type that
 changes mid-transfer) and two from a decoding error (a UR message whose
 checksum fails, a BBQr encoding that changes). A spliced BBQr transfer is
-refused only because embit cannot parse what it assembled. The runner cannot tell those from a designed refusal, which is a
-limit of the kit rather than a finding about SeedSigner.
+refused only because embit cannot parse what it assembled. Two of BIP-174's
+invalid PSBTs (a filled scriptSig, a witness-serialized unsigned transaction)
+are parsed by embit and refused only because the test wallet owns none of their
+inputs; the same two rules on a coin the wallet owns are findings. The runner
+cannot tell those from a designed refusal, which is a limit of the kit rather
+than a finding about SeedSigner.
 
 This project wrote the adapter. SeedSigner's maintainers have not checked it,
 and until they do, a finding here is a claim about their code that they have
@@ -318,6 +323,7 @@ not confirmed.
 | A UR part from another transfer is dropped and scanning goes on | SP-TX-7 | It changed the vector. SP-TX-7's text asks for the part to be refused, which SeedSigner does; the vector demanded the whole transfer be refused. Either is accepted now, and SeedSigner passes. |
 | A repeated BBQr frame with different contents is ignored after the first copy | SP-TX-5 | The rule stands: BBQr has no checksum, so keeping whichever copy came first completes a payload nobody can confirm. |
 | UR is read only as `crypto-psbt`, and BBQr only as a PSBT | SP-TX-7, SP-TX-3 | Known and stated: SP-TX-7 writes `crypto-psbt` because SeedSigner reads only that, and a real Coldcard scan of file type U is not read. |
+| A PSBT whose unsigned transaction has a scriptSig, or is written with a witness, is reviewed like any other | SP-REV-1 | A gap, from embit's parser, and a small one: the review shows the same inputs and outputs. embit's master has since rejected the scriptSig; the witness form is still read. |
 | Inputs of mixed script types are refused | SP-REV-3, SP-REV-4, SP-REV-25, SP-SIG-1 | Nothing: a limit SeedSigner states, which stops four cases from reaching the check they exist for. |
 
 ## Regenerating the vectors

@@ -15,6 +15,18 @@ status and home pages.
 
 ## November 2026
 
+- **2026-11-23** Any signer can now be checked for refusing input that is not
+  a well-formed PSBT (SP-REV-1), which only nullroute's own tests checked
+  before. `review-malformed.json` holds
+  BIP-174's 20 invalid PSBTs, copied from the BIP; empty input, a descriptor
+  and two truncated PSBTs; and BIP-174's two rules on the unsigned transaction
+  (empty scriptSigs, no witness serialization) repeated on a coin the signer
+  owns. A parser that skips either rule then reaches its review screen instead
+  of refusing for want of an owned input. Bitcoin Core's `decodepsbt` refuses
+  all 26, and so does nullroute. SeedSigner reviews both own-coin cases,
+  because embit 0.8.0 checks neither rule. embit's master has since fixed the
+  scriptSig. It still reads the witness form, and also rejects two of BIP-174's
+  valid PSBTs, those with no inputs.
 - **2026-11-23** The signer profile has its first portable signature vector,
   and the kit has run against a signer this project did not write.
   `sign-deterministic.json` (SP-SIG-1) gives the exact signature bytes for six

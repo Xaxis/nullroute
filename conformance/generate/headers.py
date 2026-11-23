@@ -25,6 +25,12 @@ HEADERS = {
         'expected ceiling is computed in exact integer arithmetic as the largest k with 2^k <= 6^n, so '
         'floating point cannot round it up. Cases include the counts where n * log2(6) lies closest '
         'below an integer, where a floating-point floor is most likely to overstate.'),
+    'review-malformed.json': (
+        ['SP-REV-1'],
+        'review',
+        'Input that is not a well-formed PSBT, which MUST be refused before any review is shown: BIP-174\'s '
+        'own list of invalid PSBTs, empty input, a descriptor and truncated PSBTs, and the two BIP-174 rules on '
+        'the unsigned transaction repeated on a coin the signer owns.'),
     'review-fee-and-amounts.json': (
         ['SP-REV-2', 'SP-REV-4', 'SP-REV-13'],
         'review',

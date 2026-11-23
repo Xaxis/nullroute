@@ -157,7 +157,7 @@ UNTESTABLE with the reason.
 [`conformance/`](../conformance/README.md) turns the testable part into
 something a second implementation can run:
 
-- **Vectors.** Fourteen JSON files, 122 cases, in
+- **Vectors.** Fifteen JSON files, 148 cases, in
   [`spec/vectors/signer-profile/`](../spec/vectors/signer-profile/SHA256SUMS),
   pinned by a `SHA256SUMS` file that coreutils can check.
 - **Expected values from outside nullroute.** Bitcoin Core 31.1 on regtest,
@@ -182,10 +182,10 @@ subprocess call.
 
 `make conformance-seedsigner` runs SeedSigner's own Python, at commit
 `088b144e` with embit 0.8.0 installed from SeedSigner's hash-pinned
-requirements, against all 122 cases. The bridge
+requirements, against all 148 cases. The bridge
 ([`conformance/adapters/seedsigner/bridge.py`](../conformance/adapters/seedsigner/bridge.py))
 calls the functions SeedSigner's screens call, in their order, and its review
-reports only what SeedSigner's screens draw. Result: 40 pass, 53 are listed
+reports only what SeedSigner's screens draw. Result: 64 pass, 55 are listed
 findings, and 29 test things SeedSigner does not have (a manifest, BBQr
 writing, a bit count on the dice screen). The adapter was written by this
 project, not by SeedSigner's maintainers, and has not been checked by them.
@@ -199,6 +199,7 @@ project, not by SeedSigner's maintainers, and has not been checked by them.
 | The signed PSBT keeps only the signatures | An open question: whether a signature-only reply meets SP-REV-11 |
 | Input amounts come from the witness UTXO alone | An open question (SP-REV-3) |
 | A false change claim is refused outright, where the vector asked for it shown as a payment; a foreign UR part is dropped, where the vector asked for the transfer refused | Changed the profile and a vector: refusing is allowed by SP-REV-7, and SP-TX-7's vector accepts either |
+| A PSBT whose unsigned transaction has a scriptSig, or is written with a witness, reaches review (SP-REV-1) | A gap from embit's parser, which also fails three of BIP-174's own test vectors. A fix with tests is drafted for embit |
 | No screen shows the locktime, replaceability or sighash type | Gaps against SP-REV-8 and SP-REV-9. embit never signs a non-ALL input, so the sighash gap is not a loss |
 
 Each case and the SeedSigner line that decides it is in
@@ -216,7 +217,7 @@ Raspberry Pi, and it does not mean reviewed by anyone but the author.
 | Derivation, addresses and signatures agree with a second implementation | `make test-differential` | `bitcoinjs-lib` |
 | Signatures are deterministic | `make test-repro` signs one PSBT 100 times | Byte comparison against libsecp256k1 |
 | Signatures match an outside implementation, ECDSA and Schnorr | `sign-deterministic.json` in `make conformance`: six transactions, every byte | Bitcoin Core 31.1's test framework and wallet; every signed transaction accepted by Core's mempool |
-| The signer profile's testable requirements | `make conformance`: all 122 cases pass, no SHOULD is missed | Bitcoin Core 31.1 regtest, BIP texts, coreutils, Coinkite's BBQr code |
+| The signer profile's testable requirements | `make conformance`: all 148 cases pass, no SHOULD is missed | Bitcoin Core 31.1 regtest, BIP texts, coreutils, Coinkite's BBQr code |
 | A wallet can be recovered and spent without nullroute | `make test-recovery-drill` (INV-INTEROP-1) | Bitcoin Core on regtest |
 | The manifest root is recomputable | The three commands above | coreutils (`shasum` on macOS) |
 | Dice to seed | INV-DICE-1 to INV-DICE-8, and `dice-to-entropy.json` | `printf \| sha256sum`; BIP-39 checked against the Trezor vectors |

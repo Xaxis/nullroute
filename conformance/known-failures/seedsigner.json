@@ -610,6 +610,20 @@
       "check": "verdict",
       "requirement": "SP-TX-5",
       "reason": "SeedSigner keeps the first copy of each part and ignores any later copy without comparing it (models/decode_qr.py lines 673-685), so the transfer completes. Here the first copy is the genuine one and the PSBT assembled is the one sent; whichever copy arrives first is the one used. Coinkite's reference join raises on these frames"
+    },
+    {
+      "file": "review-malformed.json",
+      "case": "own-coin-filled-scriptsig",
+      "check": "verdict",
+      "requirement": "SP-REV-1",
+      "reason": "embit 0.8.0 parses PSBT_GLOBAL_UNSIGNED_TX with Transaction.parse (psbt.py line 775) and checks neither of BIP-174's rules on it (line 102: empty scriptSigs and witnesses, the old serialization), so the PSBT parses and, with an input the seed owns, reaches PSBTOverviewView like any other. embit's master (2b375a3, after 0.8.0) now rejects a non-empty scriptSig, so a SeedSigner release on a newer embit would pass this case. The same rule fails BIP-174's own vector for it, which embit's tests on master still carry commented out as failing."
+    },
+    {
+      "file": "review-malformed.json",
+      "case": "own-coin-witness-serialized-unsigned-tx",
+      "check": "verdict",
+      "requirement": "SP-REV-1",
+      "reason": "embit 0.8.0 parses PSBT_GLOBAL_UNSIGNED_TX with Transaction.parse (psbt.py line 775) and checks neither of BIP-174's rules on it (line 102: empty scriptSigs and witnesses, the old serialization), so the PSBT parses and, with an input the seed owns, reaches PSBTOverviewView like any other. Transaction.read_from takes a zero input count for the segwit marker (transaction.py line 150), so the marker, flag and empty witness are read as segwit. Still so on embit's master (2b375a3), where the same detection also rejects BIP-174's two valid PSBTs with no inputs."
     }
   ]
 }
