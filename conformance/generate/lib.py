@@ -181,9 +181,15 @@ class Psbt:
 
 
 def mainnet_address(bcrt_addr):
-    ver, prog = segwit_addr.decode('bcrt', bcrt_addr)
-    assert ver is not None, bcrt_addr
-    return segwit_addr.encode('bc', ver, prog)
+    """The same script's mainnet address: bech32 and bech32m re-encoded with
+    hrp bc, Base58Check with the mainnet version byte (0x6f to 0x00 for P2PKH,
+    0xc4 to 0x05 for P2SH, from Bitcoin Core's chainparams)."""
+    if bcrt_addr.startswith('bcrt1'):
+        ver, prog = segwit_addr.decode('bcrt', bcrt_addr)
+        assert ver is not None, bcrt_addr
+        return segwit_addr.encode('bc', ver, prog)
+    payload = b58decode_check(bcrt_addr)
+    return b58encode_check(bytes([{0x6f: 0x00, 0xc4: 0x05}[payload[0]]]) + payload[1:])
 
 
 def path_bytes(fp_hex, path):

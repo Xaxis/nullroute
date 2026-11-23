@@ -183,6 +183,14 @@ invariants:
       - packages/ui/test/psbt-screen.test.tsx::does-not-count-the-paste-panel-as-having-read-the-transaction
       - packages/ui/test/psbt-screen.test.tsx::does-not-count-a-measurement-taken-while-the-review-was-loading
 
+  - id: INV-UI-108
+    statement: >
+      An output with no address form is shown by its whole script, with a note
+      that says so, and an OP_RETURN by a note that nothing can spend it. Never
+      by a placeholder (SP-REV-5).
+    tests:
+      - packages/ui/test/psbt-screen.test.tsx::shows-the-whole-script-of-an-output-with-no-address
+
   - id: INV-UI-12
     statement: >
       An output is presented as change only together with the derivation path

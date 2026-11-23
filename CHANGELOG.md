@@ -15,6 +15,19 @@ status and home pages.
 
 ## November 2026
 
+- **2026-11-23** Every output on the review screen is shown by its full
+  address or, where it has none, by its whole script, and any signer can now be
+  checked for that (SP-REV-5). Until today nullroute showed an output with no
+  address as the words "no address (raw script)" without the script, and
+  showed a witness version no soft fork has defined yet, which BIP-350 gives a
+  bech32m address, as having none; the profile's own table said it met the
+  requirement. `review-outputs.json` found both, failing nullroute on 6 of 10
+  cases, and nullroute passes all 158 cases now. The review takes each address
+  from the function the daemon already uses to recognise its own inputs, rather
+  than a second copy that could disagree with it. SeedSigner's current `dev`
+  shows every payment address in full, shows an OP_RETURN as its payload with
+  no amount (so 0.05 BTC on one is shown nowhere), and ends on System Error for
+  a bare public key or a future witness version: 75 pass, 54 findings.
 - **2026-11-23** The kit now runs against SeedSigner's current `dev` branch,
   commit `5f321768` of 13 November 2026: 68 cases pass, 51 are listed
   findings, and 29 test things SeedSigner does not have. Four findings from

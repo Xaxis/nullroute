@@ -49,6 +49,7 @@ fi
 mkdir -p "$WORK/src/bbqr/python/bbqr" "$WORK/src/bbqr/test_data"
 curl -sfL -o "$WORK/src/english.txt" "$RAW/bitcoin/bips/$BIPS/bip-0039/english.txt"
 curl -sfL -o "$WORK/src/bip-0174.mediawiki" "$RAW/bitcoin/bips/$BIPS/bip-0174.mediawiki"
+curl -sfL -o "$WORK/src/bip-0350.mediawiki" "$RAW/bitcoin/bips/$BIPS/bip-0350.mediawiki"
 curl -sfL -o "$WORK/src/segwit_addr.py" "$RAW/sipa/bech32/$BECH32/ref/python/segwit_addr.py"
 for f in python/bbqr/split.py python/bbqr/join.py python/bbqr/utils.py python/bbqr/consts.py \
   test_data/real-scan.txt test_data/1in2out.psbt test_data/1in10out.psbt test_data/1in20out.psbt; do

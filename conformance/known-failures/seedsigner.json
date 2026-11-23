@@ -596,6 +596,27 @@
       "check": "verdict",
       "requirement": "SP-REV-1",
       "reason": "embit 0.8.0 parses PSBT_GLOBAL_UNSIGNED_TX with Transaction.parse (psbt.py line 775) and checks neither of BIP-174's rules on it (line 102: empty scriptSigs and witnesses, the old serialization), so the PSBT parses and, with an input the seed owns, reaches PSBTOverviewView like any other. Transaction.read_from takes a zero input count for the segwit marker (transaction.py line 150), so the marker, flag and empty witness are read as segwit. Still so on embit's master (2b375a3), where the same detection also rejects BIP-174's two valid PSBTs with no inputs."
+    },
+    {
+      "file": "review-outputs.json",
+      "case": "op-return-direct-push",
+      "check": "output 1",
+      "requirement": "SP-REV-5",
+      "reason": "PSBTParser keeps an OP_RETURN output only as its payload (models/psbt_parser.py lines 1188-1190, and only the last such output's), and PSBTOpReturnView shows that payload as text or hex, with no amount and no output number (views/psbt_views.py lines 1083-1108). No screen lists the output or its script. Whether a payload read correctly from every push encoding, as it is since SeedSigner #1042, meets \"its script\" is a question for the profile; the missing amount is not."
+    },
+    {
+      "file": "review-outputs.json",
+      "case": "op-return-pushdata1",
+      "check": "output 1",
+      "requirement": "SP-REV-5",
+      "reason": "PSBTParser keeps an OP_RETURN output only as its payload (models/psbt_parser.py lines 1188-1190, and only the last such output's), and PSBTOpReturnView shows that payload as text or hex, with no amount and no output number (views/psbt_views.py lines 1083-1108). No screen lists the output or its script. Whether a payload read correctly from every push encoding, as it is since SeedSigner #1042, meets \"its script\" is a question for the profile; the missing amount is not."
+    },
+    {
+      "file": "review-outputs.json",
+      "case": "op-return-burns-an-amount",
+      "check": "output 1",
+      "requirement": "SP-REV-5",
+      "reason": "PSBTParser keeps an OP_RETURN output only as its payload (models/psbt_parser.py lines 1188-1190, and only the last such output's), and PSBTOpReturnView shows that payload as text or hex, with no amount and no output number (views/psbt_views.py lines 1083-1108). No screen lists the output or its script. Whether a payload read correctly from every push encoding, as it is since SeedSigner #1042, meets \"its script\" is a question for the profile; the missing amount is not. Here the output carries 0.05 BTC, which nothing can spend. It is added to no total (lines 1188-1211), so PSBTMathView's input, spend, fee and change (views/psbt_views.py lines 347-352) no longer sum, and the amount destroyed is shown nowhere."
     }
   ]
 }

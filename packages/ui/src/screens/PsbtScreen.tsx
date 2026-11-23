@@ -85,6 +85,8 @@ export interface PsbtOutputView {
    */
   readonly label?: string | null
   readonly address: string | null
+  /** The scriptPubKey in full, lowercase hex. Shown where there is no address. */
+  readonly script: string
   readonly amountBtc: string
   readonly amountSats: string
   readonly kind: 'payment' | 'change'
@@ -925,9 +927,26 @@ export function PsbtScreen(props: PsbtScreenProps): ReactElement {
                           write. Putting it first would let a familiar word
                           stand in for reading the characters, which is the one
                           thing this screen exists to make people do. */}
-                      <div className="nr-mono nr-break">
-                        {o.address ?? 'no address (raw script)'}
+                      {/* An output with no address form is shown by its
+                          whole script (SP-REV-5). This said "no address (raw
+                          script)" and showed none of it, so an OP_RETURN, a
+                          bare key and anything stranger read the same. */}
+                      <div
+                        className="nr-mono nr-break"
+                        data-testid={`psbt-output-to-${String(o.index)}`}
+                      >
+                        {o.address ?? o.script}
                       </div>
+                      {o.address === null && (
+                        <div
+                          className="nr-hint"
+                          data-testid={`psbt-output-script-${String(o.index)}`}
+                        >
+                          {o.script.startsWith('6a')
+                            ? 'No address: a data output (OP_RETURN), shown as its script. Nothing can spend it, so any amount on it is destroyed.'
+                            : 'No address form. This is the script the output pays to, in full.'}
+                        </div>
+                      )}
                       {o.label !== undefined && o.label !== null && (
                         <div
                           className="nr-hint"

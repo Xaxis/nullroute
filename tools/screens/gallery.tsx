@@ -284,6 +284,7 @@ const REVIEW = {
     {
       index: 0,
       address: 'bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3',
+      script: '00201863143c14c5166804bd19203356da136c985678cd4d27a1b8c6329604903262',
       amountBtc: '0.00250000',
       amountSats: '250,000',
       kind: 'payment' as const,
@@ -296,6 +297,7 @@ const REVIEW = {
     {
       index: 1,
       address: 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu',
+      script: '0014c0cebcd6c3d3ca8c75dc5ec62ebe55330ef910e2',
       amountBtc: '0.00100000',
       amountSats: '100,000',
       kind: 'payment' as const,
@@ -304,6 +306,8 @@ const REVIEW = {
     {
       index: 2,
       address: null,
+      // An OP_RETURN, which has no address and is drawn as its script.
+      script: '6a0b68656c6c6f20776f726c64',
       amountBtc: '0.00000000',
       amountSats: '0',
       kind: 'payment' as const,
@@ -312,6 +316,7 @@ const REVIEW = {
     {
       index: 3,
       address: 'bc1q9vza2e8x573nczrlzms0wvx3gsqjx7vavgkx0l',
+      script: '00142b05d564e6a7a33c087f16e0f730d1440123799d',
       amountBtc: '0.00150000',
       amountSats: '150,000',
       kind: 'change' as const,

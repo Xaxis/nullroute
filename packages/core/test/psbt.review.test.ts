@@ -118,6 +118,33 @@ function build(options: BuildOptions): btc.Transaction {
 const STRANGER = 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4'
 
 describe('core.psbt.review', () => {
+  /**
+   * INV-PSBT-22. Every output carries its script in full, so one with no
+   * address form can be shown by what it pays to (SP-REV-5).
+   */
+  it('carries-the-script-of-every-output', () => {
+    const opReturn = '6a0b68656c6c6f20776f726c64'
+    // OP_TRUE: spendable by anyone, and no address form. btc-signer will not
+    // build a bare public key output at all ("non-wrapped pk").
+    const anyone = '51'
+    const future = '5210751e76e8199196d454941c45d1b3a323'
+    const tx = build({ inputAmount: 100_000n, outputs: [{ address: STRANGER, amount: 50_000n }] })
+    tx.addOutput({ script: hexToBytes(opReturn), amount: 0n })
+    tx.addOutput({ script: hexToBytes(anyone), amount: 20_000n })
+    tx.addOutput({ script: hexToBytes(future), amount: 10_000n })
+    const { changePathOf } = ourAddresses()
+
+    const review = reviewTransaction(tx, { network: MAINNET, isChange: changePathOf })
+    const shown = review.outputs.map((o) => [o.address, o.script, o.amountSats])
+    expect(shown).toEqual([
+      [STRANGER, '0014751e76e8199196d454941c45d1b3a323f1433bd6', 50_000n],
+      [undefined, opReturn, 0n],
+      [undefined, anyone, 20_000n],
+      ['bc1zw508d6qejxtdg4y5r3zarvaryvaxxpcs', future, 10_000n],
+    ])
+    expect(review.outputs.every((o) => o.kind === 'payment')).toBe(true)
+  })
+
   // INV-PSBT-2: THE attack this module exists to stop.
   it('labels-change-only-when-it-re-derives', () => {
     const { change, changePathOf } = ourAddresses()

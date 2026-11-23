@@ -112,6 +112,9 @@ export function psbtMethods(ctx: HandlerContext): MethodTable {
         outputs: review.outputs.map((o) => ({
           index: o.index,
           address: o.address ?? null,
+          // Public, as the PSBT the UI already holds is. Drawn where there is
+          // no address (SP-REV-5).
+          script: o.script,
           // The user's own note about this address, if a label file gave one.
           // Attached here rather than in core, because core has no idea what
           // a label is and should not learn: a label decides nothing about

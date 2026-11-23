@@ -31,6 +31,12 @@ HEADERS = {
         'Input that is not a well-formed PSBT, which MUST be refused before any review is shown: BIP-174\'s '
         'own list of invalid PSBTs, empty input, a descriptor and truncated PSBTs, and the two BIP-174 rules on '
         'the unsigned transaction repeated on a coin the signer owns.'),
+    'review-outputs.json': (
+        ['SP-REV-5'],
+        'review',
+        'How every output is shown: the full address with the exact amount, including 62 character and legacy '
+        'addresses and witness versions no soft fork has defined yet, and the whole script of an output with no '
+        'address form (OP_RETURN, a bare public key), including one that destroys an amount.'),
     'review-fee-and-amounts.json': (
         ['SP-REV-2', 'SP-REV-4', 'SP-REV-13'],
         'review',

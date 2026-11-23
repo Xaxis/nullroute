@@ -2,7 +2,7 @@
   "format": "signer-profile-conformance-report",
   "version": 1,
   "adapter": "SeedSigner 5f321768 with embit 0.8.0",
-  "vectorsSha256sums": "9854158cbf5edd7fc7dd6f45fe05136cfb3185360d26080f3aa17cc1bf753a40",
+  "vectorsSha256sums": "f6cf8f42cf61b16a48c03746455acfed595bc5df989972c4e01464534390d926",
   "only": null,
   "files": [
     {
@@ -116,6 +116,18 @@
       "notRun": 0
     },
     {
+      "file": "review-outputs.json",
+      "requirements": [
+        "SP-REV-5"
+      ],
+      "operation": "review",
+      "cases": 10,
+      "pass": 7,
+      "known": 3,
+      "fail": 0,
+      "notRun": 0
+    },
+    {
       "file": "review-ownership.json",
       "requirements": [
         "SP-REV-24",
@@ -203,13 +215,13 @@
     }
   ],
   "totals": {
-    "pass": 68,
-    "known": 51,
+    "pass": 75,
+    "known": 54,
     "fail": 0,
     "notRun": 29,
     "advisories": 3
   },
-  "knownFailures": 85,
+  "knownFailures": 88,
   "stale": 0,
   "passed": false
 }

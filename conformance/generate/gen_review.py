@@ -7,6 +7,7 @@ nullroute code.
 import base64, json, re, sys
 from decimal import Decimal
 from lib import rpc, rpc_error, sats, Psbt, mainnet_address, path_bytes, read_compact, compact
+import segwit_addr  # noqa: E402, on the path lib.py sets: sipa/bech32 ref/python, fetched by regenerate.sh
 
 OUT = sys.argv[1]
 BIPS = sys.argv[2]
@@ -42,9 +43,10 @@ def coin(pool):
 
 
 def build(coins, outputs, locktime=0, sequences=None, wallets=('ours',), fee=Decimal('0.0001')):
-    """`'rest'` as an amount means everything the inputs hold, less the other outputs and `fee`."""
+    """`'rest'` as an amount means everything the inputs hold, less the other outputs and `fee`.
+    `('data', hex)` is an OP_RETURN output, which createpsbt writes with a zero amount."""
     total = sum(Decimal(c['amount']) for c in coins)
-    fixed = sum(v for _, v in outputs if v != 'rest')
+    fixed = sum(v for a, v in outputs if v != 'rest' and a != 'data')
     outputs = [(a, total - fixed - fee if v == 'rest' else v) for a, v in outputs]
     ins = []
     for i, c in enumerate(coins):
@@ -596,6 +598,136 @@ case(M, 'own-coin-witness-serialized-unsigned-tx', ['SP-REV-1'],
      'marker, flag and an empty witness. As BIP-174\'s case at line 690, on a coin the signer owns. MUST be refused.',
      rewrite_unsigned_tx(p, lambda ver, n, txin, outs, lock: ver + b'\x00\x01' + n + txin + outs + b'\x00' + lock),
      {'verdict': 'refuse'}, [SRC_102, f'input: Bitcoin Core {CORE} createpsbt and walletprocesspsbt, unsigned transaction rewritten'])
+
+# ---------------------------------------------------------------- output display (SP-REV-5)
+R = 'review-outputs.json'
+BIP350 = open('src/bip-0350.mediawiki').read()
+# One coin for every case here. They are alternative transactions, never broadcast,
+# and the ours.w pool is nearly spent by the files above.
+c_r = coin('ours.w')
+
+
+def wrapped(key, fn):
+    """The foreign wallet's key under another script type: `fn` wraps the key
+    expression of its wpkh descriptor, and Core adds the checksum and derives."""
+    inner = pub[key].split('#')[0][len('wpkh('):-1]
+    d = fn(inner)
+    return f"{d}#{rpc('getdescriptorinfo', d)['checksum']}"
+
+
+def derive_wrapped(key, fn, i):
+    return rpc('deriveaddresses', wrapped(key, fn), [i, i])[0]
+
+
+def rewrite_output(psbt, index, value=None, script=None):
+    """The unsigned transaction with output `index` given a new value or
+    scriptPubKey. The PSBT's maps are left as they are."""
+    def change(ver, n, txin, outs, lock):
+        nout, i = read_compact(outs, 0)
+        parts = [compact(nout)]
+        for k in range(nout):
+            v = outs[i:i + 8]
+            slen, j = read_compact(outs, i + 8)
+            spk = outs[j:j + slen]
+            i = j + slen
+            if k == index:
+                v = v if value is None else value.to_bytes(8, 'little')
+                spk = spk if script is None else script
+            parts.append(v + compact(len(spk)) + spk)
+        assert i == len(outs)
+        return ver + n + txin + b''.join(parts) + lock
+    return rewrite_unsigned_tx(psbt, change)
+
+
+def shown(psbt):
+    """What a review must show of each output: the address, or the script where
+    there is none, and the amount. Change is left out: it is review-change.json's
+    subject, and a signer that shows change differently would otherwise fail
+    every case here for that one reason, hiding the output each case is about."""
+    return [{k: v for k, v in o.items()
+             if k in ('index', 'address', 'amountSats', 'kind') or (k == 'script' and o['address'] is None)}
+            for o in outputs_of(psbt) if o['kind'] != 'change']
+
+
+def bip350_vector(addr, spk):
+    """A valid address and its scriptPubKey from BIP-350's test vectors, checked
+    against the BIP text, as (bcrt address for Core, bc address expected)."""
+    assert f'* <tt>{addr}</tt>: <tt>{spk}</tt>' in BIP350, addr
+    ver, prog = segwit_addr.decode('bc', addr.lower())
+    assert ver is not None and bytes([0x50 + ver if ver else 0, len(prog)]) + bytes(prog) == bytes.fromhex(spk)
+    return segwit_addr.encode('bcrt', ver, prog), segwit_addr.encode('bc', ver, prog)
+
+
+SRC_B58 = ('address: scriptPubKey from decodepsbt, Base58Check with the mainnet version byte '
+           '(0x00 P2PKH, 0x05 P2SH), from Bitcoin Core\'s chainparams')
+SRC_SCRIPT = (f'script: Bitcoin Core {CORE} decodepsbt scriptPubKey.hex, for an output decodepsbt gives no address')
+SRC_EITHER = ('verdict: SP-REV-5 governs what a review shows, not which scripts a signer accepts. Refusing '
+              'outright is allowed; a review that shows this output without its script, or without its amount, is not')
+SRC_350 = f'address and scriptPubKey: BIP-350 at bitcoin/bips {BIPS[:8]}, "Test vectors", valid segwit addresses'
+
+for n, (cid, dest, what) in enumerate((
+        ('pays-p2tr-62-characters', derive('foreign.tr.0', 90), 'a taproot address (62 characters)'),
+        ('pays-p2wsh-62-characters', derive_wrapped('foreign.wpkh.0', lambda k: f'wsh(pk({k}))', 91),
+         'a P2WSH address (62 characters)'),
+        ('pays-p2pkh', derive_wrapped('foreign.wpkh.0', lambda k: f'pkh({k})', 92), 'a legacy P2PKH address'),
+        ('pays-p2sh', derive_wrapped('foreign.wpkh.0', lambda k: f'sh(wpkh({k}))', 93), 'a P2SH address'))):
+    p = build([c_r], [(dest, Decimal('1.23456789')), (derive('ours.wpkh.1', 90 + n), 'rest')])
+    case(R, cid, ['SP-REV-5'],
+         f'A payment of 1.23456789 BTC to {what}, and change, which is checked in review-change.json rather than '
+         'here. Every character of the address and the exact amount MUST be shown; the address MAY wrap and MUST '
+         'NOT be elided.',
+         p, {'verdict': 'allow', 'feeSats': fee_of(p), 'outputs': shown(p)},
+         [SRC_FEE, SRC_KIND, SRC_B58 if cid in ('pays-p2pkh', 'pays-p2sh') else SRC_ADDR])
+
+for n, (cid, addr, spk, what) in enumerate((
+        ('pays-witness-v2', 'bc1zw508d6qejxtdg4y5r3zarvaryvaxxpcs', '5210751e76e8199196d454941c45d1b3a323',
+         'witness version 2 with a 16 byte program'),
+        ('pays-witness-v16', 'BC1SW50QGDZ25J', '6002751e', 'witness version 16 with a 2 byte program'))):
+    core_addr, expected = bip350_vector(addr, spk)
+    p = build([c_r], [(core_addr, Decimal('0.5')), (derive('ours.wpkh.1', 94 + n), 'rest')])
+    # Two sources for one fact: the address Core's decodepsbt gives the script,
+    # and the one BIP-350's text pairs with it.
+    assert shown(p)[0]['address'] == expected, (cid, shown(p)[0], expected)
+    case(R, cid, ['SP-REV-5'],
+         f'A payment to {what}, which no soft fork has defined yet. BIP-350 gives it a bech32m address, and '
+         'Bitcoin Core pays to it. A review MUST show that address, not only the script.',
+         p, {'verdictIn': ['allow', 'refuse'], 'ifAllowed': {'feeSats': fee_of(p), 'outputs': shown(p)}},
+         [SRC_350, SRC_FEE, SRC_KIND, SRC_ADDR, SRC_EITHER])
+
+DATA_SHORT = b'SP-REV-5: an output with no address form'
+DATA_LONG = b'SP-REV-5: an OP_RETURN payload of more than 75 bytes, pushed with OP_PUSHDATA1'
+assert len(DATA_SHORT) <= 75 < len(DATA_LONG) <= 80
+for n, (cid, data, push) in enumerate((('op-return-direct-push', DATA_SHORT, 'a direct push'),
+                                       ('op-return-pushdata1', DATA_LONG, 'OP_PUSHDATA1'))):
+    p = build([c_r], [(pay(90 + n), Decimal('1')), ('data', data.hex()), (derive('ours.wpkh.1', 96 + n), 'rest')])
+    case(R, cid, ['SP-REV-5'],
+         f'A payment, an OP_RETURN output carrying {len(data)} bytes of text with {push}, and change. The '
+         'OP_RETURN output has no address, so its script MUST be shown in full, with its amount of 0.',
+         p, {'verdictIn': ['allow', 'refuse'], 'ifAllowed': {'feeSats': fee_of(p), 'outputs': shown(p)}},
+         [SRC_SCRIPT, f'script: Bitcoin Core {CORE} createpsbt "data" output, which writes the smallest push',
+          SRC_FEE, SRC_KIND, SRC_ADDR, SRC_EITHER])
+
+# The fee is 0.0501 BTC as built, so moving 0.05 of it onto the OP_RETURN output
+# leaves the usual 0.0001.
+p = build([c_r], [(pay(92), Decimal('1')), ('data', DATA_SHORT.hex()), (derive('ours.wpkh.1', 98), 'rest')],
+          fee=Decimal('0.0501'))
+p = rewrite_output(p, 1, value=sats(Decimal('0.05')))
+case(R, 'op-return-burns-an-amount', ['SP-REV-5'],
+     'As op-return-direct-push, with 0.05 BTC on the OP_RETURN output. Nothing can spend it, so the amount is '
+     'destroyed, and the review MUST show it: an amount on an output with no address is still money leaving.',
+     p, {'verdictIn': ['allow', 'refuse'], 'ifAllowed': {'feeSats': fee_of(p), 'outputs': shown(p)}},
+     [SRC_SCRIPT, f'input: Bitcoin Core {CORE} createpsbt and walletprocesspsbt, output 1 value rewritten',
+      SRC_FEE, SRC_KIND, SRC_ADDR, SRC_EITHER])
+
+pk = rpc('getaddressinfo', pay(93), wallet='foreign')['pubkey']
+p = build([c_r], [(pay(93), Decimal('2')), (derive('ours.wpkh.1', 99), 'rest')])
+p = rewrite_output(p, 0, script=bytes.fromhex('21' + pk + 'ac'))
+case(R, 'pays-a-bare-public-key', ['SP-REV-5'],
+     'A payment of 2 BTC to a bare public key (P2PK, <pubkey> OP_CHECKSIG), which has no address form, and '
+     'change. A review MUST show the script in full.',
+     p, {'verdictIn': ['allow', 'refuse'], 'ifAllowed': {'feeSats': fee_of(p), 'outputs': shown(p)}},
+     [SRC_SCRIPT, f'input: Bitcoin Core {CORE} createpsbt and walletprocesspsbt, output 0 scriptPubKey rewritten '
+      f'to the P2PK script of a foreign wallet key from getaddressinfo', SRC_FEE, SRC_KIND, SRC_ADDR, SRC_EITHER])
 
 for name, cases in files.items():
     doc = json.load(open(f'{OUT}/{name}'))

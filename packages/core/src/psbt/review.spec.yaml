@@ -109,6 +109,14 @@ invariants:
     tests:
       - packages/core/test/psbt.review.test.ts::reports-a-relative-lock-where-consensus-enforces-one
 
+  - id: INV-PSBT-22
+    statement: >
+      Every reviewed output carries its scriptPubKey in full, as lowercase
+      hex, beside its address where it has one, so an output with no address
+      form is shown by the script it pays to (SP-REV-5).
+    tests:
+      - packages/core/test/psbt.review.test.ts::carries-the-script-of-every-output
+
   - id: INV-PSBT-15
     statement: >
       Key-value pairs the device does not model are reported to the user and
@@ -144,6 +152,10 @@ vectors:
   - name: Signer profile SP-REV-2, SP-REV-4, SP-REV-13, fee and amounts
     file: spec/vectors/signer-profile/review-fee-and-amounts.json
     sha256: 0d76d6dcdfaafaf8be98fd970af0636c6eec55f5ae4600232c292b3b0deb9833
+    source: conformance/README.md; run by make conformance
+  - name: Signer profile SP-REV-5, how each output is shown
+    file: spec/vectors/signer-profile/review-outputs.json
+    sha256: e7bd735c1c0efa837aa885b92235dc5d15215ab601242a7565314fd6d7735cec
     source: conformance/README.md; run by make conformance
   - name: Signer profile SP-REV-3, confirmed input amounts
     file: spec/vectors/signer-profile/review-input-amounts.json

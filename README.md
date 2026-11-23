@@ -3,7 +3,7 @@
 [![CI](https://github.com/Xaxis/nullroute/actions/workflows/ci.yml/badge.svg)](https://github.com/Xaxis/nullroute/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Specs](https://img.shields.io/badge/specs-39-informational)](packages/verify)
-[![Invariants](https://img.shields.io/badge/invariants-355-informational)](docs/THREAT-MODEL.md)
+[![Invariants](https://img.shields.io/badge/invariants-357-informational)](docs/THREAT-MODEL.md)
 
 An air-gapped Bitcoin signing device you build from a Raspberry Pi. You roll
 100 dice, it turns them into a seed by a rule you can repeat with `sha256sum`,
@@ -108,7 +108,7 @@ the software it runs. [spec/signer-profile.md](spec/signer-profile.md) writes
 those rules down as a draft for any air-gapped signer, 63 requirements that each
 name their check, and nullroute is its reference implementation, not its owner.
 
-[conformance/](conformance/README.md) is the testable part: 148 JSON cases
+[conformance/](conformance/README.md) is the testable part: 158 JSON cases
 whose expected values come from Bitcoin Core, the BIP texts, coreutils and
 Coinkite's BBQr code, never from nullroute, and a runner that needs only Node.
 nullroute passes all of them. `make conformance-seedsigner` runs SeedSigner's

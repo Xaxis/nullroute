@@ -360,9 +360,11 @@ displayed in satoshis; other units MAY be added. Check: vector
 
 **SP-REV-5.** Every output MUST be displayed with its full address, or with its
 script where it has no address form, and its exact amount. An address MAY wrap
-across lines and MUST NOT be elided. Check: nullroute INV-PSBT-8, INV-PSBT-11;
-manual: review a transaction paying a 62-character address (SP-HW-2) and
-confirm every character is on screen.
+across lines and MUST NOT be elided. Check: vector `review-outputs.json` (62
+character, legacy and future witness version addresses, OP_RETURN outputs with
+and without an amount, a bare public key); nullroute INV-PSBT-8, INV-PSBT-11,
+INV-PSBT-22, INV-UI-108; manual: review a transaction paying a 62-character
+address (SP-HW-2) and confirm every character is on screen.
 
 **SP-REV-6.** An output MUST be labelled change only when the signer re-derives
 its script from its own seed, or from a multisig descriptor registered on the
@@ -495,7 +497,7 @@ Reproducing a signature".
 | SP-REV-2 | Met | INV-PSBT-5 |
 | SP-REV-3 | Met, more strictly than required | Review blocks, until the user overrides, whenever any input that is not taproot arrives without its previous transaction (INV-PSBT-17, `packages/core/test/psbt.fee-attack.test.ts`), including one this device does not sign, where the profile would permit a witness UTXO. With the previous transaction present, the signing library rejects one whose TXID or output contradicts the input while parsing (`@scure/btc-signer` 2.3.0, `transaction.js` lines 305-345, 536 and 613), and the test pins that. Bitcoin Core 31's `walletcreatefundedpsbt` includes the previous transaction for segwit v0 inputs, checked on regtest, so a Core-built PSBT passes without a warning |
 | SP-REV-4 | Met | INV-PSBT-4, INV-PSBT-8, INV-UI-12 |
-| SP-REV-5 | Met in the headless render; unverified on the panel | INV-PSBT-11; screens measured at 800x480 by `tools/checks/check-screen-fit.mjs` |
+| SP-REV-5 | Met in the headless render; unverified on the panel | INV-PSBT-11, INV-PSBT-22, INV-UI-108; passes `review-outputs.json`; screens measured at 800x480 by `tools/checks/check-screen-fit.mjs`. Until 23 November this row said Met while an output with no address showed a placeholder instead of its script |
 | SP-REV-6 | Met | INV-PSBT-2, INV-PSBT-12, INV-PSBT-16, INV-UI-12; search bound four script types, two branches, 100 addresses each (`packages/daemon/src/psbt.spec.yaml` lines 77-89) |
 | SP-REV-7 | Met, including the SHOULD | INV-UI-12, INV-PSBT-2. A false claim is shown as a payment and reported as claimed, from `PSBT_OUT_BIP32_DERIVATION` and `PSBT_OUT_TAP_BIP32_DERIVATION` alike (`review-change.json`; `psbt.review.test.ts::reports-a-false-taproot-claim-on-an-output`) |
 | SP-REV-8 | Met | INV-PSBT-6 |
@@ -927,3 +929,4 @@ scope", restated without the nullroute specifics.
 | 0.1 | 23 November 2026 | SP-SIG-1 amended: ECDSA may use RFC 6979 plain or ground for a low R exactly as Bitcoin Core grinds, and the signer documents which. Running SeedSigner's code showed embit grinds that way by default, as Core's wallet does, so the old text failed SeedSigner, and any signer keeping embit's default, on a rule whose purpose, recomputable signatures, both schemes meet. Vector file `sign-deterministic.json` added, with both sets of bytes |
 | 0.1 | 23 November 2026 | SP-REV-7 amended: a signer MAY refuse a transaction with a false change claim instead of showing the output as a payment. SeedSigner refuses it as "Likely an Attack!", and the vector failed it for being stricter than the requirement. SP-TX-7 now says a receiver that refuses a foreign part MAY keep scanning, which is what SeedSigner does and what the requirement's text already allowed; the vector had demanded the whole transfer be refused. Both cases in `review-change.json` and `two-transfers` in `ur-psbt.json` accept either |
 | 0.1 | 23 November 2026 | Vector file `review-malformed.json` added for SP-REV-1, which had no portable check: BIP-174's 20 invalid PSBTs copied from the BIP, empty input, a descriptor, two truncations, and BIP-174's two rules on the unsigned transaction (empty scriptSigs, no witness serialization) on a coin the signer owns, so a parser that skips them reaches a review instead of refusing for want of an owned input |
+| 0.1 | 23 November 2026 | Vector file `review-outputs.json` added for SP-REV-5, which had no portable check: full addresses of every length and form, BIP-350 future witness versions, and the whole script of an output with no address. Writing it showed nullroute failing its own row: the screen said "no address (raw script)" without the script, and a future witness version was shown as having no address. Both fixed; the row had said Met |

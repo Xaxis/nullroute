@@ -8,6 +8,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
+import { hexToBytes } from '@noble/hashes/utils.js'
 import * as btc from '@scure/btc-signer'
 import { mnemonicToSeed } from '../src/bip39/mnemonic.js'
 import { rootFromSeed } from '../src/derive/hd.js'
@@ -157,6 +158,34 @@ describe('core.psbt.parse', () => {
 
   // Undefined is a normal answer. An exotic output must not make the rest of
   // the transaction unreviewable.
+  /**
+   * BIP-350's test vectors for witness versions no soft fork has defined.
+   * They have bech32m addresses, and Bitcoin Core shows and pays them as
+   * addresses; btc-signer calls them unknown. A version 0 program of the
+   * wrong length is invalid (BIP-141) and keeps no address.
+   */
+  it('gives-a-future-witness-version-its-bech32m-address', () => {
+    const vectors: readonly (readonly [string, string])[] = [
+      ['6002751e', 'bc1sw50qgdz25j'],
+      ['5210751e76e8199196d454941c45d1b3a323', 'bc1zw508d6qejxtdg4y5r3zarvaryvaxxpcs'],
+      [
+        '5128751e76e8199196d454941c45d1b3a323f1433bd6751e76e8199196d454941c45d1b3a323f1433bd6',
+        'bc1pw508d6qejxtdg4y5r3zarvary0c5xw7kw508d6qejxtdg4y5r3zarvary0c5xw7kt5nd6y',
+      ],
+    ]
+    for (const [script, address] of vectors) {
+      expect(addressFromScript(hexToBytes(script), MAINNET), script).toBe(address)
+    }
+    // Version 0 with a 16 byte program: BIP-350's invalid list.
+    expect(
+      addressFromScript(hexToBytes('0010751e76e8199196d454941c45d1b3a323'), MAINNET)
+    ).toBeUndefined()
+    // A push that does not cover the rest of the script is not a program.
+    expect(
+      addressFromScript(hexToBytes('5210751e76e8199196d454941c45d1b3a32300'), MAINNET)
+    ).toBeUndefined()
+  })
+
   it('returns-undefined-for-a-script-with-no-address', () => {
     // OP_RETURN with a short push: valid, standard, and has no address.
     const opReturn = Uint8Array.from([0x6a, 0x02, 0xde, 0xad])

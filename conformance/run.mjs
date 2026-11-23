@@ -332,6 +332,16 @@ function compareOutput(o, level, want, got, bound) {
       `${label} address ${show(got.address)}, expected ${show(want.address)}`
     )
   }
+  // SP-REV-5: an output with no address form is shown by its script. Only
+  // asked where the case expects one, so a signer that shows an address need
+  // report nothing more.
+  if (want.script !== undefined) {
+    record(
+      `${label}.script`,
+      got.script === want.script,
+      `${label} script ${show(got.script)}, expected ${want.script}`
+    )
+  }
   if (want.amountSats !== undefined) {
     record(
       `${label}.amount`,

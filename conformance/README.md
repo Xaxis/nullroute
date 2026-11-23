@@ -106,7 +106,7 @@ your signer shows; a case fails if it checks a field you left out.
 | --- | --- |
 | `verdict` | `allow`: the user can sign. `block-until-override`: signing is disabled until an explicit single-use override. `refuse`: the transaction cannot be signed at all, including with an override. |
 | `feeSats` | The fee shown, in satoshis, as a decimal string. |
-| `outputs` | `[{ index, address, amountSats, kind, changePath }]`. `kind` is `payment` or `change`. `address` is the full address or `null`. `changePath` is the path shown beside change, such as `m/84'/0'/0'/1/0`. |
+| `outputs` | `[{ index, address, script, amountSats, kind, changePath }]`. `kind` is `payment` or `change`. `address` is the full address or `null`. `script` is the scriptPubKey as lowercase hex, reported where the screen shows the script because the output has no address. `changePath` is the path shown beside change, such as `m/84'/0'/0'/1/0`. |
 | `claimedOutputs` | Indices of outputs the review says the transaction claimed were the wallet's, and which did not re-derive. |
 | `sighash` | `{ outputs, otherInputsMayBeAdded }`. `outputs` is `all`, `none`, `one` or `unrecognised`: which outputs the signature commits to, as the review describes it. |
 | `locktime` | `{ kind, value }`. `kind` is `none` (nLockTime is 0), `height` or `time` as the review presents it, or `not-enforced` when nLockTime is set and every input's nSequence is 0xffffffff, so consensus ignores it. |
@@ -158,6 +158,7 @@ that shares no code with it.
 | `dice-to-entropy.json` | 17 | SP-ENT-1 to 4, 7, 10, SP-HW-9 | Digest from `printf '%s' ROLLS \| shasum -a 256` and `sha256sum`. Mnemonic from the BIP-39 algorithm and the English list in `bitcoin/bips`, written for the generator and checked against the 24 Trezor vectors first. Seed from PBKDF2-HMAC-SHA512 as BIP-39 defines it. Refusals from the requirement text. |
 | `dice-accounting.json` | 25 | SP-ENT-5 | The largest `k` with `2^k <= 6^n`, by exact integer comparison. |
 | `review-malformed.json` | 26 | SP-REV-1 | BIP-174's 20 invalid PSBTs, copied from the BIP and matching the extraction in `spec/vectors/bip174-psbt.json` byte for byte. Empty input, the signer's own descriptor from Core's `listdescriptors`, and a Core PSBT cut in half and by its final byte. BIP-174's two rules on the unsigned transaction (line 102) repeated on a Core PSBT of the signer's own coin. Core's `decodepsbt` refuses all 26; its errors are recorded. |
+| `review-outputs.json` | 10 | SP-REV-5 | Core PSBTs paying a taproot and a P2WSH address (62 characters), a P2PKH and a P2SH address (Base58Check with mainnet version bytes), and BIP-350's own valid version 2 and version 16 addresses, checked against the BIP text. OP_RETURN outputs from Core's `createpsbt` with a direct push and with `OP_PUSHDATA1`, one rewritten to carry 0.05 BTC, and an output rewritten to a bare public key. Scripts from `decodepsbt`. Change is left to `review-change.json`. |
 | `review-fee-and-amounts.json` | 7 | SP-REV-2, 4, 13 | PSBTs built by Bitcoin Core 31.1 on regtest. Fee from `decodepsbt`. Change from the path `getaddressinfo` reports. Addresses from the scriptPubKey with the BIP-173/350 reference encoder. A negative fee rejected by `testmempoolaccept`. |
 | `review-input-amounts.json` | 7 | SP-REV-3 | Core PSBTs with UTXO records removed or altered. Verdicts from the requirement text, BIP-174 and BIP-341. Core's `decodepsbt` error for the mismatched TXID is recorded. |
 | `review-change.json` | 9 | SP-REV-6, 7, 14 | Core PSBTs. Change and path from `getaddressinfo`. The wallet key is the published BIP-84 and BIP-86 test key; the generator stops unless Core derives the addresses those BIPs print. Derivation claims use the public keys those BIPs print. |
@@ -244,7 +245,7 @@ version because the profile does not name a vector file for it.
 
 ## nullroute's results
 
-`make conformance` today: all 148 cases pass, with no SHOULD missed, and
+`make conformance` today: all 158 cases pass, with no SHOULD missed, and
 [`known-failures/nullroute.json`](known-failures/nullroute.json) is empty.
 Four requirements have failed and been fixed, which is what the list is for:
 
@@ -285,7 +286,7 @@ screens draw. A value no screen shows is left out, and the case that checks it
 fails. It needs the network once, so it is not part of `make check`.
 
 The last run, which the website shows, is
-[`results/seedsigner.json`](results/seedsigner.json): 68 cases pass, 51 are
+[`results/seedsigner.json`](results/seedsigner.json): 75 cases pass, 54 are
 listed findings, and 29 are not run, because SeedSigner has no manifest, does
 not write BBQr and shows no bit count on its dice screen. Every finding is in
 [`known-failures/seedsigner.json`](known-failures/seedsigner.json) with the
@@ -300,9 +301,12 @@ refused only because embit cannot parse what it assembled. Two of BIP-174's
 invalid PSBTs (a filled scriptSig, a witness-serialized unsigned transaction)
 are parsed by embit and refused for an unrelated reason: the first carries no
 UTXO record, and the test wallet owns no input of the second. The same two
-rules on a coin the wallet owns are findings. The runner cannot tell those from
-a designed refusal, which is a limit of the kit rather than a finding about
-SeedSigner.
+rules on a coin the wallet owns are findings. Payments to a bare public key
+and to the two witness versions no soft fork has defined end on System Error,
+because embit's `address()` raises for any script type it does not know; the
+vector allows refusing those, so they pass, but the refusal is a crash rather
+than a decision. The runner cannot tell those from a designed refusal, which is
+a limit of the kit rather than a finding about SeedSigner.
 
 This project wrote the adapter. SeedSigner's maintainers have not checked it,
 and until they do, a finding here is a claim about their code that they have
@@ -332,6 +336,7 @@ contacted SeedSigner about any finding.
 | A repeated BBQr frame with different contents is ignored after the first copy | SP-TX-5 | The rule stands: BBQr has no checksum, so keeping whichever copy came first completes a payload nobody can confirm. |
 | UR is read only as `crypto-psbt`, and BBQr only as a PSBT | SP-TX-7, SP-TX-3 | Known and stated: SP-TX-7 writes `crypto-psbt` because SeedSigner reads only that, and a real Coldcard scan of file type U is not read. |
 | A PSBT whose unsigned transaction has a scriptSig, or is written with a witness, is reviewed like any other | SP-REV-1 | A gap, from embit's parser, and a small one: the review shows the same inputs and outputs. embit's master has since rejected the scriptSig; the witness form is still read. |
+| An OP_RETURN output is shown as its payload alone, with no amount and no place in the list of outputs, and only the last one when there are several | SP-REV-5 | A gap where the output carries an amount: 0.05 BTC on one is shown nowhere, and the math screen stops adding up. Whether a payload counts as "its script" is a question for the profile. |
 | Inputs of mixed script types are refused | SP-REV-3, SP-REV-4, SP-REV-25, SP-SIG-1 | Nothing: a limit SeedSigner states, with a note that the policy should come from the user's own inputs alone (`psbt_parser.py` lines 699-702). It stops four cases from reaching the check they exist for. |
 
 ## Regenerating the vectors

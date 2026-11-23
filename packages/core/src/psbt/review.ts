@@ -25,8 +25,10 @@
  */
 
 import * as btc from '@scure/btc-signer'
+import { hex } from '@scure/base'
 import { type Network } from '../network/networks.js'
 import { signatureProgress, type SignatureProgress } from './quorum.js'
+import { addressFromScript } from './parse.js'
 
 export class PsbtError extends Error {
   constructor(message: string) {
@@ -41,6 +43,12 @@ export type OutputKind = 'payment' | 'change'
 export interface ReviewedOutput {
   readonly index: number
   readonly address: string | undefined
+  /**
+   * The scriptPubKey in full, as lowercase hex. What an output with no address
+   * form is shown by: SP-REV-5 requires the script there, and this field did
+   * not exist, so the screen could only say that a script was there.
+   */
+  readonly script: string
   readonly amountSats: bigint
   readonly kind: OutputKind
   /** The path the change check matched, when it did. Shown so it is checkable. */
@@ -325,25 +333,15 @@ export function reviewTransaction(tx: btc.Transaction, options: ReviewOptions): 
     const amount = output.amount ?? 0n
     totalOut += amount
 
-    let address: string | undefined
-    try {
-      address =
-        output.script === undefined
-          ? undefined
-          : btc
-              .Address({
-                bech32: network.bech32,
-                pubKeyHash: network.pubKeyHash,
-                scriptHash: network.scriptHash,
-                wif: network.wif,
-              })
-              .encode(btc.OutScript.decode(output.script))
-    } catch {
-      // A script with no standard address form. Shown as a payment with no
-      // address rather than hidden, because an unrenderable output is exactly
-      // the kind a user should be told about.
-      address = undefined
-    }
+    // The mapping the daemon uses to recognise its own inputs, and the address
+    // the change check and labels key on, so an address is read one way
+    // everywhere (INV-PSBT-11). This was a second copy of it, and the two would
+    // have parted at the first script one of them learned. A script with no
+    // address form is shown by the script itself,
+    // as a payment, rather than hidden: an unrenderable output is exactly the
+    // kind a user should be told about.
+    const script = output.script ?? new Uint8Array()
+    const address = addressFromScript(script, network)
 
     // THE RULE. Change is established by re-derivation, never by what the PSBT
     // asserts about the output.
@@ -390,6 +388,7 @@ export function reviewTransaction(tx: btc.Transaction, options: ReviewOptions): 
     outputs.push({
       index: i,
       address,
+      script: hex.encode(script),
       amountSats: amount,
       kind: changePath === undefined ? 'payment' : 'change',
       ...(changePath === undefined ? {} : { changePath }),

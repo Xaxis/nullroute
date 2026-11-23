@@ -58,6 +58,7 @@ function review(overrides: Partial<PsbtReviewView> = {}): PsbtReviewView {
       {
         index: 0,
         address: 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4',
+        script: '0014751e76e8199196d454941c45d1b3a323f1433bd6',
         amountBtc: '0.00120000',
         amountSats: '120000',
         kind: 'payment',
@@ -66,6 +67,7 @@ function review(overrides: Partial<PsbtReviewView> = {}): PsbtReviewView {
       {
         index: 1,
         address: 'bc1qchange00000000000000000000000000000000',
+        script: '0014' + '00'.repeat(20),
         amountBtc: '0.00075000',
         amountSats: '75000',
         kind: 'change',
@@ -334,6 +336,7 @@ describe('ui.screens.psbt', () => {
         {
           index: 0,
           address: 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4',
+          script: '0014751e76e8199196d454941c45d1b3a323f1433bd6',
           amountBtc: '0.00120000',
           amountSats: '120000',
           kind: 'payment',
@@ -400,6 +403,46 @@ describe('ui.screens.psbt', () => {
     const payment = screen.getByTestId('psbt-output-0')
     expect(payment.textContent).toContain('Leaves this wallet')
     expect(payment.textContent).not.toContain('re-derived')
+  })
+
+  /**
+   * INV-UI-108. An output with no address form is shown by its whole script.
+   * The screen said "no address (raw script)" and showed none of it, so an
+   * OP_RETURN, a bare key and anything stranger looked the same (SP-REV-5).
+   */
+  it('shows-the-whole-script-of-an-output-with-no-address', async () => {
+    const bareKey = '21' + '02'.repeat(33) + 'ac'
+    setup({
+      outputs: [
+        {
+          index: 0,
+          address: null,
+          script: '6a0b68656c6c6f20776f726c64',
+          amountBtc: '0.05000000',
+          amountSats: '5000000',
+          kind: 'payment',
+          changePath: null,
+        },
+        {
+          index: 1,
+          address: null,
+          script: bareKey,
+          amountBtc: '0.00120000',
+          amountSats: '120000',
+          kind: 'payment',
+          changePath: null,
+        },
+      ],
+    })
+    await reachReview()
+
+    expect(screen.getByTestId('psbt-output-to-0').textContent).toBe('6a0b68656c6c6f20776f726c64')
+    expect(screen.getByTestId('psbt-output-script-0').textContent).toContain('OP_RETURN')
+    expect(screen.getByTestId('psbt-output-script-0').textContent).toContain('destroyed')
+    expect(screen.getByTestId('psbt-output-0').textContent).toContain('0.05000000')
+    expect(screen.getByTestId('psbt-output-to-1').textContent).toBe(bareKey)
+    expect(screen.getByTestId('psbt-output-script-1').textContent).toContain('in full')
+    expect(document.body.textContent).not.toContain('raw script')
   })
 
   // The fee in four units. Fee-stuffing hides in whichever one is missing.

@@ -1,0 +1,420 @@
+{
+  "format": "signer-profile-vectors",
+  "version": 1,
+  "profile": "spec/signer-profile.md, draft specification version 0.1",
+  "file": "review-outputs.json",
+  "requirements": [
+    "SP-REV-5"
+  ],
+  "operations": "review",
+  "description": "How every output is shown: the full address with the exact amount, including 62 character and legacy addresses and witness versions no soft fork has defined yet, and the whole script of an output with no address form (OP_RETURN, a bare public key), including one that destroys an amount.",
+  "cases": [
+    {
+      "id": "pays-p2tr-62-characters",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-5"
+      ],
+      "level": "MUST",
+      "description": "A payment of 1.23456789 BTC to a taproot address (62 characters), and change, which is checked in review-change.json rather than here. Every character of the address and the exact amount MUST be shown; the address MAY wrap and MUST NOT be elided.",
+      "input": {
+        "psbt": "cHNidP8BAH0CAAAAAVXnDZRkqYmxVS4p6ujLFwrBu8hAYP8gjxOsllBwt9fEAAAAAAD9////AhXNWwcAAAAAIlEgnHAtZR4L5cgAviv0Zs8ZLbajHj0XQ19oQot2pb+z4HLb/akiAQAAABYAFA1o4gEypQJ2cf8ZtWb1S8c7tdnyAAAAAAABAIQCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wMBLwD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+S4AAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAAiAgJkKFzBeeMYV43YDExYv5ATFggkeHlG0ocayEVKqzeQiBhzxdoKVAAAgAAAAIAAAACAAQAAAFoAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "feeSats": "10000",
+        "outputs": [
+          {
+            "index": 0,
+            "address": "bc1pn3cz6eg7p0jusq97906xdnce9km2x83azap476zz3dm2t0anupeq65lg8q",
+            "amountSats": "123456789",
+            "kind": "payment"
+          }
+        ]
+      },
+      "sources": [
+        "fee: Bitcoin Core /Satoshi:31.1.0/ decodepsbt field \"fee\", converted from BTC to satoshis",
+        "kind and changePath: Bitcoin Core /Satoshi:31.1.0/ getaddressinfo (ismine, hdkeypath); change when Core derives the script on branch 1, in a descriptor wallet holding the BIP-84 and BIP-86 test key, imported with range 0 to 1000",
+        "address: scriptPubKey from decodepsbt, encoded with hrp \"bc\" by the BIP-173/350 reference code (sipa/bech32 ref/python/segwit_addr.py)"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "pays-p2wsh-62-characters",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-5"
+      ],
+      "level": "MUST",
+      "description": "A payment of 1.23456789 BTC to a P2WSH address (62 characters), and change, which is checked in review-change.json rather than here. Every character of the address and the exact amount MUST be shown; the address MAY wrap and MUST NOT be elided.",
+      "input": {
+        "psbt": "cHNidP8BAH0CAAAAAVXnDZRkqYmxVS4p6ujLFwrBu8hAYP8gjxOsllBwt9fEAAAAAAD9////AhXNWwcAAAAAIgAgJ53dmN/Hm3Kesy3slLRpEKNbpDau4PzKYRApYJKuGwjb/akiAQAAABYAFF9CNCSidKAl7eIiMNkfiogtYjLKAAAAAAABAIQCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wMBLwD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+S4AAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAAiAgOM5OttNz+nMGq48usxgXCVS0YwaEbKoSSdFm+gcea47hhzxdoKVAAAgAAAAIAAAACAAQAAAFsAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "feeSats": "10000",
+        "outputs": [
+          {
+            "index": 0,
+            "address": "bc1qy7wamxxlc7dh984n9hkffdrfzz34hfpk4ms0ejnpzq5kpy4wrvyqndn020",
+            "amountSats": "123456789",
+            "kind": "payment"
+          }
+        ]
+      },
+      "sources": [
+        "fee: Bitcoin Core /Satoshi:31.1.0/ decodepsbt field \"fee\", converted from BTC to satoshis",
+        "kind and changePath: Bitcoin Core /Satoshi:31.1.0/ getaddressinfo (ismine, hdkeypath); change when Core derives the script on branch 1, in a descriptor wallet holding the BIP-84 and BIP-86 test key, imported with range 0 to 1000",
+        "address: scriptPubKey from decodepsbt, encoded with hrp \"bc\" by the BIP-173/350 reference code (sipa/bech32 ref/python/segwit_addr.py)"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "pays-p2pkh",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-5"
+      ],
+      "level": "MUST",
+      "description": "A payment of 1.23456789 BTC to a legacy P2PKH address, and change, which is checked in review-change.json rather than here. Every character of the address and the exact amount MUST be shown; the address MAY wrap and MUST NOT be elided.",
+      "input": {
+        "psbt": "cHNidP8BAHQCAAAAAVXnDZRkqYmxVS4p6ujLFwrBu8hAYP8gjxOsllBwt9fEAAAAAAD9////AhXNWwcAAAAAGXapFG+fJK9ycXrVqPD1LfJhyBZk5ejdiKzb/akiAQAAABYAFF1UrWVKJupn1UWeawAzSH7U1xA2AAAAAAABAIQCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wMBLwD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+S4AAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAAiAgPse5dhH+jv8qQLqpcrWD2i26muqlRkCFmNy00NPwxw3RhzxdoKVAAAgAAAAIAAAACAAQAAAFwAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "feeSats": "10000",
+        "outputs": [
+          {
+            "index": 0,
+            "address": "1BBCemHwmRwU6tBRWyTzWfcwnQ4jPBnnFQ",
+            "amountSats": "123456789",
+            "kind": "payment"
+          }
+        ]
+      },
+      "sources": [
+        "fee: Bitcoin Core /Satoshi:31.1.0/ decodepsbt field \"fee\", converted from BTC to satoshis",
+        "kind and changePath: Bitcoin Core /Satoshi:31.1.0/ getaddressinfo (ismine, hdkeypath); change when Core derives the script on branch 1, in a descriptor wallet holding the BIP-84 and BIP-86 test key, imported with range 0 to 1000",
+        "address: scriptPubKey from decodepsbt, Base58Check with the mainnet version byte (0x00 P2PKH, 0x05 P2SH), from Bitcoin Core's chainparams"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "pays-p2sh",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-5"
+      ],
+      "level": "MUST",
+      "description": "A payment of 1.23456789 BTC to a P2SH address, and change, which is checked in review-change.json rather than here. Every character of the address and the exact amount MUST be shown; the address MAY wrap and MUST NOT be elided.",
+      "input": {
+        "psbt": "cHNidP8BAHICAAAAAVXnDZRkqYmxVS4p6ujLFwrBu8hAYP8gjxOsllBwt9fEAAAAAAD9////AhXNWwcAAAAAF6kUiuOPPY/mnGLAqPUHhwebkpc0PbqH2/2pIgEAAAAWABRFoVSZn6t2S3fgpH+TL9S4YSC8jwAAAAAAAQCEAgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP////8DAS8A/v///wIA8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiAAAAAAAAAAAmaiSqIant4vYcP3HR3v0/qZnfo2lTdVxpBol5mWK0i+vYNpdOjPkuAAAAAQEfAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4iIGAzDVT9DdQgpuX402JPXzSCyuNQ951fB1O/W+75wtka88GHPF2gpUAACAAAAAgAAAAIAAAAAAAAAAAAAAIgIDlZZHUl71+s9p8+y3BDhOL5w084182HRlQX0u0VPUQzoYc8XaClQAAIAAAACAAAAAgAEAAABdAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "allow",
+        "feeSats": "10000",
+        "outputs": [
+          {
+            "index": 0,
+            "address": "3EMPn8VEgTk77FdV3dVqBJmrVaHbQoZvFH",
+            "amountSats": "123456789",
+            "kind": "payment"
+          }
+        ]
+      },
+      "sources": [
+        "fee: Bitcoin Core /Satoshi:31.1.0/ decodepsbt field \"fee\", converted from BTC to satoshis",
+        "kind and changePath: Bitcoin Core /Satoshi:31.1.0/ getaddressinfo (ismine, hdkeypath); change when Core derives the script on branch 1, in a descriptor wallet holding the BIP-84 and BIP-86 test key, imported with range 0 to 1000",
+        "address: scriptPubKey from decodepsbt, Base58Check with the mainnet version byte (0x00 P2PKH, 0x05 P2SH), from Bitcoin Core's chainparams"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "pays-witness-v2",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-5"
+      ],
+      "level": "MUST",
+      "description": "A payment to witness version 2 with a 16 byte program, which no soft fork has defined yet. BIP-350 gives it a bech32m address, and Bitcoin Core pays to it. A review MUST show that address, not only the script.",
+      "input": {
+        "psbt": "cHNidP8BAG0CAAAAAVXnDZRkqYmxVS4p6ujLFwrBu8hAYP8gjxOsllBwt9fEAAAAAAD9////AoDw+gIAAAAAElIQdR526BmRltRUlBxF0bOjI3DaCicBAAAAFgAUEKU1GBS/874VYA085XOuIgP6cW4AAAAAAAEAhAIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////AwEvAP7///8CAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4gAAAAAAAAAAJmokqiGp7eL2HD9x0d79P6mZ36NpU3VcaQaJeZlitIvr2DaXToz5LgAAAAEBHwDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIiBgMw1U/Q3UIKbl+NNiT180gsrjUPedXwdTv1vu+cLZGvPBhzxdoKVAAAgAAAAIAAAACAAAAAAAAAAAAAACICAqwDLcoZq/jjxw1TraXpAu2mUL7lfXi9DrPYmlm53Vi9GHPF2gpUAACAAAAAgAAAAIABAAAAXgAAAAA=",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdictIn": [
+          "allow",
+          "refuse"
+        ],
+        "ifAllowed": {
+          "feeSats": "10000",
+          "outputs": [
+            {
+              "index": 0,
+              "address": "bc1zw508d6qejxtdg4y5r3zarvaryvaxxpcs",
+              "amountSats": "50000000",
+              "kind": "payment"
+            }
+          ]
+        }
+      },
+      "sources": [
+        "address and scriptPubKey: BIP-350 at bitcoin/bips 7c7cb232, \"Test vectors\", valid segwit addresses",
+        "fee: Bitcoin Core /Satoshi:31.1.0/ decodepsbt field \"fee\", converted from BTC to satoshis",
+        "kind and changePath: Bitcoin Core /Satoshi:31.1.0/ getaddressinfo (ismine, hdkeypath); change when Core derives the script on branch 1, in a descriptor wallet holding the BIP-84 and BIP-86 test key, imported with range 0 to 1000",
+        "address: scriptPubKey from decodepsbt, encoded with hrp \"bc\" by the BIP-173/350 reference code (sipa/bech32 ref/python/segwit_addr.py)",
+        "verdict: SP-REV-5 governs what a review shows, not which scripts a signer accepts. Refusing outright is allowed; a review that shows this output without its script, or without its amount, is not"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "pays-witness-v16",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-5"
+      ],
+      "level": "MUST",
+      "description": "A payment to witness version 16 with a 2 byte program, which no soft fork has defined yet. BIP-350 gives it a bech32m address, and Bitcoin Core pays to it. A review MUST show that address, not only the script.",
+      "input": {
+        "psbt": "cHNidP8BAF8CAAAAAVXnDZRkqYmxVS4p6ujLFwrBu8hAYP8gjxOsllBwt9fEAAAAAAD9////AoDw+gIAAAAABGACdR5w2gonAQAAABYAFFj1MpfpSVrPMxMKN9Z+64VU8N5DAAAAAAABAIQCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wMBLwD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+S4AAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAAiAgNtwxAXLyIHDhySqonUszZApo4Gr7e26cNov1IkDwz7XxhzxdoKVAAAgAAAAIAAAACAAQAAAF8AAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdictIn": [
+          "allow",
+          "refuse"
+        ],
+        "ifAllowed": {
+          "feeSats": "10000",
+          "outputs": [
+            {
+              "index": 0,
+              "address": "bc1sw50qgdz25j",
+              "amountSats": "50000000",
+              "kind": "payment"
+            }
+          ]
+        }
+      },
+      "sources": [
+        "address and scriptPubKey: BIP-350 at bitcoin/bips 7c7cb232, \"Test vectors\", valid segwit addresses",
+        "fee: Bitcoin Core /Satoshi:31.1.0/ decodepsbt field \"fee\", converted from BTC to satoshis",
+        "kind and changePath: Bitcoin Core /Satoshi:31.1.0/ getaddressinfo (ismine, hdkeypath); change when Core derives the script on branch 1, in a descriptor wallet holding the BIP-84 and BIP-86 test key, imported with range 0 to 1000",
+        "address: scriptPubKey from decodepsbt, encoded with hrp \"bc\" by the BIP-173/350 reference code (sipa/bech32 ref/python/segwit_addr.py)",
+        "verdict: SP-REV-5 governs what a review shows, not which scripts a signer accepts. Refusing outright is allowed; a review that shows this output without its script, or without its amount, is not"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "op-return-direct-push",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-5"
+      ],
+      "level": "MUST",
+      "description": "A payment, an OP_RETURN output carrying 40 bytes of text with a direct push, and change. The OP_RETURN output has no address, so its script MUST be shown in full, with its amount of 0.",
+      "input": {
+        "psbt": "cHNidP8BAKQCAAAAAVXnDZRkqYmxVS4p6ujLFwrBu8hAYP8gjxOsllBwt9fEAAAAAAD9////AwDh9QUAAAAAFgAUv+QK7q5lAR873z4SSoHfZoO4oiEAAAAAAAAAACpqKFNQLVJFVi01OiBhbiBvdXRwdXQgd2l0aCBubyBhZGRyZXNzIGZvcm3w6Q8kAQAAABYAFCGkG7frJcBGiO8k3lqxu/DYJIZ7AAAAAAABAIQCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wMBLwD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+S4AAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAAAIgIC++vFhSL1nYURYiVgxp+tqKvK1xCmjJaP4qvPbKETAMcYc8XaClQAAIAAAACAAAAAgAEAAABgAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdictIn": [
+          "allow",
+          "refuse"
+        ],
+        "ifAllowed": {
+          "feeSats": "10000",
+          "outputs": [
+            {
+              "index": 0,
+              "address": "bc1qhljq4m4wv5q37w7l8cfy4qwlv6pm3g3p2305nf",
+              "amountSats": "100000000",
+              "kind": "payment"
+            },
+            {
+              "index": 1,
+              "script": "6a2853502d5245562d353a20616e206f75747075742077697468206e6f206164647265737320666f726d",
+              "address": null,
+              "amountSats": "0",
+              "kind": "payment"
+            }
+          ]
+        }
+      },
+      "sources": [
+        "script: Bitcoin Core /Satoshi:31.1.0/ decodepsbt scriptPubKey.hex, for an output decodepsbt gives no address",
+        "script: Bitcoin Core /Satoshi:31.1.0/ createpsbt \"data\" output, which writes the smallest push",
+        "fee: Bitcoin Core /Satoshi:31.1.0/ decodepsbt field \"fee\", converted from BTC to satoshis",
+        "kind and changePath: Bitcoin Core /Satoshi:31.1.0/ getaddressinfo (ismine, hdkeypath); change when Core derives the script on branch 1, in a descriptor wallet holding the BIP-84 and BIP-86 test key, imported with range 0 to 1000",
+        "address: scriptPubKey from decodepsbt, encoded with hrp \"bc\" by the BIP-173/350 reference code (sipa/bech32 ref/python/segwit_addr.py)",
+        "verdict: SP-REV-5 governs what a review shows, not which scripts a signer accepts. Refusing outright is allowed; a review that shows this output without its script, or without its amount, is not"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "op-return-pushdata1",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-5"
+      ],
+      "level": "MUST",
+      "description": "A payment, an OP_RETURN output carrying 78 bytes of text with OP_PUSHDATA1, and change. The OP_RETURN output has no address, so its script MUST be shown in full, with its amount of 0.",
+      "input": {
+        "psbt": "cHNidP8BAMsCAAAAAVXnDZRkqYmxVS4p6ujLFwrBu8hAYP8gjxOsllBwt9fEAAAAAAD9////AwDh9QUAAAAAFgAU92EQhwn9I9rs/I/EH8mEji2TjAIAAAAAAAAAAFFqTE5TUC1SRVYtNTogYW4gT1BfUkVUVVJOIHBheWxvYWQgb2YgbW9yZSB0aGFuIDc1IGJ5dGVzLCBwdXNoZWQgd2l0aCBPUF9QVVNIREFUQTHw6Q8kAQAAABYAFEDpEGcvO4QcxPXt6REy5ey9nDX2AAAAAAABAIQCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wMBLwD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+S4AAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAAAIgIChtFtZ1lTrhcAqB6hMSQD+BjVZWWb+C318rTfMpLs3tQYc8XaClQAAIAAAACAAAAAgAEAAABhAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdictIn": [
+          "allow",
+          "refuse"
+        ],
+        "ifAllowed": {
+          "feeSats": "10000",
+          "outputs": [
+            {
+              "index": 0,
+              "address": "bc1q7as3ppcfl53a4m8u3lzpljvy3cke8rqzwme3ru",
+              "amountSats": "100000000",
+              "kind": "payment"
+            },
+            {
+              "index": 1,
+              "script": "6a4c4e53502d5245562d353a20616e204f505f52455455524e207061796c6f6164206f66206d6f7265207468616e2037352062797465732c207075736865642077697468204f505f505553484441544131",
+              "address": null,
+              "amountSats": "0",
+              "kind": "payment"
+            }
+          ]
+        }
+      },
+      "sources": [
+        "script: Bitcoin Core /Satoshi:31.1.0/ decodepsbt scriptPubKey.hex, for an output decodepsbt gives no address",
+        "script: Bitcoin Core /Satoshi:31.1.0/ createpsbt \"data\" output, which writes the smallest push",
+        "fee: Bitcoin Core /Satoshi:31.1.0/ decodepsbt field \"fee\", converted from BTC to satoshis",
+        "kind and changePath: Bitcoin Core /Satoshi:31.1.0/ getaddressinfo (ismine, hdkeypath); change when Core derives the script on branch 1, in a descriptor wallet holding the BIP-84 and BIP-86 test key, imported with range 0 to 1000",
+        "address: scriptPubKey from decodepsbt, encoded with hrp \"bc\" by the BIP-173/350 reference code (sipa/bech32 ref/python/segwit_addr.py)",
+        "verdict: SP-REV-5 governs what a review shows, not which scripts a signer accepts. Refusing outright is allowed; a review that shows this output without its script, or without its amount, is not"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "op-return-burns-an-amount",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-5"
+      ],
+      "level": "MUST",
+      "description": "As op-return-direct-push, with 0.05 BTC on the OP_RETURN output. Nothing can spend it, so the amount is destroyed, and the review MUST show it: an amount on an output with no address is still money leaving.",
+      "input": {
+        "psbt": "cHNidP8BAKQCAAAAAVXnDZRkqYmxVS4p6ujLFwrBu8hAYP8gjxOsllBwt9fEAAAAAAD9////AwDh9QUAAAAAFgAUswoFv9KF3sYOQkgQWaTxh7dB62xAS0wAAAAAACpqKFNQLVJFVi01OiBhbiBvdXRwdXQgd2l0aCBubyBhZGRyZXNzIGZvcm2wnsMjAQAAABYAFINsXws6FgLlvfgYNvnf3zbytLSlAAAAAAABAIQCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wMBLwD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+S4AAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAAAIgICD5HCGjjq9zgXXBaKtv2oMc396bdqNyXYHTMH6A1ycgkYc8XaClQAAIAAAACAAAAAgAEAAABiAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdictIn": [
+          "allow",
+          "refuse"
+        ],
+        "ifAllowed": {
+          "feeSats": "10000",
+          "outputs": [
+            {
+              "index": 0,
+              "address": "bc1qkv9qt07jsh0vvrjzfqg9nf83s7m5r6mvs73dll",
+              "amountSats": "100000000",
+              "kind": "payment"
+            },
+            {
+              "index": 1,
+              "script": "6a2853502d5245562d353a20616e206f75747075742077697468206e6f206164647265737320666f726d",
+              "address": null,
+              "amountSats": "5000000",
+              "kind": "payment"
+            }
+          ]
+        }
+      },
+      "sources": [
+        "script: Bitcoin Core /Satoshi:31.1.0/ decodepsbt scriptPubKey.hex, for an output decodepsbt gives no address",
+        "input: Bitcoin Core /Satoshi:31.1.0/ createpsbt and walletprocesspsbt, output 1 value rewritten",
+        "fee: Bitcoin Core /Satoshi:31.1.0/ decodepsbt field \"fee\", converted from BTC to satoshis",
+        "kind and changePath: Bitcoin Core /Satoshi:31.1.0/ getaddressinfo (ismine, hdkeypath); change when Core derives the script on branch 1, in a descriptor wallet holding the BIP-84 and BIP-86 test key, imported with range 0 to 1000",
+        "address: scriptPubKey from decodepsbt, encoded with hrp \"bc\" by the BIP-173/350 reference code (sipa/bech32 ref/python/segwit_addr.py)",
+        "verdict: SP-REV-5 governs what a review shows, not which scripts a signer accepts. Refusing outright is allowed; a review that shows this output without its script, or without its amount, is not"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    },
+    {
+      "id": "pays-a-bare-public-key",
+      "operation": "review",
+      "requirements": [
+        "SP-REV-5"
+      ],
+      "level": "MUST",
+      "description": "A payment of 2 BTC to a bare public key (P2PK, <pubkey> OP_CHECKSIG), which has no address form, and change. A review MUST show the script in full.",
+      "input": {
+        "psbt": "cHNidP8BAH4CAAAAAVXnDZRkqYmxVS4p6ujLFwrBu8hAYP8gjxOsllBwt9fEAAAAAAD9////AgDC6wsAAAAAIyEC+wfOjeXIQwcSVE2hXSfg82vgnYIDmteppQRHbEof+QWs8AgaHgEAAAAWABQDG6ZG+FeC4m6sgO4JRdA/UeRhDQAAAAAAAQCEAgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP////8DAS8A/v///wIA8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiAAAAAAAAAAAmaiSqIant4vYcP3HR3v0/qZnfo2lTdVxpBol5mWK0i+vYNpdOjPkuAAAAAQEfAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4iIGAzDVT9DdQgpuX402JPXzSCyuNQ951fB1O/W+75wtka88GHPF2gpUAACAAAAAgAAAAIAAAAAAAAAAAAAAIgICjICfLv5xkNPJGWS9JjNklTPK8J6kAbpgVC7sizW2Pz0Yc8XaClQAAIAAAACAAAAAgAEAAABjAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdictIn": [
+          "allow",
+          "refuse"
+        ],
+        "ifAllowed": {
+          "feeSats": "10000",
+          "outputs": [
+            {
+              "index": 0,
+              "script": "2102fb07ce8de5c8430712544da15d27e0f36be09d82039ad7a9a504476c4a1ff905ac",
+              "address": null,
+              "amountSats": "200000000",
+              "kind": "payment"
+            }
+          ]
+        }
+      },
+      "sources": [
+        "script: Bitcoin Core /Satoshi:31.1.0/ decodepsbt scriptPubKey.hex, for an output decodepsbt gives no address",
+        "input: Bitcoin Core /Satoshi:31.1.0/ createpsbt and walletprocesspsbt, output 0 scriptPubKey rewritten to the P2PK script of a foreign wallet key from getaddressinfo",
+        "fee: Bitcoin Core /Satoshi:31.1.0/ decodepsbt field \"fee\", converted from BTC to satoshis",
+        "kind and changePath: Bitcoin Core /Satoshi:31.1.0/ getaddressinfo (ismine, hdkeypath); change when Core derives the script on branch 1, in a descriptor wallet holding the BIP-84 and BIP-86 test key, imported with range 0 to 1000",
+        "address: scriptPubKey from decodepsbt, encoded with hrp \"bc\" by the BIP-173/350 reference code (sipa/bech32 ref/python/segwit_addr.py)",
+        "verdict: SP-REV-5 governs what a review shows, not which scripts a signer accepts. Refusing outright is allowed; a review that shows this output without its script, or without its amount, is not"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000"
+      }
+    }
+  ],
+  "bitcoinCore": "/Satoshi:31.1.0/",
+  "contexts": {
+    "abandon-mainnet": {
+      "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+      "passphrase": "",
+      "network": "mainnet",
+      "masterFingerprint": "73c5da0a"
+    }
+  }
+}

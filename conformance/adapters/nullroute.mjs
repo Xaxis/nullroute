@@ -166,6 +166,8 @@ export function reviewPsbt(psbtBase64, context) {
       outputs: result.outputs.map((o) => ({
         index: o.index,
         address: o.address ?? null,
+        // What the screen draws in place of an address (INV-UI-108).
+        ...(o.address === undefined ? { script: o.script } : {}),
         amountSats: o.amountSats.toString(),
         kind: o.kind,
         ...(o.changePath === undefined ? {} : { changePath: o.changePath }),

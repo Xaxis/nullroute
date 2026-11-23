@@ -59,12 +59,14 @@ invariants:
   - id: INV-PSBT-11
     statement: >
       A script maps to the address it actually pays to, for every supported
-      script type, encoded for the network in use. A script with no standard
-      address form returns undefined rather than throwing.
+      script type and for witness versions no soft fork has defined yet, which
+      BIP-350 gives bech32m addresses, encoded for the network in use. A script
+      with no address form returns undefined rather than throwing.
     tests:
       - packages/core/test/psbt.parse.test.ts::maps-a-script-back-to-its-address
       - packages/core/test/psbt.parse.test.ts::encodes-the-address-for-the-network-it-was-given
       - packages/core/test/psbt.parse.test.ts::returns-undefined-for-a-script-with-no-address
+      - packages/core/test/psbt.parse.test.ts::gives-a-future-witness-version-its-bech32m-address
 
   - id: INV-PSBT-18
     statement: >

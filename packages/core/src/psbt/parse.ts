@@ -17,7 +17,7 @@
  */
 
 import * as btc from '@scure/btc-signer'
-import { base64 } from '@scure/base'
+import { base64, bech32m } from '@scure/base'
 import { type Network } from '../network/networks.js'
 import { PsbtError } from './review.js'
 
@@ -115,7 +115,7 @@ export function encodePsbt(bytes: Uint8Array): string {
 export function addressFromScript(script: Uint8Array, network: Network): string | undefined {
   try {
     const decoded = btc.OutScript.decode(script)
-    if (decoded.type === 'unknown') return undefined
+    if (decoded.type === 'unknown') return futureWitnessAddress(script, network.bech32)
     return btc
       .Address({
         bech32: network.bech32,
@@ -127,4 +127,22 @@ export function addressFromScript(script: Uint8Array, network: Network): string 
   } catch {
     return undefined
   }
+}
+
+/**
+ * BIP-350's address for a witness program no soft fork has defined yet:
+ * version 1 to 16 with a program of 2 to 40 bytes, other than the taproot
+ * form btc-signer already decodes. btc-signer calls these unknown, which
+ * showed one as a script with no address, although it has one and Bitcoin
+ * Core displays and pays it as one (INV-PSBT-11, SP-REV-5). A version 0
+ * program is valid only at 20 or 32 bytes, both of which btc-signer decodes,
+ * so any other version 0 length keeps no address.
+ */
+function futureWitnessAddress(script: Uint8Array, hrp: string): string | undefined {
+  const op = script[0]
+  const length = script[1]
+  if (op === undefined || length === undefined) return undefined
+  if (op < 0x51 || op > 0x60) return undefined
+  if (length < 2 || length > 40 || script.length !== length + 2) return undefined
+  return bech32m.encode(hrp, [op - 0x50, ...bech32m.toWords(script.subarray(2))])
 }
