@@ -21,7 +21,10 @@ case (see [nullroute's results](#nullroutes-results)).
 | `spec/vectors/signer-profile/SHA256SUMS` | SHA-256 of every vector file, in `sha256sum` format. |
 | `conformance/run.mjs` | The runner. Node built-ins only. |
 | `conformance/adapters/nullroute.mjs` | The adapter for nullroute's built packages. |
+| `conformance/adapters/seedsigner.mjs` | An adapter for SeedSigner, which runs SeedSigner's own code at a pinned commit (see [Other signers](#other-signers)). |
 | `conformance/known-failures/nullroute.json` | The cases nullroute fails today, each with a reason. |
+| `conformance/known-failures/seedsigner.json` | The cases SeedSigner fails, each with the line of SeedSigner's code that decides it. |
+| `conformance/results/seedsigner.json` | SeedSigner's last run, the report the website reads. |
 | `conformance/fixtures/qr-mode.json` | QR symbols from an unrelated encoder, which the runner reads at start to check its own QR mode reader. |
 | `conformance/generate/` | The scripts that produced the vectors, kept as a record of where each expected value came from. |
 
@@ -74,11 +77,12 @@ Adapter functions must not throw for input the signer rejects. A rejection is a
 | Export | Arguments | Returns |
 | --- | --- | --- |
 | `name` | | A string naming the implementation and version. Optional. |
+| `ecdsaNonces` | | `'rfc6979'` or `'rfc6979-low-r'`: which of the two ECDSA nonce schemes SP-SIG-1 allows the signer uses. Required for the ECDSA cases in `sign-deterministic.json`. |
 | `changeSearchBound` | | A number: how many addresses on each change branch the signer re-derives when it looks for change. Used by the `change-at-index-*` cases. The profile requires the bound to be documented (SP-REV-6). |
 | `diceToSeed(rolls)` | `rolls`: the string exactly as a user typed it | `{ verdict: 'accept', entropyHex, mnemonic, seedHex }` or `{ verdict: 'refuse' }`. `seedHex` is the BIP-39 seed with an empty passphrase. |
 | `diceBitsShown(count)` | `count`: a number of valid rolls | The integer number of bits the signer displays after that many rolls. |
 | `reviewPsbt(psbt, context)` | `psbt`: base64 PSBT; `context`: see below | A review result, see below. |
-| `signPsbt(psbt, context, options)` | as above; `options.override` is `true` only in `sign-override.json`, where it is the explicit single-use override SP-REV-22 describes | `{ verdict: 'signed', psbtBase64 }` or `{ verdict: 'refuse' }`. |
+| `signPsbt(psbt, context, options)` | as above; `options.override` is `true` only in `sign-override.json`, where it is the explicit single-use override SP-REV-22 describes | `{ verdict: 'signed', psbtBase64 }` or `{ verdict: 'refuse' }`. A taproot key-path signature is read from `PSBT_IN_TAP_KEY_SIG`, or from a one-element `PSBT_IN_FINAL_SCRIPTWITNESS` when the signer finalized the input. |
 | `buildManifest(files)` | `files`: `[{ path, bytes }]`, `bytes` a `Uint8Array`, in no particular order | `{ manifest, root }`: the manifest text exactly, and its root as lowercase hex. |
 | `urJoin(frames)` | `frames`: scanned UR strings, in scan order | `{ verdict: 'complete', type, data }` with `type` the UR type (`crypto-psbt` or `psbt`) and `data` the binary PSBT, or `{ verdict: 'refuse' }`, or `{ verdict: 'incomplete' }`. Optional: only for a signer that implements UR (SP-TX-7). |
 | `bbqrJoin(frames)` | `frames`: the scanned strings, in scan order | `{ verdict: 'complete', fileType, data }` with `fileType` the BBQr letter and `data` a `Uint8Array`, or `{ verdict: 'refuse' }`, or `{ verdict: 'incomplete' }`. |
@@ -114,6 +118,11 @@ Where a case accepts more than one verdict, the vector lists them in
 `verdictIn`. For example, a sighash other than ALL must be a blocking condition,
 and SP-REV-22 lets a signer refuse outright instead of offering an override, so
 both `block-until-override` and `refuse` pass.
+
+Where a case lets a signer refuse instead of reviewing, the fields a review
+would show sit under `ifAllowed` and are checked only when the verdict is
+`allow`. A false change claim (SP-REV-7) is the case: showing the output as a
+payment passes, and so does refusing the transaction.
 
 ## The vector files
 
@@ -154,6 +163,7 @@ that shares no code with it.
 | `review-sighash.json` | 13 | SP-REV-8, 23 | Core PSBTs with `PSBT_IN_SIGHASH_TYPE` set. Meaning from BIP-143 and BIP-341; Core's names recorded. |
 | `review-timelocks.json` | 9 | SP-REV-9 | Core PSBTs. Height or time from `LOCKTIME_THRESHOLD` in Bitcoin Core's source. Not enforced from `IsFinalTx` in Core's source, and from Core accepting that transaction into its mempool far below its locktime. Replaceability from BIP-125, and from Core's own mempool (`getmempoolentry`) for every case it could broadcast. |
 | `review-unknown-fields.json` | 2 | SP-REV-11 | A Core PSBT with pairs added. Core's `decodepsbt` lists them as unknown or proprietary. Preservation from BIP-174. |
+| `sign-deterministic.json` | 6 | SP-SIG-1 | PSBTs built by Bitcoin Core 31.1. Private keys by BIP-32 from the BIP-84/86 test root, checked against the keys Core wrote into each PSBT. Sighashes from Core's own Python test framework (`test/functional/test_framework/script.py` at `v31.1`); plain RFC 6979 and BIP-340 signatures from its `key.py`, with `aux_rand` of 32 zero bytes. Low-R signatures from Core's wallet (`walletprocesspsbt`), which also wrote the plain bytes wherever the first R was low and every Schnorr signature exactly. Every signed transaction accepted by Core's `testmempoolaccept`. |
 | `sign-override.json` | 3 | SP-REV-22 | Core PSBTs blocked by SIGHASH_NONE, by an unconfirmed segwit v0 amount, and by owning no input. Each is signed without an override, with one, and without one again; the expected verdicts are the requirement text. |
 | `review-ownership.json` | 5 | SP-REV-24, 25 | Core PSBTs from a second wallet (the BIP-32 test vector 1 key), with derivation records naming the signer's fingerprint. Verdicts from the requirement text. |
 | `manifest-root.json` | 2 | SP-ATT-2 | `LC_ALL=C sort -z \| xargs -0 sha256sum` over the files, and `sha256sum` of the result. The forbidden roots are from `LC_ALL=en_US.UTF-8 sort` and from ICU's `en-US` collation. |
@@ -220,22 +230,20 @@ came from nullroute.
 
 | How it is checked | Requirements |
 | --- | --- |
-| Vector file in this directory | SP-ENT-1, 2, 3, 4, 5, 10; SP-REV-2, 3, 4, 6, 7, 8, 9, 11, 23, 24, 25; SP-ATT-2; SP-TX-2, 3, 4, 5, 6 |
+| Vector file in this directory | SP-ENT-1, 2, 3, 4, 5, 10; SP-REV-2, 3, 4, 6, 7, 8, 9, 11, 23, 24, 25; SP-SIG-1; SP-ATT-2; SP-TX-2, 3, 4, 5, 6 |
 | Vector, SHOULD parts only | SP-REV-13 (high fee warns), SP-REV-7 (claim reported), SP-REV-11 (unknown pairs reported), SP-REV-14 (own receive address shown as a payment) |
 | Vector covers part of it | SP-ENT-7 (a flagged pattern still derives; warnings are not checked), SP-HW-9 (dice mode is deterministic; the operating system random source for sealing is manual review) |
 | An implementation's own tests only (the profile names nullroute invariants) | SP-ENT-9, SP-REV-1, SP-REV-10, SP-REV-12, SP-REV-20, SP-REV-22, SP-REV-26, SP-ATT-6, SP-ATT-7, SP-ATT-8, SP-ATT-9, SP-ATT-10, SP-ATT-11, SP-HW-7, SP-TX-1, SP-DEP-1 (the BIPs' own published vectors, run by the implementation's tests) |
-| Manual procedure, stated in the profile | SP-ENT-6, SP-ENT-8 (on-screen count), SP-REV-5, SP-REV-21, SP-SIG-1, SP-ATT-1, SP-ATT-3, SP-ATT-4, SP-ATT-5, SP-ATT-12, SP-HW-1 to SP-HW-6, SP-HW-8, SP-HW-10 |
+| Manual procedure, stated in the profile | SP-ENT-6, SP-ENT-8 (on-screen count), SP-REV-5, SP-REV-21, SP-ATT-1, SP-ATT-3, SP-ATT-4, SP-ATT-5, SP-ATT-12, SP-HW-1 to SP-HW-6, SP-HW-8, SP-HW-10 |
 | Untestable by the signer | The property behind SP-ENT-11: that the dice were fair and unobserved |
 
 Several requirements in the "own tests only" row could have portable vectors.
-SP-REV-1 (malformed input refused) and SP-SIG-1 (deterministic signatures that
-another implementation reproduces byte for byte) are the obvious next ones.
-They are not in this version because the profile does not name a vector file
-for them.
+SP-REV-1 (malformed input refused) is the obvious next one. It is not in this
+version because the profile does not name a vector file for it.
 
 ## nullroute's results
 
-`make conformance` today: all 116 cases pass, with no SHOULD missed, and
+`make conformance` today: all 122 cases pass, with no SHOULD missed, and
 [`known-failures/nullroute.json`](known-failures/nullroute.json) is empty.
 Four requirements have failed and been fixed, which is what the list is for:
 
@@ -251,6 +259,67 @@ A false `PSBT_OUT_TAP_BIP32_DERIVATION` claim used to be shown as a payment
 without being reported as claimed, while the same claim made with
 `PSBT_OUT_BIP32_DERIVATION` was. Both are reported now.
 
+nullroute's signatures in `sign-deterministic.json` equal the bytes Bitcoin
+Core's code computes, ECDSA and Schnorr, under plain RFC 6979. That is the
+first comparison of its Schnorr signatures with another implementation.
+
+## Other signers
+
+### SeedSigner
+
+```console
+$ make conformance-seedsigner
+```
+
+[`adapters/seedsigner.mjs`](adapters/seedsigner.mjs) runs SeedSigner's own
+Python, fetched with git at commit `088b144e`, with the embit release and the
+urtypes archive its `requirements.txt` pins, each checked against the hash
+pinned there. Its bridge, [`adapters/seedsigner/bridge.py`](adapters/seedsigner/bridge.py),
+calls SeedSigner's functions in the order its views call them and names the
+view and lines it follows: the dice entry screen, the PSBT parser and the
+review screens up to "Approve transaction", `sign_with` and `trim`, and the QR
+decoder its scan screen drives. The review reports only what SeedSigner's
+screens draw. A value no screen shows is left out, and the case that checks it
+fails. It needs the network once, so it is not part of `make check`.
+
+The last run, which the website shows, is
+[`results/seedsigner.json`](results/seedsigner.json): 40 cases pass, 53 are
+listed findings, and 29 are not run, because SeedSigner has no manifest, does
+not write BBQr and shows no bit count on its dice screen. Every finding is in
+[`known-failures/seedsigner.json`](known-failures/seedsigner.json) with the
+lines of SeedSigner's code that decide it.
+
+A pass means SeedSigner's verdict matched, not that it refused for the reason
+the case exists. Four QR cases end on SeedSigner's System Error screen: two
+from an exception SeedSigner raises on purpose (a BBQr total or file type that
+changes mid-transfer) and two from a decoding error (a UR message whose
+checksum fails, a BBQr encoding that changes). A spliced BBQr transfer is
+refused only because embit cannot parse what it assembled. The runner cannot tell those from a designed refusal, which is a
+limit of the kit rather than a finding about SeedSigner.
+
+This project wrote the adapter. SeedSigner's maintainers have not checked it,
+and until they do, a finding here is a claim about their code that they have
+not confirmed.
+
+| Finding | Requirement | What it means for the profile |
+| --- | --- | --- |
+| ECDSA signatures are RFC 6979 ground for a low R, exactly as Bitcoin Core's wallet grinds | SP-SIG-1 | It changed the profile. SP-SIG-1 said only "RFC 6979" and the vectors were plain, which failed SeedSigner on a rule whose purpose it meets. Either scheme is allowed now, the signer says which, and SeedSigner passes those cases. |
+| Taproot signatures use no `aux_rand` at all, so the nonce skips BIP-340's mask | SP-SIG-1 | The rule stands: BIP-340 signs with a 32-byte `aux_rand`, and Bitcoin Core 31.1 uses 32 zero bytes, so Core cannot reproduce these valid, deterministic signatures. The cause is in embit (`embit/util/key.py`; its bundled libsecp256k1 does the same). |
+| 24 words come from exactly 99 rolls, never 100 or more | SP-ENT-3 | An open question: 99 rolls are 255.91 bits, short of 256. The encoding is the profile's, SHA-256 of the ASCII rolls; only the count differs. |
+| A derivation record naming a key the seed derives is trusted without checking the key is in the input's script | SP-REV-25 | An open question: SeedSigner judges this harmless and says why (`psbt_parser.py` lines 1113-1116), and the profile says MUST NOT sign. |
+| The signed PSBT holds only the transaction and the signatures | SP-REV-11 | An open question: whether a signer that returns its signatures for the coordinator to combine meets the requirement. |
+| Input amounts come from the witness UTXO alone, and the previous transaction is never checked against it | SP-REV-3 | An open question: the profile treats that amount as the coordinator's word until a previous transaction confirms it. |
+| An output falsely claimed as change makes SeedSigner refuse the whole transaction as "Likely an Attack!" | SP-REV-7 | It changed the profile. The vector asked for the output to be shown as a payment and failed SeedSigner for being stricter than the requirement. Refusing is allowed now, and SeedSigner passes. |
+| Only an output of the inputs' script type can be change, and an output with no derivation record is shown as a payment | SP-REV-6 | Stricter than the vectors, which expect change. It costs the user a closer look, not money, and the vectors could accept it. |
+| Change is checked by re-deriving it, then shown as its first and last seven characters and "change address #n" | SP-REV-5, SP-REV-6 | A difference the profile names: it asks for every address in full and the full path beside change. |
+| No screen shows the sighash type, and an input asking for anything but ALL is left unsigned without saying so | SP-REV-8, SP-REV-23 | Safe in effect, since embit signs with no other type, but when one input asks for SINGLE and another for ALL, SeedSigner signs the second and nothing says the first was skipped. |
+| No screen shows nLockTime or replaceability | SP-REV-9 | A gap: a transaction that cannot confirm for a month looks like any other. |
+| A transaction whose outputs exceed its inputs shows a negative fee and can be signed | SP-REV-4 | A gap, though not a loss: no such transaction can be mined. |
+| A UR part from another transfer is dropped and scanning goes on | SP-TX-7 | It changed the vector. SP-TX-7's text asks for the part to be refused, which SeedSigner does; the vector demanded the whole transfer be refused. Either is accepted now, and SeedSigner passes. |
+| A repeated BBQr frame with different contents is ignored after the first copy | SP-TX-5 | The rule stands: BBQr has no checksum, so keeping whichever copy came first completes a payload nobody can confirm. |
+| UR is read only as `crypto-psbt`, and BBQr only as a PSBT | SP-TX-7, SP-TX-3 | Known and stated: SP-TX-7 writes `crypto-psbt` because SeedSigner reads only that, and a real Coldcard scan of file type U is not read. |
+| Inputs of mixed script types are refused | SP-REV-3, SP-REV-4, SP-REV-25, SP-SIG-1 | Nothing: a limit SeedSigner states, which stops four cases from reaching the check they exist for. |
+
 ## Regenerating the vectors
 
 ```console
@@ -258,7 +327,8 @@ $ conformance/generate/regenerate.sh /some/empty/scratch/dir
 ```
 
 It needs network access, Python 3, `pip3` and a Bitcoin Core `bitcoind`. It
-fetches every reference at its pinned commit into the scratch directory, starts
+fetches every reference at its pinned commit into the scratch directory,
+Bitcoin Core's Python test framework at `v31.1` among them, starts
 a regtest node there, rewrites the vector files, `SHA256SUMS`, and the pins in
 nullroute's spec files, then stops the node and deletes its data. Review the
 diff before committing it: a changed expected value is a claim that the source

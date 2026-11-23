@@ -87,16 +87,39 @@ On macOS use `shasum -a 256`.
 
 **Check a signature.** Signatures are deterministic (RFC 6979, and BIP-340 with
 `aux_rand` fixed to zero), so the same key and transaction always produce
-identical bytes and anyone with the seed can recompute them. There is no room in
-a deterministic signature to hide a leaked key.
+identical bytes and anyone with the seed can recompute them. A signature you
+have recomputed has no room in it to hide a leaked key. For the six test
+transactions in the conformance kit, Bitcoin Core's own code writes the same
+bytes.
 
 **Check you do not need us.** Take the mnemonic and descriptor to Bitcoin Core
 and confirm it sees the same addresses. `make test-recovery-drill` runs that
-against a real regtest Core for all four address types and a 2-of-3 quorum. If
-it ever fails, that is a security report.
+against a real regtest Core for all four address types, a 2-of-3 segwit quorum
+and a 2-of-3 taproot quorum. If it ever fails, that is a security report.
 
 The full procedure, written for someone who does not trust this project, is in
 [docs/VERIFICATION.md](docs/VERIFICATION.md).
+
+## A profile for other signers
+
+Signers agree by convention on things no BIP writes down: how dice become a
+seed, what must be on screen before a signature, and what a device shows about
+the software it runs. [spec/signer-profile.md](spec/signer-profile.md) writes
+those rules down as a draft for any air-gapped signer, 63 requirements that each
+name their check, and nullroute is its reference implementation, not its owner.
+
+[conformance/](conformance/README.md) is the testable part: 122 JSON cases
+whose expected values come from Bitcoin Core, the BIP texts, coreutils and
+Coinkite's BBQr code, never from nullroute, and a runner that needs only Node.
+nullroute passes all of them. `make conformance-seedsigner` runs SeedSigner's
+own code against the same cases. Its findings, each tied to the lines of
+SeedSigner's code that decide it, include gaps, questions the profile has to
+answer, and three that have already changed it or its vectors.
+
+```console
+$ make conformance
+$ make conformance-seedsigner
+```
 
 ## What you need to build one
 
@@ -112,8 +135,7 @@ Roughly $100 to $120.
 
 | Part | What to get | Notes |
 | --- | --- | --- |
-| Board | Raspberry Pi 4 (4GB) | The only board this image supports. |
-| Board, in bring-up | Raspberry Pi 5 | The maintainer's board, and the first hardware bring-up. The card carries its boot files, on Raspberry Pi's own kernel because that is the only kernel that drives the 7 inch panel on a Pi 5. It moves to supported once a card boots on one with the panel lit. |
+| Board | Raspberry Pi 4 (4GB) or Raspberry Pi 5 | One card carries both, and both are in bring-up. The Pi 4 boots Debian's pinned kernel, whose device tree the build checks for the panel. The Pi 5, the maintainer's board and the first bring-up, boots Raspberry Pi's own kernel, the only one that drives the 7 inch panel there. A board is supported once a card boots on one with the panel lit. |
 | Screen | Official Raspberry Pi 7 inch touchscreen | The DSI panel. Every screen is measured at exactly 800x480 and no other size. |
 | Storage | 16GB+ A2 SD card | The image is about 1.6GB. |
 | Dice | One d6 | Casino grade if you care. Any die works. |
@@ -211,6 +233,8 @@ Rendered at [nullroute.diy](https://nullroute.diy) from these exact files.
 | [Checking and building](docs/VERIFICATION.md) | How do I check the device is honest? |
 | [Using it](docs/USING.md) | What are the screens, and what does each one refuse? |
 | [Entropy](docs/ENTROPY.md) | How do dice become a seed, and how do I check it? |
+| [Signer profile](spec/signer-profile.md) | What should any air-gapped signer do, and how is each rule checked? |
+| [Conformance kit](conformance/README.md) | How do I run the profile's vectors against my signer? |
 
 ## Repository layout
 
@@ -220,7 +244,8 @@ packages/daemon    Holds the keys. Unix socket only. Refuses to start unverified
 packages/ui        The device screens
 packages/verify    The tool that checks code, specs and tests agree
 provisioning/      Hardening profiles, as assertions with verifiers
-spec/              Machine-readable spec schema and official BIP test vectors
+spec/              Spec schema, official BIP test vectors, the signer profile
+conformance/       The profile's runner, adapters and vector generators
 docs/              The documents above. A deliverable, not an afterthought.
 apps/web/          nullroute.diy. Never ships to the device.
 ```

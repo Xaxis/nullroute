@@ -241,6 +241,10 @@ vectors:
     file: spec/vectors/signer-profile/sign-override.json
     sha256: 05104879eda7f7635daf314f220f7f3cd64a685b9cf0b4a957ee3990653ec692
     source: conformance/README.md; run by make conformance
+  - name: Signer profile SP-SIG-1, signature bytes from Bitcoin Core's test framework and wallet
+    file: spec/vectors/signer-profile/sign-deterministic.json
+    sha256: 41672cf440b5255f3f18dd00921dc9c448e54706d37294d8a3a449335ff900c9
+    source: conformance/README.md; run by make conformance
 
 threats:
   - INV-SIG-1

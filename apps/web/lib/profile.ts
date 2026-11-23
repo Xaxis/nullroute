@@ -20,10 +20,15 @@ const KIT_README = 'conformance/README.md'
 const ESCAPED_PIPE = '\uE000'
 
 export interface ProfileHeader {
-  /** "Draft specification, version 0.1, 24 September 2026." */
-  readonly line: string
+  /** "0.1", from "Draft specification, version 0.1, 24 September 2026." */
   readonly version: string
-  readonly date: string
+  /**
+   * The latest date in the header line and the change log (section 9). The
+   * header keeps the first date while the draft is amended under the same
+   * version, so without this a reader would take a September date to mean
+   * nothing has moved.
+   */
+  readonly changed: string
 }
 
 export interface RequirementArea {
@@ -59,6 +64,31 @@ export interface KitResult {
   readonly notRun: number
 }
 
+/**
+ * A signer other than nullroute, run against the same vectors by its own
+ * adapter, from the report in conformance/results/.
+ */
+export interface OtherSigner {
+  /** "SeedSigner", the first word of the adapter's name. */
+  readonly label: string
+  /** "SeedSigner 088b144e with embit 0.8.0", as the adapter names itself. */
+  readonly name: string
+  /** The report's path in the repository, for a link to it. */
+  readonly report: string
+  readonly results: readonly KitResult[]
+}
+
+/**
+ * Findings from running another signer, from the table under its heading in
+ * conformance/README.md: what it does, the requirement, and what that asks of
+ * the profile.
+ */
+export interface Finding {
+  readonly finding: string
+  readonly requirement: string
+  readonly question: string
+}
+
 export interface Profile {
   readonly header: ProfileHeader
   readonly areas: readonly RequirementArea[]
@@ -70,8 +100,9 @@ export interface Profile {
   /** SHA-256 of SHA256SUMS itself, which pins the whole vector set. */
   readonly sha256sumsDigest: string
   readonly results: readonly KitResult[]
-  readonly passed: boolean
-  readonly knownFailures: number
+  readonly others: readonly OtherSigner[]
+  /** By the other signer's label. */
+  readonly findings: ReadonlyMap<string, readonly Finding[]>
 }
 
 /**
@@ -91,12 +122,45 @@ const AREA_NAMES: Readonly<Record<string, string>> = {
   'SP-DEP': 'Dependencies',
 }
 
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+]
+
+/** "23 November 2026" as a sortable number, refusing anything else. */
+function dayNumber(date: string): number {
+  const [day, month, year] = date.split(' ')
+  const m = MONTHS.indexOf(month ?? '')
+  if (m < 0 || !/^\d{1,2}$/.test(day ?? '') || !/^\d{4}$/.test(year ?? '')) {
+    throw new Error(`nullroute.diy: ${PROFILE} has a date that is not "day Month year": ${date}`)
+  }
+  return Number(year) * 10000 + (m + 1) * 100 + Number(day)
+}
+
 function readHeader(text: string): ProfileHeader {
   const match = /^(Draft specification, version ([\d.]+), (\d{1,2} \w+ \d{4})\.)/m.exec(text)
   if (match === null) {
     throw new Error(`nullroute.diy: ${PROFILE} has no "Draft specification, version ..." line.`)
   }
-  return { line: match[1] ?? '', version: match[2] ?? '', date: match[3] ?? '' }
+  const date = match[3] ?? ''
+  const log = text.indexOf('\n## 9. Change log\n')
+  if (log < 0) throw new Error(`nullroute.diy: ${PROFILE} has no "## 9. Change log" section.`)
+  const logged = [...text.slice(log).matchAll(/^\| [\d.]+ \| (\d{1,2} \w+ \d{4}) \|/gm)].map(
+    (m) => m[1] ?? ''
+  )
+  if (logged.length === 0) throw new Error(`nullroute.diy: ${PROFILE}'s change log has no rows.`)
+  const changed = [date, ...logged].reduce((a, b) => (dayNumber(b) > dayNumber(a) ? b : a))
+  return { version: match[2] ?? '', changed }
 }
 
 /** The "Sources" column of the vector table, by file name. */
@@ -133,31 +197,34 @@ interface RawResult {
 
 interface RawReport {
   readonly format?: unknown
+  readonly adapter?: unknown
   readonly vectorsSha256sums?: unknown
   readonly only?: unknown
   readonly files?: unknown
   readonly passed?: unknown
-  readonly knownFailures?: unknown
 }
 
-function readResults(sumsDigest: string): {
+function readResults(
+  sumsDigest: string,
+  path = 'conformance-report.json',
+  rerun = 'make conformance'
+): {
+  adapter: string
   results: KitResult[]
-  passed: boolean
-  knownFailures: number
 } {
   let text: string
   try {
-    text = readRepoFile('conformance-report.json')
+    text = readRepoFile(path)
   } catch {
     throw new Error(
-      'nullroute.diy: conformance-report.json is missing. The profile section renders the ' +
+      `nullroute.diy: ${path} is missing. The profile section renders the ` +
         'conformance run per vector file, so the site cannot be built without one. Run ' +
-        '`make conformance` first (the `web-build` target does this for you).'
+        `\`${rerun}\` first.`
     )
   }
   const report = JSON.parse(text) as RawReport
   if (report.format !== 'signer-profile-conformance-report') {
-    throw new Error('nullroute.diy: conformance-report.json is not a conformance report.')
+    throw new Error(`nullroute.diy: ${path} is not a conformance report.`)
   }
   // A RESULT AGAINST OTHER VECTORS IS NOT A RESULT. The report carries the hash
   // of the SHA256SUMS it ran against; if the vectors have moved since, the
@@ -165,15 +232,15 @@ function readResults(sumsDigest: string): {
   // be exactly the stale claim this site exists to avoid.
   if (report.vectorsSha256sums !== sumsDigest) {
     throw new Error(
-      'nullroute.diy: conformance-report.json was produced against a different vector set ' +
-        'than the one on disk. Run `make conformance` again.'
+      `nullroute.diy: ${path} was produced against a different vector set ` +
+        `than the one on disk. Run \`${rerun}\` again.`
     )
   }
   if (report.only !== null) {
-    throw new Error('nullroute.diy: conformance-report.json covers one file only (--only).')
+    throw new Error(`nullroute.diy: ${path} covers one file only (--only).`)
   }
   if (!Array.isArray(report.files) || typeof report.passed !== 'boolean') {
-    throw new Error('nullroute.diy: conformance-report.json has no files or no outcome.')
+    throw new Error(`nullroute.diy: ${path} has no files or no outcome.`)
   }
   const results = (report.files as readonly RawResult[]).map((f) => ({
     file: typeof f.file === 'string' ? f.file : '',
@@ -184,10 +251,72 @@ function readResults(sumsDigest: string): {
     notRun: Number(f.notRun),
   }))
   return {
+    adapter: typeof report.adapter === 'string' ? report.adapter : '',
     results,
-    passed: report.passed,
-    knownFailures: Number(report.knownFailures ?? 0),
   }
+}
+
+const OTHER_RESULTS = 'conformance/results'
+
+/**
+ * Every other signer's last run. Each report is held to the same rules as
+ * nullroute's: against these vectors exactly, every file, or the build stops.
+ * The make target that wrote it is named in the error, since it needs the
+ * network and the site build does not run it.
+ */
+function readOthers(sumsDigest: string): OtherSigner[] {
+  return readdirSync(repoPath(OTHER_RESULTS))
+    .filter((name) => name.endsWith('.json'))
+    .sort()
+    .map((name) => {
+      const path = `${OTHER_RESULTS}/${name}`
+      const run = readResults(sumsDigest, path, `make conformance-${name.replace(/\.json$/, '')}`)
+      const label = run.adapter.split(' ')[0] ?? ''
+      if (label === '' || label.toLowerCase() !== name.replace(/\.json$/, '')) {
+        throw new Error(`nullroute.diy: ${path} names its adapter "${run.adapter}", not ${name}.`)
+      }
+      return {
+        label,
+        name: run.adapter,
+        report: path,
+        results: run.results,
+      }
+    })
+}
+
+/**
+ * The findings table under a signer's heading in conformance/README.md
+ * ("### SeedSigner"), so the page and the kit say the same thing.
+ */
+function readFindings(label: string): Finding[] {
+  const text = readRepoFile(KIT_README)
+  const start = text.indexOf(`\n### ${label}\n`)
+  if (start < 0) throw new Error(`nullroute.diy: ${KIT_README} has no "### ${label}" section.`)
+  const rest = text.slice(start + 1)
+  const end = rest.search(/\n##+ /)
+  const section = end < 0 ? rest : rest.slice(0, end)
+  const rows = section
+    .split('\n')
+    .filter(
+      (line) => line.startsWith('| ') && !line.startsWith('| Finding') && !line.startsWith('| ---')
+    )
+    .map((line) =>
+      line
+        .replaceAll('\\|', ESCAPED_PIPE)
+        .split('|')
+        .slice(1, -1)
+        .map((cell) => cell.trim().replaceAll(ESCAPED_PIPE, '|'))
+    )
+  if (rows.length === 0 || rows.some((r) => r.length !== 3)) {
+    throw new Error(
+      `nullroute.diy: the findings table under "### ${label}" is missing or malformed.`
+    )
+  }
+  return rows.map(([finding, requirement, question]) => ({
+    finding: finding ?? '',
+    requirement: requirement ?? '',
+    question: question ?? '',
+  }))
 }
 
 export function readProfile(): Profile {
@@ -250,13 +379,17 @@ export function readProfile(): Profile {
 
   const sha256sums = readRepoFile(`${VECTORS}/SHA256SUMS`)
   const sumsDigest = createHash('sha256').update(sha256sums).digest('hex')
-  const { results, passed, knownFailures } = readResults(sumsDigest)
-  for (const v of vectors) {
-    const r = results.find((x) => x.file === v.file)
-    if (r?.cases !== v.cases) {
-      throw new Error(`nullroute.diy: the conformance report does not cover ${v.file} as it is.`)
+  const { results } = readResults(sumsDigest)
+  const others = readOthers(sumsDigest)
+  for (const run of [{ report: 'conformance-report.json', results }, ...others]) {
+    for (const v of vectors) {
+      const r = run.results.find((x) => x.file === v.file)
+      if (r?.cases !== v.cases) {
+        throw new Error(`nullroute.diy: ${run.report} does not cover ${v.file} as it is.`)
+      }
     }
   }
+  const findings = new Map(others.map((o) => [o.label, readFindings(o.label)]))
 
   return {
     header,
@@ -268,8 +401,8 @@ export function readProfile(): Profile {
     sha256sums,
     sha256sumsDigest: sumsDigest,
     results,
-    passed,
-    knownFailures,
+    others,
+    findings,
   }
 }
 

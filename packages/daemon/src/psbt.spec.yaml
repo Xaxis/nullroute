@@ -74,7 +74,7 @@ invariants:
 vectors:
   - name: Signer profile SP-REV-6, SP-REV-7, change by re-derivation
     file: spec/vectors/signer-profile/review-change.json
-    sha256: 743ae45d75f625eab1ef28275d01a8f39a940a4cae2b1fbc64476d118154ee3a
+    sha256: 30d32dadb3a75082d3600fa15215ed8cbad89d7f30581396da00ef2da6151238
     source: conformance/README.md; run by make conformance
   - name: Signer profile SP-REV-24, SP-REV-25, ownership
     file: spec/vectors/signer-profile/review-ownership.json

@@ -141,7 +141,7 @@
         "SP-TX-7"
       ],
       "level": "MUST",
-      "description": "Frame 1 of 1in20out.psbt, then frame 1 of 1in10out.psbt, then frame 2 of the first. Both are crypto-psbt at the same fragment size; the message length and checksum in each part differ.",
+      "description": "Frame 1 of 1in20out.psbt, then frame 1 of 1in10out.psbt, then frame 2 of the first. Both are crypto-psbt at the same fragment size; the message length and checksum in each part differ. A receiver that refuses the foreign part and keeps scanning is incomplete after these three frames; one that abandons the transfer has refused it. Either meets SP-TX-7. Completing is the failure.",
       "input": {
         "frames": [
           "UR:CRYPTO-PSBT/1-21/LPADBZCFAHFPCYIMRSVYCNHDFPHKAHFMJOJKIDJYZMADAEZCGWAXAOAEAEAEAXBTBDBZWEOSHSMDHSHDIEFEJSSBEYIOHKCMTODTUEFGSKDRUYBWFHLAMHDRKEKGTPAEAEAEAEAEZMZMZMZMGWJPPFJSDAENESKKSNRP",
@@ -150,7 +150,10 @@
         ]
       },
       "expected": {
-        "verdict": "refuse"
+        "verdictIn": [
+          "refuse",
+          "incomplete"
+        ]
       },
       "sources": [
         "frames: UREncoder from SeedSigner/seedsigner at 088b144eaebc79d12d6336030e943510d7a14f54, src/seedsigner/helpers/ur2",

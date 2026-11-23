@@ -754,3 +754,131 @@ body {
   color: #f4f6f9;
   border-color: #e8833a;
 }
+
+/*
+ * The three steps on the home page. On a phone they stack, each screen above
+ * its caption. From 64rem the captions are a list and the chosen screen stands
+ * beside them at up to its real 800 pixels, so the text the captions cite can
+ * be read. The choice is a radio input before the list, for the reason .shot
+ * gives: no script. Each radio carries its step's name for a screen reader and
+ * is focusable; its label is the visible control.
+ */
+.steps {
+  position: relative;
+}
+.steps__radio {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.steps__list {
+  display: grid;
+  gap: 3.5rem;
+}
+.steps__item {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.steps__panel {
+  order: -1;
+  margin-bottom: 1.25rem;
+}
+.steps__title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--ink);
+}
+.steps__num {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--signal);
+}
+.steps__detail {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--body);
+}
+@media (min-width: 64rem) {
+  .steps__list {
+    grid-template-columns: minmax(17rem, 1fr) minmax(0, 51rem);
+    grid-template-rows: auto auto auto 1fr;
+    column-gap: 4rem;
+    row-gap: 0;
+  }
+  .steps__item {
+    display: contents;
+  }
+  .steps__tab {
+    grid-column: 1;
+    padding: 1.25rem 0 1.25rem 1.25rem;
+    border-left: 2px solid var(--line);
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .steps__item--0 .steps__tab {
+    grid-row: 1;
+  }
+  .steps__item--1 .steps__tab {
+    grid-row: 2;
+  }
+  .steps__item--2 .steps__tab {
+    grid-row: 3;
+  }
+  .steps__tab .steps__title {
+    color: var(--body);
+  }
+  .steps__tab .steps__detail {
+    color: var(--muted);
+  }
+  .steps__tab:hover .steps__title {
+    color: var(--ink);
+  }
+  .steps__panel {
+    display: none;
+    grid-column: 2;
+    grid-row: 1 / -1;
+    margin: 0;
+  }
+  #step-0:checked ~ .steps__list .steps__item--0 .steps__panel,
+  #step-1:checked ~ .steps__list .steps__item--1 .steps__panel,
+  #step-2:checked ~ .steps__list .steps__item--2 .steps__panel {
+    display: block;
+    animation: steps-in 0.35s ease-out;
+  }
+  #step-0:checked ~ .steps__list .steps__item--0 .steps__tab,
+  #step-1:checked ~ .steps__list .steps__item--1 .steps__tab,
+  #step-2:checked ~ .steps__list .steps__item--2 .steps__tab {
+    border-left-color: var(--signal);
+  }
+  #step-0:checked ~ .steps__list .steps__item--0 .steps__title,
+  #step-1:checked ~ .steps__list .steps__item--1 .steps__title,
+  #step-2:checked ~ .steps__list .steps__item--2 .steps__title {
+    color: var(--ink);
+  }
+  #step-0:checked ~ .steps__list .steps__item--0 .steps__detail,
+  #step-1:checked ~ .steps__list .steps__item--1 .steps__detail,
+  #step-2:checked ~ .steps__list .steps__item--2 .steps__detail {
+    color: var(--body);
+  }
+  #step-0:focus-visible ~ .steps__list .steps__item--0 .steps__tab,
+  #step-1:focus-visible ~ .steps__list .steps__item--1 .steps__tab,
+  #step-2:focus-visible ~ .steps__list .steps__item--2 .steps__tab {
+    outline: 2px solid var(--signal);
+    outline-offset: 2px;
+  }
+}
+@keyframes steps-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}

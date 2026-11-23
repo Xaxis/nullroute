@@ -28,6 +28,19 @@ export const metadata: Metadata = {
  * are chapters of the docs; this page is the case for them.
  */
 
+/** A README table cell: plain text with `code` spans and nothing else. */
+function inline(text: string) {
+  return text.split('`').map((part, i) =>
+    i % 2 === 1 ? (
+      <code key={i} className="code">
+        {part}
+      </code>
+    ) : (
+      part
+    )
+  )
+}
+
 const QUESTIONS: readonly (readonly [string, string])[] = [
   [
     'Where did the seed come from?',
@@ -115,7 +128,7 @@ export default async function ProfilePage() {
             href={`${REPO_URL}/issues`}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-2 py-3 text-[0.9375rem] font-semibold text-body hover:text-ink transition-colors"
+            className="py-3 sm:px-2 text-[0.9375rem] font-semibold text-body hover:text-ink transition-colors"
           >
             Argue with it <span aria-hidden="true">&#8599;</span>
           </a>
@@ -129,7 +142,7 @@ export default async function ProfilePage() {
           <dl className="mt-12 reveal-rows grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-3 lg:grid-cols-6">
             {[
               ['State', `Draft ${profile.header.version}`],
-              ['Date', profile.header.date],
+              ['Last changed', profile.header.changed],
               [
                 'Requirements',
                 `${String(profile.requirementCount)} in ${String(profile.areas.length)} areas`,
@@ -159,17 +172,72 @@ export default async function ProfilePage() {
         <section className="border-t border-line py-16" id="results">
           <Head title="Expected values from outside the implementation">
             None of these came from nullroute: review cases are PSBTs built and judged by Bitcoin
-            Core, dice and manifests come from the BIP texts and coreutils, and the QR cases from
-            reference encoders. Every file is pinned by a SHA256SUMS that coreutils can check.
+            Core, signatures are computed by Core&rsquo;s own test framework and wallet, dice and
+            manifests come from the BIP texts and coreutils, and the QR cases from reference
+            encoders. Every file is pinned by a SHA256SUMS that coreutils can check.
           </Head>
           <div className="mt-8">
             <ResultsTable profile={profile} hrefs={hrefs} />
           </div>
-          <p className="mt-3 text-[0.8125rem] leading-snug text-muted">
-            From this build&rsquo;s <code className="code">make conformance</code>. The second
-            column is for your signer, and it stays empty until somebody runs the kit against one.
+          <p className="mt-3 max-w-4xl text-[0.8125rem] leading-snug text-muted">
+            nullroute from this build&rsquo;s <code className="code">make conformance</code>.{' '}
+            {profile.others.map((o) => (
+              <span key={o.label}>
+                {o.label} from{' '}
+                <code className="code">make conformance-{o.label.toLowerCase()}</code>: {o.name},
+                its own code, with every known failure listed beside the line of its code that
+                decides it.{' '}
+              </span>
+            ))}
+            A column for your signer is one adapter away.
           </p>
         </section>
+
+        {profile.others.map((o) => (
+          <section key={o.label} className="border-t border-line py-16" id={o.label.toLowerCase()}>
+            <Head title={`What running ${o.label} found`}>
+              {`${o.name}, run against the same vectors. Some findings are gaps in ${o.label}, some are questions the profile has to answer, which is what a draft is for, and three have already changed it or its vectors.`}
+            </Head>
+            <dl className="mt-8 max-w-4xl border-t border-line">
+              {(profile.findings.get(o.label) ?? []).map((f) => (
+                <div
+                  key={f.finding}
+                  className="grid gap-1.5 border-b border-line py-5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-8"
+                >
+                  <dt className="min-w-0">
+                    <span className="block text-[0.9375rem] font-semibold leading-snug text-ink">
+                      {inline(f.finding)}
+                    </span>
+                    <span className="mt-1 flex flex-wrap gap-x-2">
+                      {f.requirement.split(', ').map((id) => (
+                        <a
+                          key={id}
+                          href={requirementHref(hrefs, id)}
+                          className="font-mono text-[0.72rem] text-link hover:text-link-hover"
+                        >
+                          {id}
+                        </a>
+                      ))}
+                    </span>
+                  </dt>
+                  <dd className="min-w-0 text-[0.9375rem] leading-relaxed text-body">
+                    {inline(f.question)}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+            <p className="mt-4 max-w-4xl text-[0.8125rem] leading-snug text-muted">
+              Each case, with the line of {o.label}&rsquo;s code that decides it, is in{' '}
+              <a
+                href={`${REPO_URL}/blob/main/conformance/known-failures/${o.label.toLowerCase()}.json`}
+                className="text-link hover:text-link-hover"
+              >
+                <code className="code">known-failures/{o.label.toLowerCase()}.json</code>
+              </a>
+              .
+            </p>
+          </section>
+        ))}
 
         <section className="border-t border-line py-16" id="conformance">
           <Head title="Where nullroute meets it, and where it does not yet">
@@ -223,10 +291,16 @@ export default async function ProfilePage() {
                     <td className="px-4 py-3 max-sm:px-2 text-right font-mono tabular-nums text-ink">
                       {area.requirements.length}
                     </td>
-                    <td className="px-4 py-3 max-sm:px-2 text-right font-mono tabular-nums text-verify">
+                    {/* Colour only a count that has something in it: a green or
+                        amber zero reads as a result. */}
+                    <td
+                      className={`px-4 py-3 max-sm:px-2 text-right font-mono tabular-nums ${area.met === 0 ? 'text-muted' : 'text-verify'}`}
+                    >
                       {area.met}
                     </td>
-                    <td className="px-4 py-3 max-sm:px-2 text-right font-mono tabular-nums text-signal">
+                    <td
+                      className={`px-4 py-3 max-sm:px-2 text-right font-mono tabular-nums ${area.qualified === 0 ? 'text-muted' : 'text-signal'}`}
+                    >
                       {area.qualified}
                     </td>
                     <td className="px-4 py-3 max-sm:px-2 text-right font-mono tabular-nums text-body">
@@ -238,12 +312,14 @@ export default async function ProfilePage() {
             </table>
           </div>
 
-          <h3 className="label mt-10">Not yet met without qualification</h3>
-          <ul className="mt-3 grid gap-x-10 border-t border-line lg:grid-cols-2">
+          <h3 className="mt-12 font-display text-[1.375rem] leading-snug text-ink">
+            {openRows.length} requirements this device does not yet fully meet
+          </h3>
+          <ul className="mt-4 max-w-4xl border-t border-line">
             {openRows.map((row) => (
               <li
                 key={row.id}
-                className="grid grid-cols-[6rem_minmax(0,1fr)] gap-3 border-b border-line py-2.5"
+                className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-4 border-b border-line py-2.5 last:border-b-0"
               >
                 <a
                   href={requirementHref(hrefs, row.id)}

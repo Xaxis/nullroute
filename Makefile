@@ -28,7 +28,7 @@ ADMIN_DEPS := apps/admin/node_modules/.package-lock.json
 # site's pass-through of /admin (ADMIN_PATH in tools/lib/site-headers.mjs).
 ADMIN_ORIGIN ?= https://nullroute.diy/admin
 
-.PHONY: help install dev build check check-fast verify manifest manifest-check \
+.PHONY: help install dev build check check-fast verify manifest manifest-check conformance-seedsigner \
 	contrast ui-roles \
 	qr-readback badges invariant-ids \
 	manifest-recipe print-manifest-roots \
@@ -276,6 +276,18 @@ interop-ur: build ## SeedSigner's own UR decoder reads the frames this device wr
 	@dir=$$(mktemp -d); status=0; \
 	conformance/interop/seedsigner-reads-nullroute.sh "$$dir" || status=$$?; \
 	rm -rf "$$dir"; exit $$status
+
+conformance-seedsigner: ## The signer profile vectors run against SeedSigner's own code (needs the network once)
+	# conformance/adapters/seedsigner.mjs, with SeedSigner and embit fetched at
+	# pinned versions and checked by conformance/interop/seedsigner-adapter.sh.
+	# Writes conformance/results/seedsigner.json, the report the website's
+	# results table reads. SeedSigner has no equivalent for several operations,
+	# so cases not run are expected and the runner's own exit status is not the
+	# verdict here: a failure missing from conformance/known-failures/seedsigner.json,
+	# or a listed one that now passes, fails this target.
+	@rm -f conformance/results/seedsigner.json
+	@conformance/interop/seedsigner-adapter.sh --report conformance/results/seedsigner.json || true
+	@node -e 'const r = JSON.parse(require("node:fs").readFileSync("conformance/results/seedsigner.json", "utf8")); if (r.totals.fail > 0 || r.stale > 0) { console.error(`conformance-seedsigner: $${r.totals.fail} unlisted failures, $${r.stale} listed failures that now pass`); process.exit(1) }'
 
 conformance: build ## The signer profile vectors in spec/vectors/signer-profile/, run against this build
 	# spec/signer-profile.md is a draft any signer can be checked against, and

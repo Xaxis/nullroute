@@ -205,14 +205,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="border-t border-line">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 space-y-2 font-sans text-[0.75rem] leading-relaxed text-muted">
               <p className="max-w-[88ch]">
-                This website counts visits with our own privacy-friendly analytics. Each page view
-                sends the page&rsquo;s address, the referring site, your browser and device type,
-                and how long and how far down the page was read. It sets no cookies and stores
-                nothing in your browser unless you opt out; your IP address is used only to make a
-                daily anonymous count and a rough location, and is never stored. To opt out on this
-                site, open any page with <code className="code">?ov_ignore=1</code>, which leaves
-                one flag in this browser so it stays off. The device has no analytics: its frontend
-                can reach nothing but its own daemon (INV-NET-3).
+                This website counts visits, without cookies: each page view sends the page, the
+                referring site, your browser and device type, and how long and how far the page was
+                read. Your IP address makes a daily anonymous count and a rough location and is
+                never stored. Open any page with <code className="code">?ov_ignore=1</code> to stop
+                counting this browser. The device has no analytics: its frontend can reach nothing
+                but its own daemon (<span className="whitespace-nowrap">INV-NET-3</span>).
               </p>
               <p>Type is Source Serif 4, IBM Plex and DejaVu Sans Mono, served from this domain.</p>
             </div>

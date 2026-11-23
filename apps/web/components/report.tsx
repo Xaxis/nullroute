@@ -153,11 +153,14 @@ export function Ruled({
   className?: string
 }) {
   return (
-    <dl className={`border-t border-line ${className}`}>
+    // The measure of the boxed tables, so a rule stops where its text does
+    // rather than running 300px past it. No rule under the last row: every
+    // Ruled ends its section, and the next section opens with its own.
+    <dl className={`max-w-4xl border-t border-line ${className}`}>
       {items.map(([term, text]) => (
         <div
           key={term}
-          className="grid gap-1.5 border-b border-line py-5 sm:grid-cols-[14rem_minmax(0,1fr)] sm:gap-8"
+          className="grid gap-1.5 border-b border-line py-5 last:border-b-0 sm:grid-cols-[14rem_minmax(0,1fr)] sm:gap-8"
         >
           <dt className="font-sans text-[0.9375rem] font-semibold text-ink">{term}</dt>
           <dd className="min-w-0 max-w-[68ch] text-[1rem] leading-relaxed text-body">{text}</dd>
@@ -203,8 +206,12 @@ export function A({
  * this renders are written for GitHub, where backticks mean code, and showing
  * the backticks would be showing the source instead of the text.
  */
-/** A spec id such as INV-BACKUP-3 or SP-ENT-8, which must not break at its hyphens. */
-const SPEC_ID = /\b((?:INV|SP)-[A-Z0-9]+(?:-[A-Z0-9]+)*)\b/g
+/**
+ * A spec id such as INV-BACKUP-3 or SP-ENT-8, which must not break at its
+ * hyphens, or a provisioning tier ("Tier 2"), which must not leave its number
+ * alone at the start of the next line.
+ */
+const SPEC_ID = /\b((?:INV|SP)-[A-Z0-9]+(?:-[A-Z0-9]+)*|Tier \d)\b/g
 
 function KeepIds({ text }: { text: string }) {
   const parts = text.split(SPEC_ID)
@@ -225,7 +232,10 @@ export function InlineMd({ text }: { text: string }) {
     <>
       {parts.map((part, i) =>
         part.startsWith('`') && part.endsWith('`') && part.length > 1 ? (
-          <code key={i} className="code">
+          // A short span is a name (`prepare-state`, `make verify`), and a
+          // name broken at its hyphen reads as two words. A long one is a
+          // path or a command and has to wrap on a phone.
+          <code key={i} className={part.length <= 26 ? 'code whitespace-nowrap' : 'code'}>
             {part.slice(1, -1)}
           </code>
         ) : (

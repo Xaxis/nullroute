@@ -134,31 +134,36 @@
         "SP-REV-7"
       ],
       "level": "MUST",
-      "description": "Output 1 pays an address the signer does not own, and carries a PSBT_OUT_BIP32_DERIVATION naming the signer's fingerprint, the path m/84'/0'/0'/1/0 and that path's public key. It MUST be shown as a payment, and SHOULD say the transaction claimed it.",
+      "description": "Output 1 pays an address the signer does not own, and carries a PSBT_OUT_BIP32_DERIVATION naming the signer's fingerprint, the path m/84'/0'/0'/1/0 and that path's public key. A signer that reviews it MUST show it as a payment, and SHOULD say the transaction claimed it; refusing the transaction outright also meets SP-REV-7.",
       "input": {
         "psbt": "cHNidP8BAHECAAAAAZgm1q0gzi00hr3YFBOfCnYmOVoVY/H80AK5WjMcinOOAAAAAAD9////AgDKmjsAAAAAFgAUWEwqh6M3b91BmePmV21UVr4CBmTwAGvuAAAAABYAFMro5auSto3bCK/l8D47eQozGAM1AAAAAAABAIQCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wMBQQD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+UAAAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAAiAgMCUySIjkKauOPbrx94AmSLnNAem0GEhcX6TBubVwDhphhzxdoKVAAAgAAAAIAAAACAAQAAAAAAAAAA",
         "context": "abandon-mainnet"
       },
       "expected": {
-        "verdict": "allow",
-        "outputs": [
-          {
-            "index": 0,
-            "address": "bc1qtpxz4parxaha6sveu0n9wm2526lqypny0c35pq",
-            "amountSats": "1000000000",
-            "kind": "payment"
-          },
-          {
-            "index": 1,
-            "address": "bc1qet5wt2ujk6xakz90uhcruwmepge3sqe4vvmljr",
-            "amountSats": "3999990000",
-            "kind": "payment"
-          }
+        "verdictIn": [
+          "allow",
+          "refuse"
         ],
-        "claimedOutputs": {
-          "should": [
-            1
-          ]
+        "ifAllowed": {
+          "outputs": [
+            {
+              "index": 0,
+              "address": "bc1qtpxz4parxaha6sveu0n9wm2526lqypny0c35pq",
+              "amountSats": "1000000000",
+              "kind": "payment"
+            },
+            {
+              "index": 1,
+              "address": "bc1qet5wt2ujk6xakz90uhcruwmepge3sqe4vvmljr",
+              "amountSats": "3999990000",
+              "kind": "payment"
+            }
+          ],
+          "claimedOutputs": {
+            "should": [
+              1
+            ]
+          }
         }
       },
       "sources": [
@@ -178,31 +183,36 @@
         "SP-REV-7"
       ],
       "level": "MUST",
-      "description": "As above with PSBT_OUT_TAP_BIP32_DERIVATION naming the BIP-86 first change key. MUST be a payment; SHOULD be reported as claimed.",
+      "description": "As above with PSBT_OUT_TAP_BIP32_DERIVATION naming the BIP-86 first change key. If reviewed, MUST be a payment and SHOULD be reported as claimed; refusing outright also meets SP-REV-7.",
       "input": {
         "psbt": "cHNidP8BAH0CAAAAAZMQaGeMZIZ1e9XfXRQNQqzvwd23hdfImtts/dcm4l6WAAAAAAD9////AgDKmjsAAAAAFgAU+LMnbyB4EgCsr+aTEIeoDIOHLkvwAGvuAAAAACJRIO1/IAV9GNZ3iQWMb4hkyHGKcTXM0v+vLOva6BsNsj1WAAAAAAABAIQCAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/////wMBFQD+////AgDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIAAAAAAAAAACZqJKohqe3i9hw/cdHe/T+pmd+jaVN1XGkGiXmZYrSL69g2l06M+RQAAAABAR8A8gUqAQAAABYAFMDOvNbD08qMddxexi6+VTMO+RDiIgYDMNVP0N1CCm5fjTYk9fNILK41D3nV8HU79b7vnC2RrzwYc8XaClQAAIAAAACAAAAAgAAAAAAAAAAAAAAhBzmfGy9Dk/KaGMk3hZxd2KdzUBAxV+uIDwLowIIUJ3zvGQBzxdoKVgAAgAAAAIAAAACAAQAAAAAAAAAA",
         "context": "abandon-mainnet"
       },
       "expected": {
-        "verdict": "allow",
-        "outputs": [
-          {
-            "index": 0,
-            "address": "bc1qlzejwmeq0qfqpt90u6f3ppagpjpcwtjtpn64jx",
-            "amountSats": "1000000000",
-            "kind": "payment"
-          },
-          {
-            "index": 1,
-            "address": "bc1pa4ljqptarrt80zg933hcsexgwx98zdwv6tl67t8tmt5pkrdj84tqzese37",
-            "amountSats": "3999990000",
-            "kind": "payment"
-          }
+        "verdictIn": [
+          "allow",
+          "refuse"
         ],
-        "claimedOutputs": {
-          "should": [
-            1
-          ]
+        "ifAllowed": {
+          "outputs": [
+            {
+              "index": 0,
+              "address": "bc1qlzejwmeq0qfqpt90u6f3ppagpjpcwtjtpn64jx",
+              "amountSats": "1000000000",
+              "kind": "payment"
+            },
+            {
+              "index": 1,
+              "address": "bc1pa4ljqptarrt80zg933hcsexgwx98zdwv6tl67t8tmt5pkrdj84tqzese37",
+              "amountSats": "3999990000",
+              "kind": "payment"
+            }
+          ],
+          "claimedOutputs": {
+            "should": [
+              1
+            ]
+          }
         }
       },
       "sources": [

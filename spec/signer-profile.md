@@ -374,7 +374,9 @@ INV-PSBT-12, INV-PSBT-16, INV-UI-12.
 
 **SP-REV-7.** An output the PSBT claims is the wallet's and which does not
 re-derive MUST be presented as money leaving the wallet, and SHOULD say that the
-transaction claimed it. Check: vector `review-change.json`; nullroute INV-UI-12
+transaction claimed it. A signer MAY instead refuse the transaction outright,
+since a claim that does not re-derive is evidence the PSBT was tampered with.
+Check: vector `review-change.json`; nullroute INV-UI-12
 (`says-when-the-transaction-claimed-an-output-was-ours`).
 
 **SP-REV-8.** The sighash type of the signatures to be produced MUST be displayed
@@ -457,16 +459,31 @@ leave an earlier review or result on screen. Check: nullroute INV-UI-14.
 
 ### 3.4 Signing
 
-**SP-SIG-1.** ECDSA signatures MUST use RFC 6979 nonces. Schnorr signatures MUST
-use BIP-340 with `aux_rand` set to 32 zero bytes. Nothing else in the signing
-path MAY consume randomness. BIP-340 permits this and names the cost:
-"If randomness is not available at all at signing time, a simple counter ...
-or even the constant array with 32 null bytes" may be used, and random
-`aux_rand` "increases protection against [fault injection attacks]"
-(`bip-0340.mediawiki` line 161). The profile accepts that cost so that anyone
-holding the seed can recompute every signature byte for byte. Check: nullroute
-INV-SIG-1, INV-SIG-2 (differential against bitcoinjs-lib, 120 cases); manual:
-`docs/VERIFICATION.md`, section "4. Reproducing a signature".
+**SP-SIG-1.** Schnorr signatures MUST use BIP-340 with `aux_rand` set to 32
+zero bytes. ECDSA signatures MUST use RFC 6979 nonces in one of two ways, and
+the signer MUST document which: with no additional data, or ground for a low R
+as Bitcoin Core grinds, retrying with additional data LE32(1), LE32(2) and so
+on, each a little-endian counter padded with zeros to 32 bytes, until R is below
+2^255 (`src/key.cpp`, `CKey::Sign`). Nothing else in the signing path MAY
+consume randomness. BIP-340 permits a fixed `aux_rand` and names the cost: "If
+randomness is not available at all at signing time, a simple counter ... or
+even the constant array with 32 null bytes" may be used, and random `aux_rand`
+"increases protection against [fault injection attacks]" (`bip-0340.mediawiki`
+line 161). The profile accepts that cost so that anyone holding the seed can
+recompute every signature byte for byte.
+
+Either ECDSA scheme leaves the signer no choice to make, since the counter
+sequence is fixed and the first low R ends it. The low-R scheme is what
+Bitcoin Core's wallet and embit's default signing produce, so a signer that
+grinds can be checked against Core directly; Core 31.1 also signs taproot with
+an all-zero `aux_rand` (`src/script/sign.cpp`, "Use uint256{} as aux_rnd for
+now"). Leaving `aux_rand` out is not the same as setting it to zero: BIP-340
+masks the key with `hash_BIP0340/aux(a)` before deriving the nonce, and a
+signer that skips the mask produces valid, deterministic signatures that no
+BIP-340 implementation given 32 zero bytes reproduces. Check: vector
+`sign-deterministic.json`; nullroute INV-SIG-1, INV-SIG-2 (differential against
+bitcoinjs-lib, 120 cases); manual: `docs/VERIFICATION.md`, section "4.
+Reproducing a signature".
 
 ### 3.5 nullroute conformance
 
@@ -493,7 +510,7 @@ INV-SIG-1, INV-SIG-2 (differential against bitcoinjs-lib, 120 cases); manual:
 | SP-REV-24 | Met | INV-PSBT-14, INV-UI-14, INV-SIG-4 |
 | SP-REV-25 | Met | INV-PSBT-14 |
 | SP-REV-26 | Met | INV-UI-14 |
-| SP-SIG-1 | Met | INV-SIG-1, INV-SIG-2 |
+| SP-SIG-1 | Met | INV-SIG-1, INV-SIG-2; plain RFC 6979, and all six cases of `sign-deterministic.json` match Bitcoin Core's bytes |
 
 ## 4. Attestation: the software identity shown before secrets
 
@@ -790,7 +807,8 @@ indices, which nullroute's collector would join: gap N5 in
 under both `crypto-psbt` and `psbt`, SHOULD write it as `crypto-psbt`, MUST
 refuse a part whose sequence length, message length, checksum or fragment
 length differs from the transfer in progress, and MUST NOT return a message
-whose CRC-32 does not match. The registry (BCR-2020-006) recommends writing
+whose CRC-32 does not match. Having refused a part, it MAY go on scanning the
+transfer in progress or MAY abandon it. The registry (BCR-2020-006) recommends writing
 `psbt`; this profile departs from it because SeedSigner and Jade read only
 `crypto-psbt` and every wallet checked writes it (`research/ur-notes.md`,
 "PSBT types"). Check: vector `ur-psbt.json` (frames written by SeedSigner's own
@@ -904,3 +922,5 @@ scope", restated without the nullroute specifics.
 | 0.1 | 26 October 2026 | Section 7, BIP-370 row: nullroute refuses version 2 PSBTs (INV-PSBT-19) instead of leaving their support unverified. No requirement changed |
 | 0.1 | 26 October 2026 | SP-REV-9 amended: a locktime that every input being final leaves unenforced MUST NOT be shown as delaying confirmation. The old text required showing every non-zero locktime that way, which is false when consensus ignores it. One vector added to `review-timelocks.json` |
 | 0.1 | 26 October 2026 | Vector file `sign-override.json` added for SP-REV-22: until now every signing vector asked with no override, so nothing checked that an override lifts a block for one signature only. No requirement changed |
+| 0.1 | 23 November 2026 | SP-SIG-1 amended: ECDSA may use RFC 6979 plain or ground for a low R exactly as Bitcoin Core grinds, and the signer documents which. Running SeedSigner's code showed embit grinds that way by default, as Core's wallet does, so the old text failed SeedSigner, and any signer keeping embit's default, on a rule whose purpose, recomputable signatures, both schemes meet. Vector file `sign-deterministic.json` added, with both sets of bytes |
+| 0.1 | 23 November 2026 | SP-REV-7 amended: a signer MAY refuse a transaction with a false change claim instead of showing the output as a payment. SeedSigner refuses it as "Likely an Attack!", and the vector failed it for being stricter than the requirement. SP-TX-7 now says a receiver that refuses a foreign part MAY keep scanning, which is what SeedSigner does and what the requirement's text already allowed; the vector had demanded the whole transfer be refused. Both cases in `review-change.json` and `two-transfers` in `ur-psbt.json` accept either |

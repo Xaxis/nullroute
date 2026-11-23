@@ -48,10 +48,6 @@ function screenFor(screens: readonly Screen[], file: string): Screen {
  * paragraph each, and the front page shows only that they happened and when;
  * the roadmap page has them in full.
  */
-function firstSentence(text: string): string {
-  return text.split(/(?<=[.!?])\s+(?=[A-Z`])/)[0] ?? text
-}
-
 function Heading({ id, children }: { id: string; children: ReactNode }) {
   return (
     <h2
@@ -88,7 +84,7 @@ export default async function Home() {
   // an entry that names nullroute.diy is about this website or its console;
   // those stay on the roadmap page with everything else.
   const recent = readLog()
-    .filter((entry) => !entry.text.includes('nullroute.diy'))
+    .filter((entry) => !entry.site)
     .slice(0, 4)
   const profile = readProfile()
   const { parts, cost } = readParts()
@@ -137,7 +133,8 @@ export default async function Home() {
         <>
           Deterministic: RFC 6979 for ECDSA, BIP-340 with <code className="code">aux_rand</code>{' '}
           fixed to 32 zero bytes for Schnorr. Anyone with the seed can recompute the identical bytes
-          and confirm nothing was hidden in them.
+          and confirm nothing was hidden in them, and for the kit&rsquo;s six test transactions
+          Bitcoin Core&rsquo;s own code writes the same signatures.
         </>
       ),
       cite: 'VERIFICATION.md',
@@ -248,8 +245,8 @@ export default async function Home() {
             <HeroScene />
             <figcaption className="mt-3 pb-8 font-mono text-[0.6875rem] leading-relaxed text-muted lg:pl-[14%]">
               The lock screen, rendered by the device&rsquo;s own frontend at
-              800&thinsp;&times;&thinsp;480. Its hashes are samples; this build&rsquo;s root is
-              below.
+              800&thinsp;&times;&thinsp;480, showing this build&rsquo;s manifest root. The dm-verity
+              root is a sample: a card&rsquo;s comes from its image build.
             </figcaption>
           </figure>
         </div>
@@ -299,6 +296,17 @@ export default async function Home() {
                 label="Recomputing this build's manifest root"
                 lines={[
                   { cmd: 'git clone https://github.com/Xaxis/nullroute && cd nullroute' },
+                  /* First the files against the listing, then the listing's
+                     hash: the hash alone says nothing about the source. The
+                     order docs/VERIFICATION.md gives. */
+                  {
+                    cmd: 'sha256sum -c MANIFEST.lock',
+                    out: (
+                      <span className="text-muted">
+                        {`package-lock.json: OK\npackage.json: OK\n\u2026 and ${String(facts.files - 2)} more, each OK`}
+                      </span>
+                    ),
+                  },
                   {
                     cmd: 'sha256sum MANIFEST.lock',
                     out: <span className="text-ink">{`${facts.rootHash}  MANIFEST.lock`}</span>,
@@ -323,26 +331,41 @@ export default async function Home() {
         <div className="reveal mt-12">
           <SigningLoop />
         </div>
-        {/* Three across, each panel renders near half size, so each one opens
-            full size: the screens are the evidence and should be legible. */}
-        <ol id="steps" className="stagger mt-16 grid gap-x-8 gap-y-14 lg:grid-cols-3">
+        {/* THE DEVICE AT ITS OWN SIZE. Three across, each panel rendered at
+            under half size, and the captions cited text nobody could read. On
+            a wide screen the steps are a list beside one panel at its real
+            800 pixels, chosen with radio inputs rather than a script (see
+            .steps in globals.css); on a phone they stack, and each opens full
+            size. */}
+        <div id="steps" className="steps reveal mt-16">
           {steps.map((step, index) => (
-            <li key={step.title} className="min-w-0">
-              <div className="tilt reveal">
-                <Shot screen={step.screen} />
-              </div>
-              <h3 className="mt-5 flex items-baseline gap-3 text-[1.125rem] font-semibold text-ink">
-                <span className="font-mono text-[0.8125rem] text-signal">
-                  {String(index + 1).padStart(2, '0')}
-                </span>
-                {step.title}
-              </h3>
-              <p className="mt-2 text-[0.9375rem] leading-relaxed text-body">
-                {step.screen.detail}
-              </p>
-            </li>
+            <input
+              key={step.screen.file}
+              type="radio"
+              name="step"
+              id={`step-${String(index)}`}
+              className="steps__radio"
+              defaultChecked={index === 0}
+              aria-label={step.title}
+            />
           ))}
-        </ol>
+          <ol className="steps__list">
+            {steps.map((step, index) => (
+              <li key={step.title} className={`steps__item steps__item--${String(index)}`}>
+                <label htmlFor={`step-${String(index)}`} className="steps__tab">
+                  <span className="steps__title">
+                    <span className="steps__num">{String(index + 1).padStart(2, '0')}</span>
+                    {step.title}
+                  </span>
+                  <span className="steps__detail">{step.screen.detail}</span>
+                </label>
+                <div className="steps__panel">
+                  <Shot screen={step.screen} />
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
         <p className="mt-10 text-[0.9375rem] font-semibold">
           <Link href={await docHref('docs/USING.md')} className="link">
             Every screen, and what each one refuses
@@ -481,14 +504,18 @@ export default async function Home() {
             <p className="max-w-2xl text-[1rem] leading-relaxed text-body">
               The draft signer profile says what any air-gapped signer should show you and refuse to
               do: {profile.requirementCount} requirements and {profile.caseCount} portable test
-              cases, in a kit that runs against any signer through an adapter. Not only this one.
+              cases whose expected values come from Bitcoin Core and the BIP texts, never from
+              nullroute.
+              {profile.others.length === 0
+                ? ' The kit runs against any signer through an adapter.'
+                : ` The kit already runs against ${profile.others.map((o) => `${o.label}\u2019s`).join(' and ')} own code, and three of its findings have changed the profile or its vectors.`}
             </p>
             <div className="flex shrink-0 flex-wrap gap-3">
               <Link href="/profile" className="btn btn-secondary">
-                The profile
+                Read the profile
               </Link>
               <Link href={await docHref('conformance/README.md')} className="btn btn-secondary">
-                The kit
+                Run the kit
               </Link>
             </div>
           </div>
@@ -539,7 +566,7 @@ export default async function Home() {
                   {entry.date}
                 </span>
                 <span className="min-w-0 max-w-[72ch] text-[0.9375rem] leading-relaxed text-body">
-                  <InlineMd text={firstSentence(entry.text)} />
+                  <InlineMd text={entry.headline} />
                 </span>
               </li>
             ))}

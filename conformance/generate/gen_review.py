@@ -387,17 +387,20 @@ p = add_out(p, 1, b'\x02' + bytes.fromhex(PK_84_1_0), path_bytes(FP, "m/84'/0'/0
 outs = outputs_of(p)
 case(C, 'attacker-in-change-position-with-derivation-claim', ['SP-REV-6', 'SP-REV-7'],
      'Output 1 pays an address the signer does not own, and carries a PSBT_OUT_BIP32_DERIVATION naming the signer\'s '
-     'fingerprint, the path m/84\'/0\'/0\'/1/0 and that path\'s public key. It MUST be shown as a payment, and SHOULD '
-     'say the transaction claimed it.',
-     p, {'verdict': 'allow', 'outputs': kinds(outs), 'claimedOutputs': {'should': [1]}},
+     'fingerprint, the path m/84\'/0\'/0\'/1/0 and that path\'s public key. A signer that reviews it MUST show it as a '
+     'payment, and SHOULD say the transaction claimed it; refusing the transaction outright also meets SP-REV-7.',
+     p, {'verdictIn': ['allow', 'refuse'],
+         'ifAllowed': {'outputs': kinds(outs), 'claimedOutputs': {'should': [1]}}},
      [SRC_KIND, SRC_ADDR, 'claim: public key from BIP-84 line 89, fingerprint from Core listdescriptors'])
 
 attacker = derive('foreign.tr.1', 7)
 p = build([coin('ours.w')], [(pay(44), Decimal('10')), (attacker, 'rest')])
 p = add_out(p, 1, b'\x07' + bytes.fromhex(XO_86_1_0), b'\x00' + path_bytes(FP, "m/86'/0'/0'/1/0"))
 case(C, 'attacker-in-change-position-with-taproot-derivation-claim', ['SP-REV-6', 'SP-REV-7'],
-     'As above with PSBT_OUT_TAP_BIP32_DERIVATION naming the BIP-86 first change key. MUST be a payment; SHOULD be reported as claimed.',
-     p, {'verdict': 'allow', 'outputs': kinds(outputs_of(p)), 'claimedOutputs': {'should': [1]}},
+     'As above with PSBT_OUT_TAP_BIP32_DERIVATION naming the BIP-86 first change key. If reviewed, MUST be a payment and '
+     'SHOULD be reported as claimed; refusing outright also meets SP-REV-7.',
+     p, {'verdictIn': ['allow', 'refuse'],
+         'ifAllowed': {'outputs': kinds(outputs_of(p)), 'claimedOutputs': {'should': [1]}}},
      [SRC_KIND, SRC_ADDR, 'claim: x-only key from BIP-86 line 113'])
 
 for idx in (99, 100, 999):

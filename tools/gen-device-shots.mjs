@@ -44,6 +44,10 @@ const OUT = join(ROOT, 'apps/web/public/device')
 const PORT = await freePort()
 const DEBUG = 9229
 const check = process.argv.includes('--check')
+/** SHA-256 of MANIFEST.lock: the root the device and the site both print. */
+const MANIFEST_ROOT = createHash('sha256')
+  .update(readFileSync(join(ROOT, 'MANIFEST.lock')))
+  .digest('hex')
 
 /**
  * The screens the site shows, in the order the argument needs them.
@@ -194,6 +198,10 @@ async function main() {
   }
   const stamp = {
     bundle: bundle.digest('hex'),
+    // The lock screen shows this root (see SHOT_ROOT in the gallery), so a
+    // shot made before the manifest moved shows a root this build does not
+    // have, and the site would print the two side by side.
+    root: MANIFEST_ROOT,
     platform: `${process.platform}-${process.arch}`,
     browser: String(product),
     screens: SCREENS.map((s) => s.as).join(','),
@@ -210,7 +218,7 @@ async function main() {
     await cdp(page, 'Page.navigate', {
       // `as=shot`: the realistic fixture rather than the worst-case header the
       // layout checks measure. See the comment where the gallery reads it.
-      url: `http://127.0.0.1:${String(PORT)}/?screen=${screen.name}&as=shot`,
+      url: `http://127.0.0.1:${String(PORT)}/?screen=${screen.name}&as=shot&root=${MANIFEST_ROOT}`,
     })
     await sleep(1200)
     /*
@@ -292,6 +300,17 @@ async function main() {
     // of, hashed. If it moved and the images did not, the site is showing a
     // device that has been redesigned since, and that is true whatever machine
     // is asking.
+    if (previous.root !== stamp.root) {
+      console.error(
+        'gen-device-shots: the manifest root has moved since these screenshots were made.\n'
+      )
+      console.error(
+        `  the lock screen shows  ${String(previous.root ?? '(no root recorded)').slice(0, 16)}`
+      )
+      console.error(`  MANIFEST.lock is now   ${stamp.root.slice(0, 16)}`)
+      console.error('\n  Regenerate with "make device-shots" after "make manifest".\n')
+      finish(1)
+    }
     if (previous.bundle !== stamp.bundle || previous.screens !== stamp.screens) {
       console.error(
         'gen-device-shots: the frontend has changed since these screenshots were made.\n'

@@ -86,6 +86,25 @@ export interface LogEntry {
   readonly date: string
   /** Markdown, as written: bold and code spans only. */
   readonly text: string
+  /**
+   * The first sentence, which CHANGELOG.md's preamble asks to say what is true
+   * now. The home page shows it alone and the status page sets it as the
+   * entry's headline, so an entry that opens with the bug reads as an open bug.
+   */
+  readonly headline: string
+  /** Everything after the headline, possibly empty. */
+  readonly rest: string
+  /**
+   * About this website or its console rather than the device, the profile or
+   * the kit: the entry names nullroute.diy. Both pages leave these out.
+   */
+  readonly site: boolean
+}
+
+/** Splits after a sentence's full stop, never inside a code span's `e.g.` or a version. */
+function splitHeadline(text: string): { headline: string; rest: string } {
+  const [headline = text, ...rest] = text.split(/(?<=[.!?])\s+(?=[A-Z`])/)
+  return { headline, rest: rest.join(' ') }
 }
 
 /**
@@ -101,7 +120,13 @@ export function readLog(): readonly LogEntry[] {
   for (const block of text.split('\n- ').slice(1)) {
     const match = /^\*\*(\d{4}-\d{2}-\d{2})\*\*\s+([\s\S]+?)(?:\n\n|\n##|$)/.exec(block)
     if (match === null) continue
-    entries.push({ date: match[1] ?? '', text: (match[2] ?? '').replace(/\s*\n\s*/g, ' ').trim() })
+    const text = (match[2] ?? '').replace(/\s*\n\s*/g, ' ').trim()
+    entries.push({
+      date: match[1] ?? '',
+      text,
+      ...splitHeadline(text),
+      site: text.includes('nullroute.diy'),
+    })
   }
   if (entries.length === 0)
     throw new Error('nullroute.diy: read no dated entries from CHANGELOG.md.')

@@ -59,7 +59,7 @@ section says which.
 | Threat | Mitigation | Invariant |
 | --- | --- | --- |
 | Malicious or compromised RNG | Dice-only entropy path whose derivation you can reproduce by hand, and an HKDF combiner for dice plus machine entropy that a stuck second source cannot weaken | INV-DICE-1..3, INV-ENT-4 |
-| Key exfiltration through signature nonces | RFC 6979 deterministic ECDSA, BIP-340 Schnorr with `aux_rand` fixed to 32 zero bytes, and ECDSA signatures checked byte for byte against libsecp256k1 (`make test-repro`). No Schnorr signature is compared with another implementation | INV-SIG-1, INV-SIG-2 |
+| Key exfiltration through signature nonces | RFC 6979 deterministic ECDSA, BIP-340 Schnorr with `aux_rand` fixed to 32 zero bytes, ECDSA signatures checked byte for byte against libsecp256k1 (`make test-repro`), and ECDSA and Schnorr signatures for six transactions equal to Bitcoin Core's (`sign-deterministic.json`, `make conformance`) | INV-SIG-1, INV-SIG-2 |
 | Change address substitution in a malicious PSBT | Every change output re-derived from a registered descriptor and compared exactly | INV-PSBT-2 |
 | Fee drain | Fee derived from inputs minus outputs and shown in sats, BTC, sat/vB, and as a percentage of spend, with a warning above a threshold (a warning, not a block). A segwit v0 input whose PSBT does not carry the transaction it spends blocks until overridden, because its amount could be understated | INV-PSBT-4, INV-PSBT-5, INV-PSBT-17 |
 | Sighash abuse | Any flag other than `SIGHASH_ALL` or `SIGHASH_DEFAULT` blocks signing. The block, like every blocking warning, lifts only for a request that carries an explicit override for that one signature, and nothing stores it | INV-PSBT-3, INV-SIG-3 |

@@ -106,8 +106,10 @@ b = encoder(psbt10)
 two = [a.next_part().upper(), b.next_part().upper(), a.next_part().upper()]
 case('two-transfers',
      'Frame 1 of 1in20out.psbt, then frame 1 of 1in10out.psbt, then frame 2 of the first. Both are crypto-psbt at '
-     'the same fragment size; the message length and checksum in each part differ.',
-     two, {'verdict': 'refuse'},
+     'the same fragment size; the message length and checksum in each part differ. A receiver that refuses the '
+     'foreign part and keeps scanning is incomplete after these three frames; one that abandons the transfer has '
+     'refused it. Either meets SP-TX-7. Completing is the failure.',
+     two, {'verdictIn': ['refuse', 'incomplete']},
      [f'frames: UREncoder from {SS}', 'verdict: SP-TX-7, "MUST refuse a part whose sequence length, message '
       'length, checksum or fragment length differs from the transfer in progress"'])
 

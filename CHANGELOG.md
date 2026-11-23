@@ -8,8 +8,31 @@ tagged release will start them.
 The full history is `git log`. This file is the part of it worth reading
 first, and the website's status page renders it.
 
+The first sentence of each entry says what is true now, because the website
+shows it alone: an entry that opens with the bug reads there as a bug still
+open. An entry that names nullroute.diy is about the website and stays off its
+status and home pages.
+
 ## November 2026
 
+- **2026-11-23** The signer profile has its first portable signature vector,
+  and the kit has run against a signer this project did not write.
+  `sign-deterministic.json` (SP-SIG-1) gives the exact signature bytes for six
+  transactions, computed by Bitcoin Core's own test framework and wallet, with
+  every signed transaction accepted by Core's mempool. nullroute matches all
+  six, the first comparison of its Schnorr signatures with another
+  implementation. `make conformance-seedsigner` runs SeedSigner's own code at a
+  pinned commit (dice entry, the review screens, signing and its QR decoder)
+  against all 122 cases: 40 pass, 53 are findings, each listed with the lines
+  of SeedSigner's code that decide it, and 29 test things SeedSigner does not
+  have. Three findings changed the profile or its vectors: SP-SIG-1 now allows
+  RFC 6979 ground for a low R exactly as Bitcoin Core grinds, which is what
+  SeedSigner and Core's wallet produce; SP-REV-7 lets a signer refuse a false
+  change claim outright, as SeedSigner does; and a receiver that drops a
+  foreign UR part and keeps scanning now passes, as SP-TX-7's text always
+  allowed. Others stand: embit signs taproot without an `aux_rand`, so Core
+  cannot reproduce SeedSigner's taproot signatures, and no SeedSigner screen
+  shows the locktime or the sighash type.
 - **2026-11-21** The maintainer's console moved from a subdomain to
   nullroute.diy/admin. It is still its own server project, holding the
   database password and the mail key; the site's deploy passes `/admin`
@@ -26,12 +49,13 @@ first, and the website's status page renders it.
   device code. The site's CSP gains exactly one URL, the contact endpoint, and
   the page says what the form keeps. `make admin-live-check` asks the deployed
   console what a stranger would.
-- **2026-11-20** On a Pi, the daemon could never read the hardware RNG: the
-  kernel makes `/dev/hwrng` root only, the daemon is not root, and nothing in
-  the image said otherwise, so the entropy health check failed and a
-  machine-only seed was refused on every device. A udev rule now gives the
-  node to the daemon's group, read only (INV-PROV-36). Found by checking the
-  entropy guide against the code, before any card had booted on a Pi.
+- **2026-11-20** The daemon can read a Pi's hardware RNG, so the entropy
+  health check can pass on a device (INV-PROV-36). It never could: the kernel
+  makes `/dev/hwrng` root only, the daemon is not root, and nothing in the
+  image said otherwise, so a machine-only seed would have been refused on
+  every device. A udev rule now gives the node to the daemon's group, read
+  only. Found by checking the entropy guide against the code, before any card
+  had booted on a Pi.
 - **2026-11-20** The review shows BIP-68 relative locks (INV-PSBT-21). It read
   each input's sequence only for replaceability, so a spend that could not
   confirm for a month after its coin did was shown as merely replaceable.
@@ -84,9 +108,9 @@ first, and the website's status page renders it.
   two of the BIPs' published invalid descriptors used to parse and be refused
   only by the evaluator, and the device's own descriptor.parse method reported
   them as parsed.
-- **2026-10-28** The docs can be searched (the header, Ctrl K, Cmd K or "/"),
-  from an index this build writes, with nothing sent anywhere. Code blocks have
-  a copy button. The install guide opens with the three ways in, and the user
+- **2026-10-28** The docs on nullroute.diy can be searched (the header, Ctrl
+  K, Cmd K or "/"), from an index this build writes, with nothing sent
+  anywhere. Code blocks have a copy button. The install guide opens with the three ways in, and the user
   manual is a third shorter with every refusal kept. Condensing it surfaced
   seven statements the code contradicts, now corrected. Two were also on the
   device's own screens: five places offered an SD card transport that is not
@@ -100,15 +124,15 @@ first, and the website's status page renders it.
   sidebar, one page per section: 84 pages cut from the same repository files,
   keeping the anchors GitHub gives them, so every cross-reference resolves.
   The check, device and profile sub-pages folded into the docs, with redirects.
-- **2026-10-27** A heartbeat answered after the screen that sent it had gone
-  updated that screen anyway. Under test that threw "window is not defined"
-  into whichever file ran next, which is why `make ui-race` failed about one
-  run in several under load. The answer now updates nothing (INV-UI-98).
-- **2026-10-27** INV-PROV-13 says no wireless kernel module is on the card,
-  and the prune behind it removed 802.11 and Bluetooth only. Both kernels also
-  shipped a Realtek SDIO Wi-Fi driver in staging, 802.15.4, NFC, packet radio,
-  cellular modems, two FM transmitters and HackRF. All are removed now, and the
-  assertion's globs fail a card that still carries any of them.
+- **2026-10-27** A heartbeat answered after the screen that sent it has gone
+  now updates nothing (INV-UI-98). It used to update that screen anyway, and
+  under test that threw "window is not defined" into whichever file ran next,
+  which is why `make ui-race` failed about one run in several under load.
+- **2026-10-27** No radio driver of any kind is on the card, and INV-PROV-13's
+  globs fail a card that still carries one. The prune behind it had removed
+  802.11 and Bluetooth only, while both kernels also shipped a Realtek SDIO
+  Wi-Fi driver in staging, 802.15.4, NFC, packet radio, cellular modems, two FM
+  transmitters and HackRF.
 - **2026-10-27** The card carries a Pi 5 bring-up path beside the Pi 4's. A
   Pi 5 boots Raspberry Pi's 6.18.50 kernel, pinned by digest, because only that
   kernel drives the official 7 inch panel there; `config.txt` gives each board
@@ -135,7 +159,7 @@ first, and the website's status page renders it.
   the signer, the review screen's Sign button and the conformance adapter all
   call (INV-SIG-11). The signer had read `signable` alone; it now also holds a
   review that carries a blocking warning, as the screen already did.
-- **2026-10-26** The website is rebuilt as a report: every figure on it is read
+- **2026-10-26** nullroute.diy is rebuilt as a report: every figure on it is read
   from the repository at build time, the signer profile and conformance kit
   have their own pages, and every document states the SHA-256 of its source.
 - **2026-10-26** The conformance kit checks the single-use override

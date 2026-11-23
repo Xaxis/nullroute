@@ -47,6 +47,15 @@ export const name = 'nullroute (packages/*/dist in this checkout)'
  */
 export const changeSearchBound = 100
 
+/**
+ * The ECDSA nonce scheme (SP-SIG-1): plain RFC 6979, no grinding for a low R.
+ * packages/core/src/psbt/sign.ts signs through @scure/btc-signer's `signIdx`
+ * on a Transaction parsed without the `lowR` option, so its default (off)
+ * applies. That option would not give Bitcoin Core's bytes anyway: its first
+ * retry uses 32 zero bytes of additional data where Core uses LE32(1).
+ */
+export const ecdsaNonces = 'rfc6979'
+
 const toHex = (bytes) => Buffer.from(bytes).toString('hex')
 
 // --- entropy -------------------------------------------------------------------

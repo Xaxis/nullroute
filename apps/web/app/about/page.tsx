@@ -1,4 +1,4 @@
-import { Emblem } from '../../components/stage/Emblem'
+import { ExitScene } from '../../components/stage/ExitScene'
 import { PageStage } from '../../components/stage/PageStage'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -60,13 +60,13 @@ const FACTS: readonly (readonly [string, ReactNode])[] = [
   ['State', 'Pre-release, unaudited'],
   ['Next', 'Hardware bring-up on a Pi\u00a05 and a Pi\u00a04'],
   [
-    'A flaw',
+    'Security reports',
     <A key="f" href="/docs/security">
       Security policy
     </A>,
   ],
   [
-    'Anything else',
+    'Contact',
     <A key="c" href="/contact">
       Contact
     </A>,
@@ -76,18 +76,19 @@ const FACTS: readonly (readonly [string, ReactNode])[] = [
 export default function AboutPage() {
   return (
     <>
-      <PageStage title="About nullroute" scene={<Emblem />}>
+      <PageStage title="About nullroute" scene={<ExitScene />}>
         <p className="mt-5 max-w-[60ch] text-[1.125rem] leading-relaxed text-body">
           nullroute is written in public by one maintainer under the MIT licence. This page says who
           that is, what happens to your funds if the project stops, and where help would make the
           most difference.
         </p>
       </PageStage>
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 pt-14 sm:pt-16">
+      {/* The stage's edge is the first rule, so nothing under it draws another. */}
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="grid gap-x-16 lg:grid-cols-[minmax(0,1fr)_16rem]">
           <aside
             aria-label="The project at a glance"
-            className="border-t border-line py-10 lg:order-last lg:sticky lg:top-16 lg:self-start lg:py-14"
+            className="border-b border-line py-10 lg:order-last lg:sticky lg:top-16 lg:self-start lg:border-b-0 lg:py-14"
           >
             <dl className="grid grid-cols-2 gap-x-6 gap-y-5 text-[0.9375rem] lg:grid-cols-1">
               {FACTS.map(([term, value]) => (
@@ -100,7 +101,7 @@ export default function AboutPage() {
               ))}
             </dl>
           </aside>
-          <div className="min-w-0">
+          <div className="min-w-0 [&>section:first-child]:border-t-0">
             <Section title="Who maintains it" id="who">
               <Prose>
                 <p>

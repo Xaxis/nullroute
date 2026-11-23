@@ -2,7 +2,7 @@
 
 Workstream E. A plain-language summary for a reader who knows Bitcoin and has
 never seen this project. Every number below says where it came from. Numbers
-from a command were produced on 20 November 2026, on the tree of the commit
+from a command were produced on 23 November 2026, on the tree of the commit
 that last changed this file (`git log -1 -- research/proposal-summary.md`).
 
 ## Status
@@ -89,10 +89,10 @@ Output of `make verify` on this branch:
 | Check | Result |
 | --- | --- |
 | Coverage | 273 of 273 runtime exports of `packages/core` named by a spec |
-| Invariants | 355 invariants bound to 1061 tests, each of which ran and passed; 1383 tests in the suite |
-| Vectors | 38 of 38 vector files match their pinned hash |
+| Invariants | 355 invariants bound to 1061 tests, each of which ran and passed; 1385 tests in the suite |
+| Vectors | 39 of 39 vector files match their pinned hash |
 | Differential | 3 modules cross-checked against `bitcoinjs-lib` |
-| Integrity | 439 files, root `00c5ad50413e70b94895eb05dd48a3ff81774b598889cb0825ad88881f8db943`, and no tracked file under those paths left out |
+| Integrity | 440 files, root `b77d91db6feffbd2bbe13f70f622be986ddf508354fdcd7f21696869016bf14d`, and no tracked file under those paths left out |
 
 Totals: 39 specs, 355 invariants. The README badges state the same two numbers,
 and `make badges` checks that they match.
@@ -116,7 +116,7 @@ $ git ls-files -z package.json package-lock.json packages spec provisioning | LC
 ```
 
 For this summary the three were run with GNU coreutils 9.4 on Linux, after an
-earlier check with macOS `shasum -a 256`. All 439 files
+earlier check with macOS `shasum -a 256`. All 440 files
 matched, and both roots were the value in the table above.
 
 The screen also says what the number does not prove. It is drawn by the software
@@ -139,8 +139,10 @@ e56403e8522ddeae1b44a1e8148b1ba4d3b4c626ccf20980056eedcc7e0c0f35  -
 
 Signatures are deterministic: RFC 6979 for ECDSA, and BIP-340 with `aux_rand`
 fixed to 32 zero bytes. Anyone holding the seed can recompute every signature
-byte for byte. The cost is the fault-injection resistance that random
-`aux_rand` would add, and the threat model states that trade.
+byte for byte, and for the six transactions in `sign-deterministic.json`
+Bitcoin Core's own code writes the same bytes. The cost is the
+fault-injection resistance that random `aux_rand` would add, and the threat
+model states that trade.
 
 ### A draft signer profile, and a kit to check any signer against it
 
@@ -155,11 +157,12 @@ UNTESTABLE with the reason.
 [`conformance/`](../conformance/README.md) turns the testable part into
 something a second implementation can run:
 
-- **Vectors.** Thirteen JSON files, 116 cases, in
+- **Vectors.** Fourteen JSON files, 122 cases, in
   [`spec/vectors/signer-profile/`](../spec/vectors/signer-profile/SHA256SUMS),
   pinned by a `SHA256SUMS` file that coreutils can check.
-- **Expected values from outside nullroute.** Bitcoin Core 31.1 on regtest, the
-  BIP texts, `printf | sha256sum`, Coinkite's reference BBQr code plus a real
+- **Expected values from outside nullroute.** Bitcoin Core 31.1 on regtest,
+  its Python test framework and its wallet (for signature bytes), the BIP
+  texts, `printf | sha256sum`, Coinkite's reference BBQr code plus a real
   Coldcard scan, and SeedSigner's own UR encoder. None was produced by running
   nullroute.
 - **A runner.** [`conformance/run.mjs`](../conformance/run.mjs) uses Node
@@ -173,7 +176,33 @@ Another project's signer, written in another language for other hardware, can
 claim conformance by passing the vectors. The vectors are JSON and can be read
 from any language. The reference runner expects a JavaScript adapter, so a
 signer written in something else needs a thin bridge, for example a
-subprocess call. Nobody has written a second adapter yet.
+subprocess call.
+
+### The kit run against a signer this project did not write
+
+`make conformance-seedsigner` runs SeedSigner's own Python, at commit
+`088b144e` with embit 0.8.0 installed from SeedSigner's hash-pinned
+requirements, against all 122 cases. The bridge
+([`conformance/adapters/seedsigner/bridge.py`](../conformance/adapters/seedsigner/bridge.py))
+calls the functions SeedSigner's screens call, in their order, and its review
+reports only what SeedSigner's screens draw. Result: 40 pass, 53 are listed
+findings, and 29 test things SeedSigner does not have (a manifest, BBQr
+writing, a bit count on the dice screen). The adapter was written by this
+project, not by SeedSigner's maintainers, and has not been checked by them.
+
+| Finding | What it did |
+| --- | --- |
+| SeedSigner grinds ECDSA nonces for a low R exactly as Bitcoin Core does, and SP-SIG-1 said only "RFC 6979" | Changed the profile: both schemes are allowed, and the signer says which |
+| embit signs taproot with no `aux_rand`, skipping BIP-340's mask | Stands: Core cannot reproduce SeedSigner's taproot signatures. A report to embit is drafted |
+| 24 words from exactly 99 rolls | An open question for review (SP-ENT-3) |
+| A derivation record naming the seed's key is trusted without checking the key is in the script, which SeedSigner documents as harmless | An open question for review (SP-REV-25) |
+| The signed PSBT keeps only the signatures | An open question: whether a signature-only reply meets SP-REV-11 |
+| Input amounts come from the witness UTXO alone | An open question (SP-REV-3) |
+| A false change claim is refused outright, where the vector asked for it shown as a payment; a foreign UR part is dropped, where the vector asked for the transfer refused | Changed the profile and a vector: refusing is allowed by SP-REV-7, and SP-TX-7's vector accepts either |
+| No screen shows the locktime, replaceability or sighash type | Gaps against SP-REV-8 and SP-REV-9. embit never signs a non-ALL input, so the sighash gap is not a loss |
+
+Each case and the SeedSigner line that decides it is in
+[`conformance/known-failures/seedsigner.json`](../conformance/known-failures/seedsigner.json).
 
 ## What is done and verified
 
@@ -186,7 +215,8 @@ Raspberry Pi, and it does not mean reviewed by anyone but the author.
 | BIP-32, BIP-39, BIP-84, BIP-86, BIP-174, BIP-143, BIP-340, BIP-341, BIP-370 and BIP-380 to 386 | `make test-vectors`; `make verify` checks the pins | Vectors from the BIPs, vendored in [`spec/vectors/`](../spec/vectors/bip32.json): BIP-32 vectors 1 to 5, all 24 English BIP-39 vectors, the BIP-84 and BIP-86 addresses, BIP-380's checksums and key expressions, BIP-381 to 386's descriptors, and the PSBT, signing and sighash vectors. BIP-370's version 2 PSBTs are refused by decision |
 | Derivation, addresses and signatures agree with a second implementation | `make test-differential` | `bitcoinjs-lib` |
 | Signatures are deterministic | `make test-repro` signs one PSBT 100 times | Byte comparison against libsecp256k1 |
-| The signer profile's testable requirements | `make conformance`: all 116 cases pass, no SHOULD is missed | Bitcoin Core 31.1 regtest, BIP texts, coreutils, Coinkite's BBQr code |
+| Signatures match an outside implementation, ECDSA and Schnorr | `sign-deterministic.json` in `make conformance`: six transactions, every byte | Bitcoin Core 31.1's test framework and wallet; every signed transaction accepted by Core's mempool |
+| The signer profile's testable requirements | `make conformance`: all 122 cases pass, no SHOULD is missed | Bitcoin Core 31.1 regtest, BIP texts, coreutils, Coinkite's BBQr code |
 | A wallet can be recovered and spent without nullroute | `make test-recovery-drill` (INV-INTEROP-1) | Bitcoin Core on regtest |
 | The manifest root is recomputable | The three commands above | coreutils (`shasum` on macOS) |
 | Dice to seed | INV-DICE-1 to INV-DICE-8, and `dice-to-entropy.json` | `printf \| sha256sum`; BIP-39 checked against the Trezor vectors |
@@ -240,7 +270,7 @@ and Jade read only `crypto-psbt` ([ur-notes](ur-notes.md)).
 | Locktime when every input is final | Closed. The review reports such a locktime as ignored, never as a delay (INV-PSBT-20), SP-REV-9 is amended, and a vector carries Bitcoin Core's own mempool acceptance as evidence (`dba42bd`) |
 | PSBT version 2 | Closed by decision. Every PSBT BIP-370 publishes is refused at parse with a message asking for version 0 (INV-PSBT-19, `0d8e94f`) |
 | Published BIP vectors not included | Closed. BIP-174, 143, 340, 341 and 370, BIP-32 vector 5, BIP-380's key expressions and BIP-381 to 386's descriptors are all in `spec/vectors/`. Running the last three found four bugs, fixed in `09dce4c`. Kinds the device does not derive are asserted case by case ([handoff-D, SP-DEP-1 table](handoff-D.md#bip-vectors-for-sp-dep-1)) |
-| Portable vectors for SP-REV-1 and SP-SIG-1 | Checked by nullroute's own tests only |
+| Portable vectors for SP-REV-1 and SP-SIG-1 | SP-SIG-1 closed: `sign-deterministic.json`, from Core's test framework and wallet. SP-REV-1 is still checked by nullroute's own tests only |
 | The adapter repeats one piece of UI logic | `maySign` in `PsbtScreen.tsx`, so a UI change the adapter does not follow would go unnoticed |
 | Tools not run | Closed. The vectors were regenerated on Linux with GNU coreutils 9.4 and glibc 2.39; every expected value was unchanged, and glibc's locale order added a third forbidden manifest root (`6a69590`) |
 
@@ -327,8 +357,8 @@ owned.
 | Need | Why code cannot supply it |
 | --- | --- |
 | Outside cryptographic and code review | `make verify` proves the code matches its specs. Whether the specs describe a secure design is a human judgement, and so far only the author has made it |
-| A second, independent implementation of the profile | Vectors catch a shared mistake only where the expected value came from outside both implementations. A second signer, on other hardware and in another language, is the test of whether the profile is implementable as written |
-| Discussion on bitcoin-dev and Delving Bitcoin | The profile takes positions others may reject: 100 rolls where three products accept 99, a blocking rule for segwit v0 inputs, and signatures with `aux_rand` fixed to zero. Those need argument from people who build signers and coordinators |
+| A second, independent implementation of the profile | Vectors catch a shared mistake only where the expected value came from outside both implementations. SeedSigner's code now runs against the kit, through an adapter this project wrote; its maintainers checking that adapter, and a signer adopting the profile on purpose, are the test of whether it is implementable as written |
+| Discussion on bitcoin-dev and Delving Bitcoin | The profile takes positions others may reject: 100 rolls where three products accept 99, a blocking rule for segwit v0 inputs, signatures with `aux_rand` fixed to zero, and refusing a derivation record SeedSigner judges harmless. Those need argument from people who build signers and coordinators |
 | Coordinator authors testing interoperability | No coordinator has read nullroute's multi-frame QR output with a camera. The kit stands in with Coinkite's reference code, a Coldcard scan and SeedSigner's own UR code, and `spec/interop/` holds 43 real exports from other wallets and Bitcoin Core that nullroute's import is tested against |
 | Hardware bring-up | Someone with the board, the panel and the camera has to boot the card, then record what the panel, touch, camera and network interfaces actually do |
 

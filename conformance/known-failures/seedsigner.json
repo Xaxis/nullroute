@@ -1,0 +1,615 @@
+{
+  "adapter": "conformance/adapters/seedsigner.mjs",
+  "about": "Cases SeedSigner 088b144e (embit 0.8.0) fails, each with the code that decides it. These are findings, not waivers, and several are questions for the profile rather than faults in SeedSigner: the profile is a draft, and where SeedSigner made a deliberate, documented choice the reason says so. The runner fails if any of these starts passing, so the list follows SeedSigner as it changes.",
+  "failures": [
+    {
+      "file": "dice-to-entropy.json",
+      "case": "published-worked-example",
+      "check": "verdict",
+      "requirement": "SP-ENT-3",
+      "reason": "100 rolls cannot be entered: ToolsDiceEntropyEntryView returns after exactly 50 or 99 (views/tools_views.py line 272, helpers/mnemonic_generation.py lines 17-18). The encoding is the profile's, SHA-256 of the ASCII rolls; only the count differs. Open question for the profile: 99 rolls give 255.91 bits"
+    },
+    {
+      "file": "dice-to-entropy.json",
+      "case": "one-hundred-sixes",
+      "check": "verdict",
+      "requirement": "SP-ENT-3",
+      "reason": "As published-worked-example: the entry screen takes exactly 99 rolls for 24 words"
+    },
+    {
+      "file": "dice-to-entropy.json",
+      "case": "one-hundred-and-one-rolls",
+      "check": "verdict",
+      "requirement": "SP-ENT-3",
+      "reason": "As published-worked-example: no count other than 50 or 99 can be entered"
+    },
+    {
+      "file": "dice-to-entropy.json",
+      "case": "one-hundred-and-fifty-rolls",
+      "check": "verdict",
+      "requirement": "SP-ENT-3",
+      "reason": "As published-worked-example: no count other than 50 or 99 can be entered"
+    },
+    {
+      "file": "dice-to-entropy.json",
+      "case": "one-thousand-rolls",
+      "check": "verdict",
+      "requirement": "SP-ENT-3",
+      "reason": "As published-worked-example: no count other than 50 or 99 can be entered"
+    },
+    {
+      "file": "dice-to-entropy.json",
+      "case": "ninety-nine-rolls",
+      "check": "verdict",
+      "requirement": "SP-ENT-3",
+      "reason": "99 rolls is SeedSigner's 24-word count (DICE__NUM_ROLLS__24WORD), which the profile refuses because floor(99 log2 6) is 255 bits. The same question as above, from the other side"
+    },
+    {
+      "file": "review-ownership.json",
+      "case": "foreign-input-with-our-derivation-claim",
+      "check": "verdict",
+      "requirement": "SP-REV-25",
+      "reason": "Deliberate and documented: PSBTParser trusts a derivation record whose key the seed derives without checking that the key is in the input's script, and models/psbt_parser.py lines 1113-1116 explain why it judges that harmless (the key cannot spend the input). The profile says MUST NOT sign; which is right is a question for the profile's review"
+    },
+    {
+      "file": "review-ownership.json",
+      "case": "sign-only-the-owned-input",
+      "check": "verdict",
+      "requirement": "SP-REV-25",
+      "reason": "Not the ownership rule: the case's owned input is taproot and its foreign input segwit v0, and PSBTParser refuses any transaction whose inputs mix script types (models/psbt_parser.py line 337)"
+    },
+    {
+      "file": "review-unknown-fields.json",
+      "case": "unknown-pairs-survive-signing",
+      "check": "preserved.global.a00102",
+      "requirement": "SP-REV-11",
+      "reason": "By design: PSBTParser.trim returns a new PSBT holding only the unsigned transaction and each input's signatures or final witness (models/psbt_parser.py lines 636-647), so the signed QR is small and the coordinator combines. Open question for the profile: whether a signer that returns only its signatures meets SP-REV-11"
+    },
+    {
+      "file": "review-unknown-fields.json",
+      "case": "unknown-pairs-survive-signing",
+      "check": "preserved.input.a00304",
+      "requirement": "SP-REV-11",
+      "reason": "As preserved.global.a00102"
+    },
+    {
+      "file": "review-unknown-fields.json",
+      "case": "unknown-pairs-survive-signing",
+      "check": "preserved.output.a00506",
+      "requirement": "SP-REV-11",
+      "reason": "As preserved.global.a00102"
+    },
+    {
+      "file": "review-unknown-fields.json",
+      "case": "unknown-pairs-survive-signing",
+      "check": "preserved.input.fc056e756c6c730001",
+      "requirement": "SP-REV-11",
+      "reason": "As preserved.global.a00102"
+    },
+    {
+      "file": "sign-deterministic.json",
+      "case": "schnorr-key-path",
+      "check": "signature-bytes.0",
+      "requirement": "SP-SIG-1",
+      "reason": "embit 0.8.0 signs BIP-340 with no aux_rand at all, deriving the nonce from the key unmasked (embit/util/key.py sign_schnorr when aux is None; its bundled libsecp256k1 does the same). BIP-340 masks the key with hash_BIP0340/aux(a) for a 32-byte a, and Bitcoin Core 31.1 signs with a of 32 zero bytes, so Core cannot reproduce these signatures. They are valid and deterministic"
+    },
+    {
+      "file": "sign-deterministic.json",
+      "case": "schnorr-two-keys",
+      "check": "signature-bytes.0",
+      "requirement": "SP-SIG-1",
+      "reason": "As schnorr-key-path"
+    },
+    {
+      "file": "sign-deterministic.json",
+      "case": "schnorr-two-keys",
+      "check": "signature-bytes.1",
+      "requirement": "SP-SIG-1",
+      "reason": "As schnorr-key-path"
+    },
+    {
+      "file": "sign-deterministic.json",
+      "case": "mixed-ecdsa-and-schnorr",
+      "check": "verdict",
+      "requirement": "SP-SIG-1",
+      "reason": "Not the signature rule: PSBTParser refuses inputs of mixed script types (models/psbt_parser.py line 337). Its ECDSA signatures in the other cases match the low-R bytes"
+    },
+    {
+      "file": "sign-override.json",
+      "case": "unconfirmed-amount-lifted-for-one-signature",
+      "check": "without-override",
+      "requirement": "SP-REV-3",
+      "reason": "SeedSigner signs a segwit v0 input whose amount comes only from PSBT_IN_WITNESS_UTXO, and has no override to hold it behind. The profile treats that amount as the coordinator's word (BIP-174 line 415)"
+    },
+    {
+      "file": "sign-override.json",
+      "case": "unconfirmed-amount-lifted-for-one-signature",
+      "check": "not-stored",
+      "requirement": "SP-REV-22",
+      "reason": "Follows from without-override: it signs the third time for the same reason it signed the first, not because an override was kept"
+    },
+    {
+      "file": "review-change.json",
+      "case": "genuine-change-segwit-v0",
+      "check": "output 1.address",
+      "requirement": "SP-REV-5",
+      "reason": "The change screen draws the address on one line as its first and last seven characters around \"...\" (gui/screens/psbt_screens.py lines 713-716, gui/components.py lines 951-983), beside \"Address verified!\" (psbt_screens.py lines 719-730), so the full address is never shown. SeedSigner has already proved the output is the seed's by re-deriving its script (models/psbt_parser.py lines 500-520). SP-REV-5 says no address may be elided; whether a re-derived change address must be shown in full is a question for the profile"
+    },
+    {
+      "file": "review-change.json",
+      "case": "genuine-change-segwit-v0",
+      "check": "output 1.changePath",
+      "requirement": "SP-REV-6",
+      "reason": "The change screen shows the branch and the last index, \"change address #0\" (gui/screens/psbt_screens.py lines 692-703), not the path. The full path is passed to the screen (views/psbt_views.py line 455) and not drawn. SP-REV-6 asks for the path beside the output"
+    },
+    {
+      "file": "review-change.json",
+      "case": "genuine-change-taproot",
+      "check": "output 1.kind",
+      "requirement": "SP-REV-6",
+      "reason": "PSBTParser looks for change only among outputs whose script type matches the inputs' (models/psbt_parser.py lines 351-354 and 413, _policy_shape_matches lines 709-725). This wallet spends a p2wpkh input to a p2tr change address, so the change is shown as a payment, with its full address. The cautious direction; the vector expects every output the seed re-derives to be change"
+    },
+    {
+      "file": "review-change.json",
+      "case": "change-without-derivation-record",
+      "check": "output 1.kind",
+      "requirement": "SP-REV-6",
+      "reason": "SeedSigner checks for change only at the path an output's derivation record names, and an output with no record \"will be considered an external spend\" (models/psbt_parser.py lines 449-457). The record cannot make an output change by itself, since the script is re-derived and compared (lines 500-520), but it decides which outputs are checked. SP-REV-6 says no PSBT field may contribute to the change label"
+    },
+    {
+      "file": "review-change.json",
+      "case": "change-at-index-99",
+      "check": "output 1.address",
+      "requirement": "SP-REV-5",
+      "reason": "As genuine-change-segwit-v0 output 1.address"
+    },
+    {
+      "file": "review-change.json",
+      "case": "change-at-index-99",
+      "check": "output 1.changePath",
+      "requirement": "SP-REV-6",
+      "reason": "As genuine-change-segwit-v0 output 1.changePath"
+    },
+    {
+      "file": "review-change.json",
+      "case": "change-at-index-100",
+      "check": "output 1.address",
+      "requirement": "SP-REV-5",
+      "reason": "As genuine-change-segwit-v0 output 1.address"
+    },
+    {
+      "file": "review-change.json",
+      "case": "change-at-index-100",
+      "check": "output 1.changePath",
+      "requirement": "SP-REV-6",
+      "reason": "As genuine-change-segwit-v0 output 1.changePath"
+    },
+    {
+      "file": "review-change.json",
+      "case": "change-at-index-999",
+      "check": "output 1.address",
+      "requirement": "SP-REV-5",
+      "reason": "As genuine-change-segwit-v0 output 1.address"
+    },
+    {
+      "file": "review-change.json",
+      "case": "change-at-index-999",
+      "check": "output 1.changePath",
+      "requirement": "SP-REV-6",
+      "reason": "As genuine-change-segwit-v0 output 1.changePath"
+    },
+    {
+      "file": "review-change.json",
+      "case": "payment-to-own-receive-address",
+      "check": "output 1.address",
+      "requirement": "SP-REV-5",
+      "reason": "As genuine-change-segwit-v0 output 1.address"
+    },
+    {
+      "file": "review-change.json",
+      "case": "payment-to-own-receive-address",
+      "check": "output 1.changePath",
+      "requirement": "SP-REV-6",
+      "reason": "As genuine-change-segwit-v0 output 1.changePath"
+    },
+    {
+      "file": "review-fee-and-amounts.json",
+      "case": "fee-one-input",
+      "check": "output 1.address",
+      "requirement": "SP-REV-5",
+      "reason": "As genuine-change-segwit-v0 output 1.address in review-change.json"
+    },
+    {
+      "file": "review-fee-and-amounts.json",
+      "case": "fee-one-input",
+      "check": "output 1.changePath",
+      "requirement": "SP-REV-6",
+      "reason": "As genuine-change-segwit-v0 output 1.changePath in review-change.json"
+    },
+    {
+      "file": "review-fee-and-amounts.json",
+      "case": "fee-two-input-types",
+      "check": "verdict",
+      "requirement": "SP-REV-4",
+      "reason": "Not the fee rule: the inputs are segwit v0 and taproot, and PSBTParser refuses inputs of mixed script types (models/psbt_parser.py line 337). PSBTOverviewView does not catch that RuntimeError (views/psbt_views.py lines 101-136), so it ends at the System Error screen (controller.py lines 324-328)"
+    },
+    {
+      "file": "review-fee-and-amounts.json",
+      "case": "fee-two-input-types",
+      "check": "fee",
+      "requirement": "SP-REV-4",
+      "reason": "Follows from verdict: no review is shown"
+    },
+    {
+      "file": "review-fee-and-amounts.json",
+      "case": "fee-two-input-types",
+      "check": "output 0",
+      "requirement": "SP-REV-4",
+      "reason": "As fee"
+    },
+    {
+      "file": "review-fee-and-amounts.json",
+      "case": "fee-two-input-types",
+      "check": "output 1",
+      "requirement": "SP-REV-4",
+      "reason": "As fee"
+    },
+    {
+      "file": "review-fee-and-amounts.json",
+      "case": "outputs-exceed-inputs",
+      "check": "verdict",
+      "requirement": "SP-REV-4",
+      "reason": "Nothing checks the sign of the fee. fee_amount is embit's psbt.fee(), inputs minus outputs (models/psbt_parser.py line 631; embit/psbt.py lines 686-689), and the only test on it is the high fee warning (psbt_parser.py lines 1228-1240). The math screen draws -10000000 sats (gui/screens/psbt_screens.py lines 588-598) and Approve signs. SP-REV-4 says outputs above inputs MUST be refused"
+    },
+    {
+      "file": "review-input-amounts.json",
+      "case": "segwit-v0-witness-utxo-only",
+      "check": "verdict",
+      "requirement": "SP-REV-3",
+      "reason": "As unconfirmed-amount-lifted-for-one-signature in sign-override.json: PSBTParser takes a segwit v0 input's amount from PSBT_IN_WITNESS_UTXO (models/psbt_parser.py lines 325-326), nothing asks for the previous transaction, and Approve signs"
+    },
+    {
+      "file": "review-input-amounts.json",
+      "case": "witness-utxo-contradicts-previous-transaction",
+      "check": "verdict",
+      "requirement": "SP-REV-3",
+      "reason": "PSBTParser reads the amount from PSBT_IN_WITNESS_UTXO whenever one is present (models/psbt_parser.py lines 325-326), and so does embit's psbt.fee() (embit/psbt.py lines 676-689), so the PSBT_IN_NON_WITNESS_UTXO that contradicts it is never read. The review shows a fee of -9990000 sats and Approve signs"
+    },
+    {
+      "file": "review-input-amounts.json",
+      "case": "previous-transaction-txid-mismatch",
+      "check": "verdict",
+      "requirement": "SP-REV-3",
+      "reason": "Nothing compares PSBT_IN_NON_WITNESS_UTXO with the input's prevout: embit does so only in verify() (embit/psbt.py lines 224-243 and 671-674), which nothing under src/seedsigner calls, and the amount comes from PSBT_IN_WITNESS_UTXO (models/psbt_parser.py lines 325-326). Approve signs"
+    },
+    {
+      "file": "review-input-amounts.json",
+      "case": "taproot-signer-foreign-segwit-v0-witness-only",
+      "check": "verdict",
+      "requirement": "SP-REV-3",
+      "reason": "Not the amount rule: the inputs are taproot and segwit v0, and PSBTParser refuses inputs of mixed script types (models/psbt_parser.py line 337), ending at the System Error screen (controller.py lines 324-328). The profile permits allow here"
+    },
+    {
+      "file": "review-input-amounts.json",
+      "case": "one-of-two-segwit-v0-unverified",
+      "check": "verdict",
+      "requirement": "SP-REV-3",
+      "reason": "As segwit-v0-witness-utxo-only"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "taproot-default",
+      "check": "sighash.outputs",
+      "requirement": "SP-REV-8",
+      "reason": "No screen shows the sighash type: nothing under src/seedsigner reads PSBT_IN_SIGHASH_TYPE. Approve calls embit's sign_with with its default (views/psbt_views.py line 746), which signs only inputs asking for ALL or DEFAULT and leaves the others unsigned (embit/psbt.py lines 919-977)"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "taproot-default",
+      "check": "sighash.otherInputsMayBeAdded",
+      "requirement": "SP-REV-8",
+      "reason": "As sighash.outputs"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "segwit-v0-all",
+      "check": "sighash.outputs",
+      "requirement": "SP-REV-8",
+      "reason": "As taproot-default sighash.outputs"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "segwit-v0-all",
+      "check": "sighash.otherInputsMayBeAdded",
+      "requirement": "SP-REV-8",
+      "reason": "As taproot-default sighash.outputs"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "taproot-all",
+      "check": "sighash.outputs",
+      "requirement": "SP-REV-8",
+      "reason": "As taproot-default sighash.outputs"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "taproot-all",
+      "check": "sighash.otherInputsMayBeAdded",
+      "requirement": "SP-REV-8",
+      "reason": "As taproot-default sighash.outputs"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "two-inputs-both-all",
+      "check": "sighash.outputs",
+      "requirement": "SP-REV-8",
+      "reason": "As taproot-default sighash.outputs"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "two-inputs-both-all",
+      "check": "sighash.otherInputsMayBeAdded",
+      "requirement": "SP-REV-8",
+      "reason": "As taproot-default sighash.outputs"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "segwit-v0-none",
+      "check": "sighash.outputs",
+      "requirement": "SP-REV-8",
+      "reason": "As taproot-default sighash.outputs. The verdict passes only because Approve then ends at \"Signing Failed\": embit signs nothing (embit/psbt.py lines 969-977) and PSBTFinalizeView routes to PSBTSigningErrorView (views/psbt_views.py lines 749-753)"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "segwit-v0-none",
+      "check": "sighash.otherInputsMayBeAdded",
+      "requirement": "SP-REV-8",
+      "reason": "As sighash.outputs"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "segwit-v0-single",
+      "check": "sighash.outputs",
+      "requirement": "SP-REV-8",
+      "reason": "As taproot-default sighash.outputs. The verdict passes only because Approve then ends at \"Signing Failed\": embit signs nothing (embit/psbt.py lines 969-977) and PSBTFinalizeView routes to PSBTSigningErrorView (views/psbt_views.py lines 749-753)"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "segwit-v0-single",
+      "check": "sighash.otherInputsMayBeAdded",
+      "requirement": "SP-REV-8",
+      "reason": "As sighash.outputs"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "segwit-v0-all-anyonecanpay",
+      "check": "sighash.outputs",
+      "requirement": "SP-REV-8",
+      "reason": "As taproot-default sighash.outputs. The verdict passes only because Approve then ends at \"Signing Failed\": embit signs nothing (embit/psbt.py lines 969-977) and PSBTFinalizeView routes to PSBTSigningErrorView (views/psbt_views.py lines 749-753)"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "segwit-v0-all-anyonecanpay",
+      "check": "sighash.otherInputsMayBeAdded",
+      "requirement": "SP-REV-8",
+      "reason": "As sighash.outputs"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "segwit-v0-none-anyonecanpay",
+      "check": "sighash.outputs",
+      "requirement": "SP-REV-8",
+      "reason": "As taproot-default sighash.outputs. The verdict passes only because Approve then ends at \"Signing Failed\": embit signs nothing (embit/psbt.py lines 969-977) and PSBTFinalizeView routes to PSBTSigningErrorView (views/psbt_views.py lines 749-753)"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "segwit-v0-none-anyonecanpay",
+      "check": "sighash.otherInputsMayBeAdded",
+      "requirement": "SP-REV-8",
+      "reason": "As sighash.outputs"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "segwit-v0-single-anyonecanpay",
+      "check": "sighash.outputs",
+      "requirement": "SP-REV-8",
+      "reason": "As taproot-default sighash.outputs. The verdict passes only because Approve then ends at \"Signing Failed\": embit signs nothing (embit/psbt.py lines 969-977) and PSBTFinalizeView routes to PSBTSigningErrorView (views/psbt_views.py lines 749-753)"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "segwit-v0-single-anyonecanpay",
+      "check": "sighash.otherInputsMayBeAdded",
+      "requirement": "SP-REV-8",
+      "reason": "As sighash.outputs"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "taproot-none",
+      "check": "sighash.outputs",
+      "requirement": "SP-REV-8",
+      "reason": "As taproot-default sighash.outputs. The verdict passes only because Approve then ends at \"Signing Failed\": embit signs nothing (embit/psbt.py lines 969-977) and PSBTFinalizeView routes to PSBTSigningErrorView (views/psbt_views.py lines 749-753)"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "taproot-none",
+      "check": "sighash.otherInputsMayBeAdded",
+      "requirement": "SP-REV-8",
+      "reason": "As sighash.outputs"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "taproot-single-anyonecanpay",
+      "check": "sighash.outputs",
+      "requirement": "SP-REV-8",
+      "reason": "As taproot-default sighash.outputs. The verdict passes only because Approve then ends at \"Signing Failed\": embit signs nothing (embit/psbt.py lines 969-977) and PSBTFinalizeView routes to PSBTSigningErrorView (views/psbt_views.py lines 749-753)"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "taproot-single-anyonecanpay",
+      "check": "sighash.otherInputsMayBeAdded",
+      "requirement": "SP-REV-8",
+      "reason": "As sighash.outputs"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "segwit-v0-undefined-0x04",
+      "check": "sighash.outputs",
+      "requirement": "SP-REV-8",
+      "reason": "As taproot-default sighash.outputs. The verdict passes only because Approve then ends at \"Signing Failed\": embit signs nothing (embit/psbt.py lines 969-977) and PSBTFinalizeView routes to PSBTSigningErrorView (views/psbt_views.py lines 749-753)"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "mixed-all-and-single",
+      "check": "verdict",
+      "requirement": "SP-REV-23",
+      "reason": "The review shows no sighash, and Approve signs: embit signs the input asking for ALL and skips the one asking for SINGLE (embit/psbt.py lines 969-977), and PSBTFinalizeView counts one new signature and shows the signed QR (views/psbt_views.py lines 744-757). Nothing says the second input was left unsigned"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "no-locktime-signals-rbf",
+      "check": "locktime",
+      "requirement": "SP-REV-9",
+      "reason": "No screen shows nLockTime: nothing under src/seedsigner reads it (the review is views/psbt_views.py lines 142-757)"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "no-locktime-signals-rbf",
+      "check": "replaceable",
+      "requirement": "SP-REV-9",
+      "reason": "No screen shows whether the transaction signals replaceability: nothing under src/seedsigner reads an input's nSequence"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "height-locktime",
+      "check": "locktime",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf locktime"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "height-locktime",
+      "check": "replaceable",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf replaceable"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "largest-height",
+      "check": "locktime",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf locktime"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "largest-height",
+      "check": "replaceable",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf replaceable"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "smallest-time",
+      "check": "locktime",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf locktime"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "smallest-time",
+      "check": "replaceable",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf replaceable"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "time-locktime-final-sequence-minus-one",
+      "check": "locktime",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf locktime"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "time-locktime-final-sequence-minus-one",
+      "check": "replaceable",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf replaceable"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "no-locktime-final-sequence",
+      "check": "locktime",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf locktime"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "no-locktime-final-sequence",
+      "check": "replaceable",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf replaceable"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "one-of-two-inputs-signals",
+      "check": "locktime",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf locktime"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "one-of-two-inputs-signals",
+      "check": "replaceable",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf replaceable"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "second-of-two-inputs-signals",
+      "check": "locktime",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf locktime"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "second-of-two-inputs-signals",
+      "check": "replaceable",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf replaceable"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "height-locktime-every-input-final",
+      "check": "locktime",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf locktime"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "height-locktime-every-input-final",
+      "check": "replaceable",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf replaceable"
+    },
+    {
+      "file": "ur-psbt.json",
+      "case": "registry-type-name-psbt",
+      "check": "verdict",
+      "requirement": "SP-TX-7",
+      "reason": "SeedSigner sends a UR frame to its PSBT decoder only when it begins UR:CRYPTO-PSBT/ (models/decode_qr.py lines 348-349). UR:PSBT/ matches no QR type, and the scan ends at \"Unknown QR Type\" (views/scan_views.py lines 163-167). The profile records this itself: SP-TX-7 says SeedSigner reads only crypto-psbt"
+    },
+    {
+      "file": "bbqr-psbt.json",
+      "case": "coldcard-real-scan",
+      "check": "verdict",
+      "requirement": "SP-TX-3",
+      "reason": "SeedSigner reads BBQr only as a PSBT: a frame goes to its BBQr decoder only when it matches B$[2HZ]P (models/decode_qr.py lines 366-367), and this scan is file type U, so it ends at \"Unknown QR Type\" (views/scan_views.py lines 163-167). It reads encoding Z, which reference-Z-psbt checks; only the file type differs"
+    },
+    {
+      "file": "bbqr-psbt.json",
+      "case": "conflicting-repeat",
+      "check": "verdict",
+      "requirement": "SP-TX-5",
+      "reason": "SeedSigner keeps the first copy of each part and ignores any later copy without comparing it (models/decode_qr.py lines 673-685), so the transfer completes. Here the first copy is the genuine one and the PSBT assembled is the one sent; whichever copy arrives first is the one used. Coinkite's reference join raises on these frames"
+    }
+  ]
+}

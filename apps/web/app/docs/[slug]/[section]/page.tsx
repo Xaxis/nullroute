@@ -95,8 +95,9 @@ export default async function SectionPage({ params }: Props) {
             </div>
             <figcaption className="mt-3 font-sans text-[0.8125rem] leading-relaxed text-muted">
               {screens.map((screen) => screen.caption).join('; ')}. Rendered from the device
-              frontend at the panel&rsquo;s 800 by 480 and opened full size from here. The hashes
-              and amounts in them are samples.
+              frontend at the panel&rsquo;s 800 by 480 and opened full size from here. The manifest
+              root on the lock screen is this build&rsquo;s; every other hash and amount is a
+              sample.
             </figcaption>
           </figure>
         )}

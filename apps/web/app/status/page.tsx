@@ -9,7 +9,7 @@ import { PhaseTable } from '../../components/PhaseTable'
 import { A, Figure, InlineMd, Prose, Ruled, Section, Source } from '../../components/report'
 
 /** The log entries shown here. The file has all of them, a link away. */
-const RECENT = 12
+const RECENT = 8
 
 export const metadata: Metadata = {
   title: 'Status and roadmap',
@@ -81,7 +81,10 @@ const NOT_COVERED: readonly (readonly [string, string])[] = [
 
 export default function StatusPage() {
   const phases = readPhases()
-  const log = readLog()
+  // The device, the profile and the kit. Entries about this website are in
+  // CHANGELOG.md and the commit log, and leading a reader's first look at
+  // progress with CSP headers and a console move says the wrong thing.
+  const log = readLog().filter((entry) => !entry.site)
   const profile = readProfile()
   const open = profile.conformance.filter((r) => statusKind(r.status) !== 'met').length
 
@@ -97,7 +100,8 @@ export default function StatusPage() {
           </p>
         </Prose>
       </PageStage>
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 pt-6">
+      {/* The stage's own edge is the first rule; a section rule 24px under it doubled it. */}
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 [&>section:first-child]:border-t-0">
         <Section title="What is built" id="phases">
           <Figure
             title="Phases, as the README states them"
@@ -127,6 +131,16 @@ export default function StatusPage() {
 
         <Section title="What comes next" id="next">
           <ol className="space-y-px overflow-hidden rounded-[4px] border border-line bg-line">
+            {/* One header for the column, rather than the same label in every
+                row; each row keeps it for a screen reader. */}
+            <li
+              aria-hidden="true"
+              className="hidden bg-surface px-5 py-3 md:grid md:grid-cols-[2.5rem_minmax(0,1fr)_minmax(0,1fr)] md:gap-6"
+            >
+              <span />
+              <span className="label">Milestone</span>
+              <span className="label">When it lands</span>
+            </li>
             {NEXT.map((step, i) => (
               <li
                 key={step.title}
@@ -140,7 +154,7 @@ export default function StatusPage() {
                   <p className="mt-2 text-[1rem] leading-relaxed text-body">{step.proves}</p>
                 </div>
                 <div className="min-w-0">
-                  <div className="label">When it lands</div>
+                  <div className="label md:sr-only">When it lands</div>
                   <p className="mt-1.5 font-sans text-[0.9375rem] leading-relaxed text-body">
                     {step.changes}
                   </p>
@@ -170,8 +184,15 @@ export default function StatusPage() {
                 <span className="font-mono text-[0.8125rem] text-muted tabular-nums pt-0.5">
                   {entry.date}
                 </span>
-                <span className="max-w-[72ch] text-[1rem] leading-relaxed text-body">
-                  <InlineMd text={entry.text} />
+                <span className="min-w-0 max-w-[72ch]">
+                  <span className="block text-[1rem] font-semibold leading-snug text-ink">
+                    <InlineMd text={entry.headline} />
+                  </span>
+                  {entry.rest === '' ? null : (
+                    <span className="mt-1.5 block text-[0.875rem] leading-relaxed text-muted">
+                      <InlineMd text={entry.rest} />
+                    </span>
+                  )}
                 </span>
               </li>
             ))}
@@ -180,8 +201,9 @@ export default function StatusPage() {
             <A href={`${REPO_URL}/blob/main/CHANGELOG.md`} external>
               CHANGELOG.md
             </A>
-            , read when this site was built, has the {String(log.length)} entries in full; these are
-            the latest {String(RECENT)}. The whole history is the repository&rsquo;s commit log.
+            , read when this site was built, has all of them, including the changes to this website,
+            which are left out here; these are the latest {String(RECENT)} about the device, the
+            profile and the kit. The whole history is the repository&rsquo;s commit log.
           </Source>
         </Section>
 

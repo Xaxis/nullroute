@@ -60,14 +60,14 @@ Compute the root hash:
 
 ```console
 $ sha256sum MANIFEST.lock
-00c5ad50413e70b94895eb05dd48a3ff81774b598889cb0825ad88881f8db943  MANIFEST.lock
+b77d91db6feffbd2bbe13f70f622be986ddf508354fdcd7f21696869016bf14d  MANIFEST.lock
 ```
 
 Regenerate the manifest from scratch and confirm it matches what is committed:
 
 ```console
 $ git ls-files -z package.json package-lock.json packages spec provisioning | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum
-00c5ad50413e70b94895eb05dd48a3ff81774b598889cb0825ad88881f8db943  -
+b77d91db6feffbd2bbe13f70f622be986ddf508354fdcd7f21696869016bf14d  -
 ```
 
 On macOS use `shasum -a 256` in place of `sha256sum`; the values are
@@ -202,16 +202,32 @@ nullroute is deterministic instead:
 So given the seed and the PSBT, **the signature bytes are fully determined**,
 leaving no free space to hide anything in.
 
-To check, sign the same unsigned PSBT with the same seed in any independent
-implementation that does RFC 6979 and BIP-340 the same way, and compare bytes.
-A difference means the device put something in your signature that it did not
-have to.
+To check, sign the same unsigned PSBT with the same seed in an implementation
+that is not nullroute's, and compare bytes. A difference means the device put
+something in your signature that it did not have to. Which tool reproduces
+which signature:
 
-In CI, the test suite signs one p2wpkh PSBT one hundred times and asserts
-byte-identical output each time, and signs one taproot input three times and
-compares. The differential suite checks p2wpkh signature bytes against
-`bitcoinjs-lib`; no Schnorr signature is compared with another implementation.
-Neither replaces checking a signature you care about.
+| Signature | Reproduces it byte for byte | Does not |
+| --- | --- | --- |
+| Taproot (BIP-340) | Bitcoin Core 31.1's wallet (`walletprocesspsbt`), which signs with `aux_rand` of 32 zero bytes | embit 0.8.0 on Python, and so SeedSigner, which signs through it: it leaves `aux_rand` out, which gives a different, equally valid nonce. Not tested on MicroPython, where embit uses another secp256k1 module |
+| ECDSA (RFC 6979) | Any RFC 6979 signer that does not grind: libsecp256k1's `secp256k1_ecdsa_sign` with no extra data (through `tiny-secp256k1`, as the differential tests use it), or Bitcoin Core's Python test framework (`ECKey.sign_ecdsa` with `rfc6979=True`) | Bitcoin Core's wallet and embit, about half the time: they retry until R is low, so they agree only when the first R already was |
+
+Core's wallet needs the private key, so for this check import a descriptor
+with the extended private key into a wallet on an offline computer, never the
+one you hold funds in, and delete it afterwards.
+
+The conformance vector `sign-deterministic.json` holds the bytes for six
+transactions, p2wpkh and taproot key path, one and two inputs, and a high-R
+ECDSA case where the two ECDSA schemes part. The expected signatures were
+computed by Bitcoin Core's test framework and its wallet, and every signed
+transaction was accepted by Core's mempool. nullroute matches all six
+(`make conformance`), which is the first comparison of its Schnorr signatures
+with another implementation.
+
+In CI, the test suite also signs one p2wpkh PSBT one hundred times and asserts
+byte-identical output each time, signs one taproot input three times and
+compares, and checks p2wpkh signature bytes against `bitcoinjs-lib`. None of
+this replaces checking a signature you care about.
 
 **This is a trade.** BIP-340 permits a randomised `aux_rand`, which defends
 against certain fault injection attacks. Fixing it to zero gives that up for
@@ -328,8 +344,7 @@ each needs first. Target build is under $120.
 
 | Part | Choice | Notes |
 | --- | --- | --- |
-| Board | Raspberry Pi 4 (4GB) | The only board this image supports. |
-| Board, in bring-up | Raspberry Pi 5 | The card carries its boot files, on Raspberry Pi's own kernel, the only one that drives the 7 inch panel on a Pi 5. Nothing has booted on one yet: bring-up, not support. |
+| Board | Raspberry Pi 4 (4GB) or Raspberry Pi 5 | One card carries both, and both are in bring-up: a board is supported once a card boots on one with the panel lit. The Pi 4 boots Debian's pinned kernel, whose device tree the build checks for the panel; the Pi 5 boots Raspberry Pi's own kernel, the only one that drives the 7 inch panel there. |
 | Display | Official Raspberry Pi 7 inch touchscreen | The DSI panel, `provisioning/build/overlays/nullroute-7inch-dsi.dts`. Pi 4: config.txt names the overlay in the Pi 4's section (INV-PROV-25) and it is on the card as a device tree blob (INV-PROV-26); the build refuses to finish unless merging it into `bcm2711-rpi-4-b.dtb` leaves `dsi@7e700000` enabled with the panel and touch controller present. Pi 5: the firmware detects the panel and loads Raspberry Pi's own overlay; both overlays it can choose are on the card (INV-PROV-26), and the build refuses to finish unless every label they target exists in all three Pi 5 trees. Touch Display 2 (720x1280 portrait) is driven but not supported. Only a boot with the panel attached shows whether it lights up. Every screen is measured at exactly 800x480. |
 | Camera | A USB (UVC) webcam | CSI camera modules come later: the pinned Debian kernel (`linux-image-6.12.94+deb13-arm64`) builds no IMX708 driver (not in mainline) or IMX219 driver and leaves the Pi 4's CSI receiver (`VIDEO_BCM2835_UNICAM`) unset, so on that kernel only a USB (UVC) camera has a driver. Raspberry Pi's kernel, which the card also carries for the Pi 5, has not been checked for CSI drivers. INV-PROV-29 checks every kernel version under the card's `lib/modules`: in each, `uvcvideo` and every module that version's `modules.dep` says it needs are present as files (not shown to load). The card also carries `systemd-udevd` and the two rules that load the driver on hotplug and give the node the `video` group (INV-PROV-30). The kiosk's device cgroup adds only `char-video4linux` (INV-PROV-27); the browser's managed policy grants the camera to `http://127.0.0.1:5180` alone, audio off (INV-PROV-28). No camera has streamed on a Pi yet. Without one the device shows codes and receives nothing; an SD card transport is planned, not built. |
 | Storage | 16GB+ SD card, A2 class | The image is small; the class rating matters for Argon2id-adjacent I/O, not capacity. |

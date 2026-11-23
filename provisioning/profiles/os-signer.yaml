@@ -11,7 +11,11 @@ purpose: >
 boards:
   # The design needs capabilities, not this model: arm64, enough memory, an
   # 800x480 display and a camera the kernel drives. A board is listed here when
-  # the image has booted on it. research/pi-boards.md says what each other board
+  # the build checks the card against that board's own device tree, with the
+  # kernel it boots, and finds the panel and its touch controller described.
+  # That is a build-time check, not a boot: no card has booted on a Raspberry
+  # Pi yet (the boot test runs under QEMU's virt machine), so bring-up on the
+  # Pi 4 is still to come. research/pi-boards.md says what each other board
   # needs first.
   # raspberrypi-cm5 was here and is not any more. The pinned 6.12.94 kernel
   # ships nine Raspberry Pi device trees: bcm2711-rpi-4-b, -400 and -cm4-io,
@@ -31,7 +35,9 @@ boards:
 
 bring_up:
   # Boards the card carries boot files for so the image can be brought up on
-  # them, which `boards:` does not claim because nothing has booted there yet.
+  # them, which `boards:` does not claim because the build cannot check them as
+  # it checks the Pi 4: on a Pi 5 the firmware chooses the panel's overlay at
+  # boot, so only a boot shows whether the panel is driven.
   # check-profiles lets a device tree on the boot partition belong to a board
   # here, and lets a hardware table name it only on a line that says bring-up.
   #

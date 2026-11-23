@@ -65,6 +65,14 @@ HEADERS = {
         'A blocking condition disables signing. It may be lifted only by an explicit override that applies '
         'to one signature and is never stored: each case asks to sign without an override, with one, and '
         'without one again. A transaction the signer owns no input of is refused, and no override lifts that.'),
+    'sign-deterministic.json': (
+        ['SP-SIG-1'],
+        'sign',
+        'The exact signature bytes SP-SIG-1 allows, so a signer\'s output can be compared with an '
+        'implementation that is not its own: BIP-340 with aux_rand of 32 zero bytes, and ECDSA by RFC 6979 '
+        'either plain (valueHex) or ground for a low R as Bitcoin Core grinds (valueHexLowR where it differs). '
+        'Expected values come from Bitcoin Core\'s test framework and wallet, and every signed transaction was '
+        'accepted by Core\'s mempool. Signing the same PSBT twice MUST give the same bytes.'),
     'manifest-root.json': (
         ['SP-ATT-2'],
         'buildManifest',

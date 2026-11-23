@@ -15,8 +15,8 @@ import { PanelSlab, Slab } from './Slab'
  * WHAT MOVES IS WHAT THE COPY SAYS. The mark that comes and goes on the
  * screen sits on the manifest root, the number the paragraph beside it tells
  * you to compare, and the next section is that number for this build. The
- * render is the real lock screen; its hashes are samples, which the caption
- * under the scene says.
+ * render is the real lock screen showing this build's manifest root (passed in
+ * by gen-device-shots); its dm-verity root is a sample, which the caption says.
  *
  * Pure CSS 3D (styles/motion.css). No script, no library, nothing the CSP has
  * to make room for, and still under prefers-reduced-motion.

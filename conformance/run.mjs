@@ -355,8 +355,14 @@ function compareOutput(o, level, want, got, bound) {
 
 async function runReview(adapter, c, contexts, o) {
   const r = await adapter.reviewPsbt(c.input.psbt, contexts[c.input.context])
-  const e = c.expected
-  checkVerdict(o, e, r)
+  checkVerdict(o, c.expected, r)
+  // A case may let a signer refuse outright instead of reviewing (SP-REV-7: a
+  // false change claim). What a review shows is then checked only where one
+  // was shown: `ifAllowed` holds the checks that apply when the verdict is
+  // allow. A refusal has no outputs to compare, and asking for them would fail
+  // the stricter signer.
+  const { ifAllowed, ...always } = c.expected
+  const e = ifAllowed !== undefined && r?.verdict === 'allow' ? { ...always, ...ifAllowed } : always
   if (e.feeSats !== undefined) {
     o.expect(
       'fee',
@@ -455,6 +461,85 @@ async function runSign(adapter, c, contexts, o) {
       `${p.map}${p.index === null ? '' : ` ${String(p.index)}`} pair ${p.keyHex}=${p.valueHex} missing from the signed PSBT`
     )
   }
+  if (e.signatureBytes !== undefined) checkSignatureBytes(adapter, o, e.signatureBytes, after)
+  if (e.repeatable === true) {
+    const again = await adapter.signPsbt(c.input.psbt, contexts[c.input.context], {
+      override: false,
+    })
+    o.expect(
+      'repeatable',
+      again?.verdict === 'signed' && again.psbtBase64 === r.psbtBase64,
+      'signing the same PSBT a second time gave different bytes'
+    )
+  }
+}
+
+/** The two ECDSA nonce schemes SP-SIG-1 allows. An adapter exports which one its signer uses. */
+const ECDSA_NONCES = new Set(['rfc6979', 'rfc6979-low-r'])
+
+/**
+ * SP-SIG-1: the signature bytes themselves, which the scheme fixes.
+ *
+ * A Schnorr signature has one right answer. An ECDSA signature has one per
+ * scheme: plain RFC 6979 (`valueHex`), or RFC 6979 retried with additional
+ * data LE32(1), LE32(2) and so on until R is below 2^255, as Bitcoin Core
+ * grinds (`valueHexLowR`, present only where the two differ). The signer has
+ * to say which it uses, because a check that accepted either one for each
+ * signature would let a signer switch between them, and the choice would
+ * become a bit it could set.
+ */
+function checkSignatureBytes(adapter, o, want, after) {
+  const scheme = adapter.ecdsaNonces
+  const ecdsa = want.some((s) => s.scheme === 'ecdsa')
+  if (ecdsa && !ECDSA_NONCES.has(scheme)) {
+    o.expect(
+      'ecdsa-nonces',
+      false,
+      `the adapter's ecdsaNonces is ${show(scheme)}, not "rfc6979" or "rfc6979-low-r": SP-SIG-1 requires the signer to document which it uses`
+    )
+    return
+  }
+  for (const s of want) {
+    const expected =
+      s.scheme === 'ecdsa' && scheme === 'rfc6979-low-r'
+        ? (s.valueHexLowR ?? s.valueHex)
+        : s.valueHex
+    const map = after.inputs[s.index] ?? []
+    let got = map.find((kv) => kv.key === s.keyHex)?.value
+    let where = ''
+    // A signer that is also the finalizer may write a key-path spend straight
+    // into PSBT_IN_FINAL_SCRIPTWITNESS, whose one element is then the
+    // signature. SP-SIG-1 is about the bytes, so they are read from there.
+    if (got === undefined && s.keyHex === '13') {
+      const final = map.find((kv) => kv.key === '08')?.value
+      const stack = final === undefined ? [] : witnessItems(final)
+      if (stack.length === 1) {
+        got = stack[0]
+        where = ' (read from the final script witness: the signer finalized the input)'
+      }
+    }
+    o.expect(
+      `signature-bytes.${String(s.index)}`,
+      got === expected,
+      got === undefined
+        ? `input ${String(s.index)} has no signature under key ${s.keyHex}`
+        : `input ${String(s.index)} (${s.scheme}, ${s.path}) signature ${got}, expected ${expected}${where}`
+    )
+  }
+}
+
+/** The items of a serialized witness stack, as hex. */
+function witnessItems(hex) {
+  const b = Buffer.from(hex, 'hex')
+  const [count, start] = readCompact(b, 0)
+  const items = []
+  let i = start
+  for (let n = 0; n < count; n++) {
+    const [len, at] = readCompact(b, i)
+    items.push(b.subarray(at, at + len).toString('hex'))
+    i = at + len
+  }
+  return i === b.length ? items : []
 }
 
 /**

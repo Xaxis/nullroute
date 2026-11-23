@@ -16,10 +16,16 @@ export function PageStage({
   scene?: ReactNode
 }) {
   return (
-    <section className="stage stage--page on-plate">
+    // WITHOUT A SCENE, A HEADER RATHER THAN A STAGE. The glow and the height
+    // are where a scene stands; with nothing in them they read as an image
+    // that failed to load, and they pushed the contact form's button below
+    // the fold.
+    <section className={`stage stage--page on-plate ${scene === undefined ? 'stage--bare' : ''}`}>
       <div
-        className={`relative mx-auto grid max-w-7xl gap-6 px-4 pt-14 pb-14 sm:px-6 sm:pt-20 sm:pb-16 lg:items-center ${
-          scene === undefined ? '' : 'lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-10'
+        className={`relative mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 lg:items-center ${
+          scene === undefined
+            ? 'pt-12 pb-10 sm:pt-14 sm:pb-12'
+            : 'pt-14 pb-14 sm:pt-20 sm:pb-16 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-10'
         }`}
       >
         <div className="arrive relative z-10 min-w-0">

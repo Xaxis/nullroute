@@ -4,8 +4,9 @@
  *
  * `make device-shots` writes them and `make device-shots-check` fails the build
  * when the frontend changes and they do not, so these are the device rather
- * than a picture of one. The hashes in them are samples from the gallery's
- * fixtures, and every caption that shows the lock screen says so.
+ * than a picture of one. The lock screen carries this build's manifest root,
+ * which gen-device-shots passes in; its dm-verity root is a sample from the
+ * gallery's fixtures, and every caption that shows it says so.
  *
  * ON A BLACK PLATE, NOT IN A DRAWN BEZEL. The panel is a flat 7 inch rectangle,
  * and a rendered plastic case would be the one dishonest pixel on a page about
@@ -44,7 +45,7 @@ export const SCREENS: readonly Screen[] = [
     file: 'lock',
     caption: 'Two hashes, before the PIN',
     detail:
-      'The manifest root of the application, and the dm-verity root the kernel is checking every block of the root filesystem against, read from the live device-mapper table rather than from the card. Compare the first against your own build. The values in these pictures are samples, not this build.',
+      'The manifest root of the application, and the dm-verity root the kernel is checking every block of the root filesystem against, read from the live device-mapper table rather than from the card. Compare the first against your own build. The manifest root here is this build’s; the dm-verity root is a sample, because only the image build makes one.',
     specs: ['ui.screens.lock'],
   },
   {

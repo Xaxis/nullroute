@@ -10,6 +10,9 @@ MANIFEST.lock
 spec/vectors/
 spec/interop/
 conformance/fixtures/
+# Written by conformance/run.mjs --report, whose bytes are the record: the
+# same run writes the same file, so a rerun that changed nothing shows no diff.
+conformance/results/
 *.md
 
 # Written by `next build`, reformatted by nothing, and regenerated on the next

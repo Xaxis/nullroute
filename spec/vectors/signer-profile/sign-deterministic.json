@@ -1,0 +1,282 @@
+{
+  "format": "signer-profile-vectors",
+  "version": 1,
+  "profile": "spec/signer-profile.md, draft specification version 0.1",
+  "file": "sign-deterministic.json",
+  "requirements": [
+    "SP-SIG-1"
+  ],
+  "operations": "sign",
+  "description": "The exact signature bytes SP-SIG-1 allows, so a signer's output can be compared with an implementation that is not its own: BIP-340 with aux_rand of 32 zero bytes, and ECDSA by RFC 6979 either plain (valueHex) or ground for a low R as Bitcoin Core grinds (valueHexLowR where it differs). Expected values come from Bitcoin Core's test framework and wallet, and every signed transaction was accepted by Core's mempool. Signing the same PSBT twice MUST give the same bytes.",
+  "cases": [
+    {
+      "id": "ecdsa-low-r",
+      "operation": "sign",
+      "requirements": [
+        "SP-SIG-1"
+      ],
+      "level": "MUST",
+      "description": "One p2wpkh input at m/84h/0h/0h/0/3, a payment and change. RFC 6979 gives an R below 2^255 on the first try, so the plain and low-R schemes write the same bytes.",
+      "input": {
+        "psbt": "cHNidP8BAHECAAAAAdGib/kv9vqCf6JQ31hlMfnBZak9ScfSQW/5znFWAi+wAAAAAAD9////AgLh9QUAAAAAFgAUlppQGatIOvSBR/unsx+xOgqX2eXuXNcXAAAAABYAFMrHYSYfs9tbAlPiipbd9V26wrJRAAAAAAABAP14AQIAAAACUUzCE+Igie5b43/5o6IXviXBY7zra7fzp0VjHGQpmgMAAAAAAP3///8ULbJcpWyWoawnWlUbw9BH6hx5bCKr+WSp4kyOiqsCBAAAAAAA/f///wgAZc0dAAAAABYAFEfoz6Hib/xGBGg0ipyyGNA0ajd4AGXNHQAAAAAWABTZfMAJEixqyfQFhSJJ2IkrUDfQfQBlzR0AAAAAFgAUuZAt225g/uZ9M6gzT3zKA1KDhuQAZc0dAAAAABYAFJn79N60H+Eq1Dhq3pVjrViWiYqoAGXNHQAAAAAiUSD9Ujk6Dyn/GcPpl+YyakZddO0WtuZMyFOjfjdmGJ26bABlzR0AAAAAIlEgpA0KqLwSoKJPS1lPBOvAcRbmJT3NWgmIfcAofWOPXoUAZc0dAAAAACJRIFtRp6BysVcQAwDAg1X8hIir4gzFnf45Q26OgU75X7tHYJpsgwEAAAAWABQWdduvy8G5lQd6zZ0mDdywgeJaIQAAAAABAR8AZc0dAAAAABYAFEfoz6Hib/xGBGg0ipyyGNA0ajd4IgYD3nSQvMqSovtX14LD/WBUjOOoQsrW86jU520fL/f824kYc8XaClQAAIAAAACAAAAAgAAAAAADAAAAAAAiAgKo3udXO8x9PB6bniZ9vwzXFzQ8MdMixbB0o6lwkKDZUhhzxdoKVAAAgAAAAIAAAACAAQAAAAQAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "signed",
+        "repeatable": true,
+        "signatureBytes": [
+          {
+            "index": 0,
+            "scheme": "ecdsa",
+            "path": "m/84h/0h/0h/0/3",
+            "keyHex": "0203de7490bcca92a2fb57d782c3fd60548ce3a842cad6f3a8d4e76d1f2ff7fcdb89",
+            "valueHex": "304402207e778b832d6544efbed8e3c817bc4dd2f9e9dd18c52a882b9c72a6c796223016022064de2f41e2afc879b1e9e954cd2400b5128426a765c83249e72b4f4008f83d8f01",
+            "sighashHex": "ef5e0119d51e039661e4ac0d9ec838204fe5f67a336d05762eddd78e2359e57e",
+            "rHighBit": false
+          }
+        ]
+      },
+      "sources": [
+        "keys: BIP-32 from the BIP-84 rootpriv (bip-0084.mediawiki line 70), checked against the key Bitcoin Core /Satoshi:31.1.0/ wrote into each input's derivation record",
+        "sighash: Bitcoin Core v31.1 test/functional/test_framework/script.py, SegwitV0SignatureHash with SIGHASH_ALL and TaprootSignatureHash with SIGHASH_DEFAULT",
+        "ECDSA: test_framework/key.py ECKey.sign_ecdsa(low_s=True, rfc6979=True); Schnorr: key.py sign_schnorr with aux 32 zero bytes, on the key tweaked by TaggedHash(\"TapTweak\", internal key)",
+        "valueHexLowR: Bitcoin Core /Satoshi:31.1.0/ walletprocesspsbt, present only where RFC 6979's first R is 2^255 or more; elsewhere Core's wallet wrote valueHex exactly",
+        "validity: every signed transaction, the framework's and Core's wallet's, finalized by Bitcoin Core /Satoshi:31.1.0/ finalizepsbt and accepted by testmempoolaccept"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "testmempoolaccept": true
+      }
+    },
+    {
+      "id": "ecdsa-high-r",
+      "operation": "sign",
+      "requirements": [
+        "SP-SIG-1"
+      ],
+      "level": "MUST",
+      "description": "One p2wpkh input at m/84h/0h/0h/0/4. RFC 6979 gives an R of 2^255 or more, which DER writes in 33 bytes, so the two schemes part: plain RFC 6979 keeps it, and the low-R scheme retries with additional data until R is low. A signer matches the scheme it documents.",
+      "input": {
+        "psbt": "cHNidP8BAHECAAAAAdGib/kv9vqCf6JQ31hlMfnBZak9ScfSQW/5znFWAi+wAQAAAAD9////AgTC6wsAAAAAFgAUmQEOqHPHVK5UZZcwOJDdL+IzIyzse+ERAAAAABYAFMrHYSYfs9tbAlPiipbd9V26wrJRAAAAAAABAP14AQIAAAACUUzCE+Igie5b43/5o6IXviXBY7zra7fzp0VjHGQpmgMAAAAAAP3///8ULbJcpWyWoawnWlUbw9BH6hx5bCKr+WSp4kyOiqsCBAAAAAAA/f///wgAZc0dAAAAABYAFEfoz6Hib/xGBGg0ipyyGNA0ajd4AGXNHQAAAAAWABTZfMAJEixqyfQFhSJJ2IkrUDfQfQBlzR0AAAAAFgAUuZAt225g/uZ9M6gzT3zKA1KDhuQAZc0dAAAAABYAFJn79N60H+Eq1Dhq3pVjrViWiYqoAGXNHQAAAAAiUSD9Ujk6Dyn/GcPpl+YyakZddO0WtuZMyFOjfjdmGJ26bABlzR0AAAAAIlEgpA0KqLwSoKJPS1lPBOvAcRbmJT3NWgmIfcAofWOPXoUAZc0dAAAAACJRIFtRp6BysVcQAwDAg1X8hIir4gzFnf45Q26OgU75X7tHYJpsgwEAAAAWABQWdduvy8G5lQd6zZ0mDdywgeJaIQAAAAABAR8AZc0dAAAAABYAFNl8wAkSLGrJ9AWFIknYiStQN9B9IgYDmVE3yOs7IjyQQlnptXGok5oOyZsHF2hMOTZAfKhTjBsYc8XaClQAAIAAAACAAAAAgAAAAAAEAAAAAAAiAgKo3udXO8x9PB6bniZ9vwzXFzQ8MdMixbB0o6lwkKDZUhhzxdoKVAAAgAAAAIAAAACAAQAAAAQAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "signed",
+        "repeatable": true,
+        "signatureBytes": [
+          {
+            "index": 0,
+            "scheme": "ecdsa",
+            "path": "m/84h/0h/0h/0/4",
+            "keyHex": "0203995137c8eb3b223c904259e9b571a8939a0ec99b0717684c3936407ca8538c1b",
+            "valueHex": "3045022100c4388de65ad7ba5387782370bb7581830db6cd1ca4a5bde7220e5daccf8848ab02200b18d4c2f67e4a77a77dcd30cb2f0b1f90d930eae0b773071dc6e443098d0a9601",
+            "sighashHex": "5ad68c4a1a21b398697b04500c3910e7b870832f5bb010aae95355287aaeecc9",
+            "rHighBit": true,
+            "valueHexLowR": "304402204de5aea0422a9361590924e3bb5e9a0546c8dd425c00a693c1a31fac6835df27022043a134bbc796aefeabd527eca39ed8f033ca130bda9635409e8fd41d7dc26eb601"
+          }
+        ]
+      },
+      "sources": [
+        "keys: BIP-32 from the BIP-84 rootpriv (bip-0084.mediawiki line 70), checked against the key Bitcoin Core /Satoshi:31.1.0/ wrote into each input's derivation record",
+        "sighash: Bitcoin Core v31.1 test/functional/test_framework/script.py, SegwitV0SignatureHash with SIGHASH_ALL and TaprootSignatureHash with SIGHASH_DEFAULT",
+        "ECDSA: test_framework/key.py ECKey.sign_ecdsa(low_s=True, rfc6979=True); Schnorr: key.py sign_schnorr with aux 32 zero bytes, on the key tweaked by TaggedHash(\"TapTweak\", internal key)",
+        "valueHexLowR: Bitcoin Core /Satoshi:31.1.0/ walletprocesspsbt, present only where RFC 6979's first R is 2^255 or more; elsewhere Core's wallet wrote valueHex exactly",
+        "validity: every signed transaction, the framework's and Core's wallet's, finalized by Bitcoin Core /Satoshi:31.1.0/ finalizepsbt and accepted by testmempoolaccept"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "testmempoolaccept": true
+      }
+    },
+    {
+      "id": "ecdsa-two-keys",
+      "operation": "sign",
+      "requirements": [
+        "SP-SIG-1"
+      ],
+      "level": "MUST",
+      "description": "Two p2wpkh inputs, one on the receive branch and one on the change branch. Each signature commits to every input, so neither can be computed from a one-input transaction.",
+      "input": {
+        "psbt": "cHNidP8BAJoCAAAAAtGib/kv9vqCf6JQ31hlMfnBZak9ScfSQW/5znFWAi+wAgAAAAD9////0aJv+S/2+oJ/olDfWGUx+cFlqT1Jx9JBb/nOcVYCL7ADAAAAAP3///8CACe5KQAAAAAWABTEOUN8ZL+tEB7QxPc6UL+tWFfktfB74REAAAAAFgAU5EsdCXHFVGaItfUUB/pIPqmkJzcAAAAAAAEA/XgBAgAAAAJRTMIT4iCJ7lvjf/mjohe+JcFjvOtrt/OnRWMcZCmaAwAAAAAA/f///xQtslylbJahrCdaVRvD0EfqHHlsIqv5ZKniTI6KqwIEAAAAAAD9////CABlzR0AAAAAFgAUR+jPoeJv/EYEaDSKnLIY0DRqN3gAZc0dAAAAABYAFNl8wAkSLGrJ9AWFIknYiStQN9B9AGXNHQAAAAAWABS5kC3bbmD+5n0zqDNPfMoDUoOG5ABlzR0AAAAAFgAUmfv03rQf4SrUOGrelWOtWJaJiqgAZc0dAAAAACJRIP1SOToPKf8Zw+mX5jJqRl107Ra25kzIU6N+N2YYnbpsAGXNHQAAAAAiUSCkDQqovBKgok9LWU8E68BxFuYlPc1aCYh9wCh9Y49ehQBlzR0AAAAAIlEgW1GnoHKxVxADAMCDVfyEiKviDMWd/jlDbo6BTvlfu0dgmmyDAQAAABYAFBZ126/LwbmVB3rNnSYN3LCB4lohAAAAAAEBHwBlzR0AAAAAFgAUuZAt225g/uZ9M6gzT3zKA1KDhuQiBgJ1zuwRQQrI1zCs0PmeUKUw4cKLHPiRM+xfeY+2db3cjhhzxdoKVAAAgAAAAIAAAACAAAAAAAcAAAAAAQD9eAECAAAAAlFMwhPiIInuW+N/+aOiF74lwWO862u386dFYxxkKZoDAAAAAAD9////FC2yXKVslqGsJ1pVG8PQR+oceWwiq/lkqeJMjoqrAgQAAAAAAP3///8IAGXNHQAAAAAWABRH6M+h4m/8RgRoNIqcshjQNGo3eABlzR0AAAAAFgAU2XzACRIsasn0BYUiSdiJK1A30H0AZc0dAAAAABYAFLmQLdtuYP7mfTOoM098ygNSg4bkAGXNHQAAAAAWABSZ+/TetB/hKtQ4at6VY61YlomKqABlzR0AAAAAIlEg/VI5Og8p/xnD6ZfmMmpGXXTtFrbmTMhTo343ZhidumwAZc0dAAAAACJRIKQNCqi8EqCiT0tZTwTrwHEW5iU9zVoJiH3AKH1jj16FAGXNHQAAAAAiUSBbUaegcrFXEAMAwINV/ISIq+IMxZ3+OUNujoFO+V+7R2CabIMBAAAAFgAUFnXbr8vBuZUHes2dJg3csIHiWiEAAAAAAQEfAGXNHQAAAAAWABSZ+/TetB/hKtQ4at6VY61YlomKqCIGApuo1LE0Zq2PeM0SCPYAI+5WjpSj/jw/9KTM28W6Bif6GHPF2gpUAACAAAAAgAAAAIABAAAAAgAAAAAAIgIDCeSdqdv1F0iFVwyHEHsbLiVSBoBoNQq4MvzI9kYm1sEYc8XaClQAAIAAAACAAAAAgAEAAAAFAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "signed",
+        "repeatable": true,
+        "signatureBytes": [
+          {
+            "index": 0,
+            "scheme": "ecdsa",
+            "path": "m/84h/0h/0h/0/7",
+            "keyHex": "020275ceec11410ac8d730acd0f99e50a530e1c28b1cf89133ec5f798fb675bddc8e",
+            "valueHex": "30440220083efff5f57969a1e4325d9cf0980d1d7cf1cdc68c7f70077ce7bb31db786e2502204021011c434bfd644894f1f43672d73864ab3f571b0dde3809edfda617abf31101",
+            "sighashHex": "86364aeb9a85ed1efe06fd3a63f1c9b7016158ecb3e0ba0c7d55b5eeb68b3292",
+            "rHighBit": false
+          },
+          {
+            "index": 1,
+            "scheme": "ecdsa",
+            "path": "m/84h/0h/0h/1/2",
+            "keyHex": "02029ba8d4b13466ad8f78cd1208f60023ee568e94a3fe3c3ff4a4ccdbc5ba0627fa",
+            "valueHex": "3045022100fab2ea2c92a53f8c4dfa4dd96707622acdb07b3c053532aaa86847d648180d5e02201f71c6334c46361dc1853d4d454fdff57a7fd04c30877c95da4a753fbfc1c50e01",
+            "sighashHex": "02a452f7abef331f3ff2c38df939105f71915e67e4d7c540aaefd8566664ef45",
+            "rHighBit": true,
+            "valueHexLowR": "304402200efa6870d1c1b04a2aa37a54ce253e30fdc435c235d7178d4b4e1e7b6683a2bf0220280783ba2f37a78d922b78e49ebffb1f28b22b8269354475f823fec6cd962c1c01"
+          }
+        ]
+      },
+      "sources": [
+        "keys: BIP-32 from the BIP-84 rootpriv (bip-0084.mediawiki line 70), checked against the key Bitcoin Core /Satoshi:31.1.0/ wrote into each input's derivation record",
+        "sighash: Bitcoin Core v31.1 test/functional/test_framework/script.py, SegwitV0SignatureHash with SIGHASH_ALL and TaprootSignatureHash with SIGHASH_DEFAULT",
+        "ECDSA: test_framework/key.py ECKey.sign_ecdsa(low_s=True, rfc6979=True); Schnorr: key.py sign_schnorr with aux 32 zero bytes, on the key tweaked by TaggedHash(\"TapTweak\", internal key)",
+        "valueHexLowR: Bitcoin Core /Satoshi:31.1.0/ walletprocesspsbt, present only where RFC 6979's first R is 2^255 or more; elsewhere Core's wallet wrote valueHex exactly",
+        "validity: every signed transaction, the framework's and Core's wallet's, finalized by Bitcoin Core /Satoshi:31.1.0/ finalizepsbt and accepted by testmempoolaccept"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "testmempoolaccept": true
+      }
+    },
+    {
+      "id": "schnorr-key-path",
+      "operation": "sign",
+      "requirements": [
+        "SP-SIG-1"
+      ],
+      "level": "MUST",
+      "description": "One p2tr key-path input at m/86h/0h/0h/0/5. BIP-340 with aux_rand of 32 zero bytes, SIGHASH_DEFAULT, so the signature is 64 bytes and the same under either ECDSA scheme.",
+      "input": {
+        "psbt": "cHNidP8BAH0CAAAAAdGib/kv9vqCf6JQ31hlMfnBZak9ScfSQW/5znFWAi+wBAAAAAD9////AoDR8AgAAAAAFgAUG2kR+krmC88v22mcoy5m6G7iZVhwbNwUAAAAACJRINpEfbN7Bf7qHvtPdX13j+fR+8riFJWlHtMtMgXhTxh1AAAAAAABASsAZc0dAAAAACJRIP1SOToPKf8Zw+mX5jJqRl107Ra25kzIU6N+N2YYnbpsIRay1Z+3Q07p1ds047b73ijOE93MyBHfgSWxwq3XadzPHxkAc8XaClYAAIAAAACAAAAAgAAAAAAFAAAAARcgstWft0NO6dXbNOO2+94ozhPdzMgR34ElscKt12nczx8AAAEFIBGAy/vTt2/hGsKMnwoLhC5ut+Cg8rcoXAv54BGttVjHIQcRgMv707dv4RrCjJ8KC4QubrfgoPK3KFwL+eARrbVYxxkAc8XaClYAAIAAAACAAAAAgAEAAAADAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "signed",
+        "repeatable": true,
+        "signatureBytes": [
+          {
+            "index": 0,
+            "scheme": "schnorr",
+            "path": "m/86h/0h/0h/0/5",
+            "keyHex": "13",
+            "valueHex": "90418be524c1084c8153aec93f9703567201049c5b6bec0c4bf41d238988fce650b830d32ea982e9f0058c9897bdbb2d7c7d8e47b0dec89f9c6ae7a7d93bfd50",
+            "sighashHex": "33d21fa45d1236ed3c6ffc5025089089e957668d446eb0a27a63a1a13aef2c45"
+          }
+        ]
+      },
+      "sources": [
+        "keys: BIP-32 from the BIP-84 rootpriv (bip-0084.mediawiki line 70), checked against the key Bitcoin Core /Satoshi:31.1.0/ wrote into each input's derivation record",
+        "sighash: Bitcoin Core v31.1 test/functional/test_framework/script.py, SegwitV0SignatureHash with SIGHASH_ALL and TaprootSignatureHash with SIGHASH_DEFAULT",
+        "ECDSA: test_framework/key.py ECKey.sign_ecdsa(low_s=True, rfc6979=True); Schnorr: key.py sign_schnorr with aux 32 zero bytes, on the key tweaked by TaggedHash(\"TapTweak\", internal key)",
+        "valueHexLowR: Bitcoin Core /Satoshi:31.1.0/ walletprocesspsbt, present only where RFC 6979's first R is 2^255 or more; elsewhere Core's wallet wrote valueHex exactly",
+        "validity: every signed transaction, the framework's and Core's wallet's, finalized by Bitcoin Core /Satoshi:31.1.0/ finalizepsbt and accepted by testmempoolaccept"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "testmempoolaccept": true
+      }
+    },
+    {
+      "id": "schnorr-two-keys",
+      "operation": "sign",
+      "requirements": [
+        "SP-SIG-1"
+      ],
+      "level": "MUST",
+      "description": "Two p2tr key-path inputs, receive and change branch. BIP-341 commits every input's amount and script, so both signatures change if either input does.",
+      "input": {
+        "psbt": "cHNidP8BAKYCAAAAAtGib/kv9vqCf6JQ31hlMfnBZak9ScfSQW/5znFWAi+wBQAAAAD9////0aJv+S/2+oJ/olDfWGUx+cFlqT1Jx9JBb/nOcVYCL7AGAAAAAP3///8CAAivLwAAAAAWABQ5+3BdooJZ+2oLgXznfHaLN38rZ/Ca6wsAAAAAIlEg2kR9s3sF/uoe+091fXeP59H7yuIUlaUe0y0yBeFPGHUAAAAAAAEBKwBlzR0AAAAAIlEgpA0KqLwSoKJPS1lPBOvAcRbmJT3NWgmIfcAofWOPXoUhFk/LT3dknEJ7Z1T9oh2ZAcnl38mPL7DAsQHQFwQFtNy9GQBzxdoKVgAAgAAAAIAAAACAAAAAAAYAAAABFyBPy093ZJxCe2dU/aIdmQHJ5d/Jjy+wwLEB0BcEBbTcvQABASsAZc0dAAAAACJRIFtRp6BysVcQAwDAg1X8hIir4gzFnf45Q26OgU75X7tHIRbaAVSMcsBGGdB57AEYpIvagBzJORsA3lyEa/3JgHkFvRkAc8XaClYAAIAAAACAAAAAgAEAAAABAAAAARcg2gFUjHLARhnQeewBGKSL2oAcyTkbAN5chGv9yYB5Bb0AAAEFIBGAy/vTt2/hGsKMnwoLhC5ut+Cg8rcoXAv54BGttVjHIQcRgMv707dv4RrCjJ8KC4QubrfgoPK3KFwL+eARrbVYxxkAc8XaClYAAIAAAACAAAAAgAEAAAADAAAAAA==",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "signed",
+        "repeatable": true,
+        "signatureBytes": [
+          {
+            "index": 0,
+            "scheme": "schnorr",
+            "path": "m/86h/0h/0h/0/6",
+            "keyHex": "13",
+            "valueHex": "4d41a68032818944f38457c3351156be7b4d1fe7dab743d846f6c868ec191f77e16f305fa04d5e6579101298a1e80dfe8681b7967e7ffd2cad369f3ebe2c528c",
+            "sighashHex": "646c2da45a813ed452d10dbfbaaab089d850ac866090d9b361c992fbd34dd1a5"
+          },
+          {
+            "index": 1,
+            "scheme": "schnorr",
+            "path": "m/86h/0h/0h/1/1",
+            "keyHex": "13",
+            "valueHex": "3d6365fcbbedc2d66e1830f669e88a69c6681ebd12026a92a376061f2253fa038ea823fd7b17d3e4ec0752d9d702f48487f55161752d25ae108b8acba5d7e9ed",
+            "sighashHex": "19773d88fc354ddb27f3a5c4b0ea18e0e3d38eb1d2db069c8d5add6bbaad789b"
+          }
+        ]
+      },
+      "sources": [
+        "keys: BIP-32 from the BIP-84 rootpriv (bip-0084.mediawiki line 70), checked against the key Bitcoin Core /Satoshi:31.1.0/ wrote into each input's derivation record",
+        "sighash: Bitcoin Core v31.1 test/functional/test_framework/script.py, SegwitV0SignatureHash with SIGHASH_ALL and TaprootSignatureHash with SIGHASH_DEFAULT",
+        "ECDSA: test_framework/key.py ECKey.sign_ecdsa(low_s=True, rfc6979=True); Schnorr: key.py sign_schnorr with aux 32 zero bytes, on the key tweaked by TaggedHash(\"TapTweak\", internal key)",
+        "valueHexLowR: Bitcoin Core /Satoshi:31.1.0/ walletprocesspsbt, present only where RFC 6979's first R is 2^255 or more; elsewhere Core's wallet wrote valueHex exactly",
+        "validity: every signed transaction, the framework's and Core's wallet's, finalized by Bitcoin Core /Satoshi:31.1.0/ finalizepsbt and accepted by testmempoolaccept"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "testmempoolaccept": true
+      }
+    },
+    {
+      "id": "mixed-ecdsa-and-schnorr",
+      "operation": "sign",
+      "requirements": [
+        "SP-SIG-1"
+      ],
+      "level": "MUST",
+      "description": "One p2wpkh and one p2tr input in one transaction: an ECDSA signature over the BIP-143 digest and a Schnorr signature over the BIP-341 digest.",
+      "input": {
+        "psbt": "cHNidP8BAJoCAAAAArVkUp3NEuB2l4aMZkaVhdjGE0Jj/lcXlZCuOROJ4qwJAAAAAAD9////jiylmdP4e9DQQqYhdnwb2GZDtLqsDY6RiJIaU5yPxBYAAAAAAP3///8CALygZQEAAAAWABTwZAx8NlttLNSzkfOdoT4e7Cd3OPAAa+4AAAAAFgAU+bAU2qlV4sPuLApy4IvdLT6quBQAAAAAAAEAhAIAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/////AwEsAP7///8CAPIFKgEAAAAWABTAzrzWw9PKjHXcXsYuvlUzDvkQ4gAAAAAAAAAAJmokqiGp7eL2HD9x0d79P6mZ36NpU3VcaQaJeZlitIvr2DaXToz5KwAAAAEBHwDyBSoBAAAAFgAUwM681sPTyox13F7GLr5VMw75EOIiBgMw1U/Q3UIKbl+NNiT180gsrjUPedXwdTv1vu+cLZGvPBhzxdoKVAAAgAAAAIAAAACAAAAAAAAAAAAAAQCQAgAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP////8DAVUA/v///wIA8gUqAQAAACJRIKYIafDbzx3GWcnOy6+AUBNeqejNxIcFPx3GiAlJ3GhMAAAAAAAAAAAmaiSqIant4vYcP3HR3v0/qZnfo2lTdVxpBol5mWK0i+vYNpdOjPlUAAAAAQErAPIFKgEAAAAiUSCmCGnw288dxlnJzsuvgFATXqnozcSHBT8dxogJSdxoTCEWzIpLxk2Je93F+8L2cPeougs4Z3kQbPEiPG/F181vwRUZAHPF2gpWAACAAAAAgAAAAIAAAAAAAAAAAAEXIMyKS8ZNiXvdxfvC9nD3qLoLOGd5EGzxIjxvxdfNb8EVAAAiAgOi4WhAw/Trl6E2O1+cTxLEflmVBdKd/vilfC396qSqvRhzxdoKVAAAgAAAAIAAAACAAQAAAAYAAAAA",
+        "context": "abandon-mainnet"
+      },
+      "expected": {
+        "verdict": "signed",
+        "repeatable": true,
+        "signatureBytes": [
+          {
+            "index": 0,
+            "scheme": "ecdsa",
+            "path": "m/84h/0h/0h/0/0",
+            "keyHex": "020330d54fd0dd420a6e5f8d3624f5f3482cae350f79d5f0753bf5beef9c2d91af3c",
+            "valueHex": "30450221008bfb87f8c6c7909676eb89ddcfb867f86ad4e600c5367fb5833b82ab9a8c1d470220664dfb1e8b1a0fc5bd756f444e6cf943506e0a11e91275a32da7631771fb0e0f01",
+            "sighashHex": "f06455d8491e85fa248976f91a3ec4c5ab3de2352e4cc0722a90f385ceb8d601",
+            "rHighBit": true,
+            "valueHexLowR": "304402205065ae33b2b61f987c897799d8f7615fbcdd5f1614aed44374a8acf1e9b4157f0220584290319b694af6e1383c1734164567bd6e5567c1cde0ef6a652d637be8942b01"
+          },
+          {
+            "index": 1,
+            "scheme": "schnorr",
+            "path": "m/86h/0h/0h/0/0",
+            "keyHex": "13",
+            "valueHex": "e90f0b24512519ae956f658ece84657f60b94225a3b1868efe63e037cd3d2b52509bc1281ed97fb572fa2673ec7ad916aa63787802c37f8f30ba6fb0fd7ca6c1",
+            "sighashHex": "0833042d7f1c02caf9594f2651ed5149df18477775319332a1d76766cfa62553"
+          }
+        ]
+      },
+      "sources": [
+        "keys: BIP-32 from the BIP-84 rootpriv (bip-0084.mediawiki line 70), checked against the key Bitcoin Core /Satoshi:31.1.0/ wrote into each input's derivation record",
+        "sighash: Bitcoin Core v31.1 test/functional/test_framework/script.py, SegwitV0SignatureHash with SIGHASH_ALL and TaprootSignatureHash with SIGHASH_DEFAULT",
+        "ECDSA: test_framework/key.py ECKey.sign_ecdsa(low_s=True, rfc6979=True); Schnorr: key.py sign_schnorr with aux 32 zero bytes, on the key tweaked by TaggedHash(\"TapTweak\", internal key)",
+        "valueHexLowR: Bitcoin Core /Satoshi:31.1.0/ walletprocesspsbt, present only where RFC 6979's first R is 2^255 or more; elsewhere Core's wallet wrote valueHex exactly",
+        "validity: every signed transaction, the framework's and Core's wallet's, finalized by Bitcoin Core /Satoshi:31.1.0/ finalizepsbt and accepted by testmempoolaccept"
+      ],
+      "bitcoinCore": {
+        "fee": "0.00010000",
+        "testmempoolaccept": true
+      }
+    }
+  ],
+  "bitcoinCore": "/Satoshi:31.1.0/",
+  "contexts": {
+    "abandon-mainnet": {
+      "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+      "passphrase": "",
+      "network": "mainnet",
+      "masterFingerprint": "73c5da0a"
+    }
+  }
+}

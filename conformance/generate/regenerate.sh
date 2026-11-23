@@ -32,6 +32,10 @@ BBQR=8dc7ef07d0d520763cc0001a885ca8d29ac8719a
 SEEDSIGNER=088b144eaebc79d12d6336030e943510d7a14f54
 URTYPES=7fb280eab3b3563dfc57d2733b0bf5cbc0a96a6a
 BECH32=7a7d7ab158db7078a333384e0e918c90dbc42917
+# Bitcoin Core v31.1. Its Python test framework computes the sighashes and
+# signatures in sign-deterministic.json.
+CORE=9be056a8a72b624dae9623b2f7bded92c2a21c91
+CORE_TAG=v31.1
 RAW=https://raw.githubusercontent.com
 
 mkdir -p "$WORK"
@@ -62,6 +66,15 @@ done
 pip3 install --quiet --target "$WORK/py" \
   "https://github.com/selfcustody/urtypes/archive/$URTYPES.tar.gz"
 
+# Bitcoin Core's functional test framework: the sighash and signing code for
+# sign-deterministic.json, and the modules those import.
+mkdir -p "$WORK/src/core/test_framework/crypto"
+for f in __init__.py authproxy.py coverage.py descriptors.py key.py messages.py script.py util.py \
+  crypto/ripemd160.py crypto/secp256k1.py crypto/siphash.py; do
+  curl -sfL -o "$WORK/src/core/test_framework/$f" \
+    "$RAW/bitcoin/bitcoin/$CORE/test/functional/test_framework/$f"
+done
+
 CLI="$BITCOIN_CLI -regtest -datadir=$WORK/regtest -rpcport=$RPCPORT -rpcuser=u -rpcpassword=p"
 stop() {
   $CLI stop >/dev/null 2>&1 || true
@@ -84,6 +97,7 @@ cd "$WORK"
 python3 "$HERE/headers.py" "$OUT"
 python3 "$HERE/core_setup.py"
 python3 "$HERE/gen_review.py" "$OUT"
+python3 "$HERE/gen_sign.py" "$OUT" "$CORE_TAG"
 python3 "$HERE/gen_dice.py" "$OUT" "$ROOT"
 python3 "$HERE/gen_manifest.py" "$OUT"
 python3 "$HERE/gen_bbqr.py" "$OUT" "$BBQR"

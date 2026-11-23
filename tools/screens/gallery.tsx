@@ -86,6 +86,18 @@ const never = (): Promise<never> =>
 const pending = (): Promise<never> => new Promise<never>(() => undefined)
 const noop = (): void => undefined
 
+/*
+ * THIS BUILD'S ROOT, IN THE PICTURE THE WEBSITE SHOWS. gen-device-shots passes
+ * the manifest root of the tree it runs in as `?root=`, so the lock screen on
+ * nullroute.diy shows the same root as the page printed under it. With a
+ * sample there, the site's one instruction, do not type your PIN if the two
+ * differ, sat beside a picture of two that differed. The dm-verity root stays
+ * a sample: only the image build makes one, and the caption says so.
+ */
+const SAMPLE_ROOT = '942b6a2b53d02c1bce1ce4e7592d3f13e44f23db8dea4ef02c4aea2970813600'
+const passedRoot = new URLSearchParams(window.location.search).get('root') ?? ''
+const SHOT_ROOT = /^[0-9a-f]{64}$/.test(passedRoot) ? passedRoot : SAMPLE_ROOT
+
 /** A named device, so the header chip is measured on every screen. */
 /*
  * The header identity, as every screen now receives it: one node built once,
@@ -397,8 +409,8 @@ const SCREENS: Record<string, () => React.ReactElement> = {
     <LockScreen
       identity={NO_WALLET}
       attestation={{
-        rootHash: '942b6a2b53d02c1bce1ce4e7592d3f13e44f23db8dea4ef02c4aea2970813600',
-        rootHashShort: '942b6a2b',
+        rootHash: SHOT_ROOT,
+        rootHashShort: SHOT_ROOT.slice(0, 8),
         verityRootHash: 'c30d56036f3729bac36a5683533133016638af11d2d59debf9b90f09e8b56ade',
         specCount: 37,
         invariantCount: 283,
