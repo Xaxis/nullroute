@@ -120,7 +120,8 @@ every roll is shown in order before confirmation.
 
 **SP-ENT-7.** The signer MAY warn about suspicious patterns. It MUST NOT
 discard, reorder or alter a roll, and a warning MUST NOT block derivation.
-Check: nullroute INV-DICE-6, INV-UI-8.
+Check: vector `dice-to-entropy.json` (one hundred sixes derive unaltered;
+whether a warning appears is not checked); nullroute INV-DICE-6, INV-UI-8.
 
 **SP-ENT-8.** If the signer offers to roll on the user's behalf, it MUST draw
 each face uniformly (for example by rejection sampling, not by reduction
@@ -336,7 +337,8 @@ because each of those signatures commits to every input amount and a false
 amount makes it invalid. Check: vector `review-input-amounts.json` (segwit v0
 inputs with only a witness UTXO; a witness UTXO contradicting its non-witness
 UTXO; a non-witness UTXO whose TXID does not match; an all-taproot case that
-needs neither).
+needs neither); vector `sign-override.json` (signing such an input stays
+blocked until a single-use override).
 
 Basis, quoted from the BIPs:
 
@@ -417,7 +419,8 @@ a blocking condition. Check: vector `review-fee-and-amounts.json`; nullroute
 500 sat/vB).
 
 **SP-REV-14.** A payment to one of the wallet's own receive addresses SHOULD be
-shown as a payment rather than as change. Check: nullroute INV-PSBT-13.
+shown as a payment rather than as change. Check: vector `review-change.json`
+(a payment to the signer's own receive address); nullroute INV-PSBT-13.
 
 ### 3.3 When signing MUST stay disabled
 
@@ -445,7 +448,8 @@ all request the same type. BIP-174 requires the refusal where the signer finds
 a type unacceptable ("If unacceptable, they must fail", line 435); this profile
 fixes which types are acceptable. Check: vector `review-sighash.json` (0x00,
 0x01, 0x02, 0x03, 0x81, 0x82, 0x83, an undefined value such as 0x04, and a
-mixed set); nullroute INV-PSBT-3.
+mixed set); vector `sign-override.json` (signing a `SIGHASH_NONE` input stays
+blocked until a single-use override); nullroute INV-PSBT-3.
 
 **SP-REV-24.** A transaction with no input the signer owns MUST NOT be signable,
 and the screen MUST say why. A signing attempt that produces no signature MUST
@@ -455,8 +459,9 @@ fail visibly rather than return an unsigned PSBT. Check: vector
 **SP-REV-25.** Signing keys MUST be found by matching each input's own script
 to the signer's derivations, not by trusting a derivation path the PSBT
 supplies. Check: vector `review-ownership.json` (a PSBT whose derivation record
-names the signer's fingerprint for a script it does not own); nullroute
-INV-PSBT-14.
+names the signer's fingerprint for a script it does not own); vector
+`sign-override.json` (an input owned by another wallet is refused, override or
+not); nullroute INV-PSBT-14.
 
 **SP-REV-26.** A failure to review or to sign MUST be displayed, and MUST NOT
 leave an earlier review or result on screen. Check: nullroute INV-UI-14.
@@ -930,3 +935,4 @@ scope", restated without the nullroute specifics.
 | 0.1 | 23 November 2026 | SP-REV-7 amended: a signer MAY refuse a transaction with a false change claim instead of showing the output as a payment. SeedSigner refuses it as "Likely an Attack!", and the vector failed it for being stricter than the requirement. SP-TX-7 now says a receiver that refuses a foreign part MAY keep scanning, which is what SeedSigner does and what the requirement's text already allowed; the vector had demanded the whole transfer be refused. Both cases in `review-change.json` and `two-transfers` in `ur-psbt.json` accept either |
 | 0.1 | 23 November 2026 | Vector file `review-malformed.json` added for SP-REV-1, which had no portable check: BIP-174's 20 invalid PSBTs copied from the BIP, empty input, a descriptor, two truncations, and BIP-174's two rules on the unsigned transaction (empty scriptSigs, no witness serialization) on a coin the signer owns, so a parser that skips them reaches a review instead of refusing for want of an owned input |
 | 0.1 | 23 November 2026 | Vector file `review-outputs.json` added for SP-REV-5, which had no portable check: full addresses of every length and form, BIP-350 future witness versions, and the whole script of an output with no address. Writing it showed nullroute failing its own row: the screen said "no address (raw script)" without the script, and a future witness version was shown as having no address. Both fixed; the row had said Met |
+| 0.1 | 23 November 2026 | Check lines name every vector file that checks the requirement. SP-ENT-7, SP-REV-3, SP-REV-14, SP-REV-23 and SP-REV-25 were checked by vectors their text did not mention; `make conformance` now fails when a Check line or the kit's coverage table leaves one out |

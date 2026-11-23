@@ -15,6 +15,12 @@ status and home pages.
 
 ## November 2026
 
+- **2026-11-23** `make conformance` fails when the kit's coverage table or a
+  requirement's Check line in the profile leaves out a requirement some vector
+  case checks. Both had drifted: the table still filed SP-REV-1 and SP-REV-22
+  as checked only by nullroute's own tests and SP-REV-5 as manual, left SP-TX-7
+  out, and five Check lines (SP-ENT-7, SP-REV-3, SP-REV-14, SP-REV-23,
+  SP-REV-25) did not name a vector that checks them.
 - **2026-11-23** Every output on the review screen is shown by its full
   address or, where it has none, by its whole script, and any signer can now be
   checked for that (SP-REV-5). Until today nullroute showed an output with no

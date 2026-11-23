@@ -92,7 +92,7 @@ Output of `make verify` on this branch:
 | Invariants | 357 invariants bound to 1068 tests, each of which ran and passed; 1392 tests in the suite |
 | Vectors | 41 of 41 vector files match their pinned hash |
 | Differential | 3 modules cross-checked against `bitcoinjs-lib` |
-| Integrity | 442 files, root `d35f28e62104e4c696cf02cd65827a9045b6d10e8ac4e528c4fa4088ef976bea`, and no tracked file under those paths left out |
+| Integrity | 442 files, root `c5e6b30f1004f545a39106fc14b19099e6ba7737d63240e5dd06719a2d2f7c23`, and no tracked file under those paths left out |
 
 Totals: 39 specs, 357 invariants. The README badges state the same two numbers,
 and `make badges` checks them and every row of this table against

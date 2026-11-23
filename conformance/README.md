@@ -10,8 +10,9 @@ dependencies. You check a signer by writing a small adapter module that calls
 your signer and reports what it did, then running the runner against it.
 
 nullroute is one implementation of the profile. Its adapter is in
-[`adapters/nullroute.mjs`](adapters/nullroute.mjs), and it does not pass every
-case (see [nullroute's results](#nullroutes-results)).
+[`adapters/nullroute.mjs`](adapters/nullroute.mjs). It passes every case today
+and has failed some on the way (see [nullroute's results](#nullroutes-results));
+a pass says nothing about the requirements no vector checks.
 
 ## Layout
 
@@ -232,22 +233,25 @@ came from nullroute.
 
 | How it is checked | Requirements |
 | --- | --- |
-| Vector file in this directory | SP-ENT-1, 2, 3, 4, 5, 10; SP-REV-2, 3, 4, 6, 7, 8, 9, 11, 23, 24, 25; SP-SIG-1; SP-ATT-2; SP-TX-2, 3, 4, 5, 6 |
+| Vector file in this directory | SP-ENT-1, 2, 3, 4, 5, 10; SP-REV-1, 2, 3, 4, 6, 7, 8, 9, 11, 23, 24, 25; SP-SIG-1; SP-ATT-2; SP-TX-2, 3, 4, 5, 6 |
 | Vector, SHOULD parts only | SP-REV-13 (high fee warns), SP-REV-7 (claim reported), SP-REV-11 (unknown pairs reported), SP-REV-14 (own receive address shown as a payment) |
-| Vector covers part of it | SP-ENT-7 (a flagged pattern still derives; warnings are not checked), SP-HW-9 (dice mode is deterministic; the operating system random source for sealing is manual review) |
-| An implementation's own tests only (the profile names nullroute invariants) | SP-ENT-9, SP-REV-1, SP-REV-10, SP-REV-12, SP-REV-20, SP-REV-22, SP-REV-26, SP-ATT-6, SP-ATT-7, SP-ATT-8, SP-ATT-9, SP-ATT-10, SP-ATT-11, SP-HW-7, SP-TX-1, SP-DEP-1 (the BIPs' own published vectors, run by the implementation's tests) |
-| Manual procedure, stated in the profile | SP-ENT-6, SP-ENT-8 (on-screen count), SP-REV-5, SP-REV-21, SP-ATT-1, SP-ATT-3, SP-ATT-4, SP-ATT-5, SP-ATT-12, SP-HW-1 to SP-HW-6, SP-HW-8, SP-HW-10 |
+| Vector covers part of it | SP-ENT-7 (a flagged pattern still derives; warnings are not checked), SP-HW-9 (dice mode is deterministic; the operating system random source for sealing is manual review), SP-REV-5 (what each output is shown as; that every character fits on the panel is the manual step), SP-REV-22 (the block and the single-use override; the reason stated beside the control is not checked), SP-TX-7 (reading; writing `crypto-psbt` is not checked) |
+| An implementation's own tests only (the profile names nullroute invariants) | SP-ENT-9, SP-REV-10, SP-REV-12, SP-REV-20, SP-REV-26, SP-ATT-6, SP-ATT-7, SP-ATT-8, SP-ATT-9, SP-ATT-10, SP-ATT-11, SP-HW-7, SP-TX-1, SP-DEP-1 (the BIPs' own published vectors, run by the implementation's tests) |
+| Manual procedure, stated in the profile | SP-ENT-6, SP-ENT-8 (on-screen count), SP-REV-21, SP-ATT-1, SP-ATT-3, SP-ATT-4, SP-ATT-5, SP-ATT-12, SP-HW-1 to SP-HW-6, SP-HW-8, SP-HW-10 |
 | Untestable by the signer | The property behind SP-ENT-11: that the dice were fair and unobserved |
 
-Several requirements in the "own tests only" row could have portable vectors.
-SP-REV-1 (malformed input refused) is the obvious next one. It is not in this
-version because the profile does not name a vector file for it.
+Several requirements in the "own tests only" row could still have portable
+vectors. SP-REV-1 left it on 23 November with `review-malformed.json`, and
+SP-REV-5 left the manual row the same day with `review-outputs.json`.
+`make conformance` fails when this table, or a requirement's Check line in the
+profile, leaves out a requirement some case checks
+(`tools/checks/check-conformance-coverage.mjs`).
 
 ## nullroute's results
 
 `make conformance` today: all 158 cases pass, with no SHOULD missed, and
 [`known-failures/nullroute.json`](known-failures/nullroute.json) is empty.
-Four requirements have failed and been fixed, which is what the list is for:
+Five requirements have failed and been fixed, which is what the list is for:
 
 - SP-REV-9 and SP-REV-11 failed when this directory was added and were fixed
   in the next commit.
@@ -256,6 +260,11 @@ Four requirements have failed and been fixed, which is what the list is for:
 - SP-TX-5 (two transfers with disjoint indices joined) was fixed when the join
   began checking that PSBT and transaction frames make exactly one document.
   That check is structural, not a digest, and says so in INV-QR-10.
+- SP-REV-5 failed 6 of the 10 cases in `review-outputs.json` when it was
+  written: an output with no address was shown as "no address (raw script)"
+  without the script, and BIP-350's undefined witness versions as having no
+  address. Both were fixed in the same commit, and the profile's table, which
+  had said Met, says so.
 
 A false `PSBT_OUT_TAP_BIP32_DERIVATION` claim used to be shown as a payment
 without being reported as claimed, while the same claim made with

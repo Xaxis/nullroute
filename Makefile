@@ -300,6 +300,10 @@ conformance: build ## The signer profile vectors in spec/vectors/signer-profile/
 	@node conformance/run.mjs conformance/adapters/nullroute.mjs \
 	  --known-failures conformance/known-failures/nullroute.json \
 	  --report conformance-report.json
+	# Which requirements a pass covers is stated twice by hand, in the README's
+	# coverage table and in each requirement's Check line, and both had drifted
+	# from what the cases name. The cases are the ground truth.
+	@node tools/checks/check-conformance-coverage.mjs
 
 # Lands with PSBT signing. There is no signature to reproduce until then, and a
 # target that passed with nothing to examine would report assurance the project

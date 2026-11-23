@@ -89,15 +89,33 @@ function sectionSlug(id: string): string {
 }
 
 function summarise(nodes: readonly RootContent[]): string {
-  const first = nodes.find((node) => isElement(node, 'p'))
-  // A lead-in that ends in a colon introduces a table or list the card cannot
-  // show, so it ends at the clause instead.
-  const text =
-    first === undefined ? '' : textOf(first).replace(/\s+/g, ' ').trim().replace(/:$/, '.')
+  const paragraphs = nodes.filter((node) => isElement(node, 'p'))
   // Whole sentences, never a cut one. A summary that stopped mid-clause with an
   // ellipsis read as machine-truncated, and could drop the half of a sentence
   // that qualifies the first half, which on this site is an overclaim.
-  const sentences = text.split(/(?<=[.!?])\s+(?=[A-Z])/)
+  const sentencesOf = (node: RootContent): string[] =>
+    textOf(node)
+      .replace(/\s+/g, ' ')
+      .trim()
+      .split(/(?<=[.!?:])\s+(?=[A-Z])/)
+  // A sentence ending in a colon introduces something the card cannot show, so
+  // the summary stops before it, and a paragraph that is only a lead-in gives
+  // way to the next. Given a full stop instead, it read as "Options." and "Each
+  // case ends in one of.", and "It does not mean:" became "It does not mean.",
+  // a claim the list after it never made.
+  for (const node of paragraphs) {
+    const sentences = sentencesOf(node)
+    const lead = sentences.findIndex((sentence) => sentence.endsWith(':'))
+    const whole = lead === -1 ? sentences : sentences.slice(0, lead)
+    if (whole.length > 0) return joinWithin(whole)
+  }
+  // Every paragraph is a lead-in, as where one sentence introduces a table.
+  // That sentence, ended as a statement, is still better than no summary.
+  const first = paragraphs[0]
+  return first === undefined ? '' : joinWithin(sentencesOf(first).map((s) => s.replace(/:$/, '.')))
+}
+
+function joinWithin(sentences: readonly string[]): string {
   let summary = sentences[0] ?? ''
   for (const next of sentences.slice(1)) {
     if (summary.length + 1 + next.length > 180) break
