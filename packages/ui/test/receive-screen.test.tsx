@@ -14,7 +14,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ReceiveScreen, chunkAddress } from '../src/screens/ReceiveScreen.js'
 
 afterEach(cleanup)
@@ -119,6 +119,109 @@ describe('ReceiveScreen', () => {
     expect(screen.queryByTestId('receive-verified')).toBeNull()
     expect(screen.getByTestId('receive-verify')).toBeTruthy()
     expect(screen.getByTestId('receive-path').textContent).toBe("m/84'/0'/0'/0/1")
+  })
+
+  /**
+   * INV-UI-61. A derivation that answers after the user has moved on is
+   * dropped. Index 0 landing last would otherwise put its address on screen
+   * while the controls are at index 1.
+   */
+  it('drops-an-address-for-an-index-it-has-left', async () => {
+    const release = new Map<number, () => void>()
+    const onAddress = vi.fn(async (index: number) => {
+      await new Promise<void>((resolve) => {
+        release.set(index, resolve)
+      })
+      return {
+        address: `${ADDRESS}${String(index)}`,
+        path: `m/84'/0'/0'/0/${String(index)}`,
+        index,
+      }
+    })
+    setup({ onAddress })
+
+    fireEvent.click(screen.getByTestId('receive-next'))
+    await waitFor(() => {
+      expect(release.has(1)).toBe(true)
+    })
+    release.get(1)?.()
+    await waitFor(() => {
+      expect(screen.getByTestId('receive-path').textContent).toBe("m/84'/0'/0'/0/1")
+    })
+
+    release.get(0)?.()
+    // Past the 50ms ui-race adds to every answer, so index 0's has landed.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 120))
+    })
+    expect(screen.getByTestId('receive-path').textContent).toBe("m/84'/0'/0'/0/1")
+  })
+
+  /**
+   * INV-UI-61. A check still running when the user moves on cannot put its
+   * tick on the next address. The verdict is about the address it checked and
+   * is shown only beside that address.
+   */
+  it('keeps-a-verdict-with-the-address-it-checked', async () => {
+    let answer: (() => void) | undefined
+    const onVerify = vi.fn(async () => {
+      await new Promise<void>((resolve) => {
+        answer = resolve
+      })
+      return { found: true, path: "m/84'/0'/0'/0/0" }
+    })
+    setup({ onVerify })
+    await waitFor(() => {
+      expect(screen.getByTestId('receive-verify')).toBeTruthy()
+    })
+
+    fireEvent.click(screen.getByTestId('receive-verify'))
+    await waitFor(() => {
+      expect(answer).toBeDefined()
+    })
+    fireEvent.click(screen.getByTestId('receive-next'))
+    await waitFor(() => {
+      expect(screen.getByTestId('receive-path').textContent).toBe("m/84'/0'/0'/0/1")
+    })
+
+    answer?.()
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 120))
+    })
+    expect(onVerify).toHaveBeenCalledWith(`${ADDRESS}0`)
+    expect(screen.queryByTestId('receive-verified')).toBeNull()
+    expect(screen.getByTestId('receive-path').textContent).toBe("m/84'/0'/0'/0/1")
+
+    // Nor does it come back with the address: moving cleared it, and the
+    // check is offered again.
+    fireEvent.click(screen.getByTestId('receive-prev'))
+    await waitFor(() => {
+      expect(screen.getByTestId('receive-path').textContent).toBe("m/84'/0'/0'/0/0")
+    })
+    expect(screen.queryByTestId('receive-verified')).toBeNull()
+    expect(screen.getByTestId('receive-verify')).toBeTruthy()
+  })
+
+  /**
+   * INV-UI-61. A check that fails says the address was not checked. It used
+   * to appear under "Not derived", which is false of an address on screen.
+   */
+  it('says-a-failed-check-was-not-a-check', async () => {
+    const onVerify = vi.fn().mockRejectedValue(new Error('The wallet is locked.'))
+    setup({ onVerify })
+    await waitFor(() => {
+      expect(screen.getByTestId('receive-verify')).toBeTruthy()
+    })
+    fireEvent.click(screen.getByTestId('receive-verify'))
+    await waitFor(() => {
+      expect(screen.getByTestId('receive-check-failed').textContent).toContain(
+        'The wallet is locked'
+      )
+    })
+    expect(screen.getByTestId('receive-check-failed').textContent).toContain('Not checked')
+    expect(screen.queryByTestId('receive-error')).toBeNull()
+    expect(screen.queryByTestId('receive-verified')).toBeNull()
+    expect(screen.getByTestId('receive-address')).toBeTruthy()
   })
 
   /**

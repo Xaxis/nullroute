@@ -10,7 +10,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QuorumAddressesScreen } from '../src/screens/QuorumAddressesScreen.js'
 
 afterEach(cleanup)
@@ -110,6 +110,40 @@ describe('QuorumAddressesScreen', () => {
     })
     // Nothing from the previous page survived.
     expect(screen.getByTestId('quorum-rows').textContent).not.toContain('recv-0')
+  })
+
+  /**
+   * INV-UI-45. Answers need not land in the order they were asked for. Page 0
+   * answering after the user has moved to page 10 is dropped, not shown under
+   * the header for index 10.
+   */
+  it('drops-an-answer-for-a-page-it-has-left', async () => {
+    const release = new Map<number, () => void>()
+    const onAddresses = vi.fn(async (_d: string, change: boolean, start: number, count: number) => {
+      await new Promise<void>((resolve) => {
+        release.set(start, resolve)
+      })
+      return addressesFor(change, start, count)
+    })
+    setup({ onAddresses })
+
+    fireEvent.click(screen.getByTestId('quorum-next'))
+    await waitFor(() => {
+      expect(release.has(10)).toBe(true)
+    })
+    release.get(10)?.()
+    await waitFor(() => {
+      expect(screen.getByTestId('quorum-rows').textContent).toContain('recv-10')
+    })
+
+    release.get(0)?.()
+    // Past the 50ms ui-race adds to every answer, so page 0's has landed.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 120))
+    })
+    const rows = screen.getByTestId('quorum-rows').textContent
+    expect(rows).toContain('recv-10')
+    expect(rows).not.toContain('recv-0')
   })
 
   it('says-nothing-about-a-position-it-was-not-given', () => {

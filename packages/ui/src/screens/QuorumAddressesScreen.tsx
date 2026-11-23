@@ -1,4 +1,4 @@
-import { type ReactElement, type ReactNode, useCallback, useEffect, useState } from 'react'
+import { type ReactElement, type ReactNode, useEffect, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
@@ -69,24 +69,30 @@ export function QuorumAddressesScreen(props: QuorumAddressesScreenProps): ReactE
   const [rows, setRows] = useState<readonly QuorumAddressRow[]>([])
   const [error, setError] = useState<string | null>(null)
 
-  const load = useCallback(async (): Promise<void> => {
+  useEffect(() => {
+    // An answer for a page the user has left is dropped. Answers need not
+    // arrive in the order they were asked for, and the last one to land used
+    // to win, so page 0 arriving after page 10 put index 0 under the header
+    // for index 10 (INV-UI-45).
+    let current = true
     // Cleared first. Leaving the previous page on screen while the next one
     // derives means a user reads index 0 under a header that says index 10,
     // and reading the wrong row against another device is the exact mistake
     // this screen exists to prevent.
     setRows([])
     setError(null)
-    try {
-      const result = await onAddresses(descriptor, change, start, PAGE)
-      setRows(result.addresses)
-    } catch (err) {
-      setError((err as Error).message)
+    onAddresses(descriptor, change, start, PAGE).then(
+      (result) => {
+        if (current) setRows(result.addresses)
+      },
+      (err: unknown) => {
+        if (current) setError((err as Error).message)
+      }
+    )
+    return () => {
+      current = false
     }
   }, [descriptor, change, start, onAddresses])
-
-  useEffect(() => {
-    void load()
-  }, [load])
 
   return (
     <Screen

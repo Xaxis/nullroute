@@ -1,4 +1,4 @@
-import { type ReactElement, type ReactNode, useCallback, useEffect, useState } from 'react'
+import { type ReactElement, type ReactNode, useEffect, useState } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
@@ -144,42 +144,63 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
 
   const [index, setIndex] = useState(0)
   const [shown, setShown] = useState<ReceiveAddress | null>(null)
-  const [verified, setVerified] = useState<boolean | null>(null)
+  /**
+   * The outcome of "Check it", held with the address it is about and shown
+   * only while that address is on screen. A check still running when the user
+   * moved on used to land on the next address, so the tick vouched for one
+   * nobody had checked (INV-UI-61).
+   */
+  const [check, setCheck] = useState<
+    | { readonly address: string; readonly found: boolean }
+    | { readonly address: string; readonly failed: string }
+    | null
+  >(null)
+  const current = check !== null && check.address === shown?.address ? check : null
+  const verified = current !== null && 'found' in current ? current.found : null
+  const checkFailed = current !== null && 'failed' in current ? current.failed : null
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const load = useCallback(async (): Promise<void> => {
-    // Cleared first, both of them. An address left on screen while the next one
-    // derives is an address being read under the wrong index, and a verified
-    // tick left over from the previous address is worse than no tick at all.
-    setShown(null)
-    setVerified(null)
-    setError(null)
-    try {
-      // The quorum's address when a quorum is chosen, this device's own only
-      // when it was chosen explicitly. Falling back to the single-signature
-      // path because the quorum derivation is unavailable would hand somebody
-      // the weaker address at the moment they were told they were getting the
-      // stronger one, so it fails instead.
-      if (source !== null) {
-        if (onQuorumAddress === undefined) {
-          throw new Error(
-            'This build cannot derive a quorum address, so it will not show one. Do not use ' +
-              'the single-signature address below for money meant for the quorum.'
-          )
+  useEffect(() => {
+    // An answer for an address the user has moved past is dropped. The last
+    // answer to land used to win, so a slow derivation for index 3 arriving
+    // after index 4 put index 3's address on screen under index 4's controls.
+    let live = true
+    const load = async (): Promise<void> => {
+      // Cleared first, both of them. An address left on screen while the next one
+      // derives is an address being read under the wrong index, and a verified
+      // tick left over from the previous address is worse than no tick at all.
+      setShown(null)
+      setCheck(null)
+      setError(null)
+      try {
+        // The quorum's address when a quorum is chosen, this device's own only
+        // when it was chosen explicitly. Falling back to the single-signature
+        // path because the quorum derivation is unavailable would hand somebody
+        // the weaker address at the moment they were told they were getting the
+        // stronger one, so it fails instead.
+        if (source !== null) {
+          if (onQuorumAddress === undefined) {
+            throw new Error(
+              'This build cannot derive a quorum address, so it will not show one. Do not use ' +
+                'the single-signature address below for money meant for the quorum.'
+            )
+          }
+          const address = await onQuorumAddress(source.descriptor, index)
+          if (live) setShown(address)
+          return
         }
-        setShown(await onQuorumAddress(source.descriptor, index))
-        return
+        const address = await onAddress(index)
+        if (live) setShown(address)
+      } catch (err) {
+        if (live) setError((err as Error).message)
       }
-      setShown(await onAddress(index))
-    } catch (err) {
-      setError((err as Error).message)
+    }
+    void load()
+    return () => {
+      live = false
     }
   }, [index, onAddress, onQuorumAddress, source])
-
-  useEffect(() => {
-    void load()
-  }, [load])
 
   return (
     <Screen
@@ -218,6 +239,7 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
               onClick={() => {
                 void (async () => {
                   setBusy(true)
+                  const address = shown.address
                   try {
                     // The right question for the address actually on screen.
                     // Asking whether a quorum address derives from this device
@@ -225,11 +247,11 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
                     // wrong, and the screen would shout about it.
                     const verdict =
                       source === null || onVerifyQuorum === undefined
-                        ? await onVerify(shown.address)
-                        : await onVerifyQuorum(source.descriptor, shown.address)
-                    setVerified(verdict.found)
+                        ? await onVerify(address)
+                        : await onVerifyQuorum(source.descriptor, address)
+                    setCheck({ address, found: verdict.found })
                   } catch (err) {
-                    setError((err as Error).message)
+                    setCheck({ address, failed: (err as Error).message })
                   } finally {
                     setBusy(false)
                   }
@@ -442,6 +464,11 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
                     {source === null ? 'this wallet' : 'the registered descriptor'}. Do not use it.
                     Something is wrong with this device or with what it just displayed.
                   </span>
+                </div>
+              ) : checkFailed !== null ? (
+                <div className="nr-banner nr-banner--danger" data-testid="receive-check-failed">
+                  <strong>Not checked</strong>
+                  <span>{checkFailed}</span>
                 </div>
               ) : null}
             </div>

@@ -593,6 +593,7 @@ invariants:
       - packages/ui/test/quorum-addresses-screen.test.tsx::derives-from-the-descriptor-and-says-what-a-match-proves
       - packages/ui/test/quorum-addresses-screen.test.tsx::shows-receive-and-change-separately-and-restarts-the-page
       - packages/ui/test/quorum-addresses-screen.test.tsx::clears-the-page-rather-than-leaving-a-stale-one-under-a-new-header
+      - packages/ui/test/quorum-addresses-screen.test.tsx::drops-an-answer-for-a-page-it-has-left
       - packages/ui/test/quorum-addresses-screen.test.tsx::says-nothing-about-a-position-it-was-not-given
 
   - id: INV-UI-46
@@ -799,6 +800,9 @@ invariants:
       network cannot know that.
     tests:
       - packages/ui/test/receive-screen.test.tsx::clears-the-verdict-when-the-address-changes
+      - packages/ui/test/receive-screen.test.tsx::drops-an-address-for-an-index-it-has-left
+      - packages/ui/test/receive-screen.test.tsx::keeps-a-verdict-with-the-address-it-checked
+      - packages/ui/test/receive-screen.test.tsx::says-a-failed-check-was-not-a-check
       - packages/ui/test/receive-screen.test.tsx::does-not-claim-to-know-which-addresses-were-used
       - packages/ui/test/receive-screen.test.tsx::reports-a-failed-derivation-rather-than-an-empty-screen
       - packages/ui/test/receive-screen.test.tsx::chunks-an-address-into-fours

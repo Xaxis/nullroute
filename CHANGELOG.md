@@ -15,6 +15,15 @@ status and home pages.
 
 ## November 2026
 
+- **2026-11-23** The receive and quorum address screens show an address only
+  under the index it was derived for, and a check's verdict only beside the
+  address it checked. Answers that arrived out of order used to win by landing
+  last: paging quickly could leave index 0's address under index 1, or page 0
+  under the header for index 10, and a check still running when the user moved
+  on put its tick on the next address, which nobody had checked (INV-UI-45,
+  INV-UI-61). A failed check now says "Not checked" instead of "Not derived".
+  Found by `make ui-race`, which delays every answer by 50ms and failed once
+  on a late answer.
 - **2026-11-23** Any signer can now be checked for refusing input that is not
   a well-formed PSBT (SP-REV-1), which only nullroute's own tests checked
   before. `review-malformed.json` holds
