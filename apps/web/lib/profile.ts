@@ -71,7 +71,7 @@ export interface KitResult {
 export interface OtherSigner {
   /** "SeedSigner", the first word of the adapter's name. */
   readonly label: string
-  /** "SeedSigner 088b144e with embit 0.8.0", as the adapter names itself. */
+  /** "SeedSigner 5f321768 with embit 0.8.0", as the adapter names itself. */
   readonly name: string
   /** The report's path in the repository, for a link to it. */
   readonly report: string

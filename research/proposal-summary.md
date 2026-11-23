@@ -181,11 +181,11 @@ subprocess call.
 ### The kit run against a signer this project did not write
 
 `make conformance-seedsigner` runs SeedSigner's own Python, at commit
-`088b144e` with embit 0.8.0 installed from SeedSigner's hash-pinned
-requirements, against all 148 cases. The bridge
+`5f321768` (its `dev` branch on 13 November 2026) with embit 0.8.0 installed
+from SeedSigner's hash-pinned requirements, against all 148 cases. The bridge
 ([`conformance/adapters/seedsigner/bridge.py`](../conformance/adapters/seedsigner/bridge.py))
 calls the functions SeedSigner's screens call, in their order, and its review
-reports only what SeedSigner's screens draw. Result: 64 pass, 55 are listed
+reports only what SeedSigner's screens draw. Result: 68 pass, 51 are listed
 findings, and 29 test things SeedSigner does not have (a manifest, BBQr
 writing, a bit count on the dice screen). The adapter was written by this
 project, not by SeedSigner's maintainers, and has not been checked by them.
@@ -195,9 +195,9 @@ project, not by SeedSigner's maintainers, and has not been checked by them.
 | SeedSigner grinds ECDSA nonces for a low R exactly as Bitcoin Core does, and SP-SIG-1 said only "RFC 6979" | Changed the profile: both schemes are allowed, and the signer says which |
 | embit signs taproot with no `aux_rand`, skipping BIP-340's mask | Stands: Core cannot reproduce SeedSigner's taproot signatures. A report to embit is drafted |
 | 24 words from exactly 99 rolls | An open question for review (SP-ENT-3) |
-| A derivation record naming the seed's key is trusted without checking the key is in the script, which SeedSigner documents as harmless | An open question for review (SP-REV-25) |
 | The signed PSBT keeps only the signatures | An open question: whether a signature-only reply meets SP-REV-11 |
-| Input amounts come from the witness UTXO alone | An open question (SP-REV-3) |
+| A segwit v0 amount from the witness UTXO alone is trusted, a choice SeedSigner documents and argues | An open question (SP-REV-3) |
+| At the previous pin, `088b144e`: a derivation record naming the seed's key was trusted without checking the script, a negative fee could be signed, and a previous transaction was never checked | Fixed in SeedSigner's own `dev` since (SeedSigner #995, #1041, #1060), without contact from this project; those cases pass at `5f321768` |
 | A false change claim is refused outright, where the vector asked for it shown as a payment; a foreign UR part is dropped, where the vector asked for the transfer refused | Changed the profile and a vector: refusing is allowed by SP-REV-7, and SP-TX-7's vector accepts either |
 | A PSBT whose unsigned transaction has a scriptSig, or is written with a witness, reaches review (SP-REV-1) | A gap from embit's parser, which also fails three of BIP-174's own test vectors. A fix with tests is drafted for embit |
 | No screen shows the locktime, replaceability or sighash type | Gaps against SP-REV-8 and SP-REV-9. embit never signs a non-ALL input, so the sighash gap is not a loss |

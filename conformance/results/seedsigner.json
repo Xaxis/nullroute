@@ -1,7 +1,7 @@
 {
   "format": "signer-profile-conformance-report",
   "version": 1,
-  "adapter": "SeedSigner 088b144e with embit 0.8.0",
+  "adapter": "SeedSigner 5f321768 with embit 0.8.0",
   "vectorsSha256sums": "9854158cbf5edd7fc7dd6f45fe05136cfb3185360d26080f3aa17cc1bf753a40",
   "only": null,
   "files": [
@@ -86,8 +86,8 @@
       ],
       "operation": "review",
       "cases": 7,
-      "pass": 4,
-      "known": 3,
+      "pass": 5,
+      "known": 2,
       "fail": 0,
       "notRun": 0
     },
@@ -98,8 +98,8 @@
       ],
       "operation": "review",
       "cases": 7,
-      "pass": 2,
-      "known": 5,
+      "pass": 4,
+      "known": 3,
       "fail": 0,
       "notRun": 0
     },
@@ -123,8 +123,8 @@
       ],
       "operation": "review, sign",
       "cases": 5,
-      "pass": 3,
-      "known": 2,
+      "pass": 4,
+      "known": 1,
       "fail": 0,
       "notRun": 0
     },
@@ -203,13 +203,13 @@
     }
   ],
   "totals": {
-    "pass": 64,
-    "known": 55,
+    "pass": 68,
+    "known": 51,
     "fail": 0,
     "notRun": 29,
     "advisories": 3
   },
-  "knownFailures": 89,
+  "knownFailures": 85,
   "stale": 0,
   "passed": false
 }

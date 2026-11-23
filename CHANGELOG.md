@@ -15,6 +15,20 @@ status and home pages.
 
 ## November 2026
 
+- **2026-11-23** The kit now runs against SeedSigner's current `dev` branch,
+  commit `5f321768` of 13 November 2026: 68 cases pass, 51 are listed
+  findings, and 29 test things SeedSigner does not have. Four findings from
+  the previous pin, `088b144e`, no longer hold, because SeedSigner's
+  maintainers have since changed its parser: a derivation record that names
+  the seed's key on an input whose script does not use that key is refused
+  (SeedSigner #1060), outputs that exceed the inputs are refused (#1041), and
+  a previous transaction is checked against the txid the input spends and
+  against its witness UTXO (#995). This project has not contacted SeedSigner
+  about any finding. A segwit v0 amount from the witness UTXO alone is still
+  signed, now with SeedSigner's reasons written beside the code, and inputs of
+  mixed script types are still refused. The bridge follows the new review
+  flow line by line, including its dedicated refusal screens and its one
+  warning view.
 - **2026-11-23** The receive and quorum address screens show an address only
   under the index it was derived for, and a check's verdict only beside the
   address it checked. Answers that arrived out of order used to win by landing

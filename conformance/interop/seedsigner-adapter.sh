@@ -22,7 +22,7 @@ set -euo pipefail
 export PYTHONDONTWRITEBYTECODE=1
 HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$HERE/../.." && pwd)
-SEEDSIGNER=088b144eaebc79d12d6336030e943510d7a14f54
+SEEDSIGNER=5f321768bad3861522c25b533261d2b573c06076
 EMBIT_VERSION=0.8.0
 # requirements.txt at $SEEDSIGNER, the embit line.
 EMBIT_SHA256=8bf4b10073c67400370ce523fb16f035fe759f6fdd987c579bdcc268d75ed770

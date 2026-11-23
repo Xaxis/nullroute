@@ -26,7 +26,7 @@ from embit import bip39  # noqa: E402
 from embit.networks import NETWORKS as EMBIT_NETWORKS  # noqa: E402
 from embit.psbt import PSBT  # noqa: E402
 from seedsigner.helpers import mnemonic_generation  # noqa: E402
-from seedsigner.models.psbt_parser import OPCODES, PSBTParser  # noqa: E402
+from seedsigner.models.psbt_parser import OPCODES, PSBTParser, PSBTVerificationError  # noqa: E402
 from seedsigner.models.seed import Seed  # noqa: E402
 from seedsigner.models.settings_definition import SettingsConstants  # noqa: E402
 
@@ -55,8 +55,8 @@ def dice_to_seed(rolls):
 
 
 def sign_psbt(psbt_b64, context):
-    """views/psbt_views.py: PSBTOverviewView builds the parser (lines 101-106),
-    and PSBTFinalizeView signs, trims and counts (lines 744-757).
+    """views/psbt_views.py: PSBTOverviewView builds the parser (lines 110-115),
+    and PSBTFinalizeView signs, trims and counts (lines 1139-1151).
 
     SeedSigner has no override: what it parses, it lets the user sign. Every
     parser exception sends the user to an error view instead, which is a
@@ -90,7 +90,7 @@ def shown_sats(sats):
     """The amount a BtcAmount draws, as an exact count of satoshis.
 
     gui/components.py lines 1143-1189, under the default denomination,
-    "Threshold at 0.01" (models/settings_definition.py line 585): 1,000,000
+    "Threshold at 0.01" (models/settings_definition.py line 587): 1,000,000
     sats or more is drawn in btc, and a btc text of 12 characters or more is
     cut to two decimals and "..." (lines 1158-1160). An amount the screen does
     not draw exactly is not reported: the bridge stops, and the case fails,
@@ -113,10 +113,13 @@ def review_psbt(psbt_b64, context):
     "Approve transaction" button, and the screen that button leads to.
 
     Reports what the screens draw and nothing else. No screen shows nLockTime,
-    nSequence or replaceability, the sighash type, unknown or proprietary
-    pairs, or which outputs the PSBT claimed (no file under src/ reads any of
-    them), so `locktime`, `replaceable`, `sighash`, `unknownFieldsReported` and
-    `claimedOutputs` are never reported.
+    nSequence or replaceability, the sighash type, or unknown or proprietary
+    pairs (no file under src/ reads any of them), so `locktime`,
+    `replaceable`, `sighash` and `unknownFieldsReported` are never reported.
+    Nor does any screen say an output was claimed as the wallet's: a claim
+    that does not re-derive refuses the transaction, except on taproot, where
+    the output is shown as any other payment (models/psbt_parser.py lines
+    1166-1186). So `claimedOutputs` is never reported either.
 
     SeedSigner has no override, so the verdict is never block-until-override.
     It is refuse wherever the flow ends without a signature: the parser raises
@@ -129,60 +132,70 @@ def review_psbt(psbt_b64, context):
 
     # The scan (models/decode_qr.py, get_psbt, lines 148-156) returns None for a
     # PSBT embit cannot parse, and PSBTSelectSeedView then raises "No
-    # transaction currently loaded" (lines 26-28). No review is shown.
+    # transaction currently loaded" (lines 35-37). No review is shown.
     try:
         psbt = PSBT.parse(base64.b64decode(psbt_b64))
     except Exception as e:
         return refused(f'PSBT.parse failed, so the scan yields no PSBT and PSBTSelectSeedView raises: {SYSTEM_ERROR}', e)
 
-    # PSBTOverviewView.__init__ (lines 101-136), with the seed built as the
-    # signing path builds it. Each PSBTVerificationError routes to its own view
-    # (lines 110-136), and every one of them offers only "Discard transaction"
-    # or "Select a different seed" (lines 483-651). Anything else the parser
-    # raises, such as its RuntimeError for mixed input types (psbt_parser.py
-    # line 337) or embit's PSBTError from psbt.fee() for an input with no UTXO
-    # (psbt_parser.py line 631), is not caught there and reaches System Error.
+    # PSBTOverviewView.__init__ (lines 98-209), with the seed built as the
+    # signing path builds it. It catches every PSBTVerificationError subclass
+    # the parser raises and routes each to its own view (lines 125-206), and
+    # every one of them offers only "Discard transaction" or, for
+    # PSBTSeedCannotSignError, "Select a different seed" (lines 536-1079).
+    # Anything else the parser raises, such as its RuntimeError for inputs of
+    # different policies (psbt_parser.py line 703), is not caught there and
+    # reaches System Error.
     seed = Seed(context['mnemonic'].split(), passphrase=context['passphrase'])
     try:
         parser = PSBTParser(psbt, seed=seed, network=network)
+    except PSBTVerificationError as e:
+        return refused('PSBTOverviewView routes it to its own view', e)
     except Exception as e:
-        return refused('PSBTOverviewView', e)
+        return refused(f'PSBTOverviewView does not catch it: {SYSTEM_ERROR}', e)
 
     if parser.is_multisig:
         # PSBTChangeDetailsView verifies multisig change against a descriptor
-        # the user loads mid-flow (lines 418-445). The kit gives no descriptor
+        # the user loads mid-flow (lines 470-497). The kit gives no descriptor
         # and this mapping does not cover that branch.
         raise SystemExit('bridge.py: the multisig review is not mapped')
 
-    # PSBTOverviewView.run routes on (lines 184-196). Its first branch, no
-    # policy, cannot follow a successful parse: an input always sets one
-    # (psbt_parser.py lines 332-334), and a PSBT with no input raises
-    # PSBTSeedCannotSignError first (lines 1122-1126).
+    # PSBTOverviewView.run (lines 212-259) shows the overview, then goes to
+    # PSBTWarningView when the parse recorded a warning (lines 255-256), which
+    # shows each in turn with only "Continue" and then goes to PSBTMathView
+    # (lines 263-325), and otherwise straight to PSBTMathView.
     review = {'verdict': None}
 
-    # The fee: PSBTMathView (lines 291-300), which every route passes through,
+    # The fee: PSBTMathView (lines 329-363), which every route passes through,
     # draws it in sats at every amount (psbt_screens.py lines 499-516 and
-    # 588-598). It is parser.fee_amount, psbt.fee() (psbt_parser.py line 631).
+    # 588-598). It is parser.fee_amount, embit's psbt.fee() (psbt_parser.py
+    # line 1217), which the parse refuses when it is negative (lines
+    # 1218-1219).
     review['feeSats'] = str(parser.fee_amount)
 
-    # The high fee warning: "(!)" on the fee in the overview and the math
-    # screens (psbt_screens.py lines 154-160 and 588-592), and the "High Fee!"
-    # screen (lines 189-190 and 242-255), all from parser.is_high_fee.
-    review['warnings'] = ['high-fee'] if parser.is_high_fee else []
+    # The warnings, recorded at the end of the parse (psbt_parser.py lines
+    # 544-555). WARNING__HIGH_FEE is "High Fee!" on PSBTWarningView (lines
+    # 281-285), and the same is_high_fee puts "(!)" on the fee in the overview
+    # and math screens (psbt_screens.py lines 154-160 and 588-592). It is the
+    # one the adapter contract has a code for. The other two have none, so
+    # they are shown and not reported: "Full Spend!" when nothing comes back
+    # (lines 287-291) and "Distant Address" for change far past the inputs'
+    # address indices (lines 293-305).
+    review['warnings'] = ['high-fee'] if PSBTParser.WARNING__HIGH_FEE in parser.warnings else []
 
-    # Recipients: PSBTAddressDetailsView (lines 322-366), one screen each, the
+    # Recipients: PSBTAddressDetailsView (lines 367-420), one screen each, the
     # full address (FormattedAddress with no max_lines wraps it whole,
     # psbt_screens.py lines 643-651, gui/components.py lines 985-1033) and the
-    # amount. They are in output order (psbt_parser.py lines 406 and 625-629);
-    # every output that is neither OP_RETURN nor change is one. The screens
-    # number recipients ("Will Send (#2)", lines 331-333), not outputs: `index`
-    # is the output's position, recovered from that order and checked against
-    # the address and amount drawn, so the runner can match it. It is the one
-    # value here no screen shows.
+    # amount. They are in output order (psbt_parser.py lines 971 and
+    # 1188-1211); every output that is neither OP_RETURN nor change is one.
+    # The screens number recipients ("Will Send (#2)", lines 385-387), not
+    # outputs: `index` is the output's position, recovered from that order and
+    # checked against the address and amount drawn, so the runner can match
+    # it. It is the one value here no screen shows.
     vout = psbt.tx.vout
     change_at = {c['output_index'] for c in parser.change_data}
     recipient_at = [i for i in range(len(vout))
-                    if vout[i].script_pubkey.data[0] != OPCODES.OP_RETURN and i not in change_at]
+                    if vout[i].script_pubkey.data[:1] != bytes([OPCODES.OP_RETURN]) and i not in change_at]
     if len(recipient_at) != len(parser.destination_addresses):
         raise SystemExit('bridge.py: recipients do not line up with outputs')
     outputs = []
@@ -192,49 +205,53 @@ def review_psbt(psbt_b64, context):
             raise SystemExit(f'bridge.py: recipient {k} is not output {i}')
         outputs.append({'index': i, 'address': address, 'amountSats': shown_sats(amount), 'kind': 'payment'})
 
-    # Change and self-transfers: PSBTChangeDetailsView (lines 380-473), one
+    # Change and self-transfers: PSBTChangeDetailsView (lines 424-532), one
     # screen per change_data entry, reached from the last recipient only when
-    # change_amount > 0 (line 357), or from PSBTMathView when there is no
-    # recipient (lines 305-309).
+    # change_amount > 0 (line 411), or from PSBTMathView when there is no
+    # recipient (lines 359-363).
     if not parser.destination_addresses and not parser.change_data:
-        # get_change_data returns None (psbt_parser.py lines 197-199) and line
-        # 401 calls .get on it.
+        # get_change_data returns None (psbt_parser.py lines 385-387) and line
+        # 456 calls .get on it.
         return refused(f'PSBTChangeDetailsView with no change: {SYSTEM_ERROR}')
+    # Every path here has a branch and an index, which line 458 reads: the
+    # parse refuses change at a shorter one (psbt_parser.py lines 1892-1894
+    # and 1995-1996).
     for c in parser.change_data if (not parser.destination_addresses or parser.change_amount > 0) else []:
         path = c['verified_derivation_path']
-        if not path:
-            return refused(f'PSBTChangeDetailsView reads the last element of an empty path (line 406): {SYSTEM_ERROR}')
         outputs.append({
             'index': c['output_index'],
             # Titled "Your Change" on the change branch and "Self-Transfer"
-            # otherwise (lines 402 and 408-412), drawn beside "change address
-            # #n" or "receive address #n" (psbt_screens.py lines 692-703). A
+            # otherwise (lines 460-464), drawn beside "change address #n" or
+            # "receive address #n" (psbt_screens.py lines 693-704). A
             # self-transfer is not labelled change, and SeedSigner counts it
             # as a recipient when it judges the fee (psbt_parser.py lines
-            # 1199-1225), so it is a payment here.
+            # 2174-2215), so it is a payment here.
             'kind': 'change' if PSBTParser.is_change_branch(path) else 'payment',
             # FormattedAddress with max_lines=1 (psbt_screens.py lines
-            # 713-716) draws the first 7 and last 7 characters around "..."
+            # 714-717) draws the first 7 and last 7 characters around "..."
             # (gui/components.py lines 951-983), so the full address is not
             # shown.
             'address': None,
             'amountSats': shown_sats(c['amount']),
-            # No `changePath`: the full path reaches the screen (line 455) but
+            # No `changePath`: the full path reaches the screen (line 507) but
             # is not drawn. The screen shows only the branch and the last
-            # index, "change address #0" (psbt_screens.py lines 692-703).
+            # index, "change address #0" (psbt_screens.py lines 693-704), and
+            # "Distant index #n" when the index is past the window (lines
+            # 729-735).
         })
     # An OP_RETURN output is shown only as its data (PSBTOpReturnView, lines
-    # 693-714, the last one's data only: psbt_parser.py line 609), with no
-    # amount, so it is not reported as an output.
+    # 1083-1108, the last such output's data only: psbt_parser.py lines
+    # 1188-1190), with no amount, so it is not reported as an output.
     review['outputs'] = sorted(outputs, key=lambda o: o['index'])
 
-    # PSBTFinalizeView (lines 735-757): "Approve transaction" signs, trims and
-    # counts. If that added no signature, the next screen is "Signing Failed"
-    # (PSBTSigningErrorView, lines 777-799), whose one button selects a
-    # different seed; for this seed the flow ends with nothing signed. embit
-    # leaves unsigned any input that asks for a sighash other than ALL or
-    # DEFAULT (embit/psbt.py lines 969-977), and that is where this happens.
-    # The signature is discarded: signPsbt is the operation that returns one.
+    # PSBTFinalizeView (lines 1112-1151): "Approve transaction" signs, trims
+    # and counts. If that added no signature, the next screen is "Signing
+    # Failed" (PSBTSigningErrorView, lines 1171-1196), whose one button
+    # selects a different seed; for this seed the flow ends with nothing
+    # signed. embit leaves unsigned any input that asks for a sighash other
+    # than ALL or DEFAULT (embit/psbt.py lines 969-977), and that is where this
+    # happens. The signature is discarded: signPsbt is the operation that
+    # returns one.
     try:
         sig_cnt = PSBTParser.sig_count(psbt)
         psbt.sign_with(parser.root)
@@ -261,8 +278,8 @@ def scan(frames):
     COMPLETE or INVALID. Running out of frames before either is incomplete:
     the camera would still be scanning. An exception from the decoder reaches
     System Error. A completed scan that is not a PSBT, or that get_psbt cannot
-    return as one, is refused: PSBTSelectSeedView raises on None (lines 26-28).
-    Returns (verdict, decoder, reason).
+    return as one, is refused: PSBTSelectSeedView raises on None
+    (views/psbt_views.py lines 35-37). Returns (verdict, decoder, reason).
     """
     def unavailable(*args, **kwargs):
         raise RuntimeError('bridge.py: pyzbar is not loaded; frames arrive already decoded')

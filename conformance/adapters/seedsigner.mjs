@@ -25,7 +25,7 @@
  * reported as not run: the entropy count on screen (SeedSigner shows "Dice
  * Roll n/99", not bits), the manifest, and writing BBQr, which SeedSigner
  * reads but never writes (its signed PSBT is shown as UR, views/psbt_views.py
- * lines 761-769).
+ * lines 1155-1167).
  */
 
 import { spawnSync } from 'node:child_process'
@@ -54,9 +54,14 @@ export const ecdsaNonces = 'rfc6979-low-r'
 
 /**
  * SeedSigner does not search for change. It re-derives the one path an
- * output's derivation record names, at any index (models/psbt_parser.py lines
- * 449-453 and 476-480; "it can be any length or shape", lines 1035-1038), and
- * an output with no record is a payment. So no index is beyond a bound.
+ * output's derivation record names (models/psbt_parser.py lines 1015-1019 and
+ * 1042-1045), and an output with no record is a payment (lines 1020-1023 and
+ * 1028-1031). The path must return to a base path one of the seed's inputs
+ * spends from, on branch 0 or 1, at an unhardened index, or the transaction
+ * is refused (lines 1861-1912 and 1995-1996). The index itself has no limit:
+ * an index more than CHANGE_ADDRESS_INDEX_WINDOW (10,000) past the smallest
+ * input index on that base path is still change, shown with a warning (lines
+ * 328, 1915-1943 and 1998-1999). So no index is beyond a bound.
  */
 export const changeSearchBound = Infinity
 

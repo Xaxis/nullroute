@@ -273,7 +273,8 @@ $ make conformance-seedsigner
 ```
 
 [`adapters/seedsigner.mjs`](adapters/seedsigner.mjs) runs SeedSigner's own
-Python, fetched with git at commit `088b144e`, with the embit release and the
+Python, fetched with git at commit `5f321768` (its `dev` branch on 13 November
+2026), with the embit release and the
 urtypes archive its `requirements.txt` pins, each checked against the hash
 pinned there. Its bridge, [`adapters/seedsigner/bridge.py`](adapters/seedsigner/bridge.py),
 calls SeedSigner's functions in the order its views call them and names the
@@ -284,7 +285,7 @@ screens draw. A value no screen shows is left out, and the case that checks it
 fails. It needs the network once, so it is not part of `make check`.
 
 The last run, which the website shows, is
-[`results/seedsigner.json`](results/seedsigner.json): 64 cases pass, 55 are
+[`results/seedsigner.json`](results/seedsigner.json): 68 cases pass, 51 are
 listed findings, and 29 are not run, because SeedSigner has no manifest, does
 not write BBQr and shows no bit count on its dice screen. Every finding is in
 [`known-failures/seedsigner.json`](known-failures/seedsigner.json) with the
@@ -297,34 +298,41 @@ changes mid-transfer) and two from a decoding error (a UR message whose
 checksum fails, a BBQr encoding that changes). A spliced BBQr transfer is
 refused only because embit cannot parse what it assembled. Two of BIP-174's
 invalid PSBTs (a filled scriptSig, a witness-serialized unsigned transaction)
-are parsed by embit and refused only because the test wallet owns none of their
-inputs; the same two rules on a coin the wallet owns are findings. The runner
-cannot tell those from a designed refusal, which is a limit of the kit rather
-than a finding about SeedSigner.
+are parsed by embit and refused for an unrelated reason: the first carries no
+UTXO record, and the test wallet owns no input of the second. The same two
+rules on a coin the wallet owns are findings. The runner cannot tell those from
+a designed refusal, which is a limit of the kit rather than a finding about
+SeedSigner.
 
 This project wrote the adapter. SeedSigner's maintainers have not checked it,
 and until they do, a finding here is a claim about their code that they have
 not confirmed.
+
+Four findings at the previous pin, `088b144e` (23 September 2026), no longer
+hold on `dev`, where SeedSigner's maintainers have since changed its parser. A
+derivation record that names the seed's key on an input whose script does not
+use that key is refused (SeedSigner #1060), outputs that exceed the inputs are
+refused (#1041), and a previous transaction is checked against the txid the
+input spends and against its witness UTXO (#995). This project has not
+contacted SeedSigner about any finding.
 
 | Finding | Requirement | What it means for the profile |
 | --- | --- | --- |
 | ECDSA signatures are RFC 6979 ground for a low R, exactly as Bitcoin Core's wallet grinds | SP-SIG-1 | It changed the profile. SP-SIG-1 said only "RFC 6979" and the vectors were plain, which failed SeedSigner on a rule whose purpose it meets. Either scheme is allowed now, the signer says which, and SeedSigner passes those cases. |
 | Taproot signatures use no `aux_rand` at all, so the nonce skips BIP-340's mask | SP-SIG-1 | The rule stands: BIP-340 signs with a 32-byte `aux_rand`, and Bitcoin Core 31.1 uses 32 zero bytes, so Core cannot reproduce these valid, deterministic signatures. The cause is in embit (`embit/util/key.py`; its bundled libsecp256k1 does the same). |
 | 24 words come from exactly 99 rolls, never 100 or more | SP-ENT-3 | An open question: 99 rolls are 255.91 bits, short of 256. The encoding is the profile's, SHA-256 of the ASCII rolls; only the count differs. |
-| A derivation record naming a key the seed derives is trusted without checking the key is in the input's script | SP-REV-25 | An open question: SeedSigner judges this harmless and says why (`psbt_parser.py` lines 1113-1116), and the profile says MUST NOT sign. |
 | The signed PSBT holds only the transaction and the signatures | SP-REV-11 | An open question: whether a signer that returns its signatures for the coordinator to combine meets the requirement. |
-| Input amounts come from the witness UTXO alone, and the previous transaction is never checked against it | SP-REV-3 | An open question: the profile treats that amount as the coordinator's word until a previous transaction confirms it. |
-| An output falsely claimed as change makes SeedSigner refuse the whole transaction as "Likely an Attack!" | SP-REV-7 | It changed the profile. The vector asked for the output to be shown as a payment and failed SeedSigner for being stricter than the requirement. Refusing is allowed now, and SeedSigner passes. |
+| A segwit v0 input whose amount comes from the witness UTXO alone is signed; a previous transaction, when one is sent, is checked against the txid and the witness UTXO | SP-REV-3 | An open question, and SeedSigner argues its side: the parser names the attack this leaves open (CVE-2020-14199) and accepts it because coordinators seldom send a QR signer the previous transaction (`psbt_parser.py` lines 577-595). The profile treats that amount as the coordinator's word until a previous transaction confirms it. |
+| An output falsely claimed as change makes SeedSigner refuse the whole transaction as "Likely an Attack!", except on taproot, where it is shown as a payment because a script tree would make an honest claim fail the same check | SP-REV-7 | It changed the profile. The vector asked for the output to be shown as a payment and failed SeedSigner for being stricter than the requirement. Refusing is allowed now, and SeedSigner passes. The taproot case passes too, without the SHOULD: nothing says the output was claimed. |
 | Only an output of the inputs' script type can be change, and an output with no derivation record is shown as a payment | SP-REV-6 | Stricter than the vectors, which expect change. It costs the user a closer look, not money, and the vectors could accept it. |
 | Change is checked by re-deriving it, then shown as its first and last seven characters and "change address #n" | SP-REV-5, SP-REV-6 | A difference the profile names: it asks for every address in full and the full path beside change. |
 | No screen shows the sighash type, and an input asking for anything but ALL is left unsigned without saying so | SP-REV-8, SP-REV-23 | Safe in effect, since embit signs with no other type, but when one input asks for SINGLE and another for ALL, SeedSigner signs the second and nothing says the first was skipped. |
 | No screen shows nLockTime or replaceability | SP-REV-9 | A gap: a transaction that cannot confirm for a month looks like any other. |
-| A transaction whose outputs exceed its inputs shows a negative fee and can be signed | SP-REV-4 | A gap, though not a loss: no such transaction can be mined. |
 | A UR part from another transfer is dropped and scanning goes on | SP-TX-7 | It changed the vector. SP-TX-7's text asks for the part to be refused, which SeedSigner does; the vector demanded the whole transfer be refused. Either is accepted now, and SeedSigner passes. |
 | A repeated BBQr frame with different contents is ignored after the first copy | SP-TX-5 | The rule stands: BBQr has no checksum, so keeping whichever copy came first completes a payload nobody can confirm. |
 | UR is read only as `crypto-psbt`, and BBQr only as a PSBT | SP-TX-7, SP-TX-3 | Known and stated: SP-TX-7 writes `crypto-psbt` because SeedSigner reads only that, and a real Coldcard scan of file type U is not read. |
 | A PSBT whose unsigned transaction has a scriptSig, or is written with a witness, is reviewed like any other | SP-REV-1 | A gap, from embit's parser, and a small one: the review shows the same inputs and outputs. embit's master has since rejected the scriptSig; the witness form is still read. |
-| Inputs of mixed script types are refused | SP-REV-3, SP-REV-4, SP-REV-25, SP-SIG-1 | Nothing: a limit SeedSigner states, which stops four cases from reaching the check they exist for. |
+| Inputs of mixed script types are refused | SP-REV-3, SP-REV-4, SP-REV-25, SP-SIG-1 | Nothing: a limit SeedSigner states, with a note that the policy should come from the user's own inputs alone (`psbt_parser.py` lines 699-702). It stops four cases from reaching the check they exist for. |
 
 ## Regenerating the vectors
 
