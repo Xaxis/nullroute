@@ -543,12 +543,21 @@ image-boot-test: image-env $(IMAGE_ENVFILE) ## Boot the card under QEMU and prov
 		--env-file $(IMAGE_ENVFILE) \
 		$(IMAGE_ENV) sh -c '\
 			cd /tmp && \
-			echo "deb http://deb.debian.org/debian trixie main non-free-firmware" > /etc/apt/sources.list && \
-			apt-get update >/dev/null 2>&1 && \
-			apt-get download linux-image-6.12.94+deb13-arm64 >/dev/null 2>&1 && \
-			dpkg-deb -x linux-image*.deb /tmp/k && \
+			eval "$$(grep -E "^(KERNEL_DEB|KERNEL_SHA|KERNEL_VERSION)=" /work/provisioning/build/build-system.sh)" && \
+			echo "deb http://snapshot.debian.org/archive/debian/$$NULLROUTE_SNAPSHOT trixie main non-free-firmware" > /etc/apt/sources.list && \
+			apt-get update >/dev/null && \
+			apt-get download "linux-image-$$KERNEL_VERSION" >/dev/null && \
+			echo "$$KERNEL_SHA  $$KERNEL_DEB" | sha256sum -c --quiet - && \
+			dpkg-deb -x "$$KERNEL_DEB" /tmp/k && \
 			/work/provisioning/build/boot-test.sh \
-				/work/out/system/nullroute.img /tmp/k 6.12.94+deb13-arm64'
+				/work/out/system/nullroute.img /tmp/k "$$KERNEL_VERSION"'
+	# THE GUEST KERNEL IS THE CARD'S OWN, fetched the way build-system.sh
+	# fetches it: from the snapshot the card is built from, at the version and
+	# digest pinned there and read from there, so the two cannot drift. This
+	# used to ask the live mirror for 6.12.94 by name, and failed with apt's
+	# exit 100 once Debian moved trixie on to 6.12.107 and dropped it. apt's
+	# errors go to the log now; they were discarded, which is why that failure
+	# said nothing but its exit code.
 	# THE VERDICT IS REACHED HERE, OUTSIDE THE CONTAINER, and that is the
 	# design rather than a convenience. The guest printed six /proc files to
 	# its console and judged none of them. The image is the artifact under
