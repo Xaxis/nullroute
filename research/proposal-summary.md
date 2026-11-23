@@ -1,6 +1,6 @@
 # nullroute: summary for a grant application
 
-Workstream E. A plain-language summary for a reader who knows Bitcoin and has
+A plain-language summary for a reader who knows Bitcoin and has
 never seen this project. Every number below says where it came from. Numbers
 from a command were produced on 23 November 2026, on the tree of the commit
 that last changed this file (`git log -1 -- research/proposal-summary.md`).
@@ -64,12 +64,12 @@ which quotes each project's source at the revision recorded in
 Three things no published document covers, from
 [research/00-current-state.md, section 5.2](00-current-state.md#52-where-no-published-document-exists):
 
-1. **How dice become a seed (N1).** Coldcard, SeedSigner and Krux share one rule
+1. **How dice become a seed.** Coldcard, SeedSigner and Krux share one rule
    by convention, and it is written down in no BIP.
-2. **What a signer must show before it signs (N2).** BIP-174 makes display
+2. **What a signer must show before it signs.** BIP-174 makes display
    optional. The five projects differ on what counts as change and on what to do
    when a change claim cannot be checked.
-3. **What a device must show about the software it runs (N3).** Each project
+3. **What a device must show about the software it runs.** Each project
    uses a vendor signature or a secure element. None, as documented, shows the
    user a number they can recompute from source with coreutils before unlocking.
 
@@ -117,7 +117,7 @@ $ git ls-files -z package.json package-lock.json packages spec provisioning | LC
 ```
 
 For this summary the three were run with GNU coreutils 9.4 on Linux, after an
-earlier check with macOS `shasum -a 256`. All 440 files
+earlier check with macOS `shasum -a 256`. All 442 files
 matched, and both roots were the value in the table above.
 
 The screen also says what the number does not prove. It is drawn by the software
@@ -217,7 +217,7 @@ this project, not by Krux's maintainers, and has not been checked by them.
 
 | Finding | What it means |
 | --- | --- |
-| A PSBT with any OP_RETURN output, or paying a bare public key or an undefined witness version, crashes the review with a `TypeError` | A gap (SP-REV-5): those transactions cannot be signed at all, and the error screen does not say why |
+| A PSBT with any OP_RETURN output, or paying a bare public key or an undefined witness version, raises a `TypeError` before the review | A gap (SP-REV-5): through the signing flow, those transactions cannot be signed. The kit scores these cases as passes, because the vector allows a refusal. Seen under CPython, not yet on a device |
 | An input whose derivation record names the wallet's key, in a script that does not use it, is signed with no warning | A gap (SP-REV-24, SP-REV-25), the one SeedSigner fixed in its #1060 |
 | Taproot signatures use no `aux_rand`, from the same embit code as SeedSigner's | Stands, with the same cause, as measured on embit's Python code. The device signs through MaixPy's own secp256k1 module, which was not run |
 | No screen shows the locktime, replaceability or sighash type; change is shown as "1/0", not its full path | Gaps against SP-REV-6, SP-REV-8 and SP-REV-9. A non-ALL sighash is refused at signing |
@@ -291,7 +291,7 @@ tree with no new dependency (SP-TX-7, INV-UR-1 to INV-UR-5), and written as
 `crypto-psbt` rather than the registry's recommended `psbt`, because SeedSigner
 and Jade read only `crypto-psbt` ([ur-notes](ur-notes.md)).
 
-### Open items from workstreams C and D
+### Open items from the earlier reviews ([handoff-C](handoff-C.md), [handoff-D](handoff-D.md))
 
 | Item | State |
 | --- | --- |
@@ -301,8 +301,8 @@ and Jade read only `crypto-psbt` ([ur-notes](ur-notes.md)).
 | Locktime when every input is final | Closed. The review reports such a locktime as ignored, never as a delay (INV-PSBT-20), SP-REV-9 is amended, and a vector carries Bitcoin Core's own mempool acceptance as evidence (`dba42bd`) |
 | PSBT version 2 | Closed by decision. Every PSBT BIP-370 publishes is refused at parse with a message asking for version 0 (INV-PSBT-19, `0d8e94f`) |
 | Published BIP vectors not included | Closed. BIP-174, 143, 340, 341 and 370, BIP-32 vector 5, BIP-380's key expressions and BIP-381 to 386's descriptors are all in `spec/vectors/`. Running the last three found four bugs, fixed in `09dce4c`. Kinds the device does not derive are asserted case by case ([handoff-D, SP-DEP-1 table](handoff-D.md#bip-vectors-for-sp-dep-1)) |
-| Portable vectors for SP-REV-1 and SP-SIG-1 | SP-SIG-1 closed: `sign-deterministic.json`, from Core's test framework and wallet. SP-REV-1 is still checked by nullroute's own tests only |
-| The adapter repeats one piece of UI logic | `maySign` in `PsbtScreen.tsx`, so a UI change the adapter does not follow would go unnoticed |
+| Portable vectors for SP-REV-1 and SP-SIG-1 | Closed. SP-SIG-1: `sign-deterministic.json`, from Core's test framework and wallet. SP-REV-1: `review-malformed.json`, from BIP-174's own invalid PSBTs and Core-built coins (`eb3fa7a`) |
+| The adapter repeats one piece of UI logic | Closed. Whether a review may be signed is decided once, by `signVerdict` in core, which the signer, the screen and the adapter all call (INV-SIG-11, `48d7db8`) |
 | Tools not run | Closed. The vectors were regenerated on Linux with GNU coreutils 9.4 and glibc 2.39; every expected value was unchanged, and glibc's locale order added a third forbidden manifest root (`6a69590`) |
 
 Closed since those handoffs, each by a commit on `main`: segwit v0 input amounts
@@ -311,7 +311,7 @@ Closed since those handoffs, each by a commit on `main`: segwit v0 input amounts
 replaceability computed over every input instead of any (SP-REV-9, `e2cd5d6`),
 and the multi-frame PSBT sent as base64 text instead of binary (G1, `a0ed400`).
 
-### Open items from workstream A
+### Open items from the signer comparison ([handoff-A](handoff-A.md), which numbers its gaps G1 to G9)
 
 - Closed: the reason for reading BBQr `Z` now cites BBQr's receiver
   requirement rather than a Coldcard default it does not have (G5), no source
@@ -364,15 +364,19 @@ full list is in [docs/THREAT-MODEL.md](../docs/THREAT-MODEL.md#out-of-scope).
 
 ### Documents that disagreed with the code
 
-Every long document has now been checked against the code by reading each
-statement and finding what implements it. On 28 October the verification guide
-had 23 statements the code contradicted and the user manual seven; the threat
-model had 18, one of which was a real signing-path bug (INV-SIG-13: the signer
-signed an input the review showed as someone else's). On 20 November the entropy
-guide had 16, one of which was a real bring-up bug (INV-PROV-36: the daemon
-could never have read the Pi's hardware RNG). Each was corrected by narrowing the
-document or fixing the code, never by widening a claim. The CHANGELOG lists
-them.
+The four long documents a user relies on (the verification guide, the user
+manual, the threat model and the entropy guide) have been checked against the
+code by reading each statement and finding what implements it. On 28 October
+the verification guide had 23 statements the code contradicted, and the threat
+model check found a real signing-path bug (INV-SIG-13: the signer signed an
+input the review showed as someone else's, `54ae16c`). On 20 November the
+threat model and entropy guide check found five defects behind the statements,
+one a real bring-up bug (INV-PROV-36: the daemon could never have read the
+Pi's hardware RNG, `be16af9`). Each was corrected by narrowing the document or
+fixing the code, never by widening a claim. The CHANGELOG entries for those
+dates list the corrections. The check is not finished: on 23 November the
+conformance kit's own README was found misstating which requirements a
+vector checks (`7bf23eb`).
 
 Writing this summary in October found four, all corrected in the commit that
 added it:
@@ -389,7 +393,7 @@ owned.
 | --- | --- |
 | Outside cryptographic and code review | `make verify` proves the code matches its specs. Whether the specs describe a secure design is a human judgement, and so far only the author has made it |
 | A second, independent implementation of the profile | Vectors catch a shared mistake only where the expected value came from outside both implementations. SeedSigner's and Krux's code now run against the kit, through adapters this project wrote; their maintainers checking those adapters, and a signer adopting the profile on purpose, are the test of whether it is implementable as written |
-| Discussion on bitcoin-dev and Delving Bitcoin | The profile takes positions others may reject: 100 rolls where three products accept 99, a blocking rule for segwit v0 inputs, signatures with `aux_rand` fixed to zero, and refusing a derivation record SeedSigner judges harmless. Those need argument from people who build signers and coordinators |
+| Discussion on bitcoin-dev and Delving Bitcoin | The profile takes positions others may reject: 100 rolls where three products accept 99, a blocking rule for segwit v0 inputs, signatures with `aux_rand` fixed to zero, and a BBQr writer that never compresses, where BBQr permits it and Krux does it. Those need argument from people who build signers and coordinators |
 | Coordinator authors testing interoperability | No coordinator has read nullroute's multi-frame QR output with a camera. The kit stands in with Coinkite's reference code, a Coldcard scan and SeedSigner's own UR code, and `spec/interop/` holds 43 real exports from other wallets and Bitcoin Core that nullroute's import is tested against |
 | Hardware bring-up | Someone with the board, the panel and the camera has to boot the card, then record what the panel, touch, camera and network interfaces actually do |
 
