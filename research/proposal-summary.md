@@ -219,7 +219,7 @@ this project, not by Krux's maintainers, and has not been checked by them.
 | --- | --- |
 | A PSBT with any OP_RETURN output, or paying a bare public key or an undefined witness version, crashes the review with a `TypeError` | A gap (SP-REV-5): those transactions cannot be signed at all, and the error screen does not say why |
 | An input whose derivation record names the wallet's key, in a script that does not use it, is signed with no warning | A gap (SP-REV-24, SP-REV-25), the one SeedSigner fixed in its #1060 |
-| Taproot signatures use no `aux_rand`, from the same embit code as SeedSigner's | Stands, with the same cause |
+| Taproot signatures use no `aux_rand`, from the same embit code as SeedSigner's | Stands, with the same cause, as measured on embit's Python code. The device signs through MaixPy's own secp256k1 module, which was not run |
 | No screen shows the locktime, replaceability or sighash type; change is shown as "1/0", not its full path | Gaps against SP-REV-6, SP-REV-8 and SP-REV-9. A non-ALL sighash is refused at signing |
 | Two BBQr transfers with disjoint part numbers complete as one payload, and BBQr is written with encoding `Z` | A gap (SP-TX-5), and a question for the profile, which is stricter than BBQr (SP-TX-4) |
 | The two invalid PSBTs from BIP-174 that reach SeedSigner's review are refused | Passes: the embit branch Krux pins checks both, where embit 0.8.0 does not, and all 26 malformed cases pass |

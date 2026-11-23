@@ -276,6 +276,12 @@ first comparison of its Schnorr signatures with another implementation.
 
 ## Other signers
 
+The kit runs against two signers this project did not write, SeedSigner and
+Krux, each through an adapter that calls that signer's own code in the order
+its screens do. Both sign through embit, so a finding they share may come
+from embit rather than from either product: the taproot nonce, as the adapters
+measure it, is one.
+
 ### SeedSigner
 
 ```console
