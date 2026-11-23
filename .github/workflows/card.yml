@@ -14,16 +14,25 @@ name: card
 # same build handed to the person doing bring-up, who can check it against the
 # root hash it prints and rebuild it themselves with `make image`.
 
+# WHAT THIS JOB RUNS, NOT ONLY WHAT IT BUILDS. The recipes it calls live in the
+# Makefile and its judge in tools/verify-image.mjs. With provisioning/ alone,
+# a change to either went untested by the one job that runs them, and the boot
+# test's kernel fetch broke on a mirror change that no path here could show.
+# The repository is public, so a run costs no minutes.
 on:
   workflow_dispatch:
   push:
     branches: [main]
     paths:
       - 'provisioning/**'
+      - 'Makefile'
+      - 'tools/verify-image.mjs'
       - '.github/workflows/card.yml'
   pull_request:
     paths:
       - 'provisioning/**'
+      - 'Makefile'
+      - 'tools/verify-image.mjs'
       - '.github/workflows/card.yml'
 
 concurrency:
