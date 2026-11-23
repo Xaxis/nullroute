@@ -207,6 +207,26 @@ project, not by SeedSigner's maintainers, and has not been checked by them.
 Each case and the SeedSigner line that decides it is in
 [`conformance/known-failures/seedsigner.json`](../conformance/known-failures/seedsigner.json).
 
+`make conformance-krux` does the same for Krux: its MicroPython source at
+commit `9180bbc5` (its `develop` branch on 22 November 2026), with embit at the
+commit Krux's own submodule pins, run under CPython with the device's C
+modules replaced as Krux's own test suite replaces them. Result: 82 pass, 44
+are listed findings, and 32 are not run (a manifest, a bit count on the dice
+screen, and UR, whose decoder is a C extension). The adapter was written by
+this project, not by Krux's maintainers, and has not been checked by them.
+
+| Finding | What it means |
+| --- | --- |
+| A PSBT with any OP_RETURN output, or paying a bare public key or an undefined witness version, crashes the review with a `TypeError` | A gap (SP-REV-5): those transactions cannot be signed at all, and the error screen does not say why |
+| An input whose derivation record names the wallet's key, in a script that does not use it, is signed with no warning | A gap (SP-REV-24, SP-REV-25), the one SeedSigner fixed in its #1060 |
+| Taproot signatures use no `aux_rand`, from the same embit code as SeedSigner's | Stands, with the same cause |
+| No screen shows the locktime, replaceability or sighash type; change is shown as "1/0", not its full path | Gaps against SP-REV-6, SP-REV-8 and SP-REV-9. A non-ALL sighash is refused at signing |
+| Two BBQr transfers with disjoint part numbers complete as one payload, and BBQr is written with encoding `Z` | A gap (SP-TX-5), and a question for the profile, which is stricter than BBQr (SP-TX-4) |
+| The two invalid PSBTs from BIP-174 that reach SeedSigner's review are refused | Passes: the embit branch Krux pins checks both, where embit 0.8.0 does not, and all 26 malformed cases pass |
+
+Each case and the Krux line that decides it is in
+[`conformance/known-failures/krux.json`](../conformance/known-failures/krux.json).
+
 The kit holds its own author to the same rules. SP-REV-5, every output shown by
 its full address or its script, was checked only by nullroute's tests and a
 manual step, and the profile's table said nullroute met it. The portable
@@ -368,7 +388,7 @@ owned.
 | Need | Why code cannot supply it |
 | --- | --- |
 | Outside cryptographic and code review | `make verify` proves the code matches its specs. Whether the specs describe a secure design is a human judgement, and so far only the author has made it |
-| A second, independent implementation of the profile | Vectors catch a shared mistake only where the expected value came from outside both implementations. SeedSigner's code now runs against the kit, through an adapter this project wrote; its maintainers checking that adapter, and a signer adopting the profile on purpose, are the test of whether it is implementable as written |
+| A second, independent implementation of the profile | Vectors catch a shared mistake only where the expected value came from outside both implementations. SeedSigner's and Krux's code now run against the kit, through adapters this project wrote; their maintainers checking those adapters, and a signer adopting the profile on purpose, are the test of whether it is implementable as written |
 | Discussion on bitcoin-dev and Delving Bitcoin | The profile takes positions others may reject: 100 rolls where three products accept 99, a blocking rule for segwit v0 inputs, signatures with `aux_rand` fixed to zero, and refusing a derivation record SeedSigner judges harmless. Those need argument from people who build signers and coordinators |
 | Coordinator authors testing interoperability | No coordinator has read nullroute's multi-frame QR output with a camera. The kit stands in with Coinkite's reference code, a Coldcard scan and SeedSigner's own UR code, and `spec/interop/` holds 43 real exports from other wallets and Bitcoin Core that nullroute's import is tested against |
 | Hardware bring-up | Someone with the board, the panel and the camera has to boot the card, then record what the panel, touch, camera and network interfaces actually do |

@@ -1,0 +1,227 @@
+{
+  "format": "signer-profile-conformance-report",
+  "version": 1,
+  "adapter": "Krux 9180bbc5 (develop, after v26.09.0) with embit d38d43a0 (after v0.8.2), pure-Python secp256k1",
+  "vectorsSha256sums": "f6cf8f42cf61b16a48c03746455acfed595bc5df989972c4e01464534390d926",
+  "only": null,
+  "files": [
+    {
+      "file": "bbqr-psbt.json",
+      "requirements": [
+        "SP-TX-2",
+        "SP-TX-3",
+        "SP-TX-4",
+        "SP-TX-5",
+        "SP-TX-6"
+      ],
+      "operation": "bbqrJoin, bbqrEncodePsbt",
+      "cases": 12,
+      "pass": 9,
+      "known": 3,
+      "fail": 0,
+      "notRun": 0
+    },
+    {
+      "file": "dice-accounting.json",
+      "requirements": [
+        "SP-ENT-5"
+      ],
+      "operation": "diceBitsShown",
+      "cases": 25,
+      "pass": 0,
+      "known": 0,
+      "fail": 0,
+      "notRun": 25
+    },
+    {
+      "file": "dice-to-entropy.json",
+      "requirements": [
+        "SP-ENT-1",
+        "SP-ENT-2",
+        "SP-ENT-3",
+        "SP-ENT-4",
+        "SP-ENT-7",
+        "SP-ENT-10",
+        "SP-HW-9"
+      ],
+      "operation": "diceToSeed",
+      "cases": 17,
+      "pass": 16,
+      "known": 1,
+      "fail": 0,
+      "notRun": 0
+    },
+    {
+      "file": "manifest-root.json",
+      "requirements": [
+        "SP-ATT-2"
+      ],
+      "operation": "buildManifest",
+      "cases": 2,
+      "pass": 0,
+      "known": 0,
+      "fail": 0,
+      "notRun": 2
+    },
+    {
+      "file": "review-change.json",
+      "requirements": [
+        "SP-REV-6",
+        "SP-REV-7",
+        "SP-REV-14"
+      ],
+      "operation": "review",
+      "cases": 9,
+      "pass": 2,
+      "known": 7,
+      "fail": 0,
+      "notRun": 0
+    },
+    {
+      "file": "review-fee-and-amounts.json",
+      "requirements": [
+        "SP-REV-2",
+        "SP-REV-4",
+        "SP-REV-13"
+      ],
+      "operation": "review",
+      "cases": 7,
+      "pass": 5,
+      "known": 2,
+      "fail": 0,
+      "notRun": 0
+    },
+    {
+      "file": "review-input-amounts.json",
+      "requirements": [
+        "SP-REV-3"
+      ],
+      "operation": "review",
+      "cases": 7,
+      "pass": 4,
+      "known": 3,
+      "fail": 0,
+      "notRun": 0
+    },
+    {
+      "file": "review-malformed.json",
+      "requirements": [
+        "SP-REV-1"
+      ],
+      "operation": "review",
+      "cases": 26,
+      "pass": 26,
+      "known": 0,
+      "fail": 0,
+      "notRun": 0
+    },
+    {
+      "file": "review-outputs.json",
+      "requirements": [
+        "SP-REV-5"
+      ],
+      "operation": "review",
+      "cases": 10,
+      "pass": 10,
+      "known": 0,
+      "fail": 0,
+      "notRun": 0
+    },
+    {
+      "file": "review-ownership.json",
+      "requirements": [
+        "SP-REV-24",
+        "SP-REV-25"
+      ],
+      "operation": "review, sign",
+      "cases": 5,
+      "pass": 3,
+      "known": 2,
+      "fail": 0,
+      "notRun": 0
+    },
+    {
+      "file": "review-sighash.json",
+      "requirements": [
+        "SP-REV-8",
+        "SP-REV-23"
+      ],
+      "operation": "review",
+      "cases": 13,
+      "pass": 1,
+      "known": 12,
+      "fail": 0,
+      "notRun": 0
+    },
+    {
+      "file": "review-timelocks.json",
+      "requirements": [
+        "SP-REV-9"
+      ],
+      "operation": "review",
+      "cases": 9,
+      "pass": 0,
+      "known": 9,
+      "fail": 0,
+      "notRun": 0
+    },
+    {
+      "file": "review-unknown-fields.json",
+      "requirements": [
+        "SP-REV-11"
+      ],
+      "operation": "review, sign",
+      "cases": 2,
+      "pass": 1,
+      "known": 1,
+      "fail": 0,
+      "notRun": 0
+    },
+    {
+      "file": "sign-deterministic.json",
+      "requirements": [
+        "SP-SIG-1"
+      ],
+      "operation": "sign",
+      "cases": 6,
+      "pass": 3,
+      "known": 3,
+      "fail": 0,
+      "notRun": 0
+    },
+    {
+      "file": "sign-override.json",
+      "requirements": [
+        "SP-REV-22"
+      ],
+      "operation": "signOverride",
+      "cases": 3,
+      "pass": 2,
+      "known": 1,
+      "fail": 0,
+      "notRun": 0
+    },
+    {
+      "file": "ur-psbt.json",
+      "requirements": [
+        "SP-TX-7"
+      ],
+      "operation": "urJoin",
+      "cases": 5,
+      "pass": 0,
+      "known": 0,
+      "fail": 0,
+      "notRun": 5
+    }
+  ],
+  "totals": {
+    "pass": 82,
+    "known": 44,
+    "fail": 0,
+    "notRun": 32,
+    "advisories": 3
+  },
+  "knownFailures": 74,
+  "stale": 0,
+  "passed": false
+}

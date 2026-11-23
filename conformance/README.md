@@ -346,7 +346,71 @@ contacted SeedSigner about any finding.
 | UR is read only as `crypto-psbt`, and BBQr only as a PSBT | SP-TX-7, SP-TX-3 | Known and stated: SP-TX-7 writes `crypto-psbt` because SeedSigner reads only that, and a real Coldcard scan of file type U is not read. |
 | A PSBT whose unsigned transaction has a scriptSig, or is written with a witness, is reviewed like any other | SP-REV-1 | A gap, from embit's parser, and a small one: the review shows the same inputs and outputs. embit's master has since rejected the scriptSig; the witness form is still read. |
 | An OP_RETURN output is shown as its payload alone, with no amount and no place in the list of outputs, and only the last one when there are several | SP-REV-5 | A gap where the output carries an amount: 0.05 BTC on one is shown nowhere, and the math screen stops adding up. Whether a payload counts as "its script" is a question for the profile. |
+| A payment to a bare public key, or to witness version 2 or 16, ends on the System Error screen before its review | SP-REV-5 | Nothing the vector can see, since it allows refusing those outputs, so the three cases pass. The refusal is not a decision: embit's `address()` raises "This type of script doesn't have address representation" (embit 0.8.0 `script.py` line 20) and nothing in the review catches it. |
 | Inputs of mixed script types are refused | SP-REV-3, SP-REV-4, SP-REV-25, SP-SIG-1 | Nothing: a limit SeedSigner states, with a note that the policy should come from the user's own inputs alone (`psbt_parser.py` lines 699-702). It stops four cases from reaching the check they exist for. |
+
+### Krux
+
+```console
+$ make conformance-krux
+```
+
+[`adapters/krux.mjs`](adapters/krux.mjs) runs Krux's own MicroPython source
+under CPython, fetched with git at commit `9180bbc5` (its `develop` branch on
+22 November 2026, 122 commits after the v26.09.0 release), with embit at
+`d38d43a0`, the commit Krux's `vendor/embit` submodule names there (upstream
+embit's `hardened` branch, 87 commits after v0.8.2). The fetch script checks
+both commits and that the submodule pin matches. Its bridge,
+[`adapters/krux/bridge.py`](adapters/krux/bridge.py), calls Krux's functions
+in the order its pages call them and names the page and lines it follows: the
+D6 dice page, `PSBTSigner` from the scan to "Sign to QR code", and the QR part
+parser its scan loop drives. The MaixPy modules Krux imports are replaced as
+Krux's own test suite replaces them
+([`adapters/krux/stubs.py`](adapters/krux/stubs.py)), except that one whose
+output could decide a verdict either computes the same thing or raises.
+Every "Proceed?" prompt is answered Yes, since one press passes it.
+Signatures come from embit's pure-Python secp256k1; the device signs with
+MaixPy's C module, which this does not run.
+
+The last run, which the website shows, is
+[`results/krux.json`](results/krux.json): 82 cases pass, 44 are listed
+findings, and 32 are not run, because Krux has no manifest, its dice page
+shows a Shannon estimate rather than the profile's bit count, and its UR
+decoder is a C extension this does not build. Every finding is in
+[`known-failures/krux.json`](known-failures/krux.json) with the lines of
+Krux's code that decide it, on that commit.
+
+A pass means Krux's verdict matched, not that it refused for the reason the
+case exists. Six cases in `review-outputs.json` pass because the review
+crashes: `get_policy` tests `P2WSH in script_type` on every output, and embit
+gives an OP_RETURN, a bare public key or an undefined witness version no
+script type, so `TypeError` ends the flow on the error screen (`psbt.py` line
+853, called from `outputs()` at line 390). The vector allows refusing those
+outputs, but this is not a refusal: a PSBT with any OP_RETURN output cannot be
+reviewed at all. Both own-coin cases in `review-malformed.json` that SeedSigner
+signs are refused here, on purpose, by embit's `hardened` branch, which checks
+the unsigned transaction's scriptSigs and serialization where embit 0.8.0 does
+not.
+
+This project wrote the adapter. Krux's maintainers have not checked it, and
+until they do, a finding here is a claim about their code that they have not
+confirmed. This project has not contacted Krux about any finding.
+
+| Finding | Requirement | What it means for the profile |
+| --- | --- | --- |
+| A PSBT with an OP_RETURN output, or one paying a bare public key or a witness version no soft fork has defined, ends on the error screen before its review | SP-REV-5 | A gap. The vector's cases pass because refusing is allowed, but the refusal is a `TypeError` (`psbt.py` line 853), and a transaction carrying an OP_RETURN, whatever else it pays, cannot be signed. |
+| An input whose derivation record names the wallet's key, in a script that does not use it, is signed, in a transaction the wallet owns no input of | SP-REV-25, SP-REV-24 | A gap, the one SeedSigner fixed in its #1060. embit's `sign_with` signs with every key such a record derives to and checks the script only for the root key (`embit/psbt.py` line 1745); the review shows one spend and no warning. |
+| Taproot signatures use no `aux_rand`, so the nonce skips BIP-340's mask | SP-SIG-1 | The rule stands, with the same cause as SeedSigner's: embit (`embit/util/key.py` lines 589-600). Measured on embit's pure-Python backend; the device's C module was not run. |
+| 24 words from 99 rolls or more | SP-ENT-3 | An open question, as for SeedSigner: 99 rolls are 255.91 bits. The encoding is the profile's. |
+| "Sign to QR code" returns only the signatures; "Sign to SD card" keeps every field | SP-REV-11 | An open question, as for SeedSigner: whether a signature-only reply meets the requirement. |
+| One segwit v0 input whose amount comes only from its witness UTXO is signed with no warning | SP-REV-3 | An open question, and Krux argues its side in the docstring (`psbt.py` lines 210-220): with one input, a false amount breaks that input's own signature. |
+| With more than one input, any amount without its previous transaction draws a warning and "Proceed?" before the review | SP-REV-3, SP-REV-22 | A difference the profile names: it asks for signing disabled at the control until a single-use override. Krux's prompt is the same one the high-fee warning uses, which must not block, so it is read as a warning. |
+| No screen shows nLockTime, replaceability or the sighash type | SP-REV-8, SP-REV-9 | Gaps. A non-ALL sighash is refused at signing with its number (`check_sighash`, `psbt.py` lines 486-501), so that one is safe in effect. |
+| Change is shown with its branch and index, "Change: 1/0", not its path | SP-REV-6 | A difference the profile names: it asks for the path beside the output. The address is re-derived before it is called change and drawn in full. |
+| An output is checked for change only at the path its derivation record names, and only in the wallet's one script type | SP-REV-6 | Stricter than the vectors in effect, since such an output is shown as a spend with its full address, but the record decides which outputs are checked, which SP-REV-6 says no PSBT field may do. |
+| Two BBQr transfers with disjoint indices complete as one payload | SP-TX-5 | A gap, refused here only because embit cannot parse the splice. Krux's own comment says BBQr parts carry no checksum (`qr.py` lines 199-202). |
+| A PSBT read as BBQr is written back with encoding `Z` | SP-TX-4 | The profile is stricter than BBQr, which permits `Z`. A question for the profile, not a fault in Krux. |
+| Inputs of more than one script type are refused | SP-REV-3, SP-REV-4, SP-REV-25, SP-SIG-1 | Nothing: a Krux wallet is one script type (`psbt.py` lines 184-186). It stops four cases from reaching the check they exist for. |
 
 ## Regenerating the vectors
 

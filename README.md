@@ -111,14 +111,16 @@ name their check, and nullroute is its reference implementation, not its owner.
 [conformance/](conformance/README.md) is the testable part: 158 JSON cases
 whose expected values come from Bitcoin Core, the BIP texts, coreutils and
 Coinkite's BBQr code, never from nullroute, and a runner that needs only Node.
-nullroute passes all of them. `make conformance-seedsigner` runs SeedSigner's
-own code against the same cases. Its findings, each tied to the lines of
-SeedSigner's code that decide it, include gaps, questions the profile has to
-answer, and three that have already changed it or its vectors.
+nullroute passes all of them. `make conformance-seedsigner` and
+`make conformance-krux` run SeedSigner's and Krux's own code against the same
+cases. Their findings, each tied to the lines of that signer's code that decide
+it, include gaps, questions the profile has to answer, and three that have
+already changed it or its vectors.
 
 ```console
 $ make conformance
 $ make conformance-seedsigner
+$ make conformance-krux
 ```
 
 ## What you need to build one

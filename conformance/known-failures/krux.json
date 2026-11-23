@@ -1,0 +1,524 @@
+{
+  "adapter": "conformance/adapters/krux.mjs",
+  "about": "Cases Krux 9180bbc5 (develop, after v26.09.0, with embit d38d43a0) fails, each with the code that decides it; line numbers are on that commit. These are findings, not waivers, and several are questions for the profile rather than faults in Krux: the profile is a draft, and where Krux made a deliberate, documented choice the reason says so. The two qrMode entries record a check the bridge cannot make and say so. Signatures were measured with embit's pure-Python secp256k1, not the device's C module. The runner fails if any of these starts passing, so the list follows Krux as it changes.",
+  "failures": [
+    {
+      "file": "dice-to-entropy.json",
+      "case": "ninety-nine-rolls",
+      "check": "verdict",
+      "requirement": "SP-ENT-3",
+      "reason": "Krux makes 24 words from 99 rolls or more: DiceEntropy asks for at least D6_24W_MIN_ROLLS, 99 (pages/new_mnemonic/dice_rolls.py lines 43 and 235-237), and accepts any count from there (lines 286-306). The encoding is the profile's, SHA-256 of the ASCII rolls (lines 308-310 and 335-346); only the count differs. Open question for the profile, as for SeedSigner: 99 rolls give 255.91 bits"
+    },
+    {
+      "file": "bbqr-psbt.json",
+      "case": "two-transfers-disjoint-indices",
+      "check": "verdict",
+      "requirement": "SP-TX-5",
+      "reason": "QRPartParser holds every frame to the first one's encoding, file type and total, and refuses an index that repeats with different contents (qr.py lines 195-215), but nothing ties a frame to one transfer, so frames 0 and 1 of one 4-part PSBT and frames 2 and 3 of another complete as one 1152-byte payload (lines 218-254). The comment at lines 199-202 notes that BBQr parts carry no checksum. Handed to PSBTSigner, these particular bytes are refused only because embit cannot parse them (\"Trailing bytes in PSBT value\", reaching \"invalid PSBT\" at psbt.py line 128)"
+    },
+    {
+      "file": "bbqr-psbt.json",
+      "case": "write-1in20out",
+      "check": "encoding",
+      "requirement": "SP-TX-4",
+      "reason": "psbt_qr() writes a PSBT read as BBQr back with encode_bbqr(psbt_data, file_type=\"P\") (psbt.py lines 607-611), whose default encoding is Z (bbqr.py line 149); it falls back to 2 only when deflate does not make the payload shorter (lines 159-171). Both kit PSBTs compress, so every frame is Z. Measured with the raw-deflate stand-in Krux's own tests use for MaixPy's deflate module (tests/shared_mocks.py lines 92-130); only the compressed length decides the encoding. The profile is stricter than BBQr, which permits Z"
+    },
+    {
+      "file": "bbqr-psbt.json",
+      "case": "write-1in20out",
+      "check": "qrMode",
+      "requirement": "SP-TX-6",
+      "reason": "Not measured, and not a finding: the QR symbol is drawn by MaixPy's C module, qrcode.encode (qr.py lines 25 and 314), which the bridge does not run, so no frame has modules for the runner to read"
+    },
+    {
+      "file": "bbqr-psbt.json",
+      "case": "write-1in2out",
+      "check": "encoding",
+      "requirement": "SP-TX-4",
+      "reason": "As write-1in20out: every frame is encoding Z"
+    },
+    {
+      "file": "bbqr-psbt.json",
+      "case": "write-1in2out",
+      "check": "qrMode",
+      "requirement": "SP-TX-6",
+      "reason": "Not measured, and not a finding: the QR symbol is drawn by MaixPy's C module, qrcode.encode (qr.py lines 25 and 314), which the bridge does not run, so no frame has modules for the runner to read"
+    },
+    {
+      "file": "review-change.json",
+      "case": "genuine-change-segwit-v0",
+      "check": "output 1.changePath",
+      "requirement": "SP-REV-6",
+      "reason": "The change screen draws the branch and index, \"Change: 1/0\" (psbt.py lines 336-345 and 396-399), not the path: the account's m/84'/0'/0' is not on it. The output is re-derived from the wallet's descriptor before it is called change (psbt.py lines 268-289, embit/descriptor/descriptor.py lines 209-239), and its address is drawn in full. SP-REV-6 asks for the path beside the output"
+    },
+    {
+      "file": "review-change.json",
+      "case": "change-at-index-99",
+      "check": "output 1.changePath",
+      "requirement": "SP-REV-6",
+      "reason": "As genuine-change-segwit-v0: drawn as 1/99"
+    },
+    {
+      "file": "review-change.json",
+      "case": "change-at-index-100",
+      "check": "output 1.changePath",
+      "requirement": "SP-REV-6",
+      "reason": "As genuine-change-segwit-v0: drawn as 1/100"
+    },
+    {
+      "file": "review-change.json",
+      "case": "change-at-index-999",
+      "check": "output 1.changePath",
+      "requirement": "SP-REV-6",
+      "reason": "As genuine-change-segwit-v0: drawn as 1/999"
+    },
+    {
+      "file": "review-change.json",
+      "case": "payment-to-own-receive-address",
+      "check": "output 1.changePath",
+      "requirement": "SP-REV-6",
+      "reason": "As genuine-change-segwit-v0: drawn as 1/2"
+    },
+    {
+      "file": "review-fee-and-amounts.json",
+      "case": "fee-one-input",
+      "check": "output 1.changePath",
+      "requirement": "SP-REV-6",
+      "reason": "As genuine-change-segwit-v0 in review-change.json: drawn as 1/0"
+    },
+    {
+      "file": "review-change.json",
+      "case": "genuine-change-taproot",
+      "check": "output 1.kind",
+      "requirement": "SP-REV-6",
+      "reason": "A Krux single-sig wallet is one script type (wallet.py lines 49-77), and an output is change only when its policy is the inputs' and the loaded descriptor owns it (psbt.py lines 275-289). This wallet spends a p2wpkh input to a p2tr change address, so the change is shown as a spend, with its full address. The cautious direction; the vector expects every output the seed re-derives to be change"
+    },
+    {
+      "file": "review-change.json",
+      "case": "change-without-derivation-record",
+      "check": "output 1.kind",
+      "requirement": "SP-REV-6",
+      "reason": "Krux checks for change only at the path an output's derivation record names: Descriptor.owns re-derives that one path and returns False when there is no record (embit/descriptor/descriptor.py lines 209-239, from psbt.py lines 268-273 and 285), so the output is shown as a spend. The record cannot make an output change by itself, since the script is re-derived and compared, but it decides which outputs are checked. SP-REV-6 says no PSBT field may contribute to the change label"
+    },
+    {
+      "file": "review-fee-and-amounts.json",
+      "case": "fee-two-input-types",
+      "check": "verdict",
+      "requirement": "SP-REV-4",
+      "reason": "Not the fee rule: the inputs are of two script types, and validate refuses any transaction whose inputs resolve to different policies (\"mixed inputs in the tx\", psbt.py lines 167-186), shown on the error screen. A designed refusal that matches a Krux wallet being one script type"
+    },
+    {
+      "file": "review-fee-and-amounts.json",
+      "case": "fee-two-input-types",
+      "check": "fee",
+      "requirement": "SP-REV-4",
+      "reason": "As verdict: refused before any review screen"
+    },
+    {
+      "file": "review-fee-and-amounts.json",
+      "case": "fee-two-input-types",
+      "check": "output 0",
+      "requirement": "SP-REV-4",
+      "reason": "As verdict: refused before any review screen"
+    },
+    {
+      "file": "review-fee-and-amounts.json",
+      "case": "fee-two-input-types",
+      "check": "output 1",
+      "requirement": "SP-REV-4",
+      "reason": "As verdict: refused before any review screen"
+    },
+    {
+      "file": "review-input-amounts.json",
+      "case": "taproot-signer-foreign-segwit-v0-witness-only",
+      "check": "verdict",
+      "requirement": "SP-REV-3",
+      "reason": "Not the amount rule: the inputs are of two script types, and validate refuses any transaction whose inputs resolve to different policies (\"mixed inputs in the tx\", psbt.py lines 167-186), shown on the error screen. A designed refusal that matches a Krux wallet being one script type"
+    },
+    {
+      "file": "review-ownership.json",
+      "case": "sign-only-the-owned-input",
+      "check": "verdict",
+      "requirement": "SP-REV-25",
+      "reason": "Not the ownership rule: the inputs are of two script types, and validate refuses any transaction whose inputs resolve to different policies (\"mixed inputs in the tx\", psbt.py lines 167-186), shown on the error screen. A designed refusal that matches a Krux wallet being one script type"
+    },
+    {
+      "file": "sign-deterministic.json",
+      "case": "mixed-ecdsa-and-schnorr",
+      "check": "verdict",
+      "requirement": "SP-SIG-1",
+      "reason": "Not the signature rule: the inputs are of two script types, and validate refuses any transaction whose inputs resolve to different policies (\"mixed inputs in the tx\", psbt.py lines 167-186), shown on the error screen. A designed refusal that matches a Krux wallet being one script type. Its ECDSA signatures in the other cases match the low-R bytes"
+    },
+    {
+      "file": "review-input-amounts.json",
+      "case": "segwit-v0-witness-utxo-only",
+      "check": "verdict",
+      "requirement": "SP-REV-3",
+      "reason": "Deliberate and documented: unverified_input_amounts is False for a single input or a taproot policy (psbt.py lines 210-220), so one segwit v0 input whose amount is only its witness UTXO is reviewed and signed with no warning. The docstring gives the reason: with one input, a false amount goes into that input's own BIP-143 sighash and invalidates the signature. The profile treats that amount as the coordinator's word (BIP-174 line 415); which is right is a question for the profile's review"
+    },
+    {
+      "file": "review-input-amounts.json",
+      "case": "one-of-two-segwit-v0-unverified",
+      "check": "verdict",
+      "requirement": "SP-REV-3",
+      "reason": "Krux warns, \"Unverified input amounts! The fee shown may be lower than the real fee.\", and asks \"Proceed?\" (home.py lines 418-433, psbt.py lines 210-220). The prompt opens on Yes (pages/__init__.py line 474), is the same one every warning in the flow uses, the high-fee warning included, which the profile says must not block, and comes before the review rather than at the signing control, so the adapter reports a warning the user passes. Read as an override instead, this case would pass and high-fee-warns-and-does-not-block would fail"
+    },
+    {
+      "file": "sign-override.json",
+      "case": "unconfirmed-amount-lifted-for-one-signature",
+      "check": "without-override",
+      "requirement": "SP-REV-22",
+      "reason": "As segwit-v0-witness-utxo-only in review-input-amounts.json: with one segwit v0 input nothing warns or blocks (psbt.py lines 210-220), so Krux signs with no override. It has no override to hold the input behind"
+    },
+    {
+      "file": "sign-override.json",
+      "case": "unconfirmed-amount-lifted-for-one-signature",
+      "check": "not-stored",
+      "requirement": "SP-REV-22",
+      "reason": "Follows from without-override: it signs the third time for the same reason it signed the first, not because an override was kept"
+    },
+    {
+      "file": "review-ownership.json",
+      "case": "foreign-input-with-our-derivation-claim",
+      "check": "verdict",
+      "requirement": "SP-REV-25",
+      "reason": "Krux signs an input whose script is not the wallet's, in a transaction with no input the wallet owns (SP-REV-24 as well). The input's derivation record names the wallet's fingerprint, m/84'/0'/0'/0/0 and that key, so path_mismatch finds nothing (psbt.py lines 233-266), and validate compares policies, not scripts (lines 152-208). The review shows one spend and no warning. \"Sign to QR code\" calls embit's sign_with (psbt.py lines 503-508), which signs with every key that a record carrying the wallet's fingerprint derives to (embit/psbt.py lines 1687-1717 and 1751-1755) without checking that the key is in the input's script, a check it makes only for the root key (line 1745). The signed PSBT carries a signature by the key at m/84'/0'/0'/0/0 on an input that pays another key"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "taproot-default",
+      "check": "sighash.outputs",
+      "requirement": "SP-REV-8",
+      "reason": "As segwit-v0-none: no screen shows the sighash type"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "taproot-default",
+      "check": "sighash.otherInputsMayBeAdded",
+      "requirement": "SP-REV-8",
+      "reason": "As segwit-v0-none: no screen shows the sighash type"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "segwit-v0-all",
+      "check": "sighash.outputs",
+      "requirement": "SP-REV-8",
+      "reason": "As segwit-v0-none: no screen shows the sighash type"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "segwit-v0-all",
+      "check": "sighash.otherInputsMayBeAdded",
+      "requirement": "SP-REV-8",
+      "reason": "As segwit-v0-none: no screen shows the sighash type"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "taproot-all",
+      "check": "sighash.outputs",
+      "requirement": "SP-REV-8",
+      "reason": "As segwit-v0-none: no screen shows the sighash type"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "taproot-all",
+      "check": "sighash.otherInputsMayBeAdded",
+      "requirement": "SP-REV-8",
+      "reason": "As segwit-v0-none: no screen shows the sighash type"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "segwit-v0-none",
+      "check": "sighash.outputs",
+      "requirement": "SP-REV-8",
+      "reason": "No review screen shows the sighash type: outputs() draws the inputs' total, the spends, the change and the fee (psbt.py lines 347-484). \"Sign to QR code\" then refuses any input whose type is not ALL or DEFAULT, naming it as a number, \"Input 0 has non-standard sighash type: 0x02\" (check_sighash, psbt.py lines 486-501, called at line 505), so every verdict here passes. Safe in effect, but the screen never says what a signature commits to"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "segwit-v0-none",
+      "check": "sighash.otherInputsMayBeAdded",
+      "requirement": "SP-REV-8",
+      "reason": "No review screen shows the sighash type: outputs() draws the inputs' total, the spends, the change and the fee (psbt.py lines 347-484). \"Sign to QR code\" then refuses any input whose type is not ALL or DEFAULT, naming it as a number, \"Input 0 has non-standard sighash type: 0x02\" (check_sighash, psbt.py lines 486-501, called at line 505), so every verdict here passes. Safe in effect, but the screen never says what a signature commits to"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "segwit-v0-single",
+      "check": "sighash.outputs",
+      "requirement": "SP-REV-8",
+      "reason": "As segwit-v0-none: no screen shows the sighash type"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "segwit-v0-single",
+      "check": "sighash.otherInputsMayBeAdded",
+      "requirement": "SP-REV-8",
+      "reason": "As segwit-v0-none: no screen shows the sighash type"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "segwit-v0-all-anyonecanpay",
+      "check": "sighash.outputs",
+      "requirement": "SP-REV-8",
+      "reason": "As segwit-v0-none: no screen shows the sighash type"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "segwit-v0-all-anyonecanpay",
+      "check": "sighash.otherInputsMayBeAdded",
+      "requirement": "SP-REV-8",
+      "reason": "As segwit-v0-none: no screen shows the sighash type"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "segwit-v0-none-anyonecanpay",
+      "check": "sighash.outputs",
+      "requirement": "SP-REV-8",
+      "reason": "As segwit-v0-none: no screen shows the sighash type"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "segwit-v0-none-anyonecanpay",
+      "check": "sighash.otherInputsMayBeAdded",
+      "requirement": "SP-REV-8",
+      "reason": "As segwit-v0-none: no screen shows the sighash type"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "segwit-v0-single-anyonecanpay",
+      "check": "sighash.outputs",
+      "requirement": "SP-REV-8",
+      "reason": "As segwit-v0-none: no screen shows the sighash type"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "segwit-v0-single-anyonecanpay",
+      "check": "sighash.otherInputsMayBeAdded",
+      "requirement": "SP-REV-8",
+      "reason": "As segwit-v0-none: no screen shows the sighash type"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "taproot-none",
+      "check": "sighash.outputs",
+      "requirement": "SP-REV-8",
+      "reason": "As segwit-v0-none: no screen shows the sighash type"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "taproot-none",
+      "check": "sighash.otherInputsMayBeAdded",
+      "requirement": "SP-REV-8",
+      "reason": "As segwit-v0-none: no screen shows the sighash type"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "taproot-single-anyonecanpay",
+      "check": "sighash.outputs",
+      "requirement": "SP-REV-8",
+      "reason": "As segwit-v0-none: no screen shows the sighash type"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "taproot-single-anyonecanpay",
+      "check": "sighash.otherInputsMayBeAdded",
+      "requirement": "SP-REV-8",
+      "reason": "As segwit-v0-none: no screen shows the sighash type"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "segwit-v0-undefined-0x04",
+      "check": "sighash.outputs",
+      "requirement": "SP-REV-8",
+      "reason": "As segwit-v0-none: no screen shows the sighash type"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "two-inputs-both-all",
+      "check": "sighash.outputs",
+      "requirement": "SP-REV-23",
+      "reason": "As segwit-v0-none: no screen shows the sighash type"
+    },
+    {
+      "file": "review-sighash.json",
+      "case": "two-inputs-both-all",
+      "check": "sighash.otherInputsMayBeAdded",
+      "requirement": "SP-REV-23",
+      "reason": "As segwit-v0-none: no screen shows the sighash type"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "no-locktime-signals-rbf",
+      "check": "locktime",
+      "requirement": "SP-REV-9",
+      "reason": "No screen shows nLockTime or any input's nSequence: outputs() draws the inputs' total, the spends, the change and the fee (psbt.py lines 347-484). Under src/krux only the trimming in sign() (psbt.py lines 552-561, PSBTv2 fields) and the fee-rate size estimate (sats_vb.py) touch a locktime, and nothing reads nSequence. A transaction that cannot confirm for months reviews like any other"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "no-locktime-signals-rbf",
+      "check": "replaceable",
+      "requirement": "SP-REV-9",
+      "reason": "No screen shows nLockTime or any input's nSequence: outputs() draws the inputs' total, the spends, the change and the fee (psbt.py lines 347-484). Under src/krux only the trimming in sign() (psbt.py lines 552-561, PSBTv2 fields) and the fee-rate size estimate (sats_vb.py) touch a locktime, and nothing reads nSequence. A transaction that cannot confirm for months reviews like any other"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "height-locktime",
+      "check": "locktime",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf: neither the locktime nor replaceability is shown"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "height-locktime",
+      "check": "replaceable",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf: neither the locktime nor replaceability is shown"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "largest-height",
+      "check": "locktime",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf: neither the locktime nor replaceability is shown"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "largest-height",
+      "check": "replaceable",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf: neither the locktime nor replaceability is shown"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "smallest-time",
+      "check": "locktime",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf: neither the locktime nor replaceability is shown"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "smallest-time",
+      "check": "replaceable",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf: neither the locktime nor replaceability is shown"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "time-locktime-final-sequence-minus-one",
+      "check": "locktime",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf: neither the locktime nor replaceability is shown"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "time-locktime-final-sequence-minus-one",
+      "check": "replaceable",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf: neither the locktime nor replaceability is shown"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "no-locktime-final-sequence",
+      "check": "locktime",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf: neither the locktime nor replaceability is shown"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "no-locktime-final-sequence",
+      "check": "replaceable",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf: neither the locktime nor replaceability is shown"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "one-of-two-inputs-signals",
+      "check": "locktime",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf: neither the locktime nor replaceability is shown"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "one-of-two-inputs-signals",
+      "check": "replaceable",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf: neither the locktime nor replaceability is shown"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "second-of-two-inputs-signals",
+      "check": "locktime",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf: neither the locktime nor replaceability is shown"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "second-of-two-inputs-signals",
+      "check": "replaceable",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf: neither the locktime nor replaceability is shown"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "height-locktime-every-input-final",
+      "check": "locktime",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf: neither the locktime nor replaceability is shown"
+    },
+    {
+      "file": "review-timelocks.json",
+      "case": "height-locktime-every-input-final",
+      "check": "replaceable",
+      "requirement": "SP-REV-9",
+      "reason": "As no-locktime-signals-rbf: neither the locktime nor replaceability is shown"
+    },
+    {
+      "file": "review-unknown-fields.json",
+      "case": "unknown-pairs-survive-signing",
+      "check": "preserved.global.a00102",
+      "requirement": "SP-REV-11",
+      "reason": "By design on the QR path: sign() with its default trim=True rebuilds the PSBT from the unsigned transaction and keeps only signatures, UTXOs, scripts and PSBTv2 locktimes (psbt.py lines 543-598), so the signed QR is small and the coordinator combines. \"Sign to SD card\" signs with trim=False (home.py line 302) and keeps every pair. Open question for the profile: whether a signer that returns only its signatures meets SP-REV-11"
+    },
+    {
+      "file": "review-unknown-fields.json",
+      "case": "unknown-pairs-survive-signing",
+      "check": "preserved.input.a00304",
+      "requirement": "SP-REV-11",
+      "reason": "As preserved.global.a00102"
+    },
+    {
+      "file": "review-unknown-fields.json",
+      "case": "unknown-pairs-survive-signing",
+      "check": "preserved.output.a00506",
+      "requirement": "SP-REV-11",
+      "reason": "As preserved.global.a00102"
+    },
+    {
+      "file": "review-unknown-fields.json",
+      "case": "unknown-pairs-survive-signing",
+      "check": "preserved.input.fc056e756c6c730001",
+      "requirement": "SP-REV-11",
+      "reason": "As preserved.global.a00102"
+    },
+    {
+      "file": "sign-deterministic.json",
+      "case": "schnorr-key-path",
+      "check": "signature-bytes.0",
+      "requirement": "SP-SIG-1",
+      "reason": "Taproot signatures carry no aux_rand: embit's schnorr_sign passes none (embit/ec.py lines 234-235, embit/util/py_secp256k1.py lines 303-310), and sign_schnorr then puts the secret key itself where BIP-340 masks it with the hash of aux_rand (embit/util/key.py lines 589-600). Krux's bytes equal that computation and differ from BIP-340 with 32 zero bytes of aux_rand, which Bitcoin Core 31.1 and the vector use. Valid and deterministic. Measured with embit's pure-Python secp256k1; the device signs with MaixPy's C module, which was not run"
+    },
+    {
+      "file": "sign-deterministic.json",
+      "case": "schnorr-two-keys",
+      "check": "signature-bytes.0",
+      "requirement": "SP-SIG-1",
+      "reason": "As schnorr-key-path"
+    },
+    {
+      "file": "sign-deterministic.json",
+      "case": "schnorr-two-keys",
+      "check": "signature-bytes.1",
+      "requirement": "SP-SIG-1",
+      "reason": "As schnorr-key-path"
+    }
+  ]
+}

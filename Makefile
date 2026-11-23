@@ -28,7 +28,7 @@ ADMIN_DEPS := apps/admin/node_modules/.package-lock.json
 # site's pass-through of /admin (ADMIN_PATH in tools/lib/site-headers.mjs).
 ADMIN_ORIGIN ?= https://nullroute.diy/admin
 
-.PHONY: help install dev build check check-fast verify manifest manifest-check conformance-seedsigner \
+.PHONY: help install dev build check check-fast verify manifest manifest-check conformance-seedsigner conformance-krux \
 	contrast ui-roles \
 	qr-readback badges invariant-ids \
 	manifest-recipe print-manifest-roots \
@@ -288,6 +288,17 @@ conformance-seedsigner: ## The signer profile vectors run against SeedSigner's o
 	@rm -f conformance/results/seedsigner.json
 	@conformance/interop/seedsigner-adapter.sh --report conformance/results/seedsigner.json || true
 	@node -e 'const r = JSON.parse(require("node:fs").readFileSync("conformance/results/seedsigner.json", "utf8")); if (r.totals.fail > 0 || r.stale > 0) { console.error(`conformance-seedsigner: $${r.totals.fail} unlisted failures, $${r.stale} listed failures that now pass`); process.exit(1) }'
+
+conformance-krux: ## The signer profile vectors run against Krux's own code (needs the network once)
+	# conformance/adapters/krux.mjs, with Krux and its embit submodule fetched
+	# at pinned commits and checked by conformance/interop/krux-adapter.sh.
+	# Writes conformance/results/krux.json for the website's results table. As
+	# for SeedSigner, cases not run are expected, and the verdict is that every
+	# failure is listed in conformance/known-failures/krux.json and no listed
+	# one now passes.
+	@rm -f conformance/results/krux.json
+	@conformance/interop/krux-adapter.sh --report conformance/results/krux.json || true
+	@node -e 'const r = JSON.parse(require("node:fs").readFileSync("conformance/results/krux.json", "utf8")); if (r.totals.fail > 0 || r.stale > 0) { console.error(`conformance-krux: $${r.totals.fail} unlisted failures, $${r.stale} listed failures that now pass`); process.exit(1) }'
 
 conformance: build ## The signer profile vectors in spec/vectors/signer-profile/, run against this build
 	# spec/signer-profile.md is a draft any signer can be checked against, and

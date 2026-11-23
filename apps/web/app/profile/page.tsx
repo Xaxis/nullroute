@@ -203,7 +203,9 @@ export default async function ProfilePage() {
                 decides it.{' '}
               </span>
             ))}
-            A column for your signer is one adapter away.
+            A pass means the verdict matched, not that the signer refused for the reason the case
+            exists: a refusal that ends in a crash counts, and the findings below say where. A
+            column for your signer is one adapter away.
           </p>
         </section>
 
