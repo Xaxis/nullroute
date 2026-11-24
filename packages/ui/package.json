@@ -22,17 +22,17 @@
   "dependencies": {
     "@nullroute/core": "*",
     "react-dom": "19.3.1",
-    "zxing-wasm": "3.1.6"
+    "zxing-wasm": "3.1.7"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.3.5",
     "@testing-library/react": "16.3.3",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
-    "@vitejs/plugin-react": "6.2.1",
+    "@vitejs/plugin-react": "6.3.0",
     "happy-dom": "21.0.4",
     "react": "19.3.1",
     "tailwindcss": "4.3.5",
-    "vite": "8.3.6"
+    "vite": "8.3.8"
   }
 }
