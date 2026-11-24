@@ -31,6 +31,6 @@
     "bip32": "5.0.1",
     "bitcoinjs-lib": "7.0.5",
     "tiny-secp256k1": "2.2.5",
-    "zxing-wasm": "3.1.6"
+    "zxing-wasm": "3.1.7"
   }
 }
