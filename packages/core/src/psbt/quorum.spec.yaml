@@ -97,7 +97,8 @@ invariants:
   - id: INV-QUORUM-6
     statement: >
       A device with no registered quorum says it cannot tell rather than
-      returning an empty list, and the sentence naming who is waited on is
+      returning an empty list, and counts no signature as untraced, since
+      there is no quorum to trace one against. The sentence naming who is waited on is
       correct for a device holding it, for one unnamed cosigner, for several,
       and for none.
     tests:

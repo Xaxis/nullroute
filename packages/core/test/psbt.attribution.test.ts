@@ -123,6 +123,9 @@ describe('core.psbt.attribution', () => {
 
     expect(attributed.unavailable).toMatch(/No quorum is registered/)
     expect(describeWaiting(attributed)).toMatch(/No quorum is registered/)
+    // This device's own signature on a single-signature spend. Counted as
+    // untraced, the signed screen told people to ask who produced it.
+    expect(attributed.unattributed).toBe(0)
   })
 
   /** INV-QUORUM-6. One unnamed cosigner reads differently from several. */

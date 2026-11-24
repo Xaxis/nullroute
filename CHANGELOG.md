@@ -21,9 +21,21 @@ status and home pages.
   (INV-PSBT-23). It had named every unstated flag SIGHASH_DEFAULT, a
   taproot-only constant, on a p2wpkh spend. The header names a seed that is
   loaded but not saved as "Unsaved" with its fingerprint and network, where
-  it read "No wallet open" above that seed's own review (INV-UI-101). Both
-  were seen in the screenshots of a new journey, `sign-override`, which walks
-  a blocking warning and its one-time override in the real app.
+  it read "No wallet open" above that seed's own review (INV-UI-101). And the
+  signed screen no longer tells someone to "ask who produced" a signature
+  after a single-signature spend: with no quorum registered, every signature
+  was counted as untraced against one, including the device's own
+  (INV-QUORUM-6). All three were seen in the screenshots of a new journey,
+  `sign-override`, which walks a blocking warning and its one-time override
+  in the real app.
+- **2026-11-24** The receive screen holds still. It re-derived its address
+  once a second while a wallet was open, so the address blanked and came
+  back, and the result of "Check it" was gone within a second of appearing.
+  The quorum address list emptied the same way. The app redraws every second
+  for the idle countdown, and these screens restarted whenever they were
+  handed a new callback. No screen restarts on a redraw now, a test reads
+  the source to keep it that way, and the receive journey waits after the
+  check and fails if the result has gone (INV-UI-109).
 - **2026-11-24** Each finding the kit shares with an upstream report names
   that report in `conformance/README.md`: embit #97 and #155 for the taproot
   nonce, embit's `hardened` branch for BIP-174's unsigned transaction,

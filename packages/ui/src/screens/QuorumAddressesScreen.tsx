@@ -1,4 +1,4 @@
-import { type ReactElement, type ReactNode, useEffect, useState } from 'react'
+import { type ReactElement, type ReactNode, useEffect, useState, useEffectEvent } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
@@ -69,6 +69,10 @@ export function QuorumAddressesScreen(props: QuorumAddressesScreenProps): ReactE
   const [rows, setRows] = useState<readonly QuorumAddressRow[]>([])
   const [error, setError] = useState<string | null>(null)
 
+  // Through an effect event, so the parent drawing again does not re-run this
+  // (INV-UI-109).
+  const readPage = useEffectEvent(onAddresses)
+
   useEffect(() => {
     // An answer for a page the user has left is dropped. Answers need not
     // arrive in the order they were asked for, and the last one to land used
@@ -81,7 +85,7 @@ export function QuorumAddressesScreen(props: QuorumAddressesScreenProps): ReactE
     // this screen exists to prevent.
     setRows([])
     setError(null)
-    onAddresses(descriptor, change, start, PAGE).then(
+    readPage(descriptor, change, start, PAGE).then(
       (result) => {
         if (current) setRows(result.addresses)
       },
@@ -92,7 +96,7 @@ export function QuorumAddressesScreen(props: QuorumAddressesScreenProps): ReactE
     return () => {
       current = false
     }
-  }, [descriptor, change, start, onAddresses])
+  }, [descriptor, change, start])
 
   return (
     <Screen

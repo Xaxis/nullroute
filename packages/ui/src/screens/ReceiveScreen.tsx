@@ -1,4 +1,4 @@
-import { type ReactElement, type ReactNode, useEffect, useState } from 'react'
+import { type ReactElement, type ReactNode, useEffect, useState, useEffectEvent } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
@@ -161,6 +161,30 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  /*
+   * Through an effect event, so the parent drawing again does not re-run the
+   * load below (INV-UI-109). App draws on every heartbeat and passed new
+   * functions each time, so a touch re-derived the address: it blanked, came
+   * back, and the check the person had just made of it was gone.
+   */
+  const derive = useEffectEvent(async (at: number, from: ReceiveSource | null) => {
+    // The quorum's address when a quorum is chosen, this device's own only
+    // when it was chosen explicitly. Falling back to the single-signature
+    // path because the quorum derivation is unavailable would hand somebody
+    // the weaker address at the moment they were told they were getting the
+    // stronger one, so it fails instead.
+    if (from !== null) {
+      if (onQuorumAddress === undefined) {
+        throw new Error(
+          'This build cannot derive a quorum address, so it will not show one. Do not use ' +
+            'the single-signature address below for money meant for the quorum.'
+        )
+      }
+      return onQuorumAddress(from.descriptor, at)
+    }
+    return onAddress(at)
+  })
+
   useEffect(() => {
     // An answer for an address the user has moved past is dropped. The last
     // answer to land used to win, so a slow derivation for index 3 arriving
@@ -174,23 +198,7 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
       setCheck(null)
       setError(null)
       try {
-        // The quorum's address when a quorum is chosen, this device's own only
-        // when it was chosen explicitly. Falling back to the single-signature
-        // path because the quorum derivation is unavailable would hand somebody
-        // the weaker address at the moment they were told they were getting the
-        // stronger one, so it fails instead.
-        if (source !== null) {
-          if (onQuorumAddress === undefined) {
-            throw new Error(
-              'This build cannot derive a quorum address, so it will not show one. Do not use ' +
-                'the single-signature address below for money meant for the quorum.'
-            )
-          }
-          const address = await onQuorumAddress(source.descriptor, index)
-          if (live) setShown(address)
-          return
-        }
-        const address = await onAddress(index)
+        const address = await derive(index, source)
         if (live) setShown(address)
       } catch (err) {
         if (live) setError((err as Error).message)
@@ -200,7 +208,7 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
     return () => {
       live = false
     }
-  }, [index, onAddress, onQuorumAddress, source])
+  }, [index, source])
 
   return (
     <Screen

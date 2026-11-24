@@ -485,10 +485,13 @@ describe('who still has to sign', () => {
     const signed = (await call('psbt.sign', {
       psbt: Buffer.from(tx.toPSBT()).toString('base64'),
       overrideBlockingWarnings: true,
-    })) as { attribution: { cosigners: unknown[]; waiting: string } }
+    })) as { attribution: { cosigners: unknown[]; unattributed: number; waiting: string } }
 
     expect(signed.attribution.cosigners).toHaveLength(0)
     expect(signed.attribution.waiting).toMatch(/No quorum is registered/)
+    // The signature is this device's own. Counted as untraced, the signed
+    // screen warned "ask who produced it" after every single-signature spend.
+    expect(signed.attribution.unattributed).toBe(0)
   })
 })
 

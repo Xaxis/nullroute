@@ -165,7 +165,9 @@ const JOURNEYS = [
   {
     id: 'receive',
     goal: 'start-goal-receive',
-    steps: ['start-begin', 'receive-verify'],
+    // Held, not just shown: the check vanished within a second on the real
+    // app while every unit test passed (INV-UI-109).
+    steps: ['start-begin', 'receive-verify', 'held:receive-verified'],
     ends: 'receive-screen',
     needsWallet: true,
   },
@@ -972,6 +974,39 @@ async function main() {
           }
           if (seen !== 'ok') {
             broke = `${step}: expected the control refused with its reason, saw ${seen}`
+            break
+          }
+          await capture(`${journey.id}-${step}`)
+          continue
+        }
+
+        if (step.startsWith('held:')) {
+          const shown = step.slice('held:'.length)
+          /*
+           * STILL THERE after the frame has drawn again (INV-UI-109). App
+           * redraws once a second while a wallet is open, for the idle
+           * countdown, and a screen that keyed its loading effect on a callback
+           * App made new on every draw started over every second: the receive
+           * address blanked and the check somebody had just made of it was
+           * gone. Present once proves nothing, so wait for it, let several
+           * redraws pass with nothing touched, and look again.
+           */
+          const present = async () =>
+            (await evaluate(
+              `document.querySelector('[data-testid=' + ${JSON.stringify(JSON.stringify(shown))} + ']') !== null`
+            )) === true
+          let seen = false
+          for (let attempt = 0; attempt < 40 && !seen; attempt += 1) {
+            seen = await present()
+            if (!seen) await sleep(100)
+          }
+          if (!seen) {
+            broke = `${step}: ${shown} never appeared`
+            break
+          }
+          await sleep(3500)
+          if (!(await present())) {
+            broke = `${step}: ${shown} appeared and was gone 3.5 seconds later with nothing touched`
             break
           }
           await capture(`${journey.id}-${step}`)

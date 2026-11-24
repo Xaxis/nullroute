@@ -1,4 +1,4 @@
-import { type ReactElement, type ReactNode, useEffect, useState } from 'react'
+import { type ReactElement, type ReactNode, useEffect, useState, useEffectEvent } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Refusal } from '../components/Refusal.js'
 import { Working } from '../components/Working.js'
@@ -227,11 +227,15 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Through an effect event, so the parent drawing again does not re-run this
+  // (INV-UI-109).
+  const readOurKey = useEffectEvent(onOurKey)
+
   useEffect(() => {
     let cancelled = false
     const load = async (): Promise<void> => {
       try {
-        const key = await onOurKey()
+        const key = await readOurKey()
         if (!cancelled) setOurKey(key)
       } catch (err) {
         if (!cancelled) setError((err as Error).message)
@@ -241,7 +245,7 @@ export function MultisigScreen(props: MultisigScreenProps): ReactElement {
     return () => {
       cancelled = true
     }
-  }, [onOurKey])
+  }, [])
 
   const run = async (fn: () => Promise<void>): Promise<void> => {
     setBusy(true)

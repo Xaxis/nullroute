@@ -1,4 +1,11 @@
-import { type ReactElement, type ReactNode, useCallback, useEffect, useState } from 'react'
+import {
+  type ReactElement,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useState,
+  useEffectEvent,
+} from 'react'
 import { Screen } from '../components/Screen.js'
 import { Button } from '../components/Button.js'
 import { Info } from '../components/Info.js'
@@ -87,10 +94,14 @@ export function DiceScreen(props: DiceScreenProps): ReactElement {
   // The daemon owns the arithmetic. The frontend could compute bits itself, and
   // deliberately does not: the number a user reads has to come from the side
   // that decides whether there is enough, or the two could disagree.
+  // Through an effect event, so the parent drawing again does not re-run this
+  // (INV-UI-109).
+  const accountFor = useEffectEvent(onAccount)
+
   useEffect(() => {
     let cancelled = false
     const run = async (): Promise<void> => {
-      const result = await onAccount(rolls)
+      const result = await accountFor(rolls)
       if (!cancelled) {
         setAccounting(result.accounting)
         setWarnings(result.warnings)
@@ -100,7 +111,7 @@ export function DiceScreen(props: DiceScreenProps): ReactElement {
     return () => {
       cancelled = true
     }
-  }, [rolls, onAccount])
+  }, [rolls])
 
   const push = useCallback((face: string) => {
     setRolls((current) => current + face)

@@ -1,4 +1,11 @@
-import { type ReactElement, type ReactNode, useCallback, useEffect, useState } from 'react'
+import {
+  type ReactElement,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useState,
+  useEffectEvent,
+} from 'react'
 import { Screen } from '../components/Screen.js'
 import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
@@ -202,13 +209,18 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
 
   const GAP = 10
 
+  // Through an effect event, so the parent drawing again does not re-run this
+  // (INV-UI-109).
+  const readRows = useEffectEvent(onAddresses)
+  const readDescriptor = useEffectEvent(onDescriptor)
+
   useEffect(() => {
     let cancelled = false
     setRows([])
     setRowsError(null)
     const run = async (): Promise<void> => {
       try {
-        const result = await onAddresses(scriptType, change, start, GAP)
+        const result = await readRows(scriptType, change, start, GAP)
         if (!cancelled) setRows(result.addresses)
       } catch (err) {
         if (!cancelled) setRowsError((err as Error).message)
@@ -218,7 +230,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
     return () => {
       cancelled = true
     }
-  }, [scriptType, change, start, onAddresses])
+  }, [scriptType, change, start])
 
   useEffect(() => {
     if (tab !== 'export') return
@@ -227,7 +239,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
     setDescriptorError(null)
     const run = async (): Promise<void> => {
       try {
-        const result = await onDescriptor(scriptType, change)
+        const result = await readDescriptor(scriptType, change)
         if (!cancelled) setDescriptor(result)
       } catch (err) {
         if (!cancelled) setDescriptorError((err as Error).message)
@@ -237,7 +249,7 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
     return () => {
       cancelled = true
     }
-  }, [tab, scriptType, change, onDescriptor])
+  }, [tab, scriptType, change])
 
   const verify = useCallback(async () => {
     setBusy(true)

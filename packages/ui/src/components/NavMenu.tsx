@@ -1,4 +1,4 @@
-import { type ReactElement, useEffect, useRef } from 'react'
+import { type ReactElement, useEffect, useRef, useEffectEvent } from 'react'
 
 /**
  * The navigation menu, in the header, on every screen.
@@ -107,16 +107,20 @@ export function NavMenu(props: NavMenuProps): ReactElement {
   // Escape closes it. There is no keyboard on the device, and there is one on
   // the machine this gets developed against, and a panel that traps a
   // developer is a panel that gets worked around rather than fixed.
+  // Through an effect event, so the parent drawing again does not re-run this
+  // (INV-UI-109).
+  const toggle = useEffectEvent(onToggle)
+
   useEffect(() => {
     if (!open) return
     const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') onToggle()
+      if (event.key === 'Escape') toggle()
     }
     document.addEventListener('keydown', onKey)
     return () => {
       document.removeEventListener('keydown', onKey)
     }
-  }, [open, onToggle])
+  }, [open])
 
   const shown = ENTRIES.filter((entry) => {
     if (entry.needsWallet && !walletOpen) return false

@@ -58,6 +58,8 @@ export interface Attribution {
    * nobody in the quorum made is worth a second look, and because a screen that
    * showed "2 of 3 signed" while one of them was unattributed would be adding
    * two numbers that do not belong together.
+   *
+   * Zero when there is no quorum to trace against: `unavailable` answers then.
    */
   readonly unattributed: number
   /**
@@ -157,7 +159,14 @@ export function attributeSignatures(
   if (quorum.length === 0) {
     return {
       cosigners: [],
-      unattributed: signedBy.length,
+      // NOT signedBy.length (INV-QUORUM-6). "Untraced" means untraced against a
+      // quorum, and with none there was nothing to trace against. Counting every
+      // signature here put "could not be traced to a cosigner in your quorum,
+      // ask who produced it" under every single-signature spend this device
+      // signed, about its own signature, and under every spend from a device
+      // in two quorums it could not tell apart. A warning that fires on the
+      // ordinary path teaches people to skip the one that matters.
+      unattributed: 0,
       unavailable:
         'No quorum is registered for this transaction, so this device has no list of cosigners to ' +
         'match against. Register the descriptor to see who still has to sign.',

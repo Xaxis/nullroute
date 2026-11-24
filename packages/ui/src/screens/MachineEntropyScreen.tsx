@@ -1,4 +1,4 @@
-import { type ReactElement, type ReactNode, useEffect, useState } from 'react'
+import { type ReactElement, type ReactNode, useEffect, useState, useEffectEvent } from 'react'
 import { Screen } from '../components/Screen.js'
 import { Refusal } from '../components/Refusal.js'
 import { Button } from '../components/Button.js'
@@ -66,11 +66,15 @@ export function MachineEntropyScreen(props: MachineEntropyScreenProps): ReactEle
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Through an effect event, so the parent drawing again does not re-run this
+  // (INV-UI-109).
+  const readHealth = useEffectEvent(onHealth)
+
   useEffect(() => {
     // An answer that lands after the screen has gone is dropped.
     let current = true
     setError(null)
-    onHealth().then(
+    readHealth().then(
       (report) => {
         if (current) setHealth(report)
       },
@@ -81,7 +85,7 @@ export function MachineEntropyScreen(props: MachineEntropyScreenProps): ReactEle
     return () => {
       current = false
     }
-  }, [onHealth])
+  }, [])
 
   return (
     <Screen

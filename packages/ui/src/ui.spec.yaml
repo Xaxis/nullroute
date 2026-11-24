@@ -191,6 +191,20 @@ invariants:
     tests:
       - packages/ui/test/psbt-screen.test.tsx::shows-the-whole-script-of-an-output-with-no-address
 
+  - id: INV-UI-109
+    statement: >
+      A screen starts over only when what it shows changes, never because the
+      frame around it drew again. No effect lists a callback prop as a
+      dependency; callbacks an effect calls are read through an effect event.
+      App draws once a second while a wallet is open, and a receive address
+      that re-derived on each draw blanked and lost the check the person had
+      just made of it.
+    tests:
+      - packages/ui/test/parent-redraw.test.tsx::keeps-a-checked-address-when-the-frame-redraws
+      - packages/ui/test/parent-redraw.test.tsx::keeps-the-quorum-addresses-when-the-frame-redraws
+      - packages/ui/test/parent-redraw.test.tsx::reads-entropy-health-once-however-often-the-frame-redraws
+      - packages/ui/test/parent-redraw.test.tsx::keys-no-effect-on-a-callback-prop
+
   - id: INV-UI-12
     statement: >
       An output is presented as change only together with the derivation path
