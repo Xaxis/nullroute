@@ -282,6 +282,31 @@ its screens do. Both sign through embit, so a finding they share may come
 from embit rather than from either product: the taproot nonce, as the adapters
 measure it, is one.
 
+Several of the gaps below were reported to their projects by other people
+before these adapters existed, and each row with an upstream report or fix
+names it. For those the kit reproduces a known finding from vectors it did not
+write for them; it did not find them first. The reports the rows name:
+
+- embit: [#97](https://github.com/diybitcoinhardware/embit/issues/97) and
+  [#155](https://github.com/diybitcoinhardware/embit/pull/155) (the taproot
+  nonce), and [`e5e69965`](https://github.com/diybitcoinhardware/embit/commit/e5e69965)
+  on its `hardened` branch (BIP-174's unsigned transaction).
+- SeedSigner: [#1043](https://github.com/SeedSigner/seedsigner/pull/1043)
+  (OP_RETURN amounts), and the fixes
+  [#995](https://github.com/SeedSigner/seedsigner/pull/995),
+  [#1041](https://github.com/SeedSigner/seedsigner/pull/1041) and
+  [#1060](https://github.com/SeedSigner/seedsigner/pull/1060).
+- Krux: [#965](https://github.com/selfcustody/krux/issues/965) and
+  [#969](https://github.com/selfcustody/krux/pull/969) (OP_RETURN outputs),
+  and [#972](https://github.com/selfcustody/krux/issues/972) (99 rolls).
+
+Two reports came from this work and are this project's own: the derivation
+record finding below, sent to embit as a fix with tests
+([embit #190](https://github.com/diybitcoinhardware/embit/pull/190), to the
+`hardened` branch Krux pins), and scure-btc-signer's low-R counter
+([#145](https://github.com/paulmillr/scure-btc-signer/issues/145)), found by
+`sign-deterministic.json`.
+
 ### SeedSigner
 
 ```console
@@ -330,15 +355,15 @@ not confirmed.
 Four findings at the previous pin, `088b144e` (23 September 2026), no longer
 hold on `dev`, where SeedSigner's maintainers have since changed its parser. A
 derivation record that names the seed's key on an input whose script does not
-use that key is refused (SeedSigner #1060), outputs that exceed the inputs are
-refused (#1041), and a previous transaction is checked against the txid the
-input spends and against its witness UTXO (#995). This project has not
+use that key is refused ([SeedSigner #1060](https://github.com/SeedSigner/seedsigner/pull/1060)), outputs that exceed the inputs are
+refused ([#1041](https://github.com/SeedSigner/seedsigner/pull/1041)), and a previous transaction is checked against the txid the
+input spends and against its witness UTXO ([#995](https://github.com/SeedSigner/seedsigner/pull/995)). This project has not
 contacted SeedSigner about any finding.
 
 | Finding | Requirement | What it means for the profile |
 | --- | --- | --- |
 | ECDSA signatures are RFC 6979 ground for a low R, exactly as Bitcoin Core's wallet grinds | SP-SIG-1 | It changed the profile. SP-SIG-1 said only "RFC 6979" and the vectors were plain, which failed SeedSigner on a rule whose purpose it meets. Either scheme is allowed now, the signer says which, and SeedSigner passes those cases. |
-| Taproot signatures use no `aux_rand` at all, so the nonce skips BIP-340's mask | SP-SIG-1 | The rule stands: BIP-340 signs with a 32-byte `aux_rand`, and Bitcoin Core 31.1 uses 32 zero bytes, so Core cannot reproduce these valid, deterministic signatures. The cause is in embit (`embit/util/key.py`; its bundled libsecp256k1 does the same). |
+| Taproot signatures use no `aux_rand` at all, so the nonce skips BIP-340's mask | SP-SIG-1 | The rule stands: BIP-340 signs with a 32-byte `aux_rand`, and Bitcoin Core 31.1 uses 32 zero bytes, so Core cannot reproduce these valid, deterministic signatures. The cause is in embit (`embit/util/key.py`; its bundled libsecp256k1 does the same), where embit #97 (July 2025) found its taproot signatures differ from current libsecp256k1's and embit #155, open, adds the mask with 32 zero bytes. |
 | 24 words come from exactly 99 rolls, never 100 or more | SP-ENT-3 | An open question: 99 rolls are 255.91 bits, short of 256. The encoding is the profile's, SHA-256 of the ASCII rolls; only the count differs. |
 | The signed PSBT holds only the transaction and the signatures | SP-REV-11 | An open question: whether a signer that returns its signatures for the coordinator to combine meets the requirement. |
 | A segwit v0 input whose amount comes from the witness UTXO alone is signed; a previous transaction, when one is sent, is checked against the txid and the witness UTXO | SP-REV-3 | An open question, and SeedSigner argues its side: the parser names the attack this leaves open (CVE-2020-14199) and accepts it because coordinators seldom send a QR signer the previous transaction (`psbt_parser.py` lines 577-595). The profile treats that amount as the coordinator's word until a previous transaction confirms it. |
@@ -350,8 +375,8 @@ contacted SeedSigner about any finding.
 | A UR part from another transfer is dropped and scanning goes on | SP-TX-7 | It changed the vector. SP-TX-7's text asks for the part to be refused, which SeedSigner does; the vector demanded the whole transfer be refused. Either is accepted now, and SeedSigner passes. |
 | A repeated BBQr frame with different contents is ignored after the first copy | SP-TX-5 | The rule stands: BBQr has no checksum, so keeping whichever copy came first completes a payload nobody can confirm. |
 | UR is read only as `crypto-psbt`, and BBQr only as a PSBT | SP-TX-7, SP-TX-3 | Known and stated: SP-TX-7 writes `crypto-psbt` because SeedSigner reads only that, and a real Coldcard scan of file type U is not read. |
-| A PSBT whose unsigned transaction has a scriptSig, or is written with a witness, is reviewed like any other | SP-REV-1 | A gap, from embit's parser, and a small one: the review shows the same inputs and outputs. embit's master has since rejected the scriptSig; the witness form is still read. |
-| An OP_RETURN output is shown as its payload alone, with no amount and no place in the list of outputs, and only the last one when there are several | SP-REV-5 | A gap where the output carries an amount: 0.05 BTC on one is shown nowhere, and the math screen stops adding up. Whether a payload counts as "its script" is a question for the profile. |
+| A PSBT whose unsigned transaction has a scriptSig, or is written with a witness, is reviewed like any other | SP-REV-1 | A gap, from embit's parser, and a small one: the review shows the same inputs and outputs. embit's master has since rejected the scriptSig; the witness form is still read there. embit's `hardened` branch reads the unsigned transaction without witness detection (`e5e69965`, October 2026), which refuses both. |
+| An OP_RETURN output is shown as its payload alone, with no amount and no place in the list of outputs, and only the last one when there are several | SP-REV-5 | A gap where the output carries an amount: 0.05 BTC on one is shown nowhere, and the math screen stops adding up. SeedSigner #1043, open since September, shows every OP_RETURN output and what it burns. Whether a payload counts as "its script" is a question for the profile. |
 | A payment to a bare public key, or to witness version 2 or 16, ends on the System Error screen before its review | SP-REV-5 | Nothing the vector can see, since it allows refusing those outputs, so the three cases pass. The refusal is not a decision: embit's `address()` raises "This type of script doesn't have address representation" (embit 0.8.0 `script.py` line 20) and nothing in the review catches it. |
 | Inputs of mixed script types are refused | SP-REV-3, SP-REV-4, SP-REV-25, SP-SIG-1 | Nothing: a limit SeedSigner states, with a note that the policy should come from the user's own inputs alone (`psbt_parser.py` lines 699-702). It stops four cases from reaching the check they exist for. |
 
@@ -400,14 +425,16 @@ not.
 
 This project wrote the adapter. Krux's maintainers have not checked it, and
 until they do, a finding here is a claim about their code that they have not
-confirmed. This project has not contacted Krux about any finding.
+confirmed. This project has not written to Krux. The one finding nobody had
+reported, the derivation record below, went to embit as a fix (#190) on the
+`hardened` branch Krux pins, and that pull request names Krux.
 
 | Finding | Requirement | What it means for the profile |
 | --- | --- | --- |
-| A PSBT with an OP_RETURN output, or one paying a bare public key or a witness version no soft fork has defined, ends on the error screen before its review | SP-REV-5 | A gap. The vector's cases pass because refusing is allowed, but the refusal is a `TypeError` (`psbt.py` line 853), and a transaction carrying an OP_RETURN, whatever else it pays, cannot be signed. |
-| An input whose derivation record names the wallet's key, in a script that does not use it, is signed, in a transaction the wallet owns no input of | SP-REV-25, SP-REV-24 | A gap, the one SeedSigner fixed in its #1060. embit's `sign_with` signs with every key such a record derives to and checks the script only for the root key (`embit/psbt.py` line 1745); the review shows one spend and no warning. |
-| Taproot signatures use no `aux_rand`, so the nonce skips BIP-340's mask | SP-SIG-1 | The rule stands, with the same cause as SeedSigner's: embit (`embit/util/key.py` lines 589-600). Measured on embit's pure-Python backend; the device's C module was not run. |
-| 24 words from 99 rolls or more | SP-ENT-3 | An open question, as for SeedSigner: 99 rolls are 255.91 bits. The encoding is the profile's. |
+| A PSBT with an OP_RETURN output, or one paying a bare public key or a witness version no soft fork has defined, ends on the error screen before its review | SP-REV-5 | A gap. The vector's cases pass because refusing is allowed, but the refusal is a `TypeError` (`psbt.py` line 853), and a transaction carrying an OP_RETURN, whatever else it pays, cannot be signed. Reported to Krux as #965 on 16 October 2026, before this adapter existed; #969, open, shows such outputs with their amount and data. |
+| An input whose derivation record names the wallet's key, in a script that does not use it, is signed, in a transaction the wallet owns no input of | SP-REV-25, SP-REV-24 | A gap, the one SeedSigner fixed in its #1060. embit's `sign_with` signs with every key such a record derives to and checks the script only for the root key (`embit/psbt.py` line 1745); the review shows one spend and no warning. Not reported before; this project opened a fix for embit's `hardened` branch, embit #190. |
+| Taproot signatures use no `aux_rand`, so the nonce skips BIP-340's mask | SP-SIG-1 | The rule stands, with the same cause as SeedSigner's: embit (`embit/util/key.py` lines 589-600). Measured on embit's pure-Python backend; the device's C module was not run. embit #155 would change the Python backend. |
+| 24 words from 99 rolls or more | SP-ENT-3 | An open question, as for SeedSigner: 99 rolls are 255.91 bits, as Krux #972 (finding E2) also notes. The encoding is the profile's. |
 | "Sign to QR code" returns only the signatures; "Sign to SD card" keeps every field | SP-REV-11 | An open question, as for SeedSigner: whether a signature-only reply meets the requirement. |
 | One segwit v0 input whose amount comes only from its witness UTXO is signed with no warning | SP-REV-3 | An open question, and Krux argues its side in the docstring (`psbt.py` lines 210-220): with one input, a false amount breaks that input's own signature. |
 | With more than one input, any amount without its previous transaction draws a warning and "Proceed?" before the review | SP-REV-3, SP-REV-22 | A difference the profile names: it asks for signing disabled at the control until a single-use override. Krux's prompt is the same one the high-fee warning uses, which must not block, so it is read as a warning. |

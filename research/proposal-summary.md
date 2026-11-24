@@ -194,14 +194,14 @@ project, not by SeedSigner's maintainers, and has not been checked by them.
 | Finding | What it did |
 | --- | --- |
 | SeedSigner grinds ECDSA nonces for a low R exactly as Bitcoin Core does, and SP-SIG-1 said only "RFC 6979" | Changed the profile: both schemes are allowed, and the signer says which |
-| embit signs taproot with no `aux_rand`, skipping BIP-340's mask | Stands: Core cannot reproduce SeedSigner's taproot signatures. A report to embit is drafted |
+| embit signs taproot with no `aux_rand`, skipping BIP-340's mask | Stands: Core cannot reproduce SeedSigner's taproot signatures. Already open upstream: [embit #97](https://github.com/diybitcoinhardware/embit/issues/97) (July 2025) and [embit #155](https://github.com/diybitcoinhardware/embit/pull/155), which adds the zero mask |
 | 24 words from exactly 99 rolls | An open question for review (SP-ENT-3) |
 | The signed PSBT keeps only the signatures | An open question: whether a signature-only reply meets SP-REV-11 |
 | A segwit v0 amount from the witness UTXO alone is trusted, a choice SeedSigner documents and argues | An open question (SP-REV-3) |
 | At the previous pin, `088b144e`: a derivation record naming the seed's key was trusted without checking the script, a negative fee could be signed, and a previous transaction was never checked | Fixed in SeedSigner's own `dev` since (SeedSigner #995, #1041, #1060), without contact from this project; those cases pass at `5f321768` |
 | A false change claim is refused outright, where the vector asked for it shown as a payment; a foreign UR part is dropped, where the vector asked for the transfer refused | Changed the profile and a vector: refusing is allowed by SP-REV-7, and SP-TX-7's vector accepts either |
-| A PSBT whose unsigned transaction has a scriptSig, or is written with a witness, reaches review (SP-REV-1) | A gap from embit's parser, which also fails three of BIP-174's own test vectors. A fix with tests is drafted for embit |
-| An OP_RETURN output is shown as its payload, with no amount (SP-REV-5) | A gap where it carries one: an amount it destroys is shown nowhere |
+| A PSBT whose unsigned transaction has a scriptSig, or is written with a witness, reaches review (SP-REV-1) | A gap from embit 0.8.0's parser, which also fails three of BIP-174's own test vectors. embit's `hardened` branch already fixes it ([`e5e69965`](https://github.com/diybitcoinhardware/embit/commit/e5e69965), October 2026) and passes all 30 |
+| An OP_RETURN output is shown as its payload, with no amount (SP-REV-5) | A gap where it carries one: an amount it destroys is shown nowhere. [SeedSigner #1043](https://github.com/SeedSigner/seedsigner/pull/1043), open since September, would show it |
 | No screen shows the locktime, replaceability or sighash type | Gaps against SP-REV-8 and SP-REV-9. embit never signs a non-ALL input, so the sighash gap is not a loss |
 
 Each case and the SeedSigner line that decides it is in
@@ -217,8 +217,8 @@ this project, not by Krux's maintainers, and has not been checked by them.
 
 | Finding | What it means |
 | --- | --- |
-| A PSBT with any OP_RETURN output, or paying a bare public key or an undefined witness version, raises a `TypeError` before the review | A gap (SP-REV-5): through the signing flow, those transactions cannot be signed. The kit scores these cases as passes, because the vector allows a refusal. Seen under CPython, not yet on a device |
-| An input whose derivation record names the wallet's key, in a script that does not use it, is signed with no warning | A gap (SP-REV-24, SP-REV-25), the one SeedSigner fixed in its #1060 |
+| A PSBT with any OP_RETURN output, or paying a bare public key or an undefined witness version, raises a `TypeError` before the review | A gap (SP-REV-5): through the signing flow, those transactions cannot be signed. The kit scores these cases as passes, because the vector allows a refusal. Seen under CPython, not yet on a device. Reported to Krux as [#965](https://github.com/selfcustody/krux/issues/965) on 16 October, before this adapter existed; a fix is open as [#969](https://github.com/selfcustody/krux/pull/969) |
+| An input whose derivation record names the wallet's key, in a script that does not use it, is signed with no warning | A gap (SP-REV-24, SP-REV-25), the one SeedSigner fixed in its #1060. Not reported before: a fix with tests is open as [embit #190](https://github.com/diybitcoinhardware/embit/pull/190), on the `hardened` branch Krux pins |
 | Taproot signatures use no `aux_rand`, from the same embit code as SeedSigner's | Stands, with the same cause, as measured on embit's Python code. The device signs through MaixPy's own secp256k1 module, which was not run |
 | No screen shows the locktime, replaceability or sighash type; change is shown as "1/0", not its full path | Gaps against SP-REV-6, SP-REV-8 and SP-REV-9. A non-ALL sighash is refused at signing |
 | Two BBQr transfers with disjoint part numbers complete as one payload, and BBQr is written with encoding `Z` | A gap (SP-TX-5), and a question for the profile, which is stricter than BBQr (SP-TX-4) |
@@ -226,6 +226,17 @@ this project, not by Krux's maintainers, and has not been checked by them.
 
 Each case and the Krux line that decides it is in
 [`conformance/known-failures/krux.json`](../conformance/known-failures/krux.json).
+
+Several of these gaps were reported upstream by other people before the
+adapters existed, and the rows above name those reports. The kit reproduced
+them from vectors written for the profile, not for these products; it did not
+find them first. Two upstream reports are new. The derivation-record finding
+went to embit as a fix, not a report (#190 above). The other is against
+nullroute's own dependency: scure-btc-signer's low-R option starts its counter
+at 0 where Bitcoin Core starts at 1, so a quarter of its low-R signatures differ
+from Core's ([paulmillr/scure-btc-signer#145](https://github.com/paulmillr/scure-btc-signer/issues/145), filed 24 November 2026, with
+the Core-computed case from `sign-deterministic.json`). nullroute signs plain
+RFC 6979 and is not affected.
 
 The kit holds its own author to the same rules. SP-REV-5, every output shown by
 its full address or its script, was checked only by nullroute's tests and a

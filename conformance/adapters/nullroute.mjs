@@ -52,7 +52,8 @@ export const changeSearchBound = 100
  * packages/core/src/psbt/sign.ts signs through @scure/btc-signer's `signIdx`
  * on a Transaction parsed without the `lowR` option, so its default (off)
  * applies. That option would not give Bitcoin Core's bytes anyway: its first
- * retry uses 32 zero bytes of additional data where Core uses LE32(1).
+ * retry uses 32 zero bytes of additional data where Core uses LE32(1)
+ * (reported as paulmillr/scure-btc-signer#145).
  */
 export const ecdsaNonces = 'rfc6979'
 

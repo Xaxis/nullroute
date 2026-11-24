@@ -15,14 +15,24 @@ status and home pages.
 
 ## November 2026
 
+- **2026-11-24** Each finding the kit shares with an upstream report names
+  that report in `conformance/README.md`: embit #97 and #155 for the taproot
+  nonce, embit's `hardened` branch for BIP-174's unsigned transaction,
+  SeedSigner #1043 and Krux #965 for OP_RETURN outputs. Those were found
+  first by others, and the kit reproduces them. Two are new: embit #190, a
+  fix with tests so `sign_with` signs with a derived key only where the
+  input's script uses it (the Krux finding, SeedSigner's #1060 class), and
+  scure-btc-signer #145, whose low-R option starts counting at 0 where
+  Bitcoin Core starts at 1. nullroute signs plain RFC 6979 and is not
+  affected by the second.
 - **2026-11-23** `make conformance-krux` runs the signer profile's 158 cases
   against Krux's own source (develop at `9180bbc5`, with the embit commit its
   submodule pins): 82 pass, 44 are listed findings with the Krux lines that
   decide them, and 32 test what Krux does not have or what needs its C
-  modules. A PSBT with any OP_RETURN output crashes Krux's review, and an
-  input whose derivation record names the wallet's key is signed in a script
-  that does not use it. This project wrote the adapter and has not contacted
-  Krux.
+  modules. A PSBT with any OP_RETURN output crashes Krux's review (reported
+  to Krux by someone else as #965 in October), and an input whose derivation
+  record names the wallet's key is signed in a script that does not use it.
+  This project wrote the adapter and has not contacted Krux.
 - **2026-11-23** SP-ENT-8's count of the rolls the device chose is checked by
   a test (INV-UI-76, "1 of 3 rolls came from the device"), and the profile's
   row and the kit's coverage table say so. Both had called it a manual check.
