@@ -194,6 +194,30 @@ const JOURNEYS = [
     ends: 'psbt-signed',
     needsWallet: true,
   },
+  {
+    id: 'sign-override',
+    goal: 'start-goal-sign',
+    /*
+     * The same transaction without the one it spends, so its amount is the
+     * coordinator's word (INV-PSBT-17, SP-REV-3). The review must refuse with
+     * its reason beside a dead Sign, and one tick must then let that single
+     * signature through (SP-REV-22). The signing journey above proves the
+     * device signs; this proves it refuses first and that the way past the
+     * refusal is the one docs/USING.md describes, which no other check drives
+     * in the real app.
+     */
+    steps: [
+      'start-begin',
+      'paste-unverified',
+      'psbt-review',
+      'scroll',
+      'refused:psbt-sign',
+      'psbt-override',
+      'psbt-sign',
+    ],
+    ends: 'psbt-signed',
+    needsWallet: true,
+  },
 ]
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -226,7 +250,7 @@ const NETWORKS = {
  * naming one that does not is indistinguishable to it from one that does. The
  * script is the wallet's own, because that is what makes the input signable.
  */
-async function buildPsbt(rpc) {
+async function buildPsbt(rpc, { withPrevious = true } = {}) {
   const status = await rpc('device.status')
   const params = NETWORKS[status.network?.id]
   if (params === undefined) {
@@ -254,7 +278,7 @@ async function buildPsbt(rpc) {
     txid: previous.id,
     index: 0,
     witnessUtxo: { script, amount: 100_000n },
-    nonWitnessUtxo: previous.toBytes(true, false),
+    ...(withPrevious ? { nonWitnessUtxo: previous.toBytes(true, false) } : {}),
   })
   tx.addOutputAddress(to.address, 99_000n, params)
   return base64.encode(tx.toPSBT())
@@ -699,8 +723,22 @@ async function main() {
            * review, which was the bug fixed in b502b94. A person scrolls until
            * the thing they are about to press is there; so does this.
            */
+          /*
+           * A step with a colon is not a control, except that `refused:X`
+           * asserts on the control X, which is the one to wait for. The first
+           * run of the override journey named its assertion like a control,
+           * so this waited for an element that never exists and never
+           * scrolled, and the screen correctly said "Scroll to the end first".
+           */
           const next = sequence[position + 1]
-          const waitFor = next !== undefined && !next.includes(':') ? next : null
+          const waitFor =
+            next === undefined
+              ? null
+              : next.startsWith('refused:')
+                ? next.slice('refused:'.length)
+                : next.includes(':')
+                  ? null
+                  : next
           let height = -1
           for (let attempt = 0; attempt < 80; attempt += 1) {
             const at = String(
@@ -910,8 +948,38 @@ async function main() {
           continue
         }
 
-        if (step === 'paste') {
-          const psbt = await buildPsbt(rpc)
+        if (step.startsWith('refused:')) {
+          const control = step.slice('refused:'.length)
+          /*
+           * Refused, and saying why, before anything is ticked. Read once the
+           * screen has settled after the scroll: a review still loading also
+           * has a dead Sign, but its line reads "Scroll to the end first".
+           */
+          let seen = 'missing'
+          for (let attempt = 0; attempt < 40; attempt += 1) {
+            seen = String(
+              await evaluate(`(() => {
+                const sign = document.querySelector('[data-testid=' + ${JSON.stringify(JSON.stringify(control))} + ']')
+                const why = document.querySelector('[data-testid="psbt-refusal"]')
+                if (sign === null) return 'the control missing'
+                if (sign.disabled !== true) return 'the control enabled'
+                const text = why === null ? '' : (why.textContent || '').trim()
+                return text.startsWith('Will not sign') ? 'ok' : 'reason "' + text + '"'
+              })()`)
+            )
+            if (seen === 'ok') break
+            await sleep(100)
+          }
+          if (seen !== 'ok') {
+            broke = `${step}: expected the control refused with its reason, saw ${seen}`
+            break
+          }
+          await capture(`${journey.id}-${step}`)
+          continue
+        }
+
+        if (step === 'paste' || step === 'paste-unverified') {
+          const psbt = await buildPsbt(rpc, { withPrevious: step === 'paste' })
           // Through the native setter and an input event, because React tracks
           // the value it last rendered and ignores one assigned around it.
           const filled = await evaluate(`(() => {
