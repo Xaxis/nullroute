@@ -671,12 +671,29 @@ export function App() {
    * same exit through the wallet name two inches away has not refused
    * anything.
    */
+  /*
+   * A SEED THAT IS LOADED BUT NOT SAVED IS STILL OPEN (INV-UI-101).
+   *
+   * The daemon names a wallet only once it is sealed into the store, so after
+   * a restore whose save was skipped, or a frontend restart over one,
+   * activeWallet is null while hasWallet is true, and the receive and sign
+   * screens use that seed. The chip said "No wallet open", and because the
+   * network rides on the wallet line it named no network either: on mainnet
+   * the header said nothing about either while the device would sign. Found
+   * by the screenshots of the sign-override journey, which runs after the
+   * restore journey leaves exactly this state.
+   */
+  const chipWallet =
+    activeWallet !== null
+      ? { label: activeWallet.label, colour: activeWallet.colour }
+      : status?.hasWallet === true
+        ? { label: `Unsaved ${status.fingerprint ?? 'wallet'}`, colour: 'slate' }
+        : undefined
+
   const identity = (
     <Identity
       device={device?.name}
-      {...(activeWallet === null
-        ? {}
-        : { wallet: { label: activeWallet.label, colour: activeWallet.colour } })}
+      {...(chipWallet === undefined ? {} : { wallet: chipWallet })}
       {...(status === null
         ? {}
         : { networkLabel: status.network.label, isMainnet: status.network.isMainnet })}
@@ -705,9 +722,7 @@ export function App() {
   const identityFixed = (
     <Identity
       device={device?.name}
-      {...(activeWallet === null
-        ? {}
-        : { wallet: { label: activeWallet.label, colour: activeWallet.colour } })}
+      {...(chipWallet === undefined ? {} : { wallet: chipWallet })}
       {...(status === null
         ? {}
         : { networkLabel: status.network.label, isMainnet: status.network.isMainnet })}

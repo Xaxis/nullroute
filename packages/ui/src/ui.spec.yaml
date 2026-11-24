@@ -1328,11 +1328,14 @@ invariants:
       The header names the wallet the daemon says is open, on every screen and
       after every refresh, rather than only after the paths that open one. A
       frontend that restarts while the daemon keeps running still names it. The
-      daemon is the authority: an answer of null is a lock and is believed, and
-      no answer at all changes nothing.
+      daemon is the authority: an answer of null with no seed loaded is a lock
+      and is believed, and no answer at all changes nothing. A seed that is
+      loaded but not saved has no stored name, and the header calls it unsaved,
+      by its fingerprint and with its network, never "No wallet open".
     tests:
       - packages/ui/test/app.test.tsx::names-the-open-wallet-after-the-frontend-restarts
       - packages/ui/test/app.test.tsx::says-no-wallet-is-open-when-the-daemon-says-none-is
+      - packages/ui/test/app.test.tsx::names-a-seed-that-is-loaded-but-not-saved
       - packages/ui/test/app.test.tsx::walks-through-opening-a-wallet-and-continues-the-flow
 
 threats:

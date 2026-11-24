@@ -117,6 +117,15 @@ invariants:
     tests:
       - packages/core/test/psbt.review.test.ts::carries-the-script-of-every-output
 
+  - id: INV-PSBT-23
+    statement: >
+      When no input states a sighash type, the review names the flag the inputs
+      are signed with: SIGHASH_DEFAULT only when every input is taproot,
+      SIGHASH_ALL when none is, and both when they are mixed. SIGHASH_DEFAULT
+      exists only in BIP-341, and every other input signs SIGHASH_ALL.
+    tests:
+      - packages/core/test/psbt.review.test.ts::names-the-flag-an-unstated-sighash-signs-with
+
   - id: INV-PSBT-15
     statement: >
       Key-value pairs the device does not model are reported to the user and

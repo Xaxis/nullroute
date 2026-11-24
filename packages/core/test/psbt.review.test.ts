@@ -218,6 +218,39 @@ describe('core.psbt.review', () => {
     expect(review.signable).toBe(true)
   })
 
+  /**
+   * INV-PSBT-23. With no sighash stated, the name is the flag the input is
+   * signed with. A p2wpkh input signs SIGHASH_ALL, byte 0x01; the review called
+   * it SIGHASH_DEFAULT, which is taproot's and nothing else's. The taproot half
+   * is asserted in psbt.sign.taproot.test.ts, which signs one.
+   */
+  it('names-the-flag-an-unstated-sighash-signs-with', () => {
+    const { changePathOf } = ourAddresses()
+    const segwit = build({ outputs: [{ address: STRANGER, amount: 90_000n }] })
+    expect(segwit.getInput(0).sighashType).toBeUndefined()
+    const review = reviewTransaction(segwit, { network: MAINNET, isChange: changePathOf })
+    expect(review.sighash.name).toBe('SIGHASH_ALL')
+    expect(review.sighash.type).toBe(SIGHASH_ALL)
+    expect(review.sighash.meaning).toContain('every input and every output')
+    expect(review.sighash.acceptable).toBe(true)
+
+    // A taproot input beside it: each is signed with its own default, and the
+    // name says both rather than picking one.
+    // OP_1 and an x-only key. The generator's x coordinate, because the
+    // library classifies a script as taproot only when the key is on the curve.
+    const tapScript = hexToBytes(
+      '512079be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798'
+    )
+    segwit.addInput({
+      txid: hexToBytes('b'.repeat(64)),
+      index: 0,
+      witnessUtxo: { script: tapScript, amount: 10_000n },
+    })
+    const mixed = reviewTransaction(segwit, { network: MAINNET, isChange: changePathOf })
+    expect(mixed.sighash.name).toBe('SIGHASH_ALL, DEFAULT on taproot inputs')
+    expect(mixed.sighash.acceptable).toBe(true)
+  })
+
   // The flag is explained in words, not as a hex constant, because a constant
   // tells a user nothing about what an attacker could still change.
   it('describes-sighash-in-plain-language', () => {

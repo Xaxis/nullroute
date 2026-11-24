@@ -275,6 +275,7 @@ export function reviewTransaction(tx: btc.Transaction, options: ReviewOptions): 
   let totalIn = 0n
   let sighashType: number | undefined
   let mixedSighash = false
+  let taprootInputs = 0
   let replaceable = false
   let everyInputFinal = true
   const relativeLocks: string[] = []
@@ -301,6 +302,7 @@ export function reviewTransaction(tx: btc.Transaction, options: ReviewOptions): 
     // not something a screen can convey honestly.
     if (sighashType === undefined) sighashType = input.sighashType
     else if (input.sighashType !== sighashType) mixedSighash = true
+    if (isTaproot(input.witnessUtxo?.script)) taprootInputs += 1
 
     // BIP-125: a transaction signals replaceability when ANY input has a
     // sequence below 0xfffffffe. This required every input to, so a mixed
@@ -415,7 +417,10 @@ export function reviewTransaction(tx: btc.Transaction, options: ReviewOptions): 
   const percentOfSpend =
     spendSats > 0n ? Number((feeSats * 1000n) / spendSats) / 10 : feeSats > 0n ? 100 : 0
 
-  const sighash = describeSighash(sighashType)
+  const sighash =
+    sighashType === undefined
+      ? unstatedSighash(taprootInputs, tx.inputsLength)
+      : describeSighash(sighashType)
   const warnings: ReviewWarning[] = []
 
   if (mixedSighash) {
@@ -593,6 +598,22 @@ export function reviewTransaction(tx: btc.Transaction, options: ReviewOptions): 
     signable: !warnings.some((w) => w.blocking),
     signatures: signatureProgress(tx),
   }
+}
+
+/**
+ * The flag a transaction that states none is signed with (INV-PSBT-23).
+ *
+ * SIGHASH_DEFAULT is BIP-341's and exists only for taproot. Every other input
+ * signs SIGHASH_ALL when the PSBT gives no PSBT_IN_SIGHASH_TYPE, and its
+ * signature ends in the byte 0x01. The review named every unstated flag
+ * SIGHASH_DEFAULT, so a p2wpkh spend showed a taproot constant on the one
+ * screen a person is asked to read before signing. What it commits to was
+ * always described correctly; the name was not.
+ */
+function unstatedSighash(taprootInputs: number, inputCount: number): SighashVerdict {
+  if (taprootInputs === inputCount) return describeSighash(SIGHASH_DEFAULT)
+  const all = describeSighash(SIGHASH_ALL)
+  return taprootInputs === 0 ? all : { ...all, name: 'SIGHASH_ALL, DEFAULT on taproot inputs' }
 }
 
 /** Whether a previous output script is a taproot output. */

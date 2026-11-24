@@ -199,6 +199,33 @@ describe('ui.app what the header says about the wallet', () => {
     expect(screen.getByTestId('identity-switch').textContent).not.toContain('No wallet open')
   })
 
+  /**
+   * INV-UI-101. A loaded seed that was never saved is open, and says so.
+   *
+   * The daemon names a wallet only once it is in the store, so a restore whose
+   * save was skipped answers activeWallet null with hasWallet true. The header
+   * read "No wallet open" over a receive screen showing that seed's address,
+   * and, with no wallet line, named no network: on mainnet, nothing at all.
+   */
+  it('names-a-seed-that-is-loaded-but-not-saved', async () => {
+    replies.set('device.status', {
+      hasWallet: true,
+      unlocked: true,
+      backupConfirmed: false,
+      fingerprint: '73c5da0a',
+      ephemeral: false,
+      network: { id: 'mainnet', label: 'Mainnet', isMainnet: true },
+      activeWallet: null,
+    })
+
+    await boot()
+
+    const chip = screen.getByTestId('identity-switch')
+    expect(chip.textContent).toContain('Unsaved 73c5da0a')
+    expect(chip.textContent).not.toContain('No wallet open')
+    expect(screen.getByTestId('identity-network').textContent).toBe('Mainnet')
+  })
+
   /** INV-UI-101. And says so plainly when there genuinely is not one. */
   it('says-no-wallet-is-open-when-the-daemon-says-none-is', async () => {
     await boot()

@@ -15,6 +15,15 @@ status and home pages.
 
 ## November 2026
 
+- **2026-11-24** The transaction review names the sighash flag each input is
+  signed with: SIGHASH_ALL for segwit v0 and legacy inputs when the PSBT
+  states none, SIGHASH_DEFAULT only when every input is taproot
+  (INV-PSBT-23). It had named every unstated flag SIGHASH_DEFAULT, a
+  taproot-only constant, on a p2wpkh spend. The header names a seed that is
+  loaded but not saved as "Unsaved" with its fingerprint and network, where
+  it read "No wallet open" above that seed's own review (INV-UI-101). Both
+  were seen in the screenshots of a new journey, `sign-override`, which walks
+  a blocking warning and its one-time override in the real app.
 - **2026-11-24** Each finding the kit shares with an upstream report names
   that report in `conformance/README.md`: embit #97 and #155 for the taproot
   nonce, embit's `hardened` branch for BIP-174's unsigned transaction,
