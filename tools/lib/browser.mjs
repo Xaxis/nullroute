@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process'
-import { existsSync, rmSync } from 'node:fs'
+import { existsSync, readdirSync, rmSync } from 'node:fs'
 import { createServer } from 'node:net'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 /**
@@ -97,6 +97,7 @@ export function chromeBinary(who) {
     '/usr/bin/google-chrome',
     '/usr/bin/chromium',
     '/usr/bin/chromium-browser',
+    ...playwrightChromium(),
   ].filter(Boolean)
   const found = candidates.find((path) => existsSync(path))
   if (found === undefined) {
@@ -104,6 +105,22 @@ export function chromeBinary(who) {
     process.exit(1)
   }
   return found
+}
+
+/**
+ * The Chromium `npx playwright install` puts in its cache, newest first, last
+ * of all. A machine with no system Chrome has one there, and every browser
+ * check failed on it unless CHROME_PATH was exported by hand: `make deploy`
+ * stopped on that after a full green `make check` had set it. CHROME_PATH
+ * still wins, which is how CI chooses its browser.
+ */
+function playwrightChromium() {
+  const cache = join(homedir(), '.cache', 'ms-playwright')
+  if (!existsSync(cache)) return []
+  return readdirSync(cache)
+    .filter((name) => /^chromium-\d+$/.test(name))
+    .sort((a, b) => Number(b.slice(9)) - Number(a.slice(9)))
+    .map((name) => join(cache, name, 'chrome-linux64', 'chrome'))
 }
 
 /**
