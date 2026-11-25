@@ -193,10 +193,9 @@ describe('FleetScreen forgetting', () => {
     reachConfirm()
     const said = screen.getByTestId('fleet-forget-cost').textContent
     expect(said).toContain('does not lose any money')
-    expect(said).toContain('A registration is not a key')
     expect(said).toContain('read as a payment to a stranger')
     // And how to undo it.
-    expect(said).toContain('register the descriptor again')
+    expect(said).toContain('register it again')
     // What to do about it is advice rather than warning, so it sits below the
     // keys. The warning above them is a heading and two lines because the
     // panel holds a keyboard and the budget above it is 70px.

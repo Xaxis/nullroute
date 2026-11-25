@@ -192,7 +192,7 @@ export function SeedScreen(props: SeedScreenProps): ReactElement {
   return (
     <Screen
       title="Write these down"
-      subtitle={`${String(words.length)} words, in order. This is the only time they are shown.`}
+      subtitle={`${String(words.length)} words, in order. They are not shown again.`}
       banner={banner}
       identity={identity}
       steps={steps}
@@ -268,8 +268,13 @@ export function SeedScreen(props: SeedScreenProps): ReactElement {
           needed a scroll nobody has a reason to make: the words are already
           all visible, so the screen looks finished.
 
-          Side by side they both fit under the grid with room to spare. */}
-      <div className="nr-split nr-split--even">
+          Side by side they both fit under the grid with room to spare.
+
+          ON A NARROW PANEL THEY LEAD (nr-lead-narrow). At 360 pixels wide the
+          grid is eight rows and the two stack, and no order puts all three on
+          a 601 pixel panel. The words are scrolled through while writing them
+          down; the two sentences have to be read before anyone starts. */}
+      <div className="nr-split nr-split--even nr-lead-narrow">
         {/* SHORT ENOUGH TO BE ON THE PANEL, which is the only property that
             matters for a sentence like this one. The longer version ran 29px
             under the fold and was cut mid-word, so the part somebody actually

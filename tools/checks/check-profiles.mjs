@@ -57,7 +57,7 @@ const YAML_OPTIONS = { schema: JSON_SCHEMA, maxAliases: 0, maxDepth: 20, json: f
 const RUNTIME_ONLY_CHECKS = new Set([
   'mount-options',
   'no-listening-sockets',
-  'no-swap',
+  'no-swap-to-storage',
   'sysctl-values',
   'unit-state',
   'no-unit-ordering',
@@ -311,6 +311,8 @@ const BOARD_PROSE = {
   'raspberrypi-5': /Raspberry Pi 5\b/,
   'raspberrypi-cm5': /Compute Module 5\b/,
   'raspberrypi-zero-2-w': /Pi Zero 2 W\b/,
+  // 3, 3B and 3B+ alike: \b would not fire between the 3 and the B.
+  'raspberrypi-3': /Raspberry Pi 3(?![0-9])/,
 }
 
 for (const where of ['README.md', 'docs/VERIFICATION.md']) {
@@ -365,8 +367,10 @@ for (const where of ['README.md', 'docs/VERIFICATION.md']) {
 const SOC = {
   BCM2711: ['raspberrypi-4', 'raspberrypi-400', 'raspberrypi-cm4'],
   BCM2712: ['raspberrypi-5', 'raspberrypi-cm5'],
-  BCM2710: ['raspberrypi-zero-2-w'],
-  BCM2837: ['raspberrypi-3'],
+  // The same silicon under two names: BCM2837 on the Pi 3's package, BCM2710 in
+  // Raspberry Pi's device tree names, and inside the Zero 2 W's RP3A0.
+  BCM2710: ['raspberrypi-zero-2-w', 'raspberrypi-3'],
+  BCM2837: ['raspberrypi-3', 'raspberrypi-zero-2-w'],
 }
 
 const DOCS = [
@@ -390,19 +394,22 @@ for (const where of DOCS) {
   }
 }
 
-// The Pi device trees this project has a board id for. The pinned 6.12.94
-// kernel also ships five bcm2837 trees (Pi 3, Zero 2 W, CM3), which go in here
-// with their board ids when one is brought up. It ships no CM5 tree, which is
-// the fact that took raspberrypi-cm5 out of `boards:`.
+// The Pi device trees this project has a board id for. Debian's 6.12.94
+// kernel ships no CM5 tree, which is the fact that took raspberrypi-cm5 out of
+// `boards:`.
 //
-// The Pi 5 has three: the firmware asks a C1 board for bcm2712-rpi-5-b.dtb, a
-// D0 board for bcm2712d0-rpi-5-b.dtb, and a D0 board under the newest
-// EEPROMs for bcm2712-d-rpi-5-b.dtb. The first is the one a board needs.
+// EVERY TREE LISTED IS NEEDED, not the first. The Pi 5 has three: the firmware
+// asks a C1 board for bcm2712-rpi-5-b.dtb, a D0 board for bcm2712d0-rpi-5-b.dtb,
+// and a D0 board under the newest EEPROMs for bcm2712-d-rpi-5-b.dtb, and a
+// board that finds no tree does not boot. raspberrypi-3 is the 3B and the 3B+,
+// which the firmware gives a tree each.
 const BOARD_DTB = {
   'raspberrypi-4': ['bcm2711-rpi-4-b.dtb'],
   'raspberrypi-400': ['bcm2711-rpi-400.dtb'],
   'raspberrypi-cm4': ['bcm2711-rpi-cm4-io.dtb'],
   'raspberrypi-5': ['bcm2712-rpi-5-b.dtb', 'bcm2712d0-rpi-5-b.dtb', 'bcm2712-d-rpi-5-b.dtb'],
+  'raspberrypi-3': ['bcm2710-rpi-3-b.dtb', 'bcm2710-rpi-3-b-plus.dtb'],
+  'raspberrypi-zero-2-w': ['bcm2710-rpi-zero-2-w.dtb'],
 }
 
 for (const { file, profile } of loaded) {
@@ -411,11 +418,14 @@ for (const { file, profile } of loaded) {
     for (const v of assertion.verify ?? []) {
       if (v.check !== 'boot-files-exact') continue
       const files = (v.params?.files ?? []).map(String)
-      const trees = files.filter((name) => /^bcm\d+-rpi-[\w-]+\.dtb$/u.test(name))
+      // bcm2712d0-rpi-5-b and bcm2712-d-rpi-5-b as well as bcm2711-rpi-4-b.
+      // The pattern was bcm<digits>-rpi- until the Pi 3 family made every
+      // listed tree required, and it had never seen the Pi 5's two D0 trees.
+      const trees = files.filter((name) => /^bcm\d+[a-z0-9-]*?-rpi-[\w-]+\.dtb$/u.test(name))
       const where = `${file}  ${assertion.id}`
 
       for (const [id, dtbs] of Object.entries(BOARD_DTB)) {
-        const dtb = dtbs[0]
+        const missing = dtbs.filter((name) => !trees.includes(name))
         const carried = dtbs.find((name) => trees.includes(name))
         if (carried !== undefined && !claims.includes(id)) {
           fail(
@@ -427,11 +437,12 @@ for (const { file, profile } of loaded) {
               `is wrong.`
           )
         }
-        if (claims.includes(id) && !trees.includes(dtb)) {
+        if (claims.includes(id) && missing.length > 0) {
           fail(
             where,
-            `the profile claims or is bringing up ${id} and the boot partition carries no ${dtb}, so the ` +
-              `firmware has no device tree for a board this profile says it supports.`
+            `the profile claims or is bringing up ${id} and the boot partition carries no ` +
+              `${missing.join(' and no ')}, so the firmware has no device tree for a ` +
+              `board this profile says it supports.`
           )
         }
       }

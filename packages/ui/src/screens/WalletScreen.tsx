@@ -462,7 +462,10 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
         </Refusal>
       )}
 
-      {tab === 'addresses' && (
+      {/* Not under a refusal. A branch that failed has no rows, and the
+          headings alone took the room the refusal needed on a 4 inch panel,
+          the same way the export tab drops its code when it has none. */}
+      {tab === 'addresses' && rowsError === null && (
         <div className="nr-card nr-card--tight nr-fill nr-scrolls" ref={moreBelow}>
           <table className="nr-table nr-table--dense">
             {/* Sticky, so the headings survive the scroll they now sit above. */}
@@ -538,116 +541,128 @@ export function WalletScreen(props: WalletScreenProps): ReactElement {
           descriptor below, on the strength of it saying it makes this wallet
           recoverable, would have backed up the wrong thing and would find out
           at the worst possible moment. */}
-      {tab === 'export' && quorums.length > 0 && (
-        <div className="nr-card nr-card--tight" data-testid="export-quorum">
-          <span className="nr-card__label">Back this up: your quorum</span>
-          {quorums.map((quorum) => (
-            <div key={quorum.descriptor}>
-              <div className="nr-row">
-                <span className="nr-label">
-                  {quorum.threshold} of {quorum.total}
-                </span>
-                <span className="nr-value nr-mono">{quorum.checksum}</span>
-              </div>
-              <div className="nr-address nr-break" data-testid="export-quorum-descriptor">
-                {quorum.descriptor}
-              </div>
-            </div>
-          ))}
-          <p className="nr-hint">
-            Your mnemonics are not enough to rebuild a quorum. Recovering one needs this line as
-            well: it records the other keys, how many must sign, and the script type, and none of
-            that is derivable from a seed phrase. Keep it wherever you keep the words, and it is not
-            a secret: it holds no private key and cannot spend anything.
-          </p>
-        </div>
-      )}
-
-      {tab === 'export' && descriptor !== null && (
-        <div className="nr-fill nr-scrolls" ref={moreBelow}>
-          {/* THE CODE BESIDE THE LINE IT ENCODES, the same way the signed
-              transaction and the receive address do it. Everything this device
-              hands out is a block of characters and a square, and they belong
-              in one row: stacked, the square is always below the fold on a
-              screen that already carries a descriptor. */}
-          <div className="nr-split nr-split--aside">
-            <div className="nr-split__col">
-              <div className="nr-card nr-card--tight">
-                <span className="nr-label">
-                  {quorums.length > 0 ? 'This device alone, not the quorum' : 'Output descriptor'}
-                </span>
-                <div className="nr-address" data-testid="descriptor">
-                  {descriptor.descriptor}
+      {/* ONE REGION SCROLLS, AND THE QUORUM IS IN IT. The quorum's card sat
+          between the pickers and this region, and on a quorum wallet at
+          800x480 its 200 character descriptor and the paragraph under it
+          were taller than the room left: the region went to zero, taking the
+          code with it, and the end of the paragraph saying the mnemonics are
+          not enough was cut off where nothing could scroll to it. */}
+      {tab === 'export' && (quorums.length > 0 || descriptor !== null) && (
+        <div className="nr-fill nr-fill--stack nr-scrolls" ref={moreBelow}>
+          {quorums.length > 0 && (
+            <div className="nr-card nr-card--tight" data-testid="export-quorum">
+              <span className="nr-card__label">Back this up: your quorum</span>
+              {quorums.map((quorum) => (
+                <div key={quorum.descriptor}>
+                  <div className="nr-row">
+                    <span className="nr-label">
+                      {quorum.threshold} of {quorum.total}
+                    </span>
+                    <span className="nr-value nr-mono">{quorum.checksum}</span>
+                  </div>
+                  <div className="nr-address nr-break" data-testid="export-quorum-descriptor">
+                    {quorum.descriptor}
+                  </div>
                 </div>
-              </div>
+              ))}
+              <p className="nr-hint">
+                Your mnemonics are not enough to rebuild a quorum. Recovering one needs this line as
+                well: it records the other keys, how many must sign, and the script type, and none
+                of that is derivable from a seed phrase. Keep it wherever you keep the words, and it
+                is not a secret: it holds no private key and cannot spend anything.
+              </p>
             </div>
-            <QrDisplay text={descriptor.descriptor} fileType="unicode" testId="descriptor-qr" />
-          </div>
-          <p className="nr-note">
-            {quorums.length > 0
-              ? 'This describes a single-signature wallet holding only this device’s key. It is not your quorum and backing it up does not back your quorum up.'
-              : 'This is what a coordinator needs, and it is what makes this wallet recoverable without nullroute.'}{' '}
-            The eight characters after the <span className="nr-mono">#</span> are a checksum:
-            compare them with the other party out of band, because a single mistyped character
-            produces a valid descriptor for a different wallet.
-          </p>
+          )}
 
-          {/* Behind a disclosure, and second. The descriptor is the export
-              that carries its own script type; an xpub is the one that does
-              not, and offering them side by side would present them as
-              equivalent. */}
-          {onXpub !== undefined && (
-            <details className="nr-details">
-              <summary className="nr-details__summary" data-testid="xpub-disclosure">
-                Some software asks for an xpub instead
-              </summary>
-              {xpub === null ? (
-                <>
-                  <Button
-                    onClick={() => {
-                      void (async () => {
-                        setXpubError(null)
-                        try {
-                          setXpub(await onXpub(scriptType))
-                        } catch (err) {
-                          setXpubError((err as Error).message)
-                        }
-                      })()
-                    }}
-                    testId="xpub-show"
-                  >
-                    Show the account xpub
-                  </Button>
-                  {xpubError !== null && (
-                    <Refusal title="Not derived" testId="xpub-error">
-                      {xpubError}
-                    </Refusal>
-                  )}
-                </>
-              ) : (
-                <>
+          {descriptor !== null && (
+            <>
+              {/* THE CODE BESIDE THE LINE IT ENCODES, the same way the signed
+                  transaction and the receive address do it. Everything this device
+                  hands out is a block of characters and a square, and they belong
+                  in one row: stacked, the square is always below the fold on a
+                  screen that already carries a descriptor. */}
+              <div className="nr-split nr-split--aside">
+                <div className="nr-split__col">
                   <div className="nr-card nr-card--tight">
-                    <div className="nr-row">
-                      <span className="nr-label">Origin</span>
-                      <span className="nr-value nr-mono" data-testid="xpub-origin">
-                        [{xpub.masterFingerprint}
-                        {xpub.path.slice(1)}]
-                      </span>
-                    </div>
-                    <div className="nr-address" data-testid="xpub">
-                      {xpub.xpub}
+                    <span className="nr-label">
+                      {quorums.length > 0
+                        ? 'This device alone, not the quorum'
+                        : 'Output descriptor'}
+                    </span>
+                    <div className="nr-address" data-testid="descriptor">
+                      {descriptor.descriptor}
                     </div>
                   </div>
-                  <p className="nr-note" data-testid="xpub-note">
-                    An xpub does not say which kind of address it makes. Software that guesses a
-                    different script type from the one above builds a watch-only wallet with a zero
-                    balance for a wallet that has coins in it, and nothing about that looks like an
-                    error. Give the descriptor instead wherever it is accepted, and give the origin
-                    in brackets alongside this wherever it is not.
-                  </p>
-                </>
+                </div>
+                <QrDisplay text={descriptor.descriptor} fileType="unicode" testId="descriptor-qr" />
+              </div>
+              <p className="nr-note">
+                {quorums.length > 0
+                  ? 'This describes a single-signature wallet holding only this device’s key. It is not your quorum and backing it up does not back your quorum up.'
+                  : 'This is what a coordinator needs, and it is what makes this wallet recoverable without nullroute.'}{' '}
+                The eight characters after the <span className="nr-mono">#</span> are a checksum:
+                compare them with the other party out of band, because a single mistyped character
+                produces a valid descriptor for a different wallet.
+              </p>
+
+              {/* Behind a disclosure, and second. The descriptor is the export
+                  that carries its own script type; an xpub is the one that does
+                  not, and offering them side by side would present them as
+                  equivalent. */}
+              {onXpub !== undefined && (
+                <details className="nr-details">
+                  <summary className="nr-details__summary" data-testid="xpub-disclosure">
+                    Some software asks for an xpub instead
+                  </summary>
+                  {xpub === null ? (
+                    <>
+                      <Button
+                        onClick={() => {
+                          void (async () => {
+                            setXpubError(null)
+                            try {
+                              setXpub(await onXpub(scriptType))
+                            } catch (err) {
+                              setXpubError((err as Error).message)
+                            }
+                          })()
+                        }}
+                        testId="xpub-show"
+                      >
+                        Show the account xpub
+                      </Button>
+                      {xpubError !== null && (
+                        <Refusal title="Not derived" testId="xpub-error">
+                          {xpubError}
+                        </Refusal>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="nr-card nr-card--tight">
+                        <div className="nr-row">
+                          <span className="nr-label">Origin</span>
+                          <span className="nr-value nr-mono" data-testid="xpub-origin">
+                            [{xpub.masterFingerprint}
+                            {xpub.path.slice(1)}]
+                          </span>
+                        </div>
+                        <div className="nr-address" data-testid="xpub">
+                          {xpub.xpub}
+                        </div>
+                      </div>
+                      <p className="nr-note" data-testid="xpub-note">
+                        An xpub does not say which kind of address it makes. Software that guesses a
+                        different script type from the one above builds a watch-only wallet with a
+                        zero balance for a wallet that has coins in it, and nothing about that looks
+                        like an error. Give the descriptor instead wherever it is accepted, and give
+                        the origin in brackets alongside this wherever it is not.
+                      </p>
+                    </>
+                  )}
+                </details>
               )}
-            </details>
+            </>
           )}
         </div>
       )}

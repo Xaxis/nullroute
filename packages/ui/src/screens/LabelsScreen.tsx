@@ -212,12 +212,14 @@ export function LabelsScreen(props: LabelsScreenProps): ReactElement {
           <div className="nr-card nr-card--tight" data-testid="labels-result">
             <div className="nr-row">
               <span className="nr-label">Read</span>
-              <span className="nr-value">{imported.labels.length} labels</span>
+              <span className="nr-value">
+                {imported.labels.length} {imported.labels.length === 1 ? 'label' : 'labels'}
+              </span>
             </div>
             <div className="nr-row">
               <span className="nr-label">Dropped</span>
               <span className="nr-value" data-testid="labels-skipped-count">
-                {imported.skipped.length} lines
+                {imported.skipped.length} {imported.skipped.length === 1 ? 'line' : 'lines'}
               </span>
             </div>
           </div>

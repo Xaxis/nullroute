@@ -51,7 +51,7 @@
  * they are fed by `--console <boot log>` rather than by --root or --image, and
  * that no inspection of an artifact at rest can stand in for them.
  */
-export const RUNTIME_ONLY = new Set(['mount-options', 'no-listening-sockets', 'no-swap'])
+export const RUNTIME_ONLY = new Set(['mount-options', 'no-listening-sockets', 'no-swap-to-storage'])
 
 export const VERIFIERS = {
   // --- Meta. These inspect the profiles themselves and need no artifact. ---
@@ -194,9 +194,10 @@ export const VERIFIERS = {
     describes:
       'exactly the permitted sockets listen outside AF_UNIX, each on loopback, and every permitted one is present',
   },
-  'no-swap': {
+  'no-swap-to-storage': {
     status: 'implemented',
-    describes: 'no swap area is active, read from /proc/swaps on the running device',
+    describes:
+      'every active swap area is a zram device writing back to nothing, read from /proc/swaps and /sys/block on the running device',
   },
 }
 

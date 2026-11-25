@@ -966,6 +966,31 @@ describe('provisioning.kernel-modules-present', () => {
     expect(result.ok).toBe(false)
     expect(result.unavailable).toBe(true)
   })
+
+  /**
+   * INV-PROV-37. A panel driver only Raspberry Pi's kernel has is checked in
+   * that kernel's tree and not demanded of Debian's.
+   */
+  it('checks-only-the-kernel-it-names', () => {
+    tree([uvc, ...deps])
+    const rpi = 'usr/lib/modules/6.18.50+rpt-rpi-v8'
+    const goodix = 'kernel/drivers/input/touchscreen/goodix_ts.ko.xz'
+    put(`${rpi}/modules.dep`, `${goodix}:\n`)
+    put(`${rpi}/${goodix}`, 'x')
+    expect(kernelModulesPresent(root, { modules: ['goodix_ts'] }).ok).toBe(false)
+    const result = kernelModulesPresent(root, { modules: ['goodix_ts'], kernel: '+rpt-rpi' })
+    expect(result.ok).toBe(true)
+    expect(result.detail).toContain('6.18.50+rpt-rpi-v8')
+    expect(result.detail).not.toContain('deb13')
+  })
+
+  /** INV-PROV-37. A filter that matches nothing is a failure, not a pass about nothing. */
+  it('fails-a-kernel-filter-that-matches-no-tree', () => {
+    tree([uvc, ...deps])
+    const result = kernelModulesPresent(root, { modules: ['uvcvideo'], kernel: '+rpt-rpi' })
+    expect(result.ok).toBe(false)
+    expect(result.detail).toContain('6.12.94+deb13-arm64')
+  })
 })
 
 describe('provisioning.udev-rules', () => {

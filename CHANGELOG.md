@@ -15,6 +15,53 @@ status and home pages.
 
 ## November 2026
 
+- **2026-11-24** The interface is laid out for four panels instead of one:
+  the 7 inch Touch Display at 800x480, Touch Display 2 in portrait at
+  480x853 (7 inch) and 360x640 (5 inch), and the Pimoroni HyperPixel 4.0 at
+  360x601. `check-screen-fit` measures every screen at all four sizes and
+  `check-journeys` walks every journey on the smallest. The kiosk reads which
+  panel is attached from the device tree and draws at that panel's scale, from
+  one table (`provisioning/units/panels.tsv`), and below 360x480 the
+  interface shows a refusal instead of a layout nobody measured (INV-UI-110).
+  The card now also carries the Zero 2 W and the Pi 3B and 3B+, in bring-up,
+  on Raspberry Pi's kernel and firmware pinned by digest; a board under 800 MB
+  gets swap made of compressed memory, and INV-PROV-11 now reads "no swap
+  reaches storage", checked at runtime against each zram device's backing
+  device. `research/small-boards.md` explains the choices, including why a
+  Pico 2 cannot run this device.
+- **2026-11-24** `check-screen-fit` fails text cut off at an edge with no
+  ellipsis, and text drawn across other text. The first found the export
+  tab's QR part counter clipped to "2 /" at 800x480, which it had been since
+  the tab had a multipart code; the controls now wrap. The quorum receive
+  fixture now carries a 62 character P2WSH address rather than a 42
+  character single-key one, which no quorum produces. Five counts that can
+  be one said "1 characters", "1 bytes", "1 labels" or "1 lines"; they now
+  use the singular.
+- **2026-11-24** The screen where a passphrase is set had never been
+  measured, and on the 800x480 panel its bottom row of keys, Space and Enter
+  among them, sat under the action bar on any network but mainnet. The network
+  strip is now flat at every size, 26.5 pixels tall instead of 46.5, and the
+  passphrase's guessing cost and "These do not match." share one line under
+  both fields instead of wrapping or being cut beside a label. A mismatch
+  keeps that line while either field is being edited, because it is the
+  reason Encrypt is disabled (INV-UI-15). The note that says "Do not power
+  the device off" moves itself into view when it appears, where it had opened
+  above the top of a scrolled screen (INV-UI-111).
+- **2026-11-24** `check-screen-fit` fails text cut off above or below by a
+  box that hides its overflow, which is how the passphrase's note first
+  measured as fitting: it had been squeezed to zero pixels tall. The fit check
+  and the journeys had also been scrolling boxes that hide their overflow,
+  which script can do and a finger cannot; they now scroll only what a person
+  can. That had hidden two defects on the 800x480 panel. A quorum wallet's
+  export tab had its QR code squeezed to nothing and the end of "Your
+  mnemonics are not enough to rebuild a quorum" out of reach, and a failed
+  proof check left the values it asks somebody to compare in a 26 pixel
+  sliver. Both now keep their reading matter inside the region that scrolls,
+  a scrolling region never goes below 80 pixels, an address list that failed
+  to load is no longer drawn empty under its refusal, and the check fails a
+  screen whose region has no room (`fill-squeezed`). A scrolling region now
+  also shows its shadow for content that arrives after it opens, which the
+  export tab's descriptor does (INV-UI-112).
 - **2026-11-24** The transaction review names the sighash flag each input is
   signed with: SIGHASH_ALL for segwit v0 and legacy inputs when the PSBT
   states none, SIGHASH_DEFAULT only when every input is taproot

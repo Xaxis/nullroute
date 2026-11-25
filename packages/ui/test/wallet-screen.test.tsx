@@ -475,7 +475,7 @@ describe('WalletScreen after a failed load', () => {
     await waitFor(() => {
       expect(screen.getByTestId('addresses-error').textContent).toContain('derivation failed')
     })
-    expect(screen.getByTestId('address-rows').textContent).not.toContain('bc1qreceivezero')
+    expect(screen.queryByTestId('address-rows')).toBeNull()
     expect(screen.queryByTestId('addresses-path')).toBeNull()
   })
 })

@@ -1,0 +1,40 @@
+# Swap made of compressed memory, on a board too small for the kiosk without it.
+#
+# Only under 800 MB, which is the Zero 2 W (512 MB, less the firmware's share)
+# and not a 1 GB Pi 3 (1024 MB, less the same). Every board with more memory
+# runs with no swap at all, as every board did before the Zero 2 W. What swap is allowed to be, and why
+# a zram device with no backing device is it, is in /usr/lib/nullroute/bin/
+# zram-swap and INV-PROV-11.
+#
+# Before the daemon and the kiosk, so the browser starts with somewhere to put
+# its cold pages rather than finding the memory full and swap arriving late.
+[Unit]
+Description=nullroute swap in compressed memory
+Documentation=https://nullroute.diy/docs/hardware
+ConditionMemory=<800M
+Before=nullrouted.service nullroute-kiosk.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/lib/nullroute/bin/zram-swap
+
+# It loads one module, writes three files under /sys and turns one device on.
+# Not ProtectKernelModules or ProtectKernelTunables, which forbid exactly that,
+# and not PrivateDevices, which would hide /dev/zram0 from it.
+CapabilityBoundingSet=CAP_SYS_ADMIN CAP_SYS_MODULE
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateNetwork=true
+NoNewPrivileges=true
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

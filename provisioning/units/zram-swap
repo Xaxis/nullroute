@@ -1,0 +1,48 @@
+#!/bin/sh
+# Turn on swap that is compressed memory, and nothing that could write it out.
+#
+# WHY A SIGNER HAS SWAP AT ALL. A Zero 2 W has 512 MB and the kiosk browser
+# needs most of it: measured headed on x86 Linux with this kiosk's flags,
+# Chromium's processes come to 463 to 475 MiB proportional set size, 256 MiB
+# of it anonymous memory that only swap can move. arm64 is not measured yet. Without somewhere to put the cold part of that, the kernel's only
+# remaining move is to drop the browser's own code pages and read them back
+# off the card over and over, and the OOM killer after that. A browser heap
+# compresses about three to one, so a few dozen megabytes of compressed pages
+# buy back a working screen. nullroute-zram.service runs this only on a board
+# with less than 800 MB, which every other supported board has more than.
+#
+# NEVER STORAGE (INV-PROV-11). Swap was banned because it is how a seed reaches
+# persistent storage without anyone deciding it should. A zram device is a
+# block device made of memory: what is written to it is held compressed in
+# RAM and is gone when the power is, exactly as the page it came from would
+# have been. The one way it reaches storage is writeback, which the Raspberry
+# Pi kernel is built with (CONFIG_ZRAM_WRITEBACK): name a block device in
+# backing_dev and idle pages are written to it. Nothing here names one, this
+# refuses to go on if one is already named, and the device's runtime facts
+# print it so the host can check it was still none after boot.
+set -eu
+
+modprobe zram num_devices=1
+dev=/sys/block/zram0
+
+if [ -e "$dev/backing_dev" ]; then
+  backing=$(cat "$dev/backing_dev")
+  if [ "$backing" != none ]; then
+    echo "zram-swap: zram0 already writes back to $backing, so swap would reach storage; not turning it on" >&2
+    exit 1
+  fi
+fi
+
+# zstd, which compresses a browser heap better than lz4 does and costs time
+# this device has: nothing on it is waiting on throughput.
+echo zstd >"$dev/comp_algorithm"
+
+# Half the memory, uncompressed. At three to one a full device holds about a
+# sixth of the memory, which leaves the rest for the pages that cannot move.
+kib=$(awk '/^MemTotal:/ { print $2 }' /proc/meminfo)
+echo "$((kib / 2))K" >"$dev/disksize"
+
+mkswap /dev/zram0 >/dev/null
+swapon --priority 100 /dev/zram0
+
+echo "zram-swap: $((kib / 2048)) MiB of swap in compressed memory, no backing device" >&2

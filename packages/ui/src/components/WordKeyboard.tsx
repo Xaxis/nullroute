@@ -1,4 +1,4 @@
-import { type ReactElement, useCallback, useMemo, useState } from 'react'
+import { type ReactElement, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { nextLetters, wordsWithPrefix } from '@nullroute/core'
 import { useMoreBelow } from '../lib/scroll.js'
 
@@ -55,6 +55,23 @@ export function WordKeyboard(props: WordKeyboardProps): ReactElement {
   const { words, onChange, target, onTyping, testId } = props
   const [prefix, setPrefix] = useState('')
 
+  // THE NEWEST WORD IN VIEW. The readout scrolls once it is full, and nothing
+  // brought the end into view, so on a 4 inch panel, where twenty four words
+  // are eight lines in a box of two, the word being typed was below the box's
+  // edge and the shadow saying so was the only sign it existed.
+  const entered = useRef<HTMLDivElement | null>(null)
+  const attachEntered = useCallback(
+    (node: HTMLDivElement | null) => {
+      entered.current = node
+      moreBelow(node)
+    },
+    [moreBelow]
+  )
+  useEffect(() => {
+    const node = entered.current
+    if (node !== null) node.scrollTop = node.scrollHeight
+  }, [words.length, prefix])
+
   const live = useMemo(() => new Set(nextLetters(prefix)), [prefix])
   const suggestions = useMemo(() => wordsWithPrefix(prefix, 6), [prefix])
 
@@ -101,7 +118,11 @@ export function WordKeyboard(props: WordKeyboardProps): ReactElement {
 
   return (
     <div className="nr-kb" data-testid={testId}>
-      <div className="nr-kb__entered nr-scrolls" ref={moreBelow} data-testid="kb-words">
+      <div
+        className={`nr-kb__entered nr-scrolls${target === 1 ? ' nr-kb__entered--one' : ''}`}
+        ref={attachEntered}
+        data-testid="kb-words"
+      >
         {words.map((word, index) => (
           // Position is the identity here: the same word can legitimately
           // appear several times in a mnemonic.
@@ -137,7 +158,7 @@ export function WordKeyboard(props: WordKeyboardProps): ReactElement {
             That is 7% of wallet creations, where the backup check asks for
             three words, and 44% of twenty four word restores. */}
         {prefix.length > 0 && suggestions.length > 0 ? (
-          <span className="nr-hint" data-testid="kb-pick">
+          <span className="nr-hint nr-kb__pick" data-testid="kb-pick">
             Tap the word below to enter it
           </span>
         ) : (

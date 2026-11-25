@@ -40,7 +40,10 @@ export function useMoreBelow(): (node: HTMLElement | null) => void {
    * leaving all but the last unmarked.
    */
   const attached = useRef(
-    new Map<HTMLElement, { observer: ResizeObserver; onScroll: () => void }>()
+    new Map<
+      HTMLElement,
+      { observer: ResizeObserver; arrivals: MutationObserver; onScroll: () => void }
+    >()
   )
 
   const update = useCallback((node: HTMLElement) => {
@@ -63,9 +66,10 @@ export function useMoreBelow(): (node: HTMLElement | null) => void {
       if (node === null) {
         // React hands back null for a node it is detaching, without saying
         // which. Anything no longer in the document is gone.
-        for (const [known, { observer, onScroll }] of attached.current) {
+        for (const [known, { observer, arrivals, onScroll }] of attached.current) {
           if (known.isConnected) continue
           observer.disconnect()
+          arrivals.disconnect()
           known.removeEventListener('scroll', onScroll)
           attached.current.delete(known)
         }
@@ -75,6 +79,7 @@ export function useMoreBelow(): (node: HTMLElement | null) => void {
       const previous = attached.current.get(node)
       if (previous !== undefined) {
         previous.observer.disconnect()
+        previous.arrivals.disconnect()
         node.removeEventListener('scroll', previous.onScroll)
       }
 
@@ -92,7 +97,24 @@ export function useMoreBelow(): (node: HTMLElement | null) => void {
       observer.observe(node)
       for (const child of node.children) observer.observe(child)
 
-      attached.current.set(node, { observer, onScroll })
+      /*
+       * AND CHILDREN THAT ARRIVE LATER, which the line above cannot see. The
+       * export tab's region mounts with a quorum's card in it and the
+       * descriptor and its code land beside it when their call returns: the
+       * region did not change size, no observed child did, and 929 pixels sat
+       * below a bottom edge with nothing saying so. INV-UI-112.
+       */
+      const arrivals = new MutationObserver((records) => {
+        for (const record of records) {
+          for (const added of record.addedNodes) {
+            if (added instanceof Element) observer.observe(added)
+          }
+        }
+        update(node)
+      })
+      arrivals.observe(node, { childList: true })
+
+      attached.current.set(node, { observer, arrivals, onScroll })
       update(node)
     },
     [update]

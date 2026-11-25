@@ -16,6 +16,15 @@ Every external claim below was read from a primary source on 25 September 2026.
 Sources are linked inline. Where a claim could not be fetched it says
 UNVERIFIED.
 
+## Update, 24 November 2026: small boards and small panels
+
+[small-boards.md](small-boards.md) supersedes two verdicts below. The Zero 2 W
+is in bring-up with a HyperPixel 4.0 and swap made of compressed memory, where
+the memory section here says 512 MB does not fit. Touch Display 2 is supported
+at both sizes, where the table here says it is out of scope until the
+interface measures a second size: it now measures four. The Pi 3B and 3B+ are
+in bring-up on Raspberry Pi's kernel rather than Debian's.
+
 ## Update, 27 October 2026: the owner's board is a Pi 5
 
 The owner runs a Pi 5, and the device is meant to run on a Pi 4 or a Pi 5.

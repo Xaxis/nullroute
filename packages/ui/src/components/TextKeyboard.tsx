@@ -153,9 +153,11 @@ export function TextKeyboard(props: TextKeyboardProps): ReactElement {
         {value.length === 0 ? (
           <span className="nr-hint">{placeholder}</span>
         ) : !secret || revealed ? (
-          <span data-testid="pk-plain">{value}</span>
+          <span className="nr-pk__text" data-testid="pk-plain">
+            <bdi>{value}</bdi>
+          </span>
         ) : (
-          <span className="nr-pk__dots" data-testid="pk-hidden">
+          <span className="nr-pk__text nr-pk__dots" data-testid="pk-hidden">
             {'•'.repeat(value.length)}
           </span>
         )}
@@ -204,11 +206,17 @@ export function TextKeyboard(props: TextKeyboardProps): ReactElement {
             nothing to do that is not already one tap away: from here, abc then
             Shift. NO CHARACTER BECOMES UNTYPEABLE, which is the only line that
             matters on this component. Every other key stays in the same cells
-            on every layer, so nothing relocates under a finger. */}
+            on every layer, so nothing relocates under a finger.
+
+            ON A NARROW PANEL every one of these has a fixed cell instead (see
+            the narrow block in styles.css): six columns, so the letters take
+            four rows and two keys of a fifth, and a symbol page three rows and
+            half a fourth. Left to flow, the wide row would sit a row higher on
+            the symbol pages than on the letters. */}
         {onSymbols ? (
           <button
             type="button"
-            className="nr-kb__key nr-kb__key--wide nr-kb__key--row"
+            className="nr-kb__key nr-kb__key--wide nr-kb__key--row nr-kb__key--shift"
             aria-pressed={layer === 'symbols2'}
             onClick={() => {
               setLayer(layer === 'symbols' ? 'symbols2' : 'symbols')
@@ -220,7 +228,7 @@ export function TextKeyboard(props: TextKeyboardProps): ReactElement {
         ) : (
           <button
             type="button"
-            className="nr-kb__key nr-kb__key--wide nr-kb__key--row"
+            className="nr-kb__key nr-kb__key--wide nr-kb__key--row nr-kb__key--shift"
             aria-pressed={layer === 'upper'}
             onClick={() => {
               setLayer(layer === 'upper' ? 'lower' : 'upper')
@@ -232,7 +240,7 @@ export function TextKeyboard(props: TextKeyboardProps): ReactElement {
         )}
         <button
           type="button"
-          className="nr-kb__key nr-kb__key--wide"
+          className="nr-kb__key nr-kb__key--wide nr-kb__key--layer"
           aria-pressed={onSymbols}
           onClick={() => {
             setLayer(onSymbols ? 'lower' : 'symbols')
@@ -253,7 +261,7 @@ export function TextKeyboard(props: TextKeyboardProps): ReactElement {
         </button>
         <button
           type="button"
-          className="nr-kb__key nr-kb__key--wide"
+          className="nr-kb__key nr-kb__key--wide nr-kb__key--back"
           disabled={value.length === 0}
           onClick={() => {
             onChange(value.slice(0, -1))
@@ -268,7 +276,7 @@ export function TextKeyboard(props: TextKeyboardProps): ReactElement {
         {secret && (
           <button
             type="button"
-            className="nr-kb__key nr-kb__key--wide"
+            className="nr-kb__key nr-kb__key--wide nr-kb__key--reveal"
             aria-pressed={revealed}
             onClick={() => {
               setRevealed(!revealed)
@@ -281,7 +289,7 @@ export function TextKeyboard(props: TextKeyboardProps): ReactElement {
         {onSubmit !== undefined && (
           <button
             type="button"
-            className="nr-kb__key nr-kb__key--wide"
+            className="nr-kb__key nr-kb__key--wide nr-kb__key--enter"
             onClick={onSubmit}
             data-testid="pk-enter"
           >

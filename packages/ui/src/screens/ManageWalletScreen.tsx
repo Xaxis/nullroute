@@ -324,12 +324,14 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
             the unlock gate does it. No tabs: four controls for three values is
             how the unlock gate lost its keyboard off the bottom of the panel.
 
-            The labels are written to fit a 242px column. check-screen-fit
-            measures what happens when they do not. */}
+            The labels are written to fit one line of a 106 pixel column, the
+            width each field has on a 4 inch panel. "The one it has now" was two
+            lines there, which put the keys under the action bar.
+            check-screen-fit measures what happens when they do not fit. */}
         <div className="nr-split nr-split--trio">
           <div className={`nr-field${changeField === 'old' ? ' nr-field--active' : ''}`}>
             <div className="nr-field__labelrow">
-              <span className="nr-field__label">The one it has now</span>
+              <span className="nr-field__label">Current</span>
             </div>
             <input
               className="nr-input"
@@ -354,7 +356,7 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
 
           <div className={`nr-field${changeField === 'new' ? ' nr-field--active' : ''}`}>
             <div className="nr-field__labelrow">
-              <span className="nr-field__label">The new one</span>
+              <span className="nr-field__label">New</span>
             </div>
             <input
               className="nr-input"
@@ -381,7 +383,7 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
               "restore from your mnemonic and lose your registrations". */}
           <div className={`nr-field${changeField === 'again' ? ' nr-field--active' : ''}`}>
             <div className="nr-field__labelrow">
-              <span className="nr-field__label">The new one again</span>
+              <span className="nr-field__label">New again</span>
             </div>
             <input
               className="nr-input"
@@ -558,7 +560,7 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
 
           <div className={`nr-field${renameField === 'passphrase' ? ' nr-field--active' : ''}`}>
             <div className="nr-field__labelrow">
-              <span className="nr-field__label">Passphrase for this wallet</span>
+              <span className="nr-field__label">Passphrase</span>
             </div>
             <input
               className="nr-input"
@@ -702,12 +704,14 @@ export function ManageWalletScreen(props: ManageWalletScreenProps): ReactElement
             That costs a sentence. The body has 287px, the keyboard takes 188
             and the gap 14, so this banner has 70px: a heading and two lines.
             The line it lost said nothing on this device recovers the seed,
-            which is what the heading already says. */}
+            which is what the heading already says.
+
+            Two lines at 360 pixels as well, where the keyboard is 294 of a
+            379 pixel body. Its old wording was three there. */}
         <div className="nr-banner nr-banner--danger" data-testid="manage-destroy-warning">
           <strong>This removes the seed from this device</strong>
           <span>
-            If you wrote the mnemonic down, that paper still works. If you did not, the money here
-            is gone.
+            If you wrote the mnemonic down, it still works. If not, the money here is gone.
           </span>
         </div>
 

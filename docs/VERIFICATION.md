@@ -60,14 +60,14 @@ Compute the root hash:
 
 ```console
 $ sha256sum MANIFEST.lock
-813c8ab63cac72c97c2d9e615a01ebfc94b22fcc7dac5c079a9698920b39390b  MANIFEST.lock
+5cdeb25c3671a5ec9e5cca2565adad5efb272681a540be4dd146190a133c82df  MANIFEST.lock
 ```
 
 Regenerate the manifest from scratch and confirm it matches what is committed:
 
 ```console
 $ git ls-files -z package.json package-lock.json packages spec provisioning | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum
-813c8ab63cac72c97c2d9e615a01ebfc94b22fcc7dac5c079a9698920b39390b  -
+5cdeb25c3671a5ec9e5cca2565adad5efb272681a540be4dd146190a133c82df  -
 ```
 
 On macOS use `shasum -a 256` in place of `sha256sum`; the values are
@@ -337,15 +337,18 @@ one whose image a stranger can check.
 ### Hardware
 
 The design asks for capabilities, not a model: arm64, enough memory for
-Argon2id at the shipped cost plus a Chromium kiosk with no swap, an 800x480
-touchscreen and a camera. Today's image targets the board below; others follow
-as each boots it. [research/pi-boards.md](../research/pi-boards.md) lists what
-each needs first. Target build is under $120.
+Argon2id at the shipped cost plus a Chromium kiosk, a touch panel the
+interface is laid out for, and a camera. Today's image carries the boards
+below, all in bring-up. [research/pi-boards.md](../research/pi-boards.md) and
+[research/small-boards.md](../research/small-boards.md) list what each needs
+first. Target build is under $120.
 
 | Part | Choice | Notes |
 | --- | --- | --- |
 | Board | Raspberry Pi 4 (4GB) or Raspberry Pi 5 | One card carries both, and both are in bring-up: a board is supported once a card boots on one with the panel lit. The Pi 4 boots Debian's pinned kernel, whose device tree the build checks for the panel; the Pi 5 boots Raspberry Pi's own kernel, the only one that drives the 7 inch panel there. |
-| Display | Official Raspberry Pi 7 inch touchscreen | The DSI panel, `provisioning/build/overlays/nullroute-7inch-dsi.dts`. Pi 4: config.txt names the overlay in the Pi 4's section (INV-PROV-25) and it is on the card as a device tree blob (INV-PROV-26); the build refuses to finish unless merging it into `bcm2711-rpi-4-b.dtb` leaves `dsi@7e700000` enabled with the panel and touch controller present. Pi 5: the firmware detects the panel and loads Raspberry Pi's own overlay; both overlays it can choose are on the card (INV-PROV-26), and the build refuses to finish unless every label they target exists in all three Pi 5 trees. Touch Display 2 (720x1280 portrait) is driven but not supported. Only a boot with the panel attached shows whether it lights up. Every screen is measured at exactly 800x480. |
+| Display | Official Raspberry Pi 7 inch touchscreen | The DSI panel, `provisioning/build/overlays/nullroute-7inch-dsi.dts`. Pi 4: config.txt names the overlay in the Pi 4's section (INV-PROV-25) and it is on the card as a device tree blob (INV-PROV-26); the build refuses to finish unless merging it into `bcm2711-rpi-4-b.dtb` leaves `dsi@7e700000` enabled with the panel and touch controller present. Pi 5: the firmware detects the panel and loads Raspberry Pi's own overlay; both overlays it can choose are on the card (INV-PROV-26), and the build refuses to finish unless every label they target exists in all three Pi 5 trees. Only a boot with the panel attached shows whether it lights up. |
+| Display | Touch Display 2 (5 or 7 inch); Pimoroni HyperPixel 4.0 | In bring-up. Touch Display 2 is detected by the firmware on a Pi 5 or a Pi 3, and its overlays are on the card (INV-PROV-26). The HyperPixel is named in the Zero 2 W's section of config.txt (INV-PROV-25). The build refuses to finish unless every label those overlays target exists in each tree they can apply to and every panel in `provisioning/units/panels.tsv` is described by an overlay on the card; INV-PROV-37 checks their drivers are in the image. The kiosk reads the panel from the running device tree and draws at the table's scale, and every screen is measured at each size the table gives: 800x480, 480x853, 360x640 and 360x601 (INV-UI-110). |
+| Board | Raspberry Pi Zero 2 W, or Raspberry Pi 3B or 3B+ | In bring-up. Raspberry Pi's kernel and initramfs, as on the Pi 5, with Raspberry Pi's `raspi-firmware` pinned by digest for the files these boards read off the card. On a board under 800 MB, swap made of compressed memory is turned on; `no-swap-to-storage` fails any swap that is not a zram device writing back to nothing (INV-PROV-11). |
 | Camera | A USB (UVC) webcam | CSI camera modules come later: the pinned Debian kernel (`linux-image-6.12.94+deb13-arm64`) builds no IMX708 driver (not in mainline) or IMX219 driver and leaves the Pi 4's CSI receiver (`VIDEO_BCM2835_UNICAM`) unset, so on that kernel only a USB (UVC) camera has a driver. Raspberry Pi's kernel, which the card also carries for the Pi 5, has not been checked for CSI drivers. INV-PROV-29 checks every kernel version under the card's `lib/modules`: in each, `uvcvideo` and every module that version's `modules.dep` says it needs are present as files (not shown to load). The card also carries `systemd-udevd` and the two rules that load the driver on hotplug and give the node the `video` group (INV-PROV-30). The kiosk's device cgroup adds only `char-video4linux` (INV-PROV-27); the browser's managed policy grants the camera to `http://127.0.0.1:5180` alone, audio off (INV-PROV-28). No camera has streamed on a Pi yet. Without one the device shows codes and receives nothing; an SD card transport is planned, not built. |
 | Storage | 16GB+ SD card, A2 class | The image is small; the class rating matters for Argon2id-adjacent I/O, not capacity. |
 | Case | Any | Prefer one that makes tampering visible over one that looks nice. |

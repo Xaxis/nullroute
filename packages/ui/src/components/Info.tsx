@@ -1,4 +1,4 @@
-import type { ReactElement, ReactNode } from 'react'
+import type { ReactElement, ReactNode, Ref } from 'react'
 
 /**
  * What this screen is for, and what to do on it.
@@ -32,12 +32,14 @@ export interface InfoProps {
   readonly label?: string | undefined
   readonly children: ReactNode
   readonly testId?: string | undefined
+  /** For a caller that has to move the note into view, as Working does. */
+  readonly ref?: Ref<HTMLDivElement> | undefined
 }
 
 export function Info(props: InfoProps): ReactElement {
-  const { label, children, testId } = props
+  const { label, children, testId, ref } = props
   return (
-    <div className="nr-info" data-testid={testId}>
+    <div className="nr-info" data-testid={testId} ref={ref}>
       {label !== undefined && <span className="nr-info__label">{label}</span>}
       <div className="nr-info__body">{children}</div>
     </div>

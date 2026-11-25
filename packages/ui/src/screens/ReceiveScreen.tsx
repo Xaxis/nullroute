@@ -352,9 +352,8 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
 
           {source !== null && (
             <p className="nr-hint" data-testid="receive-quorum-note">
-              A {source.threshold} of {source.total} address, from the quorum whose checksum is{' '}
-              <span className="nr-mono">{source.checksum}</span>. Spending from it needs{' '}
-              {source.threshold} of the devices, and this is one of them.
+              Quorum <span className="nr-mono">{source.checksum}</span>. Spending needs{' '}
+              {source.threshold} of its {source.total} devices, and this is one of them.
             </p>
           )}
         </div>
@@ -450,7 +449,17 @@ export function ReceiveScreen(props: ReceiveScreenProps): ReactElement {
                     on that banner already calls it the more urgent of the two.
                     Two full banners plus an address and a QR do not fit in 270px,
                     and the heading above is the instruction: the body is why. */}
-                  <span>
+                  {/* THE REASON GIVES WAY ON A 4 INCH PANEL, when there are
+                      quorum tabs above or a refusal about them. A quorum's
+                      address is 62 characters, and the tabs, the note under
+                      them, the code, the address and this whole banner are 420
+                      pixels of a 362 pixel body on the HyperPixel. The heading
+                      is the instruction and stays; this sentence is why, the
+                      trade the single-device path above already makes.
+                      INV-UI-110. */}
+                  <span
+                    className={quorums.length > 0 || quorumsUnread ? 'nr-yields-narrow' : undefined}
+                  >
                     Software that swaps a copied address is the ordinary way this money is lost, and
                     every screen involved looks correct. Compare these characters against the
                     payer&rsquo;s screen.

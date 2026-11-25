@@ -3,7 +3,7 @@
 [![CI](https://github.com/Xaxis/nullroute/actions/workflows/ci.yml/badge.svg)](https://github.com/Xaxis/nullroute/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Specs](https://img.shields.io/badge/specs-39-informational)](packages/verify)
-[![Invariants](https://img.shields.io/badge/invariants-359-informational)](docs/THREAT-MODEL.md)
+[![Invariants](https://img.shields.io/badge/invariants-362-informational)](docs/THREAT-MODEL.md)
 
 An air-gapped Bitcoin signing device you build from a Raspberry Pi. You roll
 100 dice, it turns them into a seed by a rule you can repeat with `sha256sum`,
@@ -126,23 +126,31 @@ $ make conformance-krux
 ## What you need to build one
 
 The design needs capabilities, not one model: a 64-bit Raspberry Pi, enough
-memory for Argon2id and a browser with no swap, an 800x480 touchscreen, and a
-camera the kernel has a driver for. The card built today targets the Pi 4 and
-the official 7 inch panel, because that is the board whose device tree in the
-pinned Debian kernel describes both the display and the SoC. Other boards follow
-as each one is brought up and boots this image;
-[research/pi-boards.md](research/pi-boards.md) says what each one needs first.
+memory for Argon2id and a browser, a touch panel the interface is laid out for,
+and a camera the kernel has a driver for. One card carries what each board
+below needs, and every screen is measured at each size the supported panels
+give: 800x480, 480x853, 360x640 and 360x601. A board is supported once a card
+boots on it with its panel lit; [research/pi-boards.md](research/pi-boards.md)
+and [research/small-boards.md](research/small-boards.md) say what each one
+needs first.
 
 Roughly $100 to $120.
 
 | Part | What to get | Notes |
 | --- | --- | --- |
 | Board | Raspberry Pi 4 (4GB) or Raspberry Pi 5 | One card carries both, and both are in bring-up. The Pi 4 boots Debian's pinned kernel, whose device tree the build checks for the panel. The Pi 5, the maintainer's board and the first bring-up, boots Raspberry Pi's own kernel, the only one that drives the 7 inch panel there. A board is supported once a card boots on one with the panel lit. |
-| Screen | Official Raspberry Pi 7 inch touchscreen | The DSI panel. Every screen is measured at exactly 800x480 and no other size. |
+| Screen | Official Raspberry Pi 7 inch touchscreen, or Touch Display 2 (5 or 7 inch) | DSI panels. The kiosk reads which one is attached and draws at its scale: the 7 inch panel at 800x480, Touch Display 2 in portrait at 480x853 or 360x640. |
 | Storage | 16GB+ A2 SD card | The image is about 1.6GB. |
 | Dice | One d6 | Casino grade if you care. Any die works. |
 | Camera | A USB (UVC) webcam | How transactions reach the device. Raspberry Pi CSI camera modules come later: the pinned Debian kernel builds neither the Pi's CSI receiver nor a driver for their sensors. The card carries the UVC driver, the kiosk's permission for video devices and a browser policy that grants the camera to the device's own page only. It carries udev, which loads that driver when a camera is plugged in and gives the video node its group. None has streamed on a Pi yet. Without a camera it can still show codes, but receives nothing: an SD card transport is planned and not built. |
 | Case, PSU | Anything, official PSU | An underpowered supply causes strange slowness. |
+
+For a smaller device, in bring-up like everything above:
+
+| Part | What to get | Notes |
+| --- | --- | --- |
+| Board | Raspberry Pi Zero 2 W, or Raspberry Pi 3B or 3B+ | In bring-up. Raspberry Pi's kernel, as on the Pi 5, with Raspberry Pi's firmware for these boards, both pinned by digest. A Zero 2 W's 512 MB needs swap made of compressed memory, which never reaches the card (INV-PROV-11); unlock will take several seconds. |
+| Screen | Pimoroni HyperPixel 4.0, or Touch Display 2 (5 inch) | In bring-up. The HyperPixel sits on the GPIO header and is the only panel a Zero 2 W can take. It is drawn at 360x601, the smallest size the interface draws at, and its targets are 6.4 mm across, the smallest of any listed panel. |
 
 You do **not** need a network connection on the device, ever. That is the point.
 

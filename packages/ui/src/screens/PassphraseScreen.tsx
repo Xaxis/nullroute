@@ -105,6 +105,12 @@ export function PassphraseScreen(props: PassphraseScreenProps): ReactElement {
   const mismatch = setting && confirm.length > 0 && value !== confirm
   const ready = value.length > 0 && (!setting || (confirm === value && confirm.length > 0))
   const cost = guessCost(value)
+  const costNote =
+    value.length > 0 ? (
+      <span className={`nr-hint ${cost.tone === 'ok' ? 'nr-ok' : 'nr-warn'}`}>
+        {value.length} {value.length === 1 ? 'character' : 'characters'}, {cost.label}
+      </span>
+    ) : null
 
   const submit = async (): Promise<void> => {
     setBusy(true)
@@ -204,11 +210,7 @@ export function PassphraseScreen(props: PassphraseScreenProps): ReactElement {
               keyboard below it has no room to give. */}
           <div className="nr-field__labelrow">
             <span className="nr-field__label">Passphrase</span>
-            {value.length > 0 && (
-              <span className={`nr-hint ${cost.tone === 'ok' ? 'nr-ok' : 'nr-warn'}`}>
-                {value.length} characters, {cost.label}
-              </span>
-            )}
+            {!setting && costNote}
           </div>
           <input
             className="nr-input"
@@ -235,7 +237,6 @@ export function PassphraseScreen(props: PassphraseScreenProps): ReactElement {
           <div className={`nr-field${field === 'confirm' ? ' nr-field--active' : ''}`}>
             <div className="nr-field__labelrow">
               <span className="nr-field__label">Again</span>
-              {mismatch && <span className="nr-hint nr-warn">These do not match.</span>}
             </div>
             <input
               className="nr-input"
@@ -259,6 +260,21 @@ export function PassphraseScreen(props: PassphraseScreenProps): ReactElement {
           </div>
         )}
       </div>
+
+      {/* ONE LINE OF NOTES UNDER BOTH FIELDS, not one beside each label. In a
+          half-width column the guessing cost wrapped to two lines at 800
+          pixels, moving the keyboard on the keystroke that made it long, and
+          on a 4 inch panel it was cut to "19 char...", on the screen where
+          somebody decides whether their passphrase is long enough.
+
+          A mismatch takes the line over the cost while there is one, because
+          it is the reason Encrypt is disabled and the cost is only advice. The
+          line is held open when empty, so nothing moves when a note appears. */}
+      {setting && (
+        <p className="nr-field__note" data-testid="passphrase-note">
+          {mismatch ? <span className="nr-hint nr-warn">These do not match.</span> : costNote}
+        </p>
+      )}
 
       {/* NO KEYBOARD WHILE IT WORKS.
           

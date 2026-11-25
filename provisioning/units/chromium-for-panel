@@ -1,0 +1,62 @@
+#!/bin/sh
+# Start the kiosk browser at the scale its panel is laid out for.
+#
+# nullroute-kiosk.service runs this in place of the Chromium binary. It adds
+# exactly one flag, --force-device-scale-factor, and execs the binary with the
+# unit's flag list unchanged after it. It sources nothing and reads no
+# environment, which is the property the unit's comment on Debian's launcher
+# script is about: the flags in the unit plus this one are the whole list.
+#
+# WHY A SCALE AT ALL. Every screen is laid out and measured at the CSS size each
+# supported panel gives (tools/checks/check-screen-fit.mjs). A 4 inch 480x800
+# panel drawn at scale 1 would be a 480 pixel wide layout with 44 pixel targets
+# 4.8 mm across, which nobody measured and a finger misses. Drawn at 1.33 it is
+# the 360 pixel wide layout the checks measured, with targets 6.4 mm across.
+#
+# WHICH PANEL. The overlay config.txt names puts a node in the device tree with
+# the panel's compatible string, and /usr/lib/nullroute/panels.tsv maps that to
+# a scale. A panel the table does not list is drawn at 1, which is what the
+# device did before there was a table, and the log says so. Touch Display 2
+# comes in two sizes with the same pixels, so pixels alone cannot choose.
+set -eu
+
+TABLE=/usr/lib/nullroute/panels.tsv
+TREE=/sys/firmware/devicetree/base
+TAB=$(printf '\t')
+
+# Every compatible string of every node that is not disabled. A node with no
+# status property is enabled, as the kernel reads it.
+enabled_compatibles() {
+  find "$TREE" -type f -name compatible 2>/dev/null | while IFS= read -r path; do
+    node=${path%/compatible}
+    if [ -f "$node/status" ]; then
+      case $(tr -d '\0' <"$node/status") in
+        okay | ok) ;;
+        *) continue ;;
+      esac
+    fi
+    tr '\0' '\n' <"$path"
+  done
+}
+
+scale=1
+panel=
+if [ -d "$TREE" ] && [ -r "$TABLE" ]; then
+  present=$(enabled_compatibles)
+  while IFS="$TAB" read -r compatible panel_scale _pixels name; do
+    case $compatible in '' | '#'*) continue ;; esac
+    if printf '%s\n' "$present" | grep -qxF -- "$compatible"; then
+      scale=$panel_scale
+      panel=$name
+      break
+    fi
+  done <"$TABLE"
+fi
+
+if [ -n "$panel" ]; then
+  echo "chromium-for-panel: $panel, drawn at scale $scale" >&2
+else
+  echo "chromium-for-panel: no panel listed in $TABLE is in the device tree; drawn at scale 1" >&2
+fi
+
+exec /usr/lib/chromium/chromium --force-device-scale-factor="$scale" "$@"

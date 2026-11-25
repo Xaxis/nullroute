@@ -2,9 +2,10 @@
 
 What each screen is for, what it refuses, and why.
 
-The device is a fixed 800x480 touchscreen with no cursor, no keyboard and no
-page scrolling. Every screen is laid out to fit that panel, and a check fails
-the build when one does not.
+The device is a fixed touchscreen with no cursor, no keyboard and no page
+scrolling: 800x480 on the 7 inch panel, and as narrow as 360 pixels in portrait
+on the 4 and 5 inch ones. Every screen is laid out to fit each supported panel,
+and a check fails the build when one does not.
 
 ## The shape of every screen
 

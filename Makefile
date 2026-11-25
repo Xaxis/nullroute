@@ -805,7 +805,11 @@ journeys: build-app verify ## Every guided journey completes, in the real app ag
 	#
 	# Its own store directory and its own socket, both temporary, so it never
 	# touches wallets on the machine it runs on.
+	#
+	# Twice: on the 7 inch panel, and on the smallest one the image supports,
+	# whose layout is a different one (provisioning/units/panels.tsv, INV-UI-110).
 	@node tools/checks/check-journeys.mjs
+	@node tools/checks/check-journeys.mjs --panel 360x601
 
 typeable: ## A field somebody has to fill needs something on the panel to fill it with
 	# docs/USING.md opens by saying this device has no cursor and no keyboard.

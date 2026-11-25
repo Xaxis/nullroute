@@ -54,7 +54,7 @@ describe('ui.screens.seed', () => {
 
   it('warns-that-this-is-the-only-showing', () => {
     render(<SeedScreen words={WORDS} fingerprint="b8688df1" onConfirm={vi.fn()} />)
-    expect(document.body.textContent).toContain('only time they are shown')
+    expect(document.body.textContent).toContain('They are not shown again')
     expect(document.body.textContent).toContain('Do not photograph')
     // The fingerprint is here too, because a mistyped passphrase is otherwise
     // silent.

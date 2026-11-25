@@ -324,17 +324,33 @@ body {
 
    On the device there is no slack on either axis, so this is the same layout it
    has always had. The shadow has nothing to fall on.
+
+   THE PANEL IS WHATEVER THE VIEWPORT IS, ON A DEVICE. There is more than one
+   now (provisioning/units/panels.tsv), and the kiosk draws each at a scale that
+   makes its viewport the size the layout checks measured. So the root fills
+   the viewport, and is held to the 7 inch panel's size only in a window wider
+   than every panel, which is a workstation and never the device.
    --------------------------------------------------------------------------- */
 
 #root {
-  width: 800px;
-  height: 480px;
+  width: 100%;
+  height: 100%;
   margin: auto;
   overflow: hidden;
   background-color: var(--color-bg);
   /* An outline rather than a border: a border would take its width out of the
      800, and this panel does not have a pixel to give. */
   box-shadow: 0 0 0 1px var(--color-line);
+}
+
+/* After the rule above, not before it: the two have the same weight, so the
+   one later in the file wins, and placed first this never applied. The device
+   check that loads the app in a wide window is what saw it. */
+@media (min-width: 801px) {
+  #root {
+    width: 800px;
+    height: 480px;
+  }
 }
 
 /* NO SCROLLBAR, SAID OUT LOUD.
@@ -639,14 +655,22 @@ body {
    they were reading and no sight of which branch they had chosen, on a device
    whose entire claim is that you can check what is in front of you.
 
-   A body containing an `.nr-fill` stops scrolling and hands the leftover height
-   to that child instead. No prop and no flag: putting the class on a child IS
-   the declaration, so there is no way to ask for half of this and get a body
-   that scrolls inside a child that also scrolls.
+   A body containing an `.nr-fill` hands the leftover height to that child,
+   which scrolls instead. No prop and no flag: putting the class on a child IS
+   the declaration.
+
+   The body itself still scrolls, but only as a fallback. It used to hide its
+   overflow, so when what sat around the region was taller than the screen the
+   region went to zero and the rest was cut off where no finger could scroll
+   to it: the export QR and the quorum warning on the 800x480 panel, and the
+   values a failed proof check asks somebody to compare. A measured screen
+   never reaches the fallback, because check-screen-fit fails a body that does
+   (`fill-squeezed`); it is there for data no fixture has, a refusal with a
+   long reason or a wallet with several quorums.
    -------------------------------------------------------------------------- */
 
 .nr-screen__body:has(.nr-fill) {
-  overflow-y: hidden;
+  overflow-y: auto;
 }
 
 /* Column headings that survive the scroll under them. Opaque, because rows
@@ -679,8 +703,21 @@ body {
    affordance is not optional on a panel with no scrollbar. */
 .nr-fill {
   flex: 1 1 auto;
-  min-height: 0;
+  /* Never squeezed to nothing: 80 pixels at least, three lines of an
+     address, and past that the body scrolls. See the note above. */
+  min-height: 5rem;
   overflow-y: auto;
+}
+
+/* A region that holds several blocks, spaced as the body spaces its own. */
+.nr-fill--stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.nr-fill--stack > * {
+  flex-shrink: 0;
 }
 
 .nr-screen__actions {
@@ -1260,6 +1297,29 @@ body {
    somebody is typing on it. */
 .nr-field__labelrow > * {
   line-height: 1.125rem;
+}
+
+/* A note for a row of fields, on a line of its own under them. A fixed
+   height, held when it is empty, and one line or an ellipsis, so the controls
+   below never move while somebody types: a minimum height grew by a pixel
+   when the first character put a 1.5 line-height span in it. The margins take
+   it into the gaps either side, because on the 800x480 panel this screen has
+   no line to spare. Never shrunk: a flex child with overflow hidden has no
+   minimum height, and when the body overflowed this one went to zero and took
+   its text with it, which is how a layout that did not fit measured as one
+   that did. */
+.nr-field__note {
+  flex-shrink: 0;
+  margin: -0.375rem 0 -0.25rem;
+  height: 1rem;
+  line-height: 1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nr-field__note > * {
+  line-height: inherit;
 }
 
 /* ==========================================================================
@@ -1893,8 +1953,14 @@ body {
   border-radius: 0.5rem;
 }
 
+/* Wrapping, because the column it sits in can be narrower than the row. Back,
+   play, next and the part counter are 240 pixels, and the export tab's code
+   column is 184: at 800x480 the counter ran under the edge of the scroller,
+   reading "2 /", for as long as the export tab has had a multipart code. */
 .nr-qr__controls {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   align-items: center;
   gap: 0.5rem;
 }
@@ -2774,6 +2840,23 @@ body {
   display: none;
 }
 
+/* THE NETWORK STRIP IS THE CHIP when it is alone in the row. A pill inside a
+   padded row was 46.5 pixels on every screen of a device not on mainnet at
+   800x480, and with it the set-passphrase screen put its bottom row of keys,
+   Space and Enter among them, under the action bar. Flat, it is 26.5, and
+   still the caution colour from edge to edge. */
+.nr-screen__banners:has(> .nr-netchip:only-child) {
+  padding-block: 0.1875rem;
+  background-color: color-mix(in srgb, var(--color-caution-fill) 22%, var(--color-surface-1));
+}
+
+.nr-screen__banners > .nr-netchip:only-child {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+}
+
 .nr-screen__banners {
   display: flex;
   align-items: center;
@@ -2912,4 +2995,592 @@ body {
   font-size: 0.625rem;
   color: var(--color-text-faint);
   flex: 0 0 auto;
+}
+
+/* ==========================================================================
+   Narrow panels: the 4 and 5 inch portrait ones.
+
+   Everything above was written for one panel, 800 by 480, and still is: none
+   of it changes there. This block is what changes on the panels that are
+   narrower than 600 CSS pixels, which today means 360 (HyperPixel 4.0 at 1.33,
+   and Touch Display 2, 5 inch, at 2) and 480 (Touch Display 2, 7 inch, at
+   1.5). provisioning/units/panels.tsv is the list, and check-screen-fit
+   measures every screen at every size in it.
+
+   What is scarce flips. The 7 inch panel has width to spare and no height,
+   which is why so much above sits two or three abreast. The portrait panels
+   have height to spare and no width, so here those rows stack into columns,
+   and the header takes two rows instead of one.
+
+   The 44px target and the 6px gap do not change. They are about a finger, and a
+   finger is the same size on every panel; that is what the scale in the table
+   is chosen to preserve.
+   ========================================================================== */
+
+:root {
+  /* Read by check-screen-fit to choose which header limit applies, so the
+     breakpoint is written once, here. */
+  --nr-layout: wide;
+}
+
+@media (max-width: 599px) {
+  :root {
+    --nr-layout: narrow;
+  }
+
+  /* Two rows. The brand, the identity chip and the menu along the top, where a
+     phone keeps its status bar, and the title and subtitle below them with the
+     whole width to themselves. On one row at 360 pixels the title column got
+     about sixty, and the subtitle under it ended after one word. */
+  .nr-screen__head {
+    display: grid;
+    /* The brand keeps its width and the wallet chip takes what is left and
+       elides, rather than the other way round: given the flexible column the
+       chip took everything and the brand came out as "nullrout". A step
+       counter in the same cell is held to under half the row. */
+    grid-template-columns: fit-content(45%) minmax(0, 1fr) auto;
+    grid-template-areas:
+      'lead identity nav'
+      'title title title'
+      'subtitle subtitle subtitle';
+    align-items: center;
+    gap: 0 0.5rem;
+    padding: 0.5rem 0.75rem 0.625rem;
+  }
+
+  .nr-screen__head > .nr-brand {
+    grid-area: lead;
+    justify-self: start;
+    border-right: 0;
+    padding-right: 0;
+  }
+
+  /* The titles column dissolves so its three parts can sit in the grid: the
+     step counter in the top row where the brand was (a journey says where you
+     are more usefully than the name of the device does, and it would cost the
+     body 16px as a row of its own), the title and subtitle below. */
+  .nr-screen__head > .nr-screen__titles {
+    display: contents;
+  }
+
+  .nr-screen__head:has(.nr-steps) > .nr-brand {
+    display: none;
+  }
+
+  .nr-screen__head .nr-steps {
+    grid-area: lead;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .nr-screen__head .nr-screen__title {
+    grid-area: title;
+    margin-top: 0.375rem;
+  }
+
+  .nr-screen__head .nr-screen__subtitle {
+    grid-area: subtitle;
+  }
+
+  .nr-screen__head > .nr-identity {
+    grid-area: identity;
+    justify-self: end;
+    max-width: 100%;
+  }
+
+  .nr-screen__head > .nr-navmenu {
+    grid-area: nav;
+  }
+
+  .nr-screen__head > .nr-spacer {
+    display: none;
+  }
+
+  /* The panel the menu opens is anchored to the button at the right edge, and
+     at 20rem it is nearly as wide as the whole 360 pixel panel. */
+  .nr-navmenu__panel {
+    width: min(20rem, calc(100vw - 1.5rem));
+  }
+
+  .nr-screen__body {
+    padding: 0.75rem;
+  }
+
+  .nr-screen__banners {
+    padding: 0.375rem 0.75rem;
+  }
+
+  .nr-screen__actions {
+    gap: 0.375rem;
+    padding: 0.625rem 0.75rem;
+  }
+
+  /* Four actions in one row at 360 pixels, which the receive screen has. The
+     height is the 44px floor; only the air either side of the label is less. */
+  .nr-button {
+    padding: 0 0.625rem;
+  }
+
+  /* Side by side on the wide panel, one above the other here. */
+  .nr-split--even,
+  .nr-split--aside,
+  .nr-split--note,
+  .nr-split--trio,
+  .nr-modes,
+  .nr-dice {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .nr-goals,
+  .nr-section__items {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* EXCEPT A ROW OF FIELDS ABOVE A KEYBOARD, which stays a row: a split
+     whose every column is a field, not one that holds a field beside
+     something else (the multisig key card and its descriptor). The row is
+     also the selector for which field the keys fill, and stacked, the three
+     passphrase fields were 204 pixels over a keyboard that needs 294 of a 361
+     pixel body. Their labels are one line at a third of the panel. */
+  .nr-split--even:not(:has(> :not(.nr-field))) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .nr-split--trio:not(:has(> :not(.nr-field))) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  /* A field's label and the note beside it hold one line. The note appears on
+     the first keystroke ("1 character, under an hour to guess"), and wrapping
+     it onto a second line moved every key down 18 pixels under the finger
+     that typed it. Cut, it ends in an ellipsis. */
+  .nr-field__labelrow > * {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .nr-field__labelrow > .nr-field__label {
+    flex-shrink: 0;
+  }
+
+  /* A screen with a keyboard spends less on air. The keys are 294 pixels and
+     the rest of the body is what is left of 361, so the padding and the gaps
+     between blocks are 8 pixels rather than 12. */
+  .nr-screen__body:has(.nr-kb) {
+    padding-block: 0.5rem;
+    gap: 0.5rem;
+  }
+
+  /* The flat strip lines up with the narrow body's padding. */
+  .nr-screen__banners:has(> .nr-netchip:only-child) {
+    padding-inline: 0.75rem;
+  }
+
+  .nr-row > .nr-label {
+    flex-basis: 5.5rem;
+  }
+
+  /* The seed, three words to a row rather than six. */
+  .nr-words {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .nr-scan__viewport {
+    max-height: 36vh;
+  }
+
+  /* The code first. On the wide panel it is the right-hand column, last in the
+     DOM so a reader meets what it encodes before it, and first to the eye as
+     the only white square on a dark panel. Stacked, last in the DOM would put
+     it under the action bar, where it looks like a code a camera can read and
+     is not. `order` moves the box and not the reading order. */
+  .nr-split > .nr-qr,
+  .nr-split > .nr-qr--small {
+    order: -1;
+    justify-self: center;
+  }
+
+  /* The receive code a little smaller: a stacked column has to hold the code,
+     the address and the warning about reading it on one panel. An address is
+     a version 2 or 3 code, so at 144 pixels a module is at least 0.57 mm on
+     the HyperPixel and 0.67 mm on the 5 inch Touch Display 2, quiet zone
+     counted, which a phone reads from a hand's length. */
+  .nr-qr--small .nr-qr__code {
+    height: min(9rem, 24vh);
+  }
+
+  /* Cards and banners give back some of their air. The vertical padding is
+     what a 601 pixel panel is short of, and on a 336 pixel line the horizontal
+     padding is a word per line: a banner one line shorter is 19 pixels. */
+  /* Not the tight and snug cards, which are already tighter than this and
+     would otherwise be loosened by a later rule of the same weight. */
+  .nr-card:not(.nr-card--tight, .nr-card--snug) {
+    padding: 0.75rem 0.875rem;
+  }
+
+  .nr-banner {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .nr-fp {
+    padding: 0.625rem 0.875rem;
+  }
+
+  .nr-screen__body {
+    gap: 0.75rem;
+  }
+
+  /* THE RECEIVE CODE BESIDE ITS ADDRESS. Stacked, the code, the address and
+     the warning about reading it were 380 pixels in a 367 pixel body, and
+     with a quorum's source tabs above them the warning was 127 pixels under
+     the bar. Side by side the code and the address share one row. The column
+     dissolves into the split's grid so the address can sit beside a code that
+     is not in its column; everything else in it spans the row below. */
+  .nr-split--aside:has(> .nr-qr--small) {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .nr-split--aside:has(> .nr-qr--small) > .nr-split__col {
+    display: contents;
+  }
+
+  .nr-split--aside:has(> .nr-qr--small) > .nr-split__col > * {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+
+  /* Three groups of four beside the code, not two. A quorum's address is 62
+     characters, sixteen groups: at 17 pixels two to a line it was eight lines
+     tall beside a 144 pixel code. At 15, with the card's padding and the gap
+     tightened, it is six. That is 20 device pixels on the HyperPixel, the size
+     of the body text around it. */
+  .nr-split--aside:has(> .nr-qr--small) {
+    column-gap: 0.5rem;
+  }
+
+  .nr-split--aside > .nr-split__col > .nr-receive {
+    padding: 0.5rem 0.625rem;
+  }
+
+  .nr-receive__value {
+    font-size: 0.9375rem;
+  }
+
+  .nr-yields-narrow {
+    display: none;
+  }
+
+  /* TABS THAT SHARE ONE ROW EVENLY, their labels wrapping inside the 44
+     pixel box. The message check's three fields and Scan were two rows of
+     tabs, and a keyboard of 294 pixels has 67 of a 361 pixel body left over
+     for everything above it. */
+  .nr-tabs--even {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+  }
+
+  .nr-tabs--even > .nr-spacer {
+    display: none;
+  }
+
+  .nr-tabs--even > .nr-tab {
+    min-width: 0;
+    padding: 0.125rem 0.25rem;
+    line-height: 1.15;
+  }
+
+  /* A file path in a table cell has no space to break at, and in the
+     attestation table's result column "packages/core/src/derive/hd.ts" ran 3
+     pixels past the card. */
+  .nr-table td {
+    overflow-wrap: anywhere;
+  }
+
+  /* STACKED, A SPLIT THAT SCROLLS IS ONE SCROLLER. Side by side each column
+     scrolls in its own full height. One above the other, each column was still
+     a scroller in a grid row too short for it, and aligned to the start of
+     that row it drew its content over the next one: the attestation checks
+     over the manifest card, the quorum note over the address table. The split
+     already scrolls; its columns are just stacked content inside it. */
+  .nr-split.nr-fill > .nr-split__col.nr-fill {
+    overflow: visible;
+    min-height: auto;
+  }
+
+  .nr-split--aside > .nr-qr--small {
+    grid-row: 1;
+    grid-column: 1;
+  }
+
+  .nr-split--aside:has(> .nr-qr--small) > .nr-split__col > .nr-receive {
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  /* The single-device warning stays above the address it is about, which is
+     the place its own comment in ReceiveScreen gives it. */
+  .nr-split--aside:has(> .nr-qr--small) > .nr-split__col > .nr-banner--danger:first-child {
+    grid-row: 1;
+  }
+
+  .nr-split--aside:has(> .nr-split__col > .nr-banner--danger:first-child) > .nr-qr--small,
+  .nr-split--aside:has(> .nr-split__col > .nr-banner--danger:first-child)
+    > .nr-split__col
+    > .nr-receive {
+    grid-row: 2;
+  }
+
+  /* A block a screen marks as leading on a narrow panel: something that has to
+     be on the panel when the screen arrives, and on the wide layout sits beside
+     or below content that a narrow panel cannot also hold. `order` moves the
+     box and not the reading order. */
+  .nr-screen__body > .nr-lead-narrow {
+    order: -1;
+  }
+
+  /* An action bar with three actions wraps rather than running off the edge.
+     The primary action is last in every bar, so it is the one that takes the
+     second row, still at the bottom and still full strength. */
+  .nr-screen__actions {
+    flex-wrap: wrap;
+  }
+
+  /* The network strip is permanent on every device not on mainnet, and is one
+     line of text. Its own padding and the chip's came to 45 pixels of a 601
+     pixel panel; this is 35, and the chip is a statement, not a control, so it
+     has no 44 pixel floor to keep. */
+  .nr-screen__banners {
+    padding: 0.25rem 0.75rem;
+  }
+
+  .nr-netchip {
+    padding: 0.1875rem 0.625rem;
+  }
+
+  /* Text in a bar gives way before a button does. "2 of 10 attempts left" and
+     a checkbox's label wrap onto two lines inside their own slot, where held to
+     one line they pushed the primary action onto a row of its own. */
+  .nr-screen__actions > :not(.nr-button, .nr-spacer) {
+    flex: 1 1 6rem;
+    min-width: 0;
+    white-space: normal;
+  }
+
+  /* A CHECKBOX'S SENTENCE IS A ROW OF ITS OWN, above the buttons it gates.
+     Squeezed between Back and "Generate the seed" it was a column nine lines
+     tall; beside Back alone it was four lines and the button below it had a
+     row to itself. Full width it is three lines and both buttons share the
+     row under it. The order is visual only: a screen reader still meets Back,
+     the sentence, then the action. */
+  .nr-screen__actions > .nr-check {
+    order: -1;
+    flex-basis: 100%;
+  }
+
+  /* The spacer pushes the primary action to the end of a bar that does not
+     wrap. In one that may, it is an item, and costs the gap either side of
+     it: the 6 pixels by which "Show the words again" and "That is the word"
+     missed sharing a row. A margin does the pushing instead. */
+  .nr-screen__actions > .nr-spacer {
+    display: none;
+  }
+
+  .nr-screen__actions > .nr-spacer + * {
+    margin-left: auto;
+  }
+
+  /* Banner headings are one line at 800 pixels by design, and on a 360 pixel
+     panel that put the end of "Read it from this screen, not from the one you
+     paste it into" past the bezel. */
+  .nr-banner strong {
+    white-space: normal;
+  }
+
+  /* 14 pixel labels. "Show the words again" and "That is the word" are 352
+     pixels side by side at 15 and the bar has 336; at 14 they share a row. */
+  .nr-button {
+    font-size: 0.875rem;
+  }
+
+  /* A button is never squeezed under its label or under 44 pixels across. In a
+     row beside a label it was: the child seed's Up came out 43 wide. */
+  .nr-button,
+  .nr-tab {
+    flex-shrink: 0;
+    min-width: 2.75rem;
+  }
+
+  /* A row of tabs wraps rather than running off the panel: the message
+     screen's three script types and its address button need 430 pixels. */
+  .nr-tabs {
+    flex-wrap: wrap;
+  }
+}
+
+/* The passphrase keyboard on a narrow panel. Six columns of 44px keys and 6px
+   gaps is the most a 360 pixel panel holds, so the alphabet takes four rows
+   and two keys (abcdef down to yz) and each symbol page three and a half.
+
+   SIX ROWS IN ALL, THE READOUT INCLUDED. The keys' own grid dissolves into the
+   keyboard's (display: contents), so the readout of what has been typed shares
+   a row with Show and Enter instead of sitting above a sixth row of keys. Laid
+   out the obvious way, readout then six rows, it was 348px, and a 601px panel
+   with a network banner and a step counter has a 354px body: nothing else on
+   the screen could be seen at all.
+
+   The control keys get fixed cells rather than flowing after the characters.
+   Flowing, they would start a row lower on the letters than on the symbols,
+   and every one of them would move under a finger that had just tapped ?123:
+   the rule .nr-kb__key--row states for the wide panel, and check-screen-fit
+   measures on both. Characters fill rows two to five and the first two cells
+   of six, the controls take the rest of six, and the readout row is filled to
+   its last cell whichever of Show and Enter the caller has, so no character
+   can be auto-placed into it. */
+@media (max-width: 599px) {
+  .nr-kb:has(> .nr-pk__value) {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.375rem;
+  }
+
+  .nr-kb:has(> .nr-pk__value) > .nr-kb__keys {
+    display: contents;
+  }
+
+  .nr-pk__value {
+    grid-row: 1;
+    grid-column: 1 / -1;
+    min-height: 2.75rem;
+    box-sizing: border-box;
+    /* One line, whatever is typed: a readout that wrapped would push every key
+       down under the finger typing. The end of a long value stays in view and
+       its start is clipped, because the end is what was just typed. */
+    overflow: hidden;
+    white-space: nowrap;
+    word-break: normal;
+    justify-content: flex-end;
+  }
+
+  /* AND THE CLIPPED START IS MARKED. A value cut off on the left with nothing
+     saying so read as the whole of it: "l this address as of 2026-08-19." under
+     a label asking for a message character for character. An ellipsis needs
+     an end to sit at, so the box runs right to left and the value inside is
+     isolated (<bdi>) to keep its own order. The dots are one character
+     repeated and need no isolating. */
+  .nr-pk__text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    direction: rtl;
+  }
+
+  .nr-kb:has(.nr-kb__key--reveal, .nr-kb__key--enter) .nr-pk__value {
+    grid-column: 1 / 6;
+  }
+
+  .nr-kb:has(.nr-kb__key--reveal):has(.nr-kb__key--enter) .nr-pk__value {
+    grid-column: 1 / 5;
+  }
+
+  .nr-kb__key--reveal,
+  .nr-kb__key--enter {
+    grid-row: 1;
+    grid-column: 6;
+  }
+
+  .nr-kb:has(.nr-kb__key--enter) .nr-kb__key--reveal {
+    grid-column: 5;
+  }
+
+  .nr-kb__key--shift {
+    grid-row: 6;
+    grid-column: 3;
+  }
+
+  .nr-kb__key--layer {
+    grid-row: 6;
+    grid-column: 4;
+  }
+
+  .nr-kb__key--space {
+    grid-row: 6;
+    grid-column: 5;
+  }
+
+  .nr-kb__key--back {
+    grid-row: 6;
+    grid-column: 6;
+  }
+
+  /* THE WORD KEYBOARD IS SEVEN ACROSS, four rows: a to g, h to n, o to u, and
+     v to z with Back. Six across was five rows, 50 pixels the import screen
+     and the backup check did not have. Seven keys of 44 and six gaps of 6 are
+     344 pixels, so the keyboard takes 4 pixels of the body's margin each side
+     to have them: a key is exactly 44 wide at 360, a fraction over on the
+     HyperPixel's 360.9. */
+  .nr-kb:not(:has(> .nr-pk__value)) {
+    margin-inline: -0.25rem;
+  }
+
+  .nr-kb__keys {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+
+  /* THE READOUT IS ONE HEIGHT, whatever it holds. On a 344 pixel line a third
+     chip, or the hint that appears for a word that is also the start of others
+     ("act", "top"), wrapped onto a new line and moved every key down under a
+     finger already on its way. Two lines, scrolling, with the newest word
+     kept in view by the component; one line where only one word is asked for.
+     The count gives way to the hint while the hint is there. */
+  .nr-kb__entered {
+    height: 4.625rem;
+    max-height: none;
+  }
+
+  .nr-kb__entered--one {
+    height: 2.75rem;
+  }
+
+  .nr-kb__entered:has(> .nr-kb__pick) > .nr-kb__count {
+    display: none;
+  }
+
+  /* Its suggestions: three is what fits a row, and by the third letter of a
+     BIP39 word there are rarely more. */
+  .nr-kb__suggestions > :nth-child(n + 4) {
+    display: none;
+  }
+}
+
+/* Shown instead of the interface on a screen smaller than every panel it is
+   measured on. Plain text and no controls, because there is nothing on it
+   anybody should act on. See PanelGate. */
+.nr-toosmall {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 100%;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.nr-toosmall__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.nr-toosmall__text {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--color-text-dim);
 }

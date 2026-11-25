@@ -17,7 +17,7 @@ import { describe, expect, it } from 'vitest'
 import {
   mountOptions,
   noListeningSockets,
-  noSwap,
+  noSwapToStorage,
   parseFacts,
 } from '../../provisioning/checks/runtime.mjs'
 
@@ -80,14 +80,14 @@ describe('a healthy device', () => {
 
   it('passes all three', () => {
     expect(mountOptions(facts, MOUNTS).ok).toBe(true)
-    expect(noSwap(facts).ok).toBe(true)
+    expect(noSwapToStorage(facts).ok).toBe(true)
     expect(noListeningSockets(facts, { allow: BRIDGE }).ok).toBe(true)
   })
 
   it('states that it is one sample rather than a continuous guarantee', () => {
     // A verifier whose limit lives only in a comment is a verifier whose limit
     // nobody reads. A socket opened only while signing is not in this log.
-    expect(noSwap(facts).limits.join(' ')).toMatch(/one sample/)
+    expect(noSwapToStorage(facts).limits.join(' ')).toMatch(/one sample/)
   })
 })
 
@@ -98,7 +98,7 @@ describe('refusing to answer', () => {
     // indistinguishable from a clean device.
     const facts = parseFacts(consoleLog(HEALTHY, { truncate: true }))
     for (const result of [
-      noSwap(facts),
+      noSwapToStorage(facts),
       mountOptions(facts, MOUNTS),
       noListeningSockets(facts, { allow: BRIDGE }),
     ]) {
@@ -116,7 +116,7 @@ describe('refusing to answer', () => {
       'nullroute-facts: section swaps complete, 3 line(s)',
       'nullroute-facts: end',
     ].join('\n')
-    const result = noSwap(parseFacts(log))
+    const result = noSwapToStorage(parseFacts(log))
     expect(result.unavailable).toBe(true)
     expect(result.detail).toMatch(/truncated/)
   })
@@ -126,7 +126,7 @@ describe('refusing to answer', () => {
     // written to prevent false passes. The dumper skips a /proc file it cannot
     // read and still prints "complete, 0 line(s)", which is well formed and
     // internally consistent, so the line-count guard agrees with it perfectly:
-    // zero claimed, zero parsed. no-swap read that as "no swap area is active"
+    // zero claimed, zero parsed. The swap check read that as "no swap area is active"
     // and no-listening-sockets as "nothing listens", both green, about a device
     // nothing had looked at.
     //
@@ -141,7 +141,7 @@ describe('refusing to answer', () => {
     ].join('\n')
     const facts = parseFacts(log)
     for (const result of [
-      noSwap(facts),
+      noSwapToStorage(facts),
       mountOptions(facts, MOUNTS),
       noListeningSockets(facts, { allow: BRIDGE }),
     ]) {
@@ -163,18 +163,18 @@ describe('refusing to answer', () => {
     // joining strings with \n. This one is built the way the device writes it.
     const facts = parseFacts(consoleLog(HEALTHY).replace(/\n/g, '\r\n'))
     expect(mountOptions(facts, MOUNTS).ok).toBe(true)
-    expect(noSwap(facts).ok).toBe(true)
+    expect(noSwapToStorage(facts).ok).toBe(true)
     expect(noListeningSockets(facts, { allow: BRIDGE }).ok).toBe(true)
   })
 
   it('will not read a log from a boot that never ran the dumper', () => {
-    const result = noSwap(parseFacts('systemd: Started something else.\n'))
+    const result = noSwapToStorage(parseFacts('systemd: Started something else.\n'))
     expect(result.unavailable).toBe(true)
   })
 
   it('never reports could-not-run as a pass', () => {
     const facts = parseFacts('')
-    for (const result of [noSwap(facts), noListeningSockets(facts, { allow: BRIDGE })]) {
+    for (const result of [noSwapToStorage(facts), noListeningSockets(facts, { allow: BRIDGE })]) {
       // BOTH HALVES, because this test is named for the distinction between
       // them. It asserted only ok:false, which a verifier reporting a plain
       // failure also satisfies, so the one test in this file named for
@@ -273,13 +273,63 @@ describe('listening sockets', () => {
 })
 
 describe('swap', () => {
-  it('fails when an area is active', () => {
+  const ZRAM_HEADER = 'device backing_dev'
+  const ZRAM_ROW = '/dev/zram0 partition 241664 0 100'
+
+  it('fails when a swap file is active', () => {
     const facts = parseFacts(
       consoleLog({ ...HEALTHY, swaps: [SWAP_HEADER, '/swapfile file 1048572 0 -2'] })
     )
-    const result = noSwap(facts)
+    const result = noSwapToStorage(facts)
     expect(result.ok).toBe(false)
     expect(result.detail).toMatch(/swapfile/)
+  })
+
+  it('fails on a swap partition even beside compressed memory', () => {
+    const facts = parseFacts(
+      consoleLog({
+        ...HEALTHY,
+        swaps: [SWAP_HEADER, ZRAM_ROW, '/dev/mmcblk0p5 partition 524284 0 -2'],
+        zram: [ZRAM_HEADER, 'zram0 none'],
+      })
+    )
+    const result = noSwapToStorage(facts)
+    expect(result.ok).toBe(false)
+    expect(result.detail).toMatch(/mmcblk0p5/)
+  })
+
+  it('passes compressed memory that writes back to nothing', () => {
+    const facts = parseFacts(
+      consoleLog({ ...HEALTHY, swaps: [SWAP_HEADER, ZRAM_ROW], zram: [ZRAM_HEADER, 'zram0 none'] })
+    )
+    const result = noSwapToStorage(facts)
+    expect(result.ok).toBe(true)
+    expect(result.detail).toMatch(/zram0/)
+  })
+
+  it('fails compressed memory with a backing device', () => {
+    // CONFIG_ZRAM_WRITEBACK is on in the Raspberry Pi kernel: idle pages of a
+    // zram device can be written to a block device named in backing_dev.
+    const facts = parseFacts(
+      consoleLog({
+        ...HEALTHY,
+        swaps: [SWAP_HEADER, ZRAM_ROW],
+        zram: [ZRAM_HEADER, 'zram0 /dev/mmcblk0p4'],
+      })
+    )
+    const result = noSwapToStorage(facts)
+    expect(result.ok).toBe(false)
+    expect(result.detail).toMatch(/writes back to \/dev\/mmcblk0p4/)
+  })
+
+  it('will not pass compressed memory without saying where it writes', () => {
+    // An image from before the zram section, or a dump that lost it: swap is
+    // on and nothing says where it can go, which is not a pass.
+    const result = noSwapToStorage(
+      parseFacts(consoleLog({ ...HEALTHY, swaps: [SWAP_HEADER, ZRAM_ROW] }))
+    )
+    expect(result.ok).toBe(false)
+    expect(result.unavailable).toBe(true)
   })
 })
 

@@ -36,11 +36,13 @@ network, a swap file and a browser, so treat anything you create here as a toy.
 The parts list is in the README, under
 [What you need to build one](../README.md#what-you-need-to-build-one).
 
-- **Board.** One card serves a Pi 4 or a Pi 5, and both are in bring-up: a
-  board is supported once a card boots on one with the panel lit. The Pi 4
-  boots Debian's kernel and the Pi 5 Raspberry Pi's. Other boards come once
-  the image boots on them.
-- **Screen.** The official 7 inch panel. Touch Display 2 is not supported.
+- **Board.** One card serves a Pi 5, a Pi 4, a Pi 3B or 3B+ and a Zero 2 W,
+  all in bring-up: a board is supported once a card boots on one with its
+  panel lit. The Pi 4 boots Debian's kernel and the others Raspberry Pi's.
+- **Screen.** The official 7 inch panel, Touch Display 2 at 5 or 7 inches, or
+  on a Zero 2 W a Pimoroni HyperPixel 4.0. The kiosk reads which one is
+  attached from the device tree and draws at its scale. Anything else is drawn
+  at scale 1, and below 360 by 480 pixels the interface refuses to draw.
 - **Camera.** A USB (UVC) webcam. A Pi camera module on the CSI connector does
   not work: the pinned kernel has no driver for it. No camera has streamed on a
   Pi yet.

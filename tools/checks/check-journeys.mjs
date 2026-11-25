@@ -55,6 +55,7 @@ import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 import { chromeBinary, finish, reap, waitForDebugEndpoint, freePort } from '../lib/browser.mjs'
+import { viewportsFromArgs } from '../lib/panels.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 
@@ -97,9 +98,18 @@ const SHOTS = (() => {
 const PORT = await freePort()
 const DEBUG_PORT = await freePort()
 
-/** The panel. Not a breakpoint, a fixed piece of hardware. */
-const WIDTH = 800
-const HEIGHT = 480
+/**
+ * The panel. Not a breakpoint, a fixed piece of hardware: the 7 inch one
+ * unless --panel names another size provisioning/units/panels.tsv gives. `make
+ * journeys` walks every journey at 800x480 and again at 360x601, the smallest,
+ * because a flow can depend on layout (a control under the action bar is one
+ * a finger cannot tap) and the narrow layout is a different layout.
+ */
+const [PANEL] = process.argv.includes('--panel')
+  ? viewportsFromArgs()
+  : [{ width: 800, height: 480, label: '800x480' }]
+const WIDTH = PANEL.width
+const HEIGHT = PANEL.height
 
 for (const [what, path] of [
   ['the frontend', join(DIST, 'index.html')],
@@ -749,9 +759,13 @@ async function main() {
                 if (want !== null && document.querySelector('[data-testid="' + want + '"]') === null) {
                   return '-1|false'
                 }
+                // Only boxes a finger can scroll: see SCROLL_TO_END in
+                // check-screen-fit for what scrolling a hidden one showed.
                 for (let pass = 0; pass < 2; pass += 1) {
                   for (const el of document.querySelectorAll('*')) {
-                    if (el.scrollHeight > el.clientHeight) el.scrollTop = el.scrollHeight
+                    if (el.scrollHeight <= el.clientHeight) continue
+                    if (!/auto|scroll/.test(getComputedStyle(el).overflowY)) continue
+                    el.scrollTop = el.scrollHeight
                   }
                 }
                 const b = document.querySelector('.nr-screen__body')
@@ -846,9 +860,13 @@ async function main() {
                 const c = document.querySelector('[data-testid="kb-count"]')
                 const n = c === null ? null : /^\\s*(\\d+)/.exec(c.textContent || '')
                 if (n !== null && Number(n[1]) === ${String(entered + 1)}) return 'committed'
-                if (document.querySelector('[data-testid="kb-suggest-' + ${JSON.stringify(want)} + '"]') !== null) {
-                  return 'suggested'
-                }
+                // ON SCREEN, not merely in the document. A 4 inch panel shows
+                // three suggestions and hides the rest, so after "tw" the
+                // button for "twin" exists and cannot be tapped, and a person
+                // types two more letters instead. Read as present, the journey
+                // tapped a hidden button and stopped there.
+                const s = document.querySelector('[data-testid="kb-suggest-' + ${JSON.stringify(want)} + '"]')
+                if (s !== null && s.checkVisibility()) return 'suggested'
                 const p = document.querySelector('[data-testid="kb-prefix"]')
                 return 'typing:' + (p === null ? '' : (p.textContent || '').trim())
               })()`)
@@ -858,7 +876,8 @@ async function main() {
             const before = await state()
             if (before === 'committed') break
             if (before === 'suggested') {
-              await tap(`kb-suggest-${want}`)
+              const picked = await tap(`kb-suggest-${want}`)
+              if (picked !== 'ok') broke = `word: the suggestion "${want}" was ${picked}`
               break
             }
             const typed = await tap(`kb-key-${letter}`)
@@ -1053,15 +1072,20 @@ async function main() {
                 const c = document.querySelector('[data-testid="kb-count"]')
                 const n = c === null ? null : /^\\s*(\\d+)/.exec(c.textContent || '')
                 if (n !== null && Number(n[1]) === ${String(before + 1)}) return 'committed'
-                return document.querySelector('[data-testid="kb-suggest-' + ${JSON.stringify(want)} + '"]') === null
-                  ? 'typing' : 'suggested'
+                // On screen, for the reason the word step gives.
+                const s = document.querySelector('[data-testid="kb-suggest-' + ${JSON.stringify(want)} + '"]')
+                return s !== null && s.checkVisibility() ? 'suggested' : 'typing'
               })()`)
               if (status === 'committed') {
                 entered = true
                 break
               }
               if (status === 'suggested') {
-                await tap(`kb-suggest-${want}`)
+                const picked = await tap(`kb-suggest-${want}`)
+                if (picked !== 'ok') {
+                  broke = `mnemonic: the suggestion "${want}" was ${picked}`
+                  break
+                }
                 entered = true
                 break
               }
@@ -1226,7 +1250,7 @@ async function main() {
   }
 
   if (failures.length > 0) {
-    console.error('\ncheck-journeys: a guided journey did not complete.\n')
+    console.error(`\ncheck-journeys: a guided journey did not complete at ${PANEL.label}.\n`)
     for (const failure of failures) console.error(`  ${failure}`)
     console.error(
       '\n  A journey that stops early is a device somebody cannot use. This ran\n' +
@@ -1236,7 +1260,9 @@ async function main() {
     process.exit(1)
   }
 
-  console.log(`\ncheck-journeys: ${String(JOURNEYS.length)} guided journeys complete`)
+  console.log(
+    `\ncheck-journeys: ${String(JOURNEYS.length)} guided journeys complete at ${PANEL.label}`
+  )
   // The verdict is printed and nothing is left to wait for. See tools/lib/reap.mjs.
   finish(0)
 }

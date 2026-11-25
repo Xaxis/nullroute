@@ -10,8 +10,8 @@
  * exist, because there is no /proc/mounts for it to disagree with.
  *
  * SO THE EVIDENCE COMES FROM A BOOT AND THE VERDICT IS REACHED HERE. The guest
- * runs provisioning/units/runtime-facts, which prints six kernel files to the
- * console and judges nothing. This module parses that console log and decides.
+ * runs provisioning/units/runtime-facts, which prints six kernel files and
+ * where each zram device writes back to on the console, and judges nothing. This module parses that console log and decides.
  * The split is the point: the image is the artifact under test, and an artifact
  * that grades itself has been asked the one question it cannot be trusted to
  * answer. Raw evidence in a log can be re-judged by anyone; a PASS printed by a
@@ -156,11 +156,12 @@ function usable(check, facts, name) {
   // The dumper skips a /proc file it cannot read and still prints "section
   // swaps complete, 0 line(s)", which is well-formed and internally consistent.
   // The line-count guard above cannot catch it, because zero lines claimed and
-  // zero lines parsed agree perfectly. no-swap then read that as "no swap area
+  // zero lines parsed agree perfectly. The swap check then read that as "no swap area
   // is active" and no-listening-sockets as "nothing listens outside AF_UNIX",
   // both green, both about a device nothing had looked at.
   //
-  // All six files are non-empty on any booted Linux: /proc/swaps and the four
+  // The zram section always carries a header row of its own. The six files
+  // are non-empty on any booted Linux: /proc/swaps and the four
   // socket tables each carry a header row even when they hold nothing, and
   // /proc/self/mountinfo cannot be empty in a process that has a root. So zero
   // rows is not a state the device can legitimately be in.
@@ -254,29 +255,66 @@ function unoctal(value) {
 }
 
 /**
- * INV-PROV-11. No swap is active.
+ * INV-PROV-11. No swap reaches storage.
  *
- * /proc/swaps is a header line and one row per active area. Zero rows is the
- * claim. A swap file that exists on disk but was never swapped on is not here,
- * and that is correct: this asks what the kernel is using, and the file's
- * existence is INV-PROV-11's build-time half, checked by absent-paths.
+ * /proc/swaps is a header line and one row per active area. Zero rows passes.
+ * So does a row for a zram device, which is compressed memory, provided the
+ * zram section shows it writing back to nothing: the Raspberry Pi kernel can
+ * write a zram device's idle pages out to a block device, and one named there
+ * is swap on storage by another route. Anything else, a swap file or a swap
+ * partition, fails, whatever the board.
+ *
+ * Which board turns zram on is not judged here. nullroute-zram.service does it
+ * under 800 MB and the QEMU boot test runs with 1024, so the log this reads in
+ * CI shows no swap at all, and the zram branch is exercised by the tests.
  */
-export function noSwap(facts) {
-  const check = 'no-swap'
+export function noSwapToStorage(facts) {
+  const check = 'no-swap-to-storage'
   const blocked = usable(check, facts, 'swaps')
   if (blocked !== null) return blocked
 
-  const rows = facts.section('swaps')
-  const active = rows.slice(1).filter((row) => row.trim() !== '')
+  const active = facts
+    .section('swaps')
+    .slice(1)
+    .filter((row) => row.trim() !== '')
+  if (active.length === 0) return verdict(check, true, 'no swap area is active', SAMPLED)
 
-  return active.length === 0
-    ? verdict(check, true, 'no swap area is active', SAMPLED)
-    : verdict(
+  const storage = active.filter((row) => !/^\/dev\/zram\d+$/u.test(row.trim().split(/\s+/u)[0]))
+  if (storage.length > 0) {
+    return verdict(
+      check,
+      false,
+      `${String(storage.length)} swap area(s) active that are not compressed memory: ${storage.join(' | ')}`,
+      SAMPLED
+    )
+  }
+
+  // Swap is on, so where it may write is the whole question, and a log with
+  // no answer to it is not a pass.
+  const unread = usable(check, facts, 'zram')
+  if (unread !== null) return unread
+  const backing = new Map(
+    facts
+      .section('zram')
+      .slice(1)
+      .map((row) => row.trim().split(/\s+/u))
+      .map(([device, to]) => [device, to])
+  )
+  const problems = []
+  for (const row of active) {
+    const device = row.trim().split(/\s+/u)[0].slice('/dev/'.length)
+    const to = backing.get(device)
+    if (to === undefined) problems.push(`${device} is active and the zram section does not list it`)
+    else if (to !== 'none' && to !== 'unsupported') problems.push(`${device} writes back to ${to}`)
+  }
+  return problems.length === 0
+    ? verdict(
         check,
-        false,
-        `${String(active.length)} swap area(s) active: ${active.join(' | ')}`,
+        true,
+        `swap is compressed memory with no backing device: ${active.map((row) => row.trim().split(/\s+/u)[0]).join(', ')}`,
         SAMPLED
       )
+    : verdict(check, false, problems.join('; '), SAMPLED)
 }
 
 /** TCP_LISTEN, the only state in /proc/net/tcp that means a server. */
@@ -476,6 +514,6 @@ function compressV6(groups) {
 
 export const RUNTIME_VERIFIERS = {
   'mount-options': mountOptions,
-  'no-swap': noSwap,
+  'no-swap-to-storage': noSwapToStorage,
   'no-listening-sockets': noListeningSockets,
 }

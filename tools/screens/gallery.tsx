@@ -160,6 +160,13 @@ const XPUB =
 const DESCRIPTOR = `wsh(sortedmulti(2,[73c5da0a/48h/0h/0h/2h]${XPUB}/<0;1>/*,[aabbccdd/48h/0h/0h/2h]${XPUB}/<0;1>/*,[11223344/48h/0h/0h/2h]${XPUB}/<0;1>/*))#8rf6pq2t`
 const ADDRESS = 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu'
 /**
+ * A quorum pays to a script hash, so its address is 62 characters, not the 42
+ * of a single key. The quorum fixtures used ADDRESS, which measured the
+ * receive screen against an address shorter than any quorum produces. This is
+ * the P2WSH example from BIP-173, a valid mainnet address.
+ */
+const QUORUM_ADDRESS = 'bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3'
+/**
  * TWENTY FOUR WORDS, because that is what the device makes.
  *
  * This was the twelve word test vector, so the seed screen was measured with
@@ -593,6 +600,15 @@ const SCREENS: Record<string, () => React.ReactElement> = {
       onSubmit={never}
       onCancel={noop}
     />
+  ),
+  /*
+   * Setting one, which is a different layout from unlocking: two fields, a
+   * line of notes under them, and the keyboard below that. This was never
+   * measured, and on the 800x480 panel the bottom row of keys, Space and
+   * Enter among them, sat under the action bar.
+   */
+  'passphrase-set': () => (
+    <PassphraseScreen identity={DEVICE} mode="set" onSubmit={pending} onCancel={noop} />
   ),
   /*
    * Unlock, mid-derivation.
@@ -1529,7 +1545,7 @@ const SCREENS: Record<string, () => React.ReactElement> = {
         { checksum: 'q35wkfm7', threshold: 3, total: 5, descriptor: DESCRIPTOR },
       ]}
       onQuorumAddress={async (_descriptor: string, index: number) =>
-        Promise.resolve({ address: ADDRESS, path: `quorum index ${String(index)}`, index })
+        Promise.resolve({ address: QUORUM_ADDRESS, path: `quorum index ${String(index)}`, index })
       }
       onVerifyQuorum={async () => Promise.resolve({ found: true, index: 0 })}
       onAddress={async (index: number) =>
@@ -1740,6 +1756,18 @@ const REACH: Record<string, readonly (readonly string[])[]> = {
   message: [['pk-key-a', 'message-review']],
   passphrase: [['pk-key-a', 'passphrase-submit']],
   'passphrase-working': [['pk-key-a', 'passphrase-submit']],
+  // Long enough for the longest note, then the second field part typed, which
+  // is the mismatch, then both and Encrypt, which is the working note.
+  'passphrase-set': [
+    ['keys:a sentence you remember'],
+    ['keys:a sentence you remember', 'passphrase-confirm', 'keys:a sentence'],
+    [
+      'keys:a sentence you remember',
+      'passphrase-confirm',
+      'keys:a sentence you remember',
+      'passphrase-submit',
+    ],
+  ],
   // Acknowledged and generated, which is the only route to this screen's last
   // banner: the button is gated on both the tick and a healthy report.
   'machine-failed': [['machine-acknowledge', 'machine-generate']],

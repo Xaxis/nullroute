@@ -69,9 +69,15 @@ export function readParts(): { readonly parts: readonly Part[]; readonly cost: s
   const section = readme.slice(start, readme.indexOf('\n## ', start + 1))
   const cost = /^Roughly (\$\d+ to \$\d+)\.$/m.exec(section)?.[1]
   const parts: Part[] = []
+  // The first table only. The section goes on to a second one for the small
+  // build, whose Board and Screen rows would otherwise be listed again under
+  // the first build's Case and PSU as if both were one parts list.
   for (const line of section.split('\n')) {
     const match = /^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*(.+?)\s*\|\s*$/.exec(line)
-    if (match === null) continue
+    if (match === null) {
+      if (parts.length > 0) break
+      continue
+    }
     const [, part = '', what = '', notes = ''] = match
     if (part === 'Part' || /^-+$/.test(part)) continue
     parts.push({ part, what, notes })

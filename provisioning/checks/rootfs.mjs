@@ -955,8 +955,8 @@ export function bootConfigDisplay(root, params) {
 
   const limits = [
     'reads config.txt only. It says the overlay is NAMED, not that the .dtbo is on the card, and not that the panel lights up. Only the hardware answers the last one.',
-    'the panel is the official 7 inch DSI touchscreen. A different display needs a different overlay and this assertion is about that one.',
-    'understands model filters such as [pi4] and [pi5] and [all]. A section opened by any other filter is read as that filter, so a combined condition like [pi5][tryboot] would be misread.',
+    'says which overlays each board is told to load, not which panel is attached. A panel provisioning/units/panels.tsv does not list needs an overlay this assertion does not name.',
+    'understands model filters such as [pi4], [pi5], [pi3], [pi02] and [all]. A section opened by any other filter is read as that filter, so a combined condition like [pi5][tryboot] would be misread, and so would a Zero 2 W line under [pi0], which that board also reads.',
   ]
 
   return problems.length === 0
@@ -1210,6 +1210,12 @@ export function browserPolicyExact(root, params) {
  *
  * A module built into the kernel is listed in modules.builtin instead and has
  * no file. That counts as present, because it is.
+ *
+ * `kernel` narrows the check to the module trees whose version contains it,
+ * for a driver only one of the image's kernels has: the small panels' drivers
+ * are Raspberry Pi's, and Debian's kernel, which only the Pi 4 boots, has no
+ * reason to carry them. A filter that matches no tree fails, so a renamed
+ * kernel cannot turn the check into one about nothing.
  */
 export function kernelModulesPresent(root, params) {
   const modules = params.modules ?? []
@@ -1221,12 +1227,21 @@ export function kernelModulesPresent(root, params) {
   const base = ['usr/lib/modules', 'lib/modules']
     .map((dir) => join(root, dir))
     .find((dir) => existsSync(dir))
-  const versions = base === undefined ? [] : readdirSync(base).sort()
-  if (base === undefined || versions.length === 0) {
+  const all = base === undefined ? [] : readdirSync(base).sort()
+  if (base === undefined || all.length === 0) {
     // Could-not-run, never a pass. A tree with no module directory at all is
     // more likely an export that left it out than an image with no kernel
     // modules, and a FAIL would describe the export rather than the image.
     return unavailable('kernel-modules-present', 'the rootfs has no lib/modules to look in')
+  }
+  const kernel = params.kernel === undefined ? undefined : String(params.kernel)
+  const versions = kernel === undefined ? all : all.filter((version) => version.includes(kernel))
+  if (versions.length === 0) {
+    return verdict(
+      'kernel-modules-present',
+      false,
+      `no module tree's version contains ${String(kernel)}; the image has ${all.join(', ')}`
+    )
   }
 
   const stem = (path) => (path.split('/').pop() ?? '').replace(/\.ko(\.(xz|zst|gz))?$/u, '')

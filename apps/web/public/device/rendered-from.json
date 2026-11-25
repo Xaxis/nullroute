@@ -1,6 +1,6 @@
 {
-  "bundle": "1114b3d4f6af7d7d59ea6b23a2e67466e54f6a365b4a215501c52b704f157f27",
-  "root": "813c8ab63cac72c97c2d9e615a01ebfc94b22fcc7dac5c079a9698920b39390b",
+  "bundle": "0e859b535b77cb55add00bd58a1792ecc8872d306e0fb5873067644fe7c2950e",
+  "root": "5cdeb25c3671a5ec9e5cca2565adad5efb272681a540be4dd146190a133c82df",
   "platform": "linux-x64",
   "browser": "Chrome/156.0.8078.4",
   "screens": "lock,dice,seed,review,receive,verify"

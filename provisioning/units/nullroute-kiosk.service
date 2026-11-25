@@ -110,7 +110,14 @@ Environment=XDG_CACHE_HOME=/run/nullroute-ui/cache
 # what this unit is for, and the keys are meaningless without a network and
 # still baked into every process. Calling the binary directly means the flag
 # list below is the whole flag list.
-ExecStart=/usr/bin/cage -- /usr/lib/chromium/chromium \
+#
+# THROUGH chromium-for-panel, which execs that same binary with one flag added:
+# the scale the attached panel is laid out at, read from the device tree and
+# /usr/lib/nullroute/panels.tsv. It sources nothing, so the property above
+# holds with one named exception. No --window-size: cage gives its one window
+# the whole output, and the 800,480 this used to pass was the wrong shape for
+# every portrait panel the table lists.
+ExecStart=/usr/bin/cage -- /usr/lib/nullroute/bin/chromium-for-panel \
   --kiosk \
   --incognito \
   --noerrdialogs \
@@ -124,7 +131,6 @@ ExecStart=/usr/bin/cage -- /usr/lib/chromium/chromium \
   --disable-breakpad \
   --disable-sync \
   --disable-component-update \
-  --window-size=800,480 \
   http://127.0.0.1:5180/
 Restart=on-failure
 RestartSec=2

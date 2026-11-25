@@ -452,3 +452,37 @@ describe('TextKeyboard', () => {
     expect(value).toBe('a ')
   })
 })
+
+describe('WordKeyboard on a panel where the readout scrolls', () => {
+  /**
+   * INV-UI-110. On a 4 inch panel twenty four words are eight lines in a box
+   * of two, so the word being typed is below the box's edge unless the box is
+   * brought to its end. jsdom lays nothing out, so the box is given a content
+   * height here and the test reads where the box was scrolled to.
+   */
+  it('keeps-the-newest-word-in-view', () => {
+    const { rerender } = render(
+      <WordKeyboard words={['abandon']} onChange={vi.fn()} target={24} testId="kb" />
+    )
+    const box = screen.getByTestId('kb-words')
+    Object.defineProperty(box, 'scrollHeight', { configurable: true, value: 480 })
+    box.scrollTop = 0
+    rerender(
+      <WordKeyboard words={['abandon', 'ability']} onChange={vi.fn()} target={24} testId="kb" />
+    )
+    expect(box.scrollTop).toBe(480)
+    // And on a keystroke, which changes no word but adds the typing chip.
+    box.scrollTop = 0
+    fireEvent.click(screen.getByTestId('kb-key-a'))
+    expect(box.scrollTop).toBe(480)
+  })
+
+  /** INV-UI-110. One line for one word, a class the narrow layout keys on. */
+  it('marks-a-readout-for-one-word', () => {
+    render(<WordKeyboard words={[]} onChange={vi.fn()} target={1} testId="kb" />)
+    expect(screen.getByTestId('kb-words').className).toContain('nr-kb__entered--one')
+    cleanup()
+    render(<WordKeyboard words={[]} onChange={vi.fn()} target={12} testId="kb" />)
+    expect(screen.getByTestId('kb-words').className).not.toContain('nr-kb__entered--one')
+  })
+})

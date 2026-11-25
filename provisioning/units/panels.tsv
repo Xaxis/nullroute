@@ -1,0 +1,34 @@
+# The touch panels this device is laid out for, one per device tree compatible.
+#
+# Installed at /usr/lib/nullroute/panels.tsv. The kiosk reads it at start to
+# choose the scale it draws at (chromium-for-panel), and the layout checks read
+# it to choose the sizes they measure every screen at
+# (tools/checks/check-screen-fit.mjs, tools/checks/check-journeys.mjs). One
+# table, so the size a screen is measured at and the size it is drawn at on the
+# panel cannot drift apart.
+#
+# A panel is matched by the compatible string of its node in the running device
+# tree, which is what the overlay named in config.txt put there. Two of these
+# have the same pixels and differ only in size (Touch Display 2 at 5 and 7
+# inches), so pixels alone cannot choose the scale.
+#
+# scale: device pixels per CSS pixel. Chosen so a CSS pixel is 0.15 to 0.19 mm
+# on the glass, the range phones use, which makes the 44 pixel target every
+# control is held to 6.4 to 8.4 mm. The viewport a screen is laid out in is
+# pixels divided by scale, rounded down: 800x480, 480x853, 360x640, 360x601.
+#
+# The HyperPixel is at 1.33 rather than 1.5. At 1.5 it is 320 pixels wide, and
+# the passphrase keyboard needs 6 keys of 44 pixels and their gaps in a row,
+# which with the body's margins is 324 of 296. 1.33 makes it 360.9 by 601.5,
+# the width of the 5 inch panel with a fraction to spare, so no rounding in the
+# browser can put it a pixel under the 360 the interface refuses to draw below.
+# A CSS pixel is then 0.146 mm.
+#
+# Columns are separated by one tab. Lines starting with # are comments.
+#
+# compatible	scale	pixels	name
+raspberrypi,7inch-touchscreen-panel	1	800x480	Raspberry Pi Touch Display (7 inch)
+raspberrypi,7inch-dsi	1	800x480	Raspberry Pi Touch Display (7 inch)
+raspberrypi,dsi-7inch	1.5	720x1280	Raspberry Pi Touch Display 2 (7 inch)
+raspberrypi,dsi-5inch	2	720x1280	Raspberry Pi Touch Display 2 (5 inch)
+pimoroni,hyperpixel4	1.33	480x800	Pimoroni HyperPixel 4.0

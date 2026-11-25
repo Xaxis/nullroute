@@ -502,7 +502,7 @@ Reproducing a signature".
 | SP-REV-2 | Met | INV-PSBT-5 |
 | SP-REV-3 | Met, more strictly than required | Review blocks, until the user overrides, whenever any input that is not taproot arrives without its previous transaction (INV-PSBT-17, `packages/core/test/psbt.fee-attack.test.ts`), including one this device does not sign, where the profile would permit a witness UTXO. With the previous transaction present, the signing library rejects one whose TXID or output contradicts the input while parsing (`@scure/btc-signer` 2.3.0, `transaction.js` lines 305-345, 536 and 613), and the test pins that. Bitcoin Core 31's `walletcreatefundedpsbt` includes the previous transaction for segwit v0 inputs, checked on regtest, so a Core-built PSBT passes without a warning |
 | SP-REV-4 | Met | INV-PSBT-4, INV-PSBT-8, INV-UI-12 |
-| SP-REV-5 | Met in the headless render; unverified on the panel | INV-PSBT-11, INV-PSBT-22, INV-UI-108; passes `review-outputs.json`; screens measured at 800x480 by `tools/checks/check-screen-fit.mjs`. Until 23 November this row said Met while an output with no address showed a placeholder instead of its script |
+| SP-REV-5 | Met in the headless render; unverified on the panel | INV-PSBT-11, INV-PSBT-22, INV-UI-108; passes `review-outputs.json`; screens measured at every listed panel size by `tools/checks/check-screen-fit.mjs`. Until 23 November this row said Met while an output with no address showed a placeholder instead of its script |
 | SP-REV-6 | Met | INV-PSBT-2, INV-PSBT-12, INV-PSBT-16, INV-UI-12; search bound four script types, two branches, 100 addresses each (`packages/daemon/src/psbt.spec.yaml` lines 77-89) |
 | SP-REV-7 | Met, including the SHOULD | INV-UI-12, INV-PSBT-2. A false claim is shown as a payment and reported as claimed, from `PSBT_OUT_BIP32_DERIVATION` and `PSBT_OUT_TAP_BIP32_DERIVATION` alike (`review-change.json`; `psbt.review.test.ts::reports-a-false-taproot-claim-on-an-output`) |
 | SP-REV-8 | Met | INV-PSBT-6 |
@@ -684,8 +684,10 @@ does not require it.
 
 No requirement here names a board, SoC or panel. Where nullroute's current
 profile is described, it is the Raspberry Pi 4 (4GB) with the official 7 inch
-DSI touchscreen at 800x480, which is the only profile it builds for
-(`docs/VERIFICATION.md`, "Hardware"). First boot on that hardware is the next
+DSI touchscreen at 800x480. The same image also carries the Pi 5, the Pi 3B
+and 3B+ and the Zero 2 W, and lays the interface out for Touch Display 2 and
+the HyperPixel 4.0 as well (`docs/VERIFICATION.md`, "Hardware";
+`research/small-boards.md`). First boot on that hardware is the next
 milestone. Until it happens, anything that depends on the panel, the camera or
 the running kernel is recorded below as unverified, and every such line names
 the build-time check that already exists.
@@ -726,8 +728,11 @@ outside loopback. Check: nullroute INV-PROV-13 against the built image and a
 radio-module count in the boot test, INV-NET-1 to INV-NET-3 for listeners;
 manual on hardware: list network interfaces on the running device.
 
-**SP-HW-7.** Where a seed is stored, it MUST be stored only in encrypted form
-and there MUST be no swap. Check: nullroute INV-STORE-1, INV-PROV-11.
+**SP-HW-7.** Where a seed is stored, it MUST be stored only in encrypted form,
+and no swap MAY reach persistent storage. Swap held in memory, such as a zram
+device with no backing device, is RAM and satisfies this; the implementer
+MUST say whether it has any, and whether the process holding key material can
+be swapped into it. Check: nullroute INV-STORE-1, INV-PROV-11.
 
 **SP-HW-8.** The signer SHOULD detect modification of its system partition
 (tier 1). Check: nullroute `provisioning/profiles/os-verity.yaml` (INV-PROV-4,
@@ -751,23 +756,26 @@ board.
 
 ### 5.2 Hardware assumptions already in nullroute
 
-From `research/00-current-state.md` section 3: the hard dependencies are the
+From `research/00-current-state.md` section 3: the hard dependencies were the
 Pi 4 device tree and boot files, the DSI panel overlay and its touch
 controller, and 800x480 as the only viewport. None of them is in
 `packages/core`. A second board needs its own profile entry, device tree and
 overlay, and a second panel needs a layout that passes SP-HW-2 at its size.
+Both have since been done for the Pi 3 family and three more panels: the
+viewports are the four in `provisioning/units/panels.tsv`, and the interface
+refuses to draw below the smallest (INV-UI-110).
 
 ### 5.3 nullroute conformance
 
 | Id | Status on Pi 4 with the 7 inch panel | What exists before bring-up |
 | --- | --- | --- |
 | SP-HW-1 | Unverified until bring-up | INV-PROV-25, INV-PROV-26: config.txt names the panel overlay and the overlay is on the card; the build refuses to finish unless the merged tree enables the DSI node and touch controller |
-| SP-HW-2 | Met in the headless render; unverified on the panel | `tools/checks/check-screen-fit.mjs` at 800x480 |
+| SP-HW-2 | Met in the headless render; unverified on the panel | `tools/checks/check-screen-fit.mjs` at 800x480, 480x853, 360x640 and 360x601 |
 | SP-HW-3 | Met against a software decoder; unverified with a camera | INV-QR-5 |
 | SP-HW-4 | Unverified until bring-up | FT5406 touch controller in the overlay |
 | SP-HW-5 | Unverified until bring-up | The camera is a USB (UVC) webcam. The card carries the `uvcvideo` driver, udev to load it when one is plugged in, the kiosk's permission for video devices and a browser policy granting the camera to the device's own page only (udev and the driver: INV-PROV-30); no camera has streamed on a Pi. A Pi CSI camera module has no driver in the pinned kernel. Nothing mounts removable media, so the SD card transport is planned and not built |
 | SP-HW-6 | Met in the image; unverified on the running device | INV-PROV-13, INV-NET-1 to INV-NET-3. The radio chip remains on the board (`docs/THREAT-MODEL.md`, Assumptions) |
-| SP-HW-7 | Met | INV-STORE-1, INV-PROV-11 |
+| SP-HW-7 | Met in the image; zram unverified on a running board | INV-STORE-1, INV-PROV-11. No swap file or partition on any board. Under 800 MB the device turns on a zram device and the runtime check fails one that writes back to anything; the daemon's pages can be compressed into it |
 | SP-HW-8 | Met in the build; unverified on hardware | `os-verity.yaml`, INV-BOOT-1 |
 | SP-HW-9 | Met | INV-DICE-7, INV-SIG-1, INV-SIG-2 |
 | SP-HW-10 | Unverified until bring-up | The cost has not been timed on any board (`store.spec.yaml`) |

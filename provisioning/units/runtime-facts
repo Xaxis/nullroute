@@ -2,7 +2,7 @@
 # Print the kernel's own view of mounts, swap and listening sockets.
 #
 # WHY THIS EXISTS. Three assertions in os-signer.yaml are about the RUNNING
-# device: mount flags actually in force, swap actually absent, sockets actually
+# device: mount flags actually in force, swap actually in memory, sockets actually
 # listening. provisioning/README.md explains at length why none of them can be
 # read off an unbooted root filesystem, and CLAUDE.md records what happens when
 # somebody tries: an offline scan reports noexec and nosuid as passing while the
@@ -65,9 +65,33 @@ printf 'nullroute-facts: begin\n'
 # flags, and only mountinfo can say so.
 say mountinfo /proc/self/mountinfo
 
-# Zero data rows under the header is the whole claim. A swap file that was
-# swapped off is not here, which is correct: this asks what is active now.
+# What is active now. A swap file that was swapped off is not here, which is
+# correct. The claim is that every row is a zram device, which is compressed
+# memory, and the zram section below says where each one writes to.
 say swaps /proc/swaps
+
+# EVERY ZRAM DEVICE AND WHAT IT WRITES BACK TO. A board with under 800 MB turns
+# on swap that is compressed memory (nullroute-zram.service), and the Raspberry
+# Pi kernel is built with CONFIG_ZRAM_WRITEBACK, which lets such a device be
+# told to write its idle pages out to a block device. "none" is the claim;
+# "unsupported" is a kernel with no writeback to configure. A header row first,
+# as every file above has, so an empty section still means unreadable.
+zram() {
+  count=1
+  printf 'nullroute-facts zram| device backing_dev\n'
+  for dev in /sys/block/zram*; do
+    [ -e "$dev" ] || continue
+    if [ ! -e "$dev/backing_dev" ]; then
+      backing=unsupported
+    elif ! backing=$(cat "$dev/backing_dev"); then
+      backing=UNREADABLE
+    fi
+    printf 'nullroute-facts zram| %s %s\n' "${dev##*/}" "$backing"
+    count=$((count + 1))
+  done
+  printf 'nullroute-facts: section zram complete, %s line(s)\n' "$count"
+}
+zram
 
 # THE KERNEL'S SOCKET TABLES, not `ss` output. ss lives in iproute2, which is a
 # package this image does not have and which CLAUDE.md forbids adding without

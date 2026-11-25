@@ -191,9 +191,13 @@ export function MachineEntropyScreen(props: MachineEntropyScreenProps): ReactEle
               data-testid="machine-unknown"
             >
               <strong>Some sources could not be checked here</strong>
+              {/* NOT "THIS HAPPENS OFF A REAL DEVICE". It said so, and a board
+                  missing one of the paths these checks read would show
+                  unknown on real hardware, under a sentence telling the
+                  person it could not. Each row's detail says why it is
+                  unknown, which is the honest version of that sentence. */}
               <span>
-                The rows marked unknown were not observed, which is not the same as being fine. This
-                happens off a real device, where the Linux paths these checks read do not exist. The
+                The rows marked unknown were not observed, which is not the same as being fine. The
                 seed will not be generated while anything is unknown.
               </span>
             </div>

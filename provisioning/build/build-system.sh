@@ -166,6 +166,7 @@ cp /work/provisioning/units/nullroute-state.service "$ROOTFS/usr/lib/systemd/sys
 cp /work/provisioning/units/nullroute-bridge.service "$ROOTFS/usr/lib/systemd/system/"
 cp /work/provisioning/units/nullroute-attest.service "$ROOTFS/usr/lib/systemd/system/"
 cp /work/provisioning/units/nullroute-runtime-facts.service "$ROOTFS/usr/lib/systemd/system/"
+cp /work/provisioning/units/nullroute-zram.service "$ROOTFS/usr/lib/systemd/system/"
 
 # THE CAMERA WITHOUT A PERMISSION PROMPT, AND ONLY FOR THE FRONTEND'S ORIGIN.
 # The camera is a USB (UVC) webcam and the frontend reads QR codes through
@@ -197,6 +198,7 @@ chmod 0644 "$ROOTFS/etc/chromium/policies/managed/nullroute.json"
 for pair in nullroute-state.service:multi-user nullroute-attest.service:multi-user \
             nullrouted.service:multi-user nullroute-bridge.service:multi-user \
             nullroute-runtime-facts.service:multi-user \
+            nullroute-zram.service:multi-user \
             nullroute-kiosk.service:graphical; do
   unit="${pair%%:*}"
   target="${pair##*:}.target"
@@ -343,6 +345,21 @@ RPI_KERNEL_SHA=8d44827fea22875e0f801252bdbc0f541c03144e970caafa3115bf485ff3c4bd
 RPI_KERNEL_VERSION=6.18.50+rpt-rpi-v8
 RPI_POOL=https://archive.raspberrypi.com/debian/pool/main/l/linux
 
+# THE PI 3 FAMILY'S FIRMWARE, FROM THE SAME ARCHIVE AS THAT KERNEL. A Pi 3 or a
+# Zero 2 W boots bootcode.bin, start.elf and fixup.dat off the card, where the
+# Pi 4 reads start4.elf and the Pi 5 carries its firmware in EEPROM. These boards
+# boot Raspberry Pi's kernel and trees, so their firmware is the release built
+# alongside them rather than Debian's from April 2024: the firmware is what
+# applies Raspberry Pi's overlays, and an overlay two years newer than the
+# firmware applying it is a pairing nobody tested. No new trust: the same
+# archive and signing key the Pi 5's kernel already comes from. Read on
+# 24 November 2026 from the trixie arm64 Packages.gz, whose digest is in an
+# InRelease that verifies under that key; the package carries no radio
+# firmware, which INV-PROV-13 would refuse.
+RPI_FIRMWARE_DEB=raspi-firmware_1.20260915-1_all.deb
+RPI_FIRMWARE_SHA=56b6f8792fb27bcc22f101a5a0d27af637e0d13e85dfc0fde5ff140abc929b0f
+RPI_FIRMWARE_POOL=https://archive.raspberrypi.com/debian/pool/main/r/raspi-firmware
+
 BOOT="$WORK/boot"
 mkdir -p "$BOOT" "$WORK/debs"
 
@@ -352,8 +369,9 @@ apt-get update >/dev/null 2>&1
     "linux-image-6.12.94+deb13-arm64=6.12.94-1" \
     "raspi-firmware=1.20240424+ds-6" >/dev/null 2>&1 )
 curl -fsSL -o "$WORK/debs/$RPI_KERNEL_DEB" "$RPI_POOL/$RPI_KERNEL_DEB"
+curl -fsSL -o "$WORK/debs/$RPI_FIRMWARE_DEB" "$RPI_FIRMWARE_POOL/$RPI_FIRMWARE_DEB"
 
-for pair in "$KERNEL_DEB:$KERNEL_SHA" "$FIRMWARE_DEB:$FIRMWARE_SHA" "$RPI_KERNEL_DEB:$RPI_KERNEL_SHA"; do
+for pair in "$KERNEL_DEB:$KERNEL_SHA" "$FIRMWARE_DEB:$FIRMWARE_SHA" "$RPI_KERNEL_DEB:$RPI_KERNEL_SHA" "$RPI_FIRMWARE_DEB:$RPI_FIRMWARE_SHA"; do
   file="${pair%%:*}"
   want="${pair##*:}"
   got=$(sha256sum "$WORK/debs/$file" | cut -d" " -f1)
@@ -369,6 +387,7 @@ done
 dpkg-deb -x "$WORK/debs/$KERNEL_DEB" "$WORK/kernel"
 dpkg-deb -x "$WORK/debs/$FIRMWARE_DEB" "$WORK/firmware"
 dpkg-deb -x "$WORK/debs/$RPI_KERNEL_DEB" "$WORK/rpi-kernel"
+dpkg-deb -x "$WORK/debs/$RPI_FIRMWARE_DEB" "$WORK/rpi-firmware"
 RPI_DTB="$WORK/rpi-kernel/usr/lib/modules/$RPI_KERNEL_VERSION/dtb"
 
 # The kernel, under the name the firmware looks for and config.txt names.
@@ -462,10 +481,11 @@ done
 # there is no v3d for Mesa to render with. The panel overlay is not named in
 # config.txt at all. The firmware detects an official DSI display and loads its
 # overlay itself (display_auto_detect), which is what lets one card serve
-# Touch Display 1 and Touch Display 2 on either DSI connector. Both overlays it
-# can choose for a 7 inch panel are here, because a detected panel whose
-# overlay is missing is a dark screen with nothing logged.
-for overlay in vc4-kms-v3d-pi5 vc4-kms-dsi-7inch vc4-kms-dsi-ili9881-7inch; do
+# Touch Display 1 and Touch Display 2 on either DSI connector. Every overlay it
+# can choose for a supported panel is here, the 5 inch Touch Display 2 as well
+# as both 7 inch panels, because a detected panel whose overlay is missing is a
+# dark screen with nothing logged.
+for overlay in vc4-kms-v3d-pi5 vc4-kms-dsi-7inch vc4-kms-dsi-ili9881-7inch vc4-kms-dsi-ili9881-5inch; do
   cp "$RPI_DTB/overlays/$overlay.dtbo" "$BOOT/overlays/"
 done
 
@@ -480,8 +500,10 @@ done
 # implements those semantics and this build does not carry it. What a merge
 # would add is the status of each node afterwards, and only the board answers
 # whether the panel lights up in any case.
-for tree in bcm2712-rpi-5-b.dtb bcm2712d0-rpi-5-b.dtb bcm2712-d-rpi-5-b.dtb; do
-  for overlay in vc4-kms-v3d-pi5 vc4-kms-dsi-7inch vc4-kms-dsi-ili9881-7inch; do
+labels_resolve() {
+  tree=$1
+  shift
+  for overlay in "$@"; do
     labels=$(fdtget -p "$BOOT/overlays/$overlay.dtbo" /__fixups__) || {
       echo "$overlay.dtbo has no __fixups__ node, so what it targets cannot be checked" >&2
       exit 1
@@ -493,8 +515,63 @@ for tree in bcm2712-rpi-5-b.dtb bcm2712d0-rpi-5-b.dtb bcm2712-d-rpi-5-b.dtb; do
       }
     done
   done
+}
+for tree in bcm2712-rpi-5-b.dtb bcm2712d0-rpi-5-b.dtb bcm2712-d-rpi-5-b.dtb; do
+  labels_resolve "$tree" vc4-kms-v3d-pi5 vc4-kms-dsi-7inch vc4-kms-dsi-ili9881-7inch vc4-kms-dsi-ili9881-5inch
 done
 echo "pi 5 overlays:  every label resolves in all three Pi 5 trees"
+
+# --- the Pi 3 family: Pi 3B, Pi 3B+ and Zero 2 W -------------------------------
+#
+# The same Raspberry Pi kernel and initramfs as the Pi 5 (kernel8-rpi.img is
+# their rpi-v8 flavour, built for BCM2837 as much as for BCM2712), with the
+# trees and firmware these boards need. Raspberry Pi's kernel rather than
+# Debian's, which ships BCM2837 trees too, because these boards are here for
+# the small panels, and the drivers and overlays for those (HyperPixel 4.0,
+# Touch Display 2) exist only in Raspberry Pi's tree. That trust was taken for
+# the Pi 5 already; this extends it to three more boards and adds none.
+#
+# The SD card is mmc0 in all three trees (sdhost at 7e202000), so it comes up
+# as /dev/mmcblk0 where the initramfs looks for it.
+for tree in bcm2710-rpi-zero-2-w.dtb bcm2710-rpi-3-b.dtb bcm2710-rpi-3-b-plus.dtb; do
+  cp "$RPI_DTB/broadcom/$tree" "$BOOT/"
+done
+
+# The firmware these boards read off the card. start_cd.elf and fixup_cd.dat
+# are the cut-down firmware the Zero 2 W's gpu_mem=16 selects: with the KMS
+# driver the GPU's own memory is used for nothing this device does, and on a
+# 512 MB board the 60 MB it otherwise reserves is an eighth of the memory.
+for file in bootcode.bin start.elf fixup.dat start_cd.elf fixup_cd.dat; do
+  cp "$WORK/rpi-firmware/usr/lib/raspi-firmware/$file" "$BOOT/"
+done
+
+# vc4-kms-v3d turns the GPU on, as the Pi 5's variant does there. The
+# HyperPixel 4.0 is named for the Zero 2 W in config.txt, because it has no
+# DSI connector and that is the panel its size of board is built around; on a
+# Pi 3 the firmware detects a DSI panel itself, and the HyperPixel is one
+# dtoverlay= line away for anyone who fits one.
+for overlay in vc4-kms-v3d vc4-kms-dpi-hyperpixel4; do
+  cp "$RPI_DTB/overlays/$overlay.dtbo" "$BOOT/overlays/"
+done
+labels_resolve bcm2710-rpi-zero-2-w.dtb vc4-kms-v3d vc4-kms-dpi-hyperpixel4
+for tree in bcm2710-rpi-3-b.dtb bcm2710-rpi-3-b-plus.dtb; do
+  labels_resolve "$tree" vc4-kms-v3d vc4-kms-dsi-7inch vc4-kms-dsi-ili9881-7inch \
+    vc4-kms-dsi-ili9881-5inch vc4-kms-dpi-hyperpixel4
+done
+echo "pi 3 overlays:  every label resolves in the Zero 2 W, 3B and 3B+ trees"
+
+# EVERY PANEL THE KIOSK CAN SCALE FOR IS ONE AN OVERLAY ON THIS CARD DESCRIBES.
+# /usr/lib/nullroute/panels.tsv maps a compatible string in the running tree
+# to the scale the browser draws at. A row whose string no overlay here can put
+# in a tree is a panel the table claims and the card cannot drive.
+while IFS="$(printf '\t')" read -r compatible _scale _pixels name; do
+  case $compatible in '' | '#'*) continue ;; esac
+  grep -aqF -- "$compatible" "$BOOT"/overlays/*.dtbo || {
+    echo "panels.tsv lists $name ($compatible) and no overlay on the card describes it" >&2
+    exit 1
+  }
+done < /work/provisioning/units/panels.tsv
+echo "panels:         every panel in panels.tsv is described by an overlay on the card"
 
 # The initramfs that opens the dm-verity mapping, one per kernel. Each is built
 # from the kernel tree it boots with, so its modules and the kernel cannot be a
@@ -526,8 +603,11 @@ echo "pi 5 overlays:  every label resolves in all three Pi 5 trees"
 # it is needed and named.
 #
 # ONE SECTION PER BOARD. The firmware applies [pi4] on a Pi 4 and [pi5] on a
-# Pi 5, so each board gets its own kernel, initramfs and display setup and
-# neither sees the other's. The Pi 4's overlay targets labels only the mainline
+# Pi 5, [pi3] on a 3B, 3B+ or 3A+ and [pi02] on a Zero 2 W, so each board gets
+# its own kernel, initramfs and display setup and none sees another's. The
+# Pi 3 family boots the Pi 5's kernel and initramfs; the Zero 2 W names the
+# HyperPixel 4.0, the only supported panel it can take, and its 512 MB is why
+# it alone sets gpu_mem=16. The Pi 4's overlay targets labels only the mainline
 # tree has, and display_auto_detect on a Pi 4 would load Raspberry Pi's DSI
 # overlay into that same mainline tree; both are kept to the board they fit.
 CONFIG_TXT='arm_64bit=1
@@ -542,7 +622,20 @@ dtoverlay=nullroute-7inch-dsi
 kernel=kernel8-rpi.img
 initramfs initramfs-rpi.img followkernel
 dtoverlay=vc4-kms-v3d-pi5
-display_auto_detect=1'
+display_auto_detect=1
+
+[pi3]
+kernel=kernel8-rpi.img
+initramfs initramfs-rpi.img followkernel
+dtoverlay=vc4-kms-v3d
+display_auto_detect=1
+
+[pi02]
+kernel=kernel8-rpi.img
+initramfs initramfs-rpi.img followkernel
+gpu_mem=16
+dtoverlay=vc4-kms-v3d
+dtoverlay=vc4-kms-dpi-hyperpixel4'
 
 printf '%s\n' "$CONFIG_TXT" > "$BOOT/config.txt"
 mkdir -p "$ROOTFS/boot/firmware"
@@ -676,10 +769,30 @@ tar -xJf "$WORK/$NODE_TAR" -C "$WORK/node" --strip-components=1
 # belongs on a device that never installs anything.
 mkdir -p "$ROOTFS/usr/lib/nullroute/bin"
 cp "$WORK/node/bin/node" "$ROOTFS/usr/lib/nullroute/bin/node"
-for helper in prepare-state wait-for-daemon attest-verity runtime-facts; do
+for helper in prepare-state wait-for-daemon attest-verity runtime-facts chromium-for-panel zram-swap; do
   cp "/work/provisioning/units/$helper" "$ROOTFS/usr/lib/nullroute/bin/$helper"
   chmod 0755 "$ROOTFS/usr/lib/nullroute/bin/$helper"
 done
+# zram-swap needs mkswap (util-linux, essential) and swapon (mount, which
+# systemd depends on). Checked rather than assumed: a missing one is a Zero 2 W
+# whose browser runs out of memory with the reason in a journal nobody reads.
+for tool in mkswap swapon; do
+  [ -x "$ROOTFS/usr/sbin/$tool" ] || [ -x "$ROOTFS/sbin/$tool" ] || {
+    echo "zram-swap needs $tool and the image has none" >&2
+    exit 1
+  }
+done
+# chromium-for-panel execs Debian's binary by its full path, past the launcher
+# script the unit's comment explains, and unit-executables reads only cage, the
+# first word of the kiosk's ExecStart. So the target is checked here.
+[ -x "$ROOTFS/usr/lib/chromium/chromium" ] || {
+  echo "chromium-for-panel execs /usr/lib/chromium/chromium and the image has none" >&2
+  exit 1
+}
+# The panels the kiosk knows the scale of. chromium-for-panel reads it; so do
+# the layout checks, from the same file in the repository.
+cp /work/provisioning/units/panels.tsv "$ROOTFS/usr/lib/nullroute/panels.tsv"
+chmod 0644 "$ROOTFS/usr/lib/nullroute/panels.tsv"
 
 # The mountpoint, which cannot be created at runtime on a read-only root.
 mkdir -p "$ROOTFS/var/lib/nullroute"

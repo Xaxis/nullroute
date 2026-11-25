@@ -135,7 +135,8 @@ the point where it can actually be observed:
 - **At first boot on the device**, for the facts that are provably invisible to
   offline inspection: actual mount options from `/proc/mounts`
   (`mount-options`), no listening socket outside `AF_UNIX` except the permitted
-  loopback bridge (`no-listening-sockets`), and no active swap (`no-swap`).
+  loopback bridge (`no-listening-sockets`), and no swap that can reach storage
+  (`no-swap-to-storage`).
 
 Each name in brackets is a verifier in `checks/registry.mjs`, which is the list
 `make profiles` counts and `make verify-image` runs.

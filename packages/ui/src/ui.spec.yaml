@@ -27,6 +27,8 @@ covers:
   - packages/ui/src/components/Hash.tsx::chunk
   - packages/ui/src/components/Hash.tsx::abbreviate
   - packages/ui/src/components/NetworkBanner.tsx::NetworkBanner
+  - packages/ui/src/components/PanelGate.tsx::PanelGate
+  - packages/ui/src/lib/panel.ts::fitsAPanel
   - packages/ui/src/lib/client.ts::call
   - packages/ui/src/lib/client.ts::IpcCallError
   - packages/ui/src/screens/ScanScreen.tsx::ScanScreen
@@ -205,6 +207,46 @@ invariants:
       - packages/ui/test/parent-redraw.test.tsx::reads-entropy-health-once-however-often-the-frame-redraws
       - packages/ui/test/parent-redraw.test.tsx::keys-no-effect-on-a-callback-prop
 
+  - id: INV-UI-110
+    statement: >
+      The interface is drawn only at sizes it was measured at. Every panel the
+      image supports is listed once, in provisioning/units/panels.tsv, with the
+      scale the kiosk draws it at; the kiosk reads the panel from the running
+      device tree and starts the browser at that scale, and every screen is
+      checked for fit at each size the table gives (check-screen-fit). On a
+      screen smaller than all of them in either direction nothing is drawn but
+      a refusal that says so, because a signing screen in a layout nobody
+      looked at is how a warning ends up under the action bar.
+    tests:
+      - packages/ui/test/panel-gate.test.tsx::draws-on-every-listed-panel
+      - packages/ui/test/panel-gate.test.tsx::refuses-a-screen-smaller-than-every-panel
+      - packages/ui/test/panel-gate.test.tsx::follows-a-resize-in-both-directions
+      - packages/ui/test/keyboard.test.tsx::keeps-the-newest-word-in-view
+      - packages/ui/test/keyboard.test.tsx::marks-a-readout-for-one-word
+      - test/provisioning/panels.test.ts::draws-a-listed-panel-at-its-scale
+      - test/provisioning/panels.test.ts::tells-two-panels-with-the-same-pixels-apart
+      - test/provisioning/panels.test.ts::ignores-a-panel-node-that-is-disabled
+      - test/provisioning/panels.test.ts::draws-an-unlisted-display-at-one
+      - test/provisioning/panels.test.ts::adds-one-flag-and-passes-the-rest-through
+      - test/provisioning/panels.test.ts::gives-the-sizes-the-layout-checks-measure
+
+  - id: INV-UI-111
+    statement: >
+      A note that appears while the device is working, which includes the
+      instruction not to power it off, is brought into view when it appears,
+      wherever the screen it appears in was scrolled to.
+    tests:
+      - packages/ui/test/working.test.tsx::brings-itself-into-view-when-it-appears
+
+  - id: INV-UI-112
+    statement: >
+      A region that scrolls says so whenever it holds more than it shows,
+      including when what it holds arrived after it opened, and stops saying so
+      when its end is in view.
+    tests:
+      - packages/ui/test/more-below.test.tsx::marks-a-region-when-content-arrives-later
+      - packages/ui/test/more-below.test.tsx::clears-the-mark-at-the-end
+
   - id: INV-UI-12
     statement: >
       An output is presented as change only together with the derivation path
@@ -247,6 +289,7 @@ invariants:
       asks once. Neither accepts an empty passphrase.
     tests:
       - packages/ui/test/passphrase-screen.test.tsx::requires-the-passphrase-twice-when-setting
+      - packages/ui/test/passphrase-screen.test.tsx::keeps-a-mismatch-in-view-from-either-field
       - packages/ui/test/passphrase-screen.test.tsx::does-not-ask-twice-when-unlocking
       - packages/ui/test/passphrase-screen.test.tsx::refuses-an-empty-passphrase
 

@@ -306,7 +306,8 @@ export function MessageScreen(props: MessageScreenProps): ReactElement {
             <div className="nr-row">
               <span className="nr-label">Length</span>
               <span className="nr-value nr-mono">
-                {review.characters} characters, {review.bytes} bytes
+                {review.characters} {review.characters === 1 ? 'character' : 'characters'},{' '}
+                {review.bytes} {review.bytes === 1 ? 'byte' : 'bytes'}
               </span>
             </div>
           </div>

@@ -211,56 +211,47 @@ export function VerifyMessageScreen(props: VerifyMessageScreenProps): ReactEleme
         </div>
       )}
 
-      {result !== null && !passed && (
-        <Info label="Where to look first" testId="verify-usual-cause">
-          The commonest cause is the message, not the signature. A trailing space, a missing line
-          break, or a smart quote where a straight one was signed all produce this. Compare the
-          message character for character before concluding anything about the other party.
-        </Info>
-      )}
-
       {/* Which field the keyboard fills. Each tab shows whether that field has
           anything in it, because the check button being disabled is otherwise
           the only clue about which one was missed. */}
-      {/* The tabs and the line about the field they picked, on one row. Stacked
-          they cost 34px above a keyboard that needs 190 of a 287px body once
-          the network banner is on screen. */}
-      <div className="nr-beside">
-        <div className="nr-tabs">
-          {FIELDS.map((field) => (
-            <button
-              key={field.id}
-              type="button"
-              className="nr-tab"
-              aria-pressed={editing === field.id}
-              onClick={() => {
-                setEditing(field.id)
-                // AND BACK TO EDITING. While a result is showing, the keyboard is
-                // replaced by the three values that were checked, so a tab that
-                // only changed which field is active would have moved a highlight
-                // and offered no way to type. That is the dead end this screen
-                // used to avoid by keeping a keyboard nobody could use.
-                //
-                // Clearing here is the same rule the keyboard already follows: a
-                // verdict about a field somebody has gone back to is a verdict
-                // about something that is no longer settled.
-                setResult(null)
-              }}
-              data-testid={`verify-tab-${field.id}`}
-            >
-              {values[field.id].length > 0 ? `${field.label} set` : field.label}
+      {/* THE LINE ABOUT EACH FIELD IS IN THE READOUT, as its placeholder,
+          where the person is about to type. It sat beside these tabs, and on a
+          4 inch panel the tabs, that line and a keyboard that needs 294 pixels
+          were 446 pixels of a 361 pixel body: two rows of keys under the
+          action bar. The tab that is pressed says which field the keys fill. */}
+      <div className="nr-tabs nr-tabs--even">
+        {FIELDS.map((field) => (
+          <button
+            key={field.id}
+            type="button"
+            className="nr-tab"
+            aria-pressed={editing === field.id}
+            onClick={() => {
+              setEditing(field.id)
+              // AND BACK TO EDITING. While a result is showing, the keyboard is
+              // replaced by the three values that were checked, so a tab that
+              // only changed which field is active would have moved a highlight
+              // and offered no way to type. That is the dead end this screen
+              // used to avoid by keeping a keyboard nobody could use.
+              //
+              // Clearing here is the same rule the keyboard already follows: a
+              // verdict about a field somebody has gone back to is a verdict
+              // about something that is no longer settled.
+              setResult(null)
+            }}
+            data-testid={`verify-tab-${field.id}`}
+          >
+            {values[field.id].length > 0 ? `${field.label} set` : field.label}
+          </button>
+        ))}
+        {onScan !== undefined && (
+          <>
+            <div className="nr-spacer" />
+            <button type="button" className="nr-tab" onClick={onScan} data-testid="verify-scan">
+              Scan
             </button>
-          ))}
-          {onScan !== undefined && (
-            <>
-              <div className="nr-spacer" />
-              <button type="button" className="nr-tab" onClick={onScan} data-testid="verify-scan">
-                Scan
-              </button>
-            </>
-          )}
-        </div>
-        <span className="nr-field__label">{active.hint}</span>
+          </>
+        )}
       </div>
 
       {/* WHAT WAS CHECKED, WHERE THE KEYBOARD WOULD BE.
@@ -276,20 +267,32 @@ export function VerifyMessageScreen(props: VerifyMessageScreenProps): ReactEleme
           character for character. The screen then showed them a keyboard
           instead of the message. Now it shows the three values, and a tab
           takes them back to editing whichever one is wrong. */}
+      {/* THE ADVICE SCROLLS WITH THE VALUES IT IS ABOUT. With the verdict,
+          "Where to look first", the tabs and "What this checks" all fixed, a
+          failed check at 800x480 left the three values a 26 pixel sliver, on
+          the screen that tells somebody to compare the message character for
+          character. The verdict and the tabs stay put; the rest is one region
+          that scrolls, the advice first, beside what it tells them to read. */}
       {result !== null ? (
-        <div
-          className="nr-card nr-card--tight nr-fill nr-scrolls"
-          ref={moreBelow}
-          data-testid="verify-checked"
-        >
-          {FIELDS.map((field) => (
-            <div className="nr-field" key={field.id}>
-              <span className="nr-field__label">{field.label}</span>
-              <span className="nr-address nr-break">
-                {values[field.id].length === 0 ? '(empty)' : values[field.id]}
-              </span>
-            </div>
-          ))}
+        <div className="nr-fill nr-fill--stack nr-scrolls" ref={moreBelow}>
+          {!passed && (
+            <Info label="Where to look first" testId="verify-usual-cause">
+              The commonest cause is the message, not the signature. A trailing space, a missing
+              line break, or a smart quote where a straight one was signed all produce this. Compare
+              the message character for character before concluding anything about the other party.
+            </Info>
+          )}
+          <div className="nr-card nr-card--tight" data-testid="verify-checked">
+            {FIELDS.map((field) => (
+              <div className="nr-field" key={field.id}>
+                <span className="nr-field__label">{field.label}</span>
+                <span className="nr-address nr-break">
+                  {values[field.id].length === 0 ? '(empty)' : values[field.id]}
+                </span>
+              </div>
+            ))}
+          </div>
+          <WhatThisChecks />
         </div>
       ) : (
         <>
@@ -300,6 +303,7 @@ export function VerifyMessageScreen(props: VerifyMessageScreenProps): ReactEleme
             // passphrase gate and masks by default, which put bullets under a label
             // reading "exactly what they signed, character for character".
             secret={false}
+            placeholder={active.hint}
             value={values[active.id]}
             onChange={(next) => {
               setters[active.id](next)
@@ -315,10 +319,17 @@ export function VerifyMessageScreen(props: VerifyMessageScreenProps): ReactEleme
         </>
       )}
 
-      <Info label="What this checks" testId="verify-no-key">
-        This uses no key and needs no wallet open. It is arithmetic on what you typed, which is why
-        it works on a device with no network and why it can be done before unlocking anything.
-      </Info>
+      {result === null && <WhatThisChecks />}
     </Screen>
+  )
+}
+
+/** Under the keyboard while typing, and at the end of the results after. */
+function WhatThisChecks(): ReactElement {
+  return (
+    <Info label="What this checks" testId="verify-no-key">
+      This uses no key and needs no wallet open. It is arithmetic on what you typed, which is why it
+      works on a device with no network and why it can be done before unlocking anything.
+    </Info>
   )
 }

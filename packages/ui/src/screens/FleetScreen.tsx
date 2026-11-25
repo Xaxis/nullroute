@@ -186,10 +186,10 @@ export function FleetScreen(props: FleetScreenProps): ReactElement {
             the harness scrolled the body to reach it before measuring. */}
         <div className="nr-banner nr-banner--caution" data-testid="fleet-forget-cost">
           <strong>This does not lose any money</strong>
-          <span>
-            A registration is not a key. Change coming back from that quorum will read as a payment
-            to a stranger until you register the descriptor again.
-          </span>
+          {/* Two lines on a 4 inch panel, where the keyboard under it is 294 of
+              a 379 pixel body. "A registration is not a key" went: the heading
+              already says nothing here loses money. INV-UI-84. */}
+          <span>Its change will read as a payment to a stranger until you register it again.</span>
         </div>
 
         {/* THE KEYBOARD READOUT IS THE FIELD, the way it is on the panel that

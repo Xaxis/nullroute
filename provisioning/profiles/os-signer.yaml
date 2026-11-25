@@ -9,8 +9,9 @@ purpose: >
   when the unchanged verifiers below pass against its output, and not before.
 
 boards:
-  # The design needs capabilities, not this model: arm64, enough memory, an
-  # 800x480 display and a camera the kernel drives. A board is listed here when
+  # The design needs capabilities, not this model: arm64, enough memory, a
+  # touch panel provisioning/units/panels.tsv lists, and a camera the kernel
+  # drives. A board is listed here when
   # the build checks the card against that board's own device tree, with the
   # kernel it boots, and finds the panel and its touch controller described.
   # That is a build-time check, not a boot: no card has booted on a Raspberry
@@ -47,6 +48,18 @@ bring_up:
   # trees, pinned by digest in build-system.sh, while the Pi 4 keeps Debian's.
   # It moves to `boards:` after a boot on one with the panel lit.
   - raspberrypi-5
+  # THE PI 3 FAMILY, for the small panels: a Zero 2 W behind a HyperPixel 4.0,
+  # or a Pi 3B or 3B+ with the 5 inch Touch Display 2. They boot the Pi 5's
+  # kernel and initramfs, which are built for their BCM2837 as much as for the
+  # BCM2712, with that archive's firmware for boards that read it off the card,
+  # so they add no source of code the Pi 5 did not already bring. The 3A+ is
+  # not here: Raspberry Pi's kernel ships no tree named for it, and which one
+  # its firmware falls back to has not been confirmed. The Zero 2 W's 512 MB is
+  # enough for the kiosk only with swap in compressed memory, which is what
+  # INV-PROV-11 now allows and no more. Each moves to `boards:` after a boot
+  # with its panel lit and the touch layer answering.
+  - raspberrypi-3
+  - raspberrypi-zero-2-w
 
 backends:
   # ADVISORY. The verifier is forbidden from reading this key (INV-PROV-2),
@@ -224,17 +237,41 @@ assertions:
 
   # --- Image structure -----------------------------------------------------
   - id: INV-PROV-11
-    statement: No swap device and no swap file exists, at build time or at runtime.
+    statement: >
+      No swap reaches storage. No swap file or swap partition is active at
+      runtime; the only swap the device may turn on is a zram device, which is
+      compressed memory, writing back to nothing, and nullroute-zram.service
+      turns that on only on a board with less than 800 MB.
     stage: boot
     verify:
-      - check: no-swap
+      - check: no-swap-to-storage
     rationale: >
       Swap is how a seed reaches persistent storage in plaintext without anyone
       deciding that it should. On a device holding key material this is not a
       performance setting.
+
+      It said "no swap device" until the Zero 2 W, whose 512 MB the kiosk
+      browser needs most of. A zram device holds what is swapped to it in RAM,
+      compressed, and loses it at power off exactly as the page it came from
+      would have, so the property this rule exists for still holds. The one
+      route from zram to storage is writeback to a backing device, which the
+      Raspberry Pi kernel is built with, so the runtime check reads each zram
+      device's backing_dev and fails anything but none, and the helper refuses
+      to turn swap on over one.
     does_not_cover: >
       Kernel memory reaching storage by other routes, such as a crash dump or
-      hibernation image, which are separately disabled.
+      hibernation image, which are separately disabled. On a board under 800 MB
+      the daemon's pages, key material included, can be compressed into zram
+      like any other process's. That is still RAM, with the same exposure to a
+      cold boot attack as the page itself, but a compressed copy can outlive the
+      dispose() that zeroed the original until its slot is reused, as freed
+      memory can. Keeping the daemon out of swap entirely needs the memory
+      cgroup, which Raspberry Pi's kernel carries a switch to leave off and
+      which nothing here has checked on a running board; a MemorySwapMax= on a
+      controller that is not there would be a setting that looks applied and is
+      not. The QEMU boot test runs with 1024 MB, so the log CI judges shows no
+      swap at all, and the zram path is exercised by unit tests until a small
+      board boots. One sample, taken once after boot.
     standard: ['ANSSI-BP-028 R4']
 
   - id: INV-PROV-12
@@ -445,6 +482,7 @@ assertions:
             - nullrouted.service
             - nullroute-bridge.service
             - nullroute-runtime-facts.service
+            - nullroute-zram.service
             - nullroute-kiosk.service
     rationale: >
       INV-PROV-18 and INV-PROV-19 measure DECLARED directives, so
@@ -541,9 +579,9 @@ assertions:
 
   - id: INV-PROV-25
     statement: >
-      The display this device is built around is enabled by its boot
-      configuration: config.txt names the overlay that describes the official
-      Raspberry Pi 7 inch DSI touchscreen.
+      Every board's display is enabled by its boot configuration: config.txt
+      turns each board's GPU on where its tree leaves it off, and names the
+      overlay of a supported touch panel or has the firmware detect one.
     stage: image
     verify:
       - check: boot-config-display
@@ -561,6 +599,13 @@ assertions:
           # tree, which ships the GPU disabled, so it needs vc4-kms-v3d-pi5;
           # and its panel overlay is chosen by the firmware's own detection,
           # which has to be on.
+          #
+          # The Pi 3 family boots Raspberry Pi's tree too, with the GPU off, so
+          # it needs vc4-kms-v3d. A Pi 3 detects a DSI panel as the Pi 5 does.
+          # A Zero 2 W has no DSI connector, so its panel is named: the
+          # HyperPixel 4.0, on the GPIO header. gpu_mem=16 is pinned with it,
+          # because it selects the cut-down firmware, and a change to it is a
+          # change to what drives the screen on a 512 MB board.
           sections:
             pi4:
               overlays: [nullroute-7inch-dsi]
@@ -568,9 +613,17 @@ assertions:
               overlays: [vc4-kms-v3d-pi5]
               settings:
                 display_auto_detect: 1
+            pi3:
+              overlays: [vc4-kms-v3d]
+              settings:
+                display_auto_detect: 1
+            pi02:
+              overlays: [vc4-kms-v3d, vc4-kms-dpi-hyperpixel4]
+              settings:
+                gpu_mem: 16
     rationale: >
-      This product is a screen with a signer behind it, and the screen is always
-      the official 7 inch panel. Decompiling the device tree the image ships
+      This product is a screen with a signer behind it, and the first screen it
+      was built around is the official 7 inch panel. Decompiling the device tree the image ships
       says dsi@7e700000 is disabled, no node describes the panel, and no node
       describes its touch controller, while the GPU node is enabled. So cage
       starts, finds a card, and draws onto nothing: the panel is dark and touch
@@ -602,9 +655,11 @@ assertions:
           partition: boot
           # What the Pi 5's firmware loads for an official 7 inch panel it
           # detects: Touch Display 1, or Touch Display 2.
+          # And on a Pi 3, the 5 inch Touch Display 2 as well.
           autoDetect:
             - vc4-kms-dsi-7inch
             - vc4-kms-dsi-ili9881-7inch
+            - vc4-kms-dsi-ili9881-5inch
     rationale: >
       The firmware reads dtoverlay= out of config.txt, looks for the matching
       file under overlays/, and if it is not there carries on booting without
@@ -738,6 +793,45 @@ assertions:
       It also says nothing about whether anything loads the module on hotplug,
       which is INV-PROV-30.
 
+  - id: INV-PROV-37
+    statement: >
+      The drivers for the small panels, and every module the image's
+      modules.dep says each depends on, are present in Raspberry Pi's kernel
+      module tree: the HyperPixel 4.0's panel, the GPIO buses it is wired
+      through and its touch controller, and Touch Display 2's panel and
+      regulator.
+    stage: image
+    verify:
+      - check: kernel-modules-present
+        params:
+          # Raspberry Pi's kernel only. Debian's boots the Pi 4 alone, with the
+          # 7 inch panel, and has no reason to carry these.
+          kernel: '+rpt-rpi'
+          # Each found by its compatible string in the overlay that names it:
+          # pimoroni,hyperpixel4, spi-gpio, i2c-gpio and goodix,gt911 in
+          # vc4-kms-dpi-hyperpixel4; raspberrypi,dsi-5inch and
+          # raspberrypi,touchscreen-panel-regulator-v2 in the ili9881 pair,
+          # which share goodix,gt911 for touch.
+          modules:
+            - panel-ilitek-ili9806e-spi
+            - spi-gpio
+            - i2c-gpio
+            - goodix_ts
+            - panel-ilitek-ili9881c
+            - rpi-panel-v2-regulator
+    rationale: >
+      An overlay on the card describes a panel, and the kernel binds a driver
+      to that description. A prune that reached drivers/gpu or drivers/input
+      would leave the overlay, the panel table and every layout check intact
+      and the screen dark, the failure INV-PROV-25 was written for, one layer
+      further down. The radio prune deletes whole module trees, so this is a
+      real way for it to happen.
+    does_not_cover: >
+      That the modules load or that the panel lights. Only a board with the
+      panel attached answers that. The 7 inch panels' drivers are not listed:
+      the Pi 4 has its own checks at build time and the Pi 5's are in its
+      bring-up.
+
   # Written before the fix and seen to fail against the image built without
   # udev, for the same reason INV-PROV-25 was: a camera path that is right in
   # every other respect is still dead without it, and an assertion nobody writes
@@ -841,10 +935,8 @@ assertions:
           # not cover, an addition is the direction that matters, and a check
           # that only confirms presence cannot fail on one.
           #
-          # It is one file today because the boot partition carries one file
-          # today: there is no firmware, no kernel and no initramfs yet, and
-          # `make image` refuses for that reason. Each of those is a line added
-          # here by whoever puts it on the card, which is the intended cost.
+          # Each file is a line added here by whoever puts it on the card,
+          # which is the intended cost.
           files:
             - cmdline.txt
             - config.txt
@@ -875,6 +967,20 @@ assertions:
             - bcm2712-rpi-5-b.dtb
             - bcm2712d0-rpi-5-b.dtb
             - bcm2712-d-rpi-5-b.dtb
+            # THE PI 3 FAMILY, also in `bring_up:`. The same kernel and
+            # initramfs as the Pi 5, a tree each for the 3B, 3B+ and Zero 2 W,
+            # and the firmware these boards read off the card: bootcode.bin,
+            # start.elf and fixup.dat, and the cut-down pair gpu_mem=16 selects
+            # on the Zero 2 W. Raspberry Pi's, from raspi-firmware pinned by
+            # digest in build-system.sh.
+            - bcm2710-rpi-3-b.dtb
+            - bcm2710-rpi-3-b-plus.dtb
+            - bcm2710-rpi-zero-2-w.dtb
+            - bootcode.bin
+            - start.elf
+            - fixup.dat
+            - start_cd.elf
+            - fixup_cd.dat
             # The directory holding the panel overlay, and what is inside it.
             # The verifier follows the directory's cluster chain, so both the
             # directory and each name within it are accounted for here. It read
@@ -887,11 +993,15 @@ assertions:
             # line that INV-PROV-25 pins, so the two now have to agree: the
             # overlay the firmware is told to load is the overlay that is here.
             - overlays/nullroute-7inch-dsi.dtbo
-            # Raspberry Pi's, from the kernel package: the Pi 5's GPU, and the
-            # two panel overlays its firmware chooses between on detection.
+            # Raspberry Pi's, from the kernel package: the Pi 5's GPU and the
+            # Pi 3 family's, the three panel overlays the firmware chooses
+            # between on detection, and the HyperPixel 4.0 the Zero 2 W names.
             - overlays/vc4-kms-v3d-pi5.dtbo
+            - overlays/vc4-kms-v3d.dtbo
             - overlays/vc4-kms-dsi-7inch.dtbo
             - overlays/vc4-kms-dsi-ili9881-7inch.dtbo
+            - overlays/vc4-kms-dsi-ili9881-5inch.dtbo
+            - overlays/vc4-kms-dpi-hyperpixel4.dtbo
     rationale: >
       Every other region of the card is under the dm-verity hash tree. This one
       cannot be, because it is where the firmware reads the root hash from. An

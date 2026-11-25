@@ -264,14 +264,17 @@ export function reachStep(step) {
    * that describes something a person cannot do, and the harness correctly
    * reports it as disabled.
    *
-   * Every scrollable container, twice, which is what SCROLL_TO_END does at the
-   * end of a measurement. Here it happens mid-journey instead.
+   * Every container a finger can scroll, twice, which is what SCROLL_TO_END
+   * does at the end of a measurement. Here it happens mid-journey instead. Not
+   * a box with overflow hidden: script can scroll one and a person cannot.
    */
   if (step === 'scroll') {
     return `(() => {
       for (let pass = 0; pass < 2; pass += 1) {
         for (const el of document.querySelectorAll('*')) {
-          if (el.scrollHeight > el.clientHeight) el.scrollTop = el.scrollHeight
+          if (el.scrollHeight <= el.clientHeight) continue
+          if (!/auto|scroll/.test(getComputedStyle(el).overflowY)) continue
+          el.scrollTop = el.scrollHeight
         }
       }
       return 'clicked'

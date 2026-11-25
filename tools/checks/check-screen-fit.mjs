@@ -2,11 +2,17 @@
 /**
  * Every device screen fits the panel it ships on.
  *
- * The device has one screen size, 800x480, and it is not negotiable: there is
- * no scrollbar to reach for, no window to resize, and no second monitor. A
- * control that does not fit is a control that does not exist, and this device's
- * entire trust model is that the user reads what is on the display and acts on
- * it.
+ * Each panel the device supports is a fixed size, and none of them is
+ * negotiable: there is no scrollbar to reach for, no window to resize, and no
+ * second monitor. A control that does not fit is a control that does not exist,
+ * and this device's entire trust model is that the user reads what is on the
+ * display and acts on it.
+ *
+ * EVERY SIZE IN provisioning/units/panels.tsv, which is the table the kiosk
+ * reads to choose its scale on the device. It started as one size, 800x480,
+ * and a second panel is a second set of measurements, not a second opinion:
+ * a screen that fits the 7 inch panel says nothing about a 4 inch one drawn at
+ * 320 CSS pixels wide. `--panel 320x533` narrows a run to one of them.
  *
  * NOTHING ELSE IN THE SUITE CAN SEE THIS. The component tests run in jsdom,
  * which computes no cascade and no box model, so every one of them passes on a
@@ -33,12 +39,16 @@
  * shipped to the device or covered by MANIFEST.lock.
  *
  * Run: node tools/checks/check-screen-fit.mjs
+ *      [--panel WxH]  one of the sizes provisioning/units/panels.tsv gives
+ *      [--shots DIR]  a PNG of every state as it arrives, to look at
+ *      [--only A,B]   only the gallery screens named, while working on them.
+ *                     Never a pass: the coverage ledger needs every screen.
  * Needs: Chrome, and the gallery built (make screens).
  */
 
 import { spawn } from 'node:child_process'
 import { createServer } from 'node:http'
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -51,6 +61,7 @@ import {
   walkReach,
   freePort,
 } from '../lib/browser.mjs'
+import { viewportsFromArgs } from '../lib/panels.mjs'
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url))
 const DIST = join(ROOT, 'tools/screens/dist')
@@ -112,9 +123,17 @@ const OFF = '\u001b[0m'
 const PORT = await freePort()
 const DEBUG_PORT = await freePort()
 
-/** The panel. Not a breakpoint, a fixed piece of hardware. */
-const WIDTH = 800
-const HEIGHT = 480
+/** The panels. Not breakpoints, fixed pieces of hardware, each measured. */
+const VIEWPORTS = viewportsFromArgs()
+// Where to write what each state looks like when it arrives, if anywhere. A
+// pass says the measured rules hold; only looking says the screen is right.
+const SHOTS = process.argv.includes('--shots')
+  ? process.argv[process.argv.indexOf('--shots') + 1]
+  : undefined
+if (SHOTS !== undefined) mkdirSync(SHOTS, { recursive: true })
+const ONLY = process.argv.includes('--only')
+  ? new Set(String(process.argv[process.argv.indexOf('--only') + 1]).split(','))
+  : undefined
 
 /**
  * The smallest a control may be, in CSS pixels.
@@ -150,6 +169,20 @@ const MIN_TARGET = 44
 const MAX_HEADER = 78
 
 /**
+ * The tallest a header may be on a narrow panel, in CSS pixels.
+ *
+ * Two rows there rather than one: the brand, the identity chip and the menu on
+ * the first, the title and its subtitle on the second. A portrait panel 320
+ * pixels wide has no row long enough for all four, and it has the height the
+ * landscape panel lacks. The same rule holds as above: one height, plus the
+ * step counter's line where a journey draws one, and never a third.
+ *
+ * Which layout a state is in is read from the stylesheet (--nr-layout on the
+ * root), so the breakpoint is written down once.
+ */
+const MAX_HEADER_NARROW = 118
+
+/**
  * The gap two adjacent controls need, in CSS pixels.
  *
  * Targets that meet the size rule and touch each other still produce mis-taps,
@@ -164,7 +197,7 @@ const MIN_GAP = 6
  *
  * Read from the source rather than from what the gallery happens to render,
  * because the question this answers is the one the gallery cannot: which of
- * these has NEVER been drawn at 800x480.
+ * these has NEVER been drawn on a panel.
  *
  * The distinction matters more than it sounds. data-must-see is measured only
  * on states that exist, so marking thirty seven banners and building three
@@ -260,8 +293,9 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const MEASURE = `(() => {
   const MIN_TARGET = ${MIN_TARGET}
   const MIN_GAP = ${MIN_GAP}
-  const MAX_HEADER = ${MAX_HEADER}
   const de = document.documentElement
+  const NARROW = getComputedStyle(de).getPropertyValue('--nr-layout').trim() === 'narrow'
+  const MAX_HEADER = NARROW ? ${MAX_HEADER_NARROW} : ${MAX_HEADER}
   const vw = de.clientWidth
   const vh = de.clientHeight
   const problems = []
@@ -326,6 +360,114 @@ const MEASURE = `(() => {
           '". Shorten the sentence, or give the title column the room by taking it ' +
           'from the identity chip.',
       })
+    }
+  }
+
+  /*
+   * TEXT CUT OFF AT THE SIDE, with nothing saying so.
+   *
+   * Found on the 4 inch panel, where a banner heading that never wraps (they
+   * are one line at 800 pixels by design) ran past the panel's right edge:
+   * "Read it from this screen, not from the one", and the rest of the
+   * instruction under the bezel. None of the rules above saw it. The document
+   * does not scroll sideways because the shell clips it, the heading is not a
+   * control, and the subtitle rule looks at the subtitle.
+   *
+   * Every run of text is compared with the box of each ancestor that clips,
+   * and with the panel. An ellipsis is a deliberate elision with a mark on
+   * screen, and is left to the rules that own it (the subtitle's above, and
+   * the wallet name, which is written in full elsewhere).
+   */
+  const cut = new Set()
+  const texts = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+  for (let node = texts.nextNode(); node !== null; node = texts.nextNode()) {
+    if ((node.textContent || '').trim() === '') continue
+    const owner = node.parentElement
+    if (owner === null || cut.has(owner)) continue
+    let left = 0
+    let right = vw
+    let elided = false
+    for (let a = owner; a !== null; a = a.parentElement) {
+      const style = getComputedStyle(a)
+      if (style.textOverflow === 'ellipsis') elided = true
+      if (/hidden|auto|scroll|clip/.test(style.overflowX)) {
+        const box = a.getBoundingClientRect()
+        left = Math.max(left, box.left)
+        right = Math.min(right, box.right)
+      }
+    }
+    if (elided || right - left < 2) continue
+    const range = document.createRange()
+    range.selectNodeContents(node)
+    for (const r of range.getClientRects()) {
+      if (r.width === 0 || r.height === 0) continue
+      if (r.right <= right + 1 && r.left >= left - 1) continue
+      cut.add(owner)
+      problems.push({
+        kind: 'text-cut-off',
+        detail:
+          '"' + (owner.textContent || '').trim().slice(0, 60) + '" spans ' +
+          Math.round(r.left) + '..' + Math.round(r.right) + ' and is visible from ' +
+          Math.round(left) + ' to ' + Math.round(right) +
+          '. Let it wrap, or shorten it.',
+      })
+      break
+    }
+  }
+
+  /*
+   * TEXT CUT OFF ABOVE OR BELOW. A separate pass because an ellipsis excuses
+   * nothing here: it marks a line cut short, not a line cut in half or a box
+   * that has lost its lines entirely.
+   *
+   * Found on the passphrase screen, where the note under the two fields, the
+   * guessing cost and "These do not match.", was a flex child with overflow
+   * hidden. That gives it no minimum height, so when the body ran out of room
+   * the note went to zero pixels and the keyboard below it fitted. Every rule
+   * passed, the side pass above excused it for its ellipsis, and the screen
+   * showed nobody the cost of their passphrase.
+   *
+   * Only boxes between the text and the nearest scroller count. What a
+   * scroller clips can be scrolled to, and so can whatever the shell outside
+   * it clips: the first version of this flagged every line below the fold of
+   * every long screen, cut by the 480 pixel shell. The rules about scrolling
+   * own those.
+   */
+  const lines = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+  for (let node = lines.nextNode(); node !== null; node = lines.nextNode()) {
+    if ((node.textContent || '').trim() === '') continue
+    const owner = node.parentElement
+    if (owner === null || cut.has(owner)) continue
+    let top = -Infinity
+    let bottom = Infinity
+    for (let a = owner; a !== null; a = a.parentElement) {
+      const overflow = getComputedStyle(a).overflowY
+      if (/auto|scroll/.test(overflow)) break
+      if (/hidden|clip/.test(overflow)) {
+        const box = a.getBoundingClientRect()
+        top = Math.max(top, box.top)
+        bottom = Math.min(bottom, box.bottom)
+      }
+    }
+    if (top === -Infinity) continue
+    const range = document.createRange()
+    range.selectNodeContents(node)
+    for (const r of range.getClientRects()) {
+      if (r.width === 0) continue
+      const shown = Math.max(0, Math.min(r.bottom, bottom) - Math.max(r.top, top))
+      if (shown >= r.height - 1) continue
+      cut.add(owner)
+      problems.push({
+        kind: 'text-cut-off',
+        detail:
+          '"' + (owner.textContent || '').trim().slice(0, 60) + '" is a line ' +
+          Math.round(r.height) + 'px tall and ' + Math.round(shown) +
+          'px of it is visible, because a box that hides its overflow is ' +
+          Math.round(Math.max(0, bottom - top)) +
+          'px tall around it. Give the box its height back (flex-shrink: 0 on a ' +
+          'flex child), or let it scroll.',
+      })
+      break
     }
   }
 
@@ -485,6 +627,98 @@ const MEASURE = `(() => {
       kind: 'control-off-screen',
       detail: '<' + el.tagName.toLowerCase() + '> "' + label(el) +
         '" spans ' + Math.round(r.left) + '..' + Math.round(r.right),
+    })
+  }
+
+  /*
+   * TEXT DRAWN OVER TEXT.
+   *
+   * Found on the narrow panels, where a split whose columns each scrolled was
+   * stacked into one column: each column kept its own scroller in a grid row
+   * too short for it and drew its content over the next. The attestation
+   * checks ran across the manifest card, and the quorum note across the
+   * address table, both legible through each other. Every other rule passed,
+   * because every box was on the panel and every target was 44 pixels.
+   *
+   * Two runs of text from unrelated elements whose boxes cross, where the
+   * browser's own stack at the crossing has nothing opaque between them. That
+   * last part is what lets a row pass under a sticky table heading, or under
+   * the action bar, which are both opaque and both meant.
+   */
+  const alpha = (colour) => {
+    if (colour === 'transparent') return 0
+    if (colour.includes('/')) return parseFloat(colour.split('/')[1])
+    if (colour.startsWith('rgba(')) return parseFloat(colour.slice(5).split(',')[3])
+    return 1
+  }
+  const opaque = (el) => alpha(getComputedStyle(el).backgroundColor) >= 0.9
+  const runs = []
+  const runWalker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+  for (let node = runWalker.nextNode(); node !== null; node = runWalker.nextNode()) {
+    if ((node.textContent || '').trim() === '') continue
+    const owner = node.parentElement
+    if (owner === null || !visible(owner)) continue
+    const range = document.createRange()
+    range.selectNodeContents(node)
+    for (const r of range.getClientRects()) {
+      if (r.width < 2 || r.height < 2 || !onScreen(owner, r)) continue
+      runs.push({ owner, r })
+    }
+  }
+  const crossed = new Set()
+  for (let i = 0; i < runs.length; i++) {
+    for (let j = i + 1; j < runs.length; j++) {
+      const a = runs[i]
+      const b = runs[j]
+      if (a.owner.contains(b.owner) || b.owner.contains(a.owner)) continue
+      if (crossed.has(a.owner) || crossed.has(b.owner)) continue
+      const left = Math.max(a.r.left, b.r.left)
+      const right = Math.min(a.r.right, b.r.right)
+      const top = Math.max(a.r.top, b.r.top)
+      const bottom = Math.min(a.r.bottom, b.r.bottom)
+      // Four pixels each way, so two lines set tighter than their glyph boxes
+      // do not count as crossing.
+      if (right - left < 4 || bottom - top < 4) continue
+      const stack = document.elementsFromPoint((left + right) / 2, (top + bottom) / 2)
+      const ia = stack.indexOf(a.owner)
+      const ib = stack.indexOf(b.owner)
+      if (ia === -1 || ib === -1) continue
+      const lower = stack[Math.max(ia, ib)]
+      let hidden = false
+      for (let k = Math.min(ia, ib); k < Math.max(ia, ib); k++) {
+        if (stack[k].contains(lower)) continue
+        if (opaque(stack[k])) hidden = true
+      }
+      if (hidden) continue
+      crossed.add(a.owner)
+      crossed.add(b.owner)
+      problems.push({
+        kind: 'text-over-text',
+        detail:
+          '"' + (a.owner.textContent || '').trim().slice(0, 40) + '" and "' +
+          (b.owner.textContent || '').trim().slice(0, 40) + '" are drawn across each other at ' +
+          Math.round(left) + ',' + Math.round(top),
+      })
+    }
+  }
+
+  /*
+   * A SCROLLING REGION WITH NO ROOM. A body holding an .nr-fill hands it the
+   * height that is left, and only scrolls itself when what sits around the
+   * region is taller than the panel. That is a fallback for data no fixture
+   * has, so on a measured state it is a defect: two scrollers nested, and the
+   * region down to its 80 pixel floor. It found the export tab of a quorum
+   * wallet at 800x480 with its QR code squeezed to nothing, and a failed proof
+   * check with the values it asks somebody to compare in a 26 pixel sliver.
+   */
+  const host = document.querySelector('.nr-screen__body')
+  if (host !== null && host.querySelector('.nr-fill') !== null && host.scrollHeight > host.clientHeight + 1) {
+    problems.push({
+      kind: 'fill-squeezed',
+      detail:
+        'the body holds a scrolling region and is ' + String(host.scrollHeight - host.clientHeight) +
+        'px too tall itself, so the region has no room. Move what sits around it into it, or ' +
+        'take something out.',
     })
   }
 
@@ -675,13 +909,21 @@ const MEASURE = `(() => {
  *
  * Twice, because scrolling one container can change what fits in another.
  *
+ * ONLY WHAT A FINGER CAN SCROLL. A box with overflow hidden has a scrollTop
+ * that script can set and a person cannot, so scrolling it here showed the
+ * harness content nobody can reach, and cut off text above it that nobody can
+ * scroll back to. The export tab and a failed message check both reported
+ * their own tabs and headings as cut off for that reason alone.
+ *
  * After this, an element still below the action bar is below it permanently:
  * anything reachable by scrolling has been scrolled to.
  */
 const SCROLL_TO_END = `(() => {
   for (let pass = 0; pass < 2; pass += 1) {
     for (const el of document.querySelectorAll('*')) {
-      if (el.scrollHeight > el.clientHeight) el.scrollTop = el.scrollHeight
+      if (el.scrollHeight <= el.clientHeight) continue
+      if (!/auto|scroll/.test(getComputedStyle(el).overflowY)) continue
+      el.scrollTop = el.scrollHeight
     }
   }
   return true
@@ -772,7 +1014,7 @@ const MUST_SEE = `(() => {
  * 156px of rows, cut through the middle of the second, with nothing saying a
  * third exists.
  *
- * Reports what actually overflows at 800x480, rather than what the stylesheet
+ * Reports what actually overflows on the panel, rather than what the stylesheet
  * says might, so a container that is only theoretically scrollable is not a
  * finding.
  */
@@ -830,6 +1072,25 @@ const KEYBOARD = `(() => {
 
   const kb = document.querySelector('.nr-kb__keys')
   /*
+   * THE KEYS, NOT THEIR CONTAINER. On a narrow panel the passphrase keyboard's
+   * container is display: contents, so its keys can share the keyboard's grid
+   * with the readout, and an element that generates no box has an empty rect.
+   * Measured as the container, every passphrase keyboard below 600 pixels
+   * reported its keys ending at 0 and passed, while on the message check two
+   * rows were under the action bar.
+   */
+  const keysBox = (keys) => {
+    let top = Infinity
+    let bottom = -Infinity
+    for (const key of keys.querySelectorAll('button')) {
+      const r = key.getBoundingClientRect()
+      if (r.width === 0 && r.height === 0) continue
+      top = Math.min(top, r.top)
+      bottom = Math.max(bottom, r.bottom)
+    }
+    return top === Infinity ? keys.getBoundingClientRect() : { top, bottom }
+  }
+  /*
    * A refusal on screen changes which state this rule is about.
    *
    * The rule is that somebody TYPING can see the keys. A refusal is about the
@@ -844,7 +1105,7 @@ const KEYBOARD = `(() => {
    */
   const refusal = document.querySelector('.nr-screen__body [data-must-see].nr-banner')
   if (kb !== null) {
-    const r = kb.getBoundingClientRect()
+    const r = keysBox(kb)
     if (r.bottom > limit + 1) {
       problems.push({
         kind: 'keyboard-below-the-fold',
@@ -917,7 +1178,7 @@ const KEYBOARD = `(() => {
     problems: problems,
     // So the caller knows whether there is anything to type on, and where the
     // keys ended, without parsing it back out of a sentence.
-    keyboard: kb === null ? null : Math.round(kb.getBoundingClientRect().bottom),
+    keyboard: kb === null ? null : Math.round(keysBox(kb).bottom),
     limit: Math.round(limit),
     wide: wide,
   })
@@ -973,12 +1234,14 @@ async function main() {
   const page = new WebSocket(targets.find((t) => t.id === targetId).webSocketDebuggerUrl)
   await new Promise((resolve) => page.addEventListener('open', resolve, { once: true }))
 
-  await cdp(
-    page,
-    'Emulation.setDeviceMetricsOverride',
-    { width: WIDTH, height: HEIGHT, deviceScaleFactor: 1, mobile: false },
-    state
-  )
+  const atSize = async (viewport) =>
+    cdp(
+      page,
+      'Emulation.setDeviceMetricsOverride',
+      { width: viewport.width, height: viewport.height, deviceScaleFactor: 1, mobile: false },
+      state
+    )
+  await atSize(VIEWPORTS[0])
 
   // The gallery publishes its own list, so this file cannot drift out of date
   // by holding a stale copy of the screen names.
@@ -990,7 +1253,9 @@ async function main() {
     { expression: 'JSON.stringify(window.NULLROUTE_SCREENS ?? [])', returnByValue: true },
     state
   )
-  const screens = JSON.parse(listed.result.value)
+  const screens = JSON.parse(listed.result.value).filter(
+    ({ name }) => ONLY === undefined || ONLY.has(name)
+  )
   if (screens.length === 0) {
     throw new Error('the gallery listed no screens, so this check is blind')
   }
@@ -1075,185 +1340,271 @@ async function main() {
     { expression: `document.documentElement.removeAttribute('data-theme')` },
     state
   )
-  for (const { name, reach } of screens) {
-    const label = reach.length === 0 ? name : `${name} after ${reach.join(' then ')}`
+  for (const viewport of VIEWPORTS) {
+    await atSize(viewport)
+    for (const { name, reach } of screens) {
+      const label =
+        (reach.length === 0 ? name : `${name} after ${reach.join(' then ')}`) +
+        (VIEWPORTS.length === 1 ? '' : ` at ${viewport.label}`)
 
-    await cdp(
-      page,
-      'Page.navigate',
-      { url: `http://127.0.0.1:${String(PORT)}/?screen=${name}` },
-      state
-    )
-    /* WAIT FOR THE SCREEN, do not guess at 700ms.
+      await cdp(
+        page,
+        'Page.navigate',
+        { url: `http://127.0.0.1:${String(PORT)}/?screen=${name}` },
+        state
+      )
+      /* WAIT FOR THE SCREEN, do not guess at 700ms.
        Under load this harness measured states that had not rendered: one
        reported "no action bar at all" and another that a tab it was told to tap
        was missing, on two consecutive runs, in different places. That is a
        timing bug wearing the costume of a layout failure, and a check that
        fails at random is one people learn to re-run rather than read. */
-    await settled('.nr-screen__actions, .nr-screen__body')
+      await settled('.nr-screen__actions, .nr-screen__body')
 
-    // Tapped in order, and a testid that no longer exists fails rather than
-    // being skipped: a reach list that quietly stopped reaching anywhere would
-    // report every state as fitting while measuring only the first.
-    /*
-     * THIS IS THE CALLER THE OTHER THREE NOW COPY, and it is here rather than
-     * in three shapes because it was here in three shapes. This one waited for
-     * the target to exist and then evaluated once, reporting the status; the
-     * two other checks polled the full condition for 3.2s and reported a
-     * boolean; the screenshot generator polled and then carried on. Three
-     * budgets, and the tightest was on the check that walks the most states.
-     *
-     * walkReach polls the whole condition rather than settling on presence
-     * first, which is strictly more patient: a control that is present but
-     * still disabled used to fail here on the spot, and now gets the same wait
-     * as one that has not mounted. It still ends as `(disabled)`, which is the
-     * report the reach lists for the transaction review depend on.
-     */
-    const walk = await walkReach(reach, async (expression) => {
-      const acted = await cdp(
-        page,
-        'Runtime.evaluate',
-        { expression, returnByValue: true, awaitPromise: true },
-        state
-      )
-      return acted.result.value
-    })
-
-    if (!walk.reached) {
-      failed += 1
-      console.error(`\n${label}:`)
-      console.error(`    unreachable: ${unreachedBecause(walk)}`)
-      continue
-    }
-
-    // BEFORE the scroll, deliberately. Everything else here asks what the user
-    // can reach; this one asks what they can see while typing.
-    let keys = await cdp(
-      page,
-      'Runtime.evaluate',
-      { expression: KEYBOARD, returnByValue: true },
-      state
-    )
-    /*
-     * BEFORE the keystroke below, deliberately. This asks what is on the panel
-     * when the screen arrives, and the retry's keystroke is not part of that:
-     * it dismisses the very refusal being recorded. Ordering these the other
-     * way round emptied five screens out of the coverage ledger.
-     *
-     * For a state reached by a deliberate `scroll`, the PROBLEMS are discarded
-     * and the coverage record is kept. Those are two different claims and I
-     * conflated them on the first attempt: "fully on the panel when the screen
-     * arrives" says nothing about the view after somebody has scrolled past it,
-     * while "this banner has been drawn at 800x480 at all" is true either way.
-     * Dropping both took psbt-unattributed out of the ledger, because the only
-     * state that draws it is reached by scrolling.
-     */
-    const scrolled = reach.includes('scroll')
-    const seen = await cdp(
-      page,
-      'Runtime.evaluate',
-      { expression: MUST_SEE, returnByValue: true },
-      state
-    )
-
-    /*
-     * BEFORE the scroll, like MUST_SEE and for the same reason.
-     *
-     * This sat after SCROLL_TO_END on the first attempt, which scrolls every
-     * scroller to its end: `data-more-below` is correctly gone there, and the
-     * check reported four affordances as missing that were working. The
-     * question is what somebody sees when the screen arrives, and "more below"
-     * is only true before they have gone looking.
-     */
-    for (const inner of JSON.parse(
-      (
-        await cdp(
+      // Tapped in order, and a testid that no longer exists fails rather than
+      // being skipped: a reach list that quietly stopped reaching anywhere would
+      // report every state as fitting while measuring only the first.
+      /*
+       * THIS IS THE CALLER THE OTHER THREE NOW COPY, and it is here rather than
+       * in three shapes because it was here in three shapes. This one waited for
+       * the target to exist and then evaluated once, reporting the status; the
+       * two other checks polled the full condition for 3.2s and reported a
+       * boolean; the screenshot generator polled and then carried on. Three
+       * budgets, and the tightest was on the check that walks the most states.
+       *
+       * walkReach polls the whole condition rather than settling on presence
+       * first, which is strictly more patient: a control that is present but
+       * still disabled used to fail here on the spot, and now gets the same wait
+       * as one that has not mounted. It still ends as `(disabled)`, which is the
+       * report the reach lists for the transaction review depend on.
+       */
+      const walk = await walkReach(reach, async (expression) => {
+        const acted = await cdp(
           page,
           'Runtime.evaluate',
-          { expression: INNER_SCROLLERS, returnByValue: true },
+          { expression, returnByValue: true, awaitPromise: true },
           state
         )
-      ).result.value
-    )) {
-      if (inner.marked === true) continue
-      const key = `${String(inner.cls)}`
-      if (!unmarkedScrollers.has(key)) {
-        unmarkedScrollers.set(key, { label, hidden: inner.hidden, why: inner.why })
+        return acted.result.value
+      })
+
+      if (!walk.reached) {
+        failed += 1
+        console.error(`\n${label}:`)
+        console.error(`    unreachable: ${unreachedBecause(walk)}`)
+        continue
       }
-    }
 
-    /*
-     * THE KEYBOARD IS ASKED AGAIN AFTER ONE KEYSTROKE, ALWAYS.
-     *
-     * It began as the retry for one case: a refusal costs about 50px at the top
-     * of the body, on six screens that was enough to push the bottom row of
-     * keys under the action bar, and those screens promise the banner goes when
-     * typing starts. This is where that promise is tested rather than trusted.
-     *
-     * IT RUNS UNCONDITIONALLY NOW, because the first measurement is of a state
-     * nobody types in. The readout above the keys took its line box from
-     * whichever of a 13px placeholder, a 15px value or a row of dots was in it,
-     * so every keyboard on the device moved down 3px on the first character.
-     *
-     * ANY DOWNWARD MOVEMENT AT ALL, rather than only enough to go under the
-     * bar. That is the rule the stylesheet states in three places and it is
-     * the honest one: a keyboard that drops 3px moves the keys under a finger
-     * already on them, and whether the bottom row happens to clear the action
-     * bar afterwards is luck rather than design. Measured across every state
-     * that carries a keyboard, nothing on the device moves down on a keystroke
-     * now, so this is a floor the product already meets rather than an
-     * aspiration.
-     *
-     * UPWARD IS FINE AND USUALLY THE POINT. Eleven states move up by about
-     * 54px, which is a refusal being cleared by the first keystroke: those
-     * screens promise the banner goes when typing starts, and this is where
-     * that promise is kept rather than merely stated.
-     *
-     * One key: enough to change the value, and the smallest thing a person
-     * could do.
-     */
-    const arrived = JSON.parse(keys.result.value)
-
-    /*
-     * THE KEYBOARD IS MEASURED ON ITS TALLEST LAYER, NOT THE ONE IT OPENS ON.
-     *
-     * 14 columns was chosen so the 26 letters fill two rows with two cells left
-     * for Shift, and the 42 symbols fill exactly three, which leaves the wide
-     * keys a fourth. So the letter layer is 144px and the symbol layer is 194,
-     * and every screen carrying a keyboard needs 50px more headroom than the
-     * layer it opens on suggests.
-     *
-     * Five did not have it, including the unlock gate, which is the first
-     * screen anybody touches on a provisioned device: the bottom row of the
-     * symbol keys sat 48px under the action bar. A passphrase with a digit in
-     * it is the path PassphraseScreen's own strength estimate rewards, so this
-     * was not an exotic state. Nothing reported it for as long as the symbol
-     * layer has existed, because every measurement here was of the letters.
-     *
-     * Tapped rather than computed. The layer is a piece of component state and
-     * the only honest way to ask how tall it is, is to switch to it.
-     */
-    let widest = arrived
-    /** Faults found by switching layers, which is a state no rule above sees. */
-    const layerProblems = []
-    if (arrived.keyboard !== null) {
-      const flipped = await cdp(
+      // BEFORE the scroll, deliberately. Everything else here asks what the user
+      // can reach; this one asks what they can see while typing.
+      let keys = await cdp(
         page,
         'Runtime.evaluate',
-        {
-          expression: `(() => {
+        { expression: KEYBOARD, returnByValue: true },
+        state
+      )
+      /*
+       * BEFORE the keystroke below, deliberately. This asks what is on the panel
+       * when the screen arrives, and the retry's keystroke is not part of that:
+       * it dismisses the very refusal being recorded. Ordering these the other
+       * way round emptied five screens out of the coverage ledger.
+       *
+       * For a state reached by a deliberate `scroll`, the PROBLEMS are discarded
+       * and the coverage record is kept. Those are two different claims and I
+       * conflated them on the first attempt: "fully on the panel when the screen
+       * arrives" says nothing about the view after somebody has scrolled past it,
+       * while "this banner has been drawn at 800x480 at all" is true either way.
+       * Dropping both took psbt-unattributed out of the ledger, because the only
+       * state that draws it is reached by scrolling.
+       */
+      const scrolled = reach.includes('scroll')
+      if (SHOTS !== undefined) {
+        const { data } = await cdp(page, 'Page.captureScreenshot', { format: 'png' }, state)
+        const file = label.replace(/[^a-z0-9.-]+/giu, '_').slice(0, 120)
+        // One folder per size, or the second size's states overwrite the first's.
+        const folder = VIEWPORTS.length === 1 ? SHOTS : join(SHOTS, viewport.label)
+        mkdirSync(folder, { recursive: true })
+        writeFileSync(join(folder, `${file}.png`), Buffer.from(data, 'base64'))
+      }
+      const seen = await cdp(
+        page,
+        'Runtime.evaluate',
+        { expression: MUST_SEE, returnByValue: true },
+        state
+      )
+
+      /*
+       * BEFORE the scroll, like MUST_SEE and for the same reason.
+       *
+       * This sat after SCROLL_TO_END on the first attempt, which scrolls every
+       * scroller to its end: `data-more-below` is correctly gone there, and the
+       * check reported four affordances as missing that were working. The
+       * question is what somebody sees when the screen arrives, and "more below"
+       * is only true before they have gone looking.
+       */
+      for (const inner of JSON.parse(
+        (
+          await cdp(
+            page,
+            'Runtime.evaluate',
+            { expression: INNER_SCROLLERS, returnByValue: true },
+            state
+          )
+        ).result.value
+      )) {
+        if (inner.marked === true) continue
+        const key = `${String(inner.cls)}`
+        if (!unmarkedScrollers.has(key)) {
+          unmarkedScrollers.set(key, { label, hidden: inner.hidden, why: inner.why })
+        }
+      }
+
+      /*
+       * THE KEYBOARD IS ASKED AGAIN AFTER ONE KEYSTROKE, ALWAYS.
+       *
+       * It began as the retry for one case: a refusal costs about 50px at the top
+       * of the body, on six screens that was enough to push the bottom row of
+       * keys under the action bar, and those screens promise the banner goes when
+       * typing starts. This is where that promise is tested rather than trusted.
+       *
+       * IT RUNS UNCONDITIONALLY NOW, because the first measurement is of a state
+       * nobody types in. The readout above the keys took its line box from
+       * whichever of a 13px placeholder, a 15px value or a row of dots was in it,
+       * so every keyboard on the device moved down 3px on the first character.
+       *
+       * ANY DOWNWARD MOVEMENT AT ALL, rather than only enough to go under the
+       * bar. That is the rule the stylesheet states in three places and it is
+       * the honest one: a keyboard that drops 3px moves the keys under a finger
+       * already on them, and whether the bottom row happens to clear the action
+       * bar afterwards is luck rather than design. Measured across every state
+       * that carries a keyboard, nothing on the device moves down on a keystroke
+       * now, so this is a floor the product already meets rather than an
+       * aspiration.
+       *
+       * UPWARD IS FINE AND USUALLY THE POINT. Eleven states move up by about
+       * 54px, which is a refusal being cleared by the first keystroke: those
+       * screens promise the banner goes when typing starts, and this is where
+       * that promise is kept rather than merely stated.
+       *
+       * One key: enough to change the value, and the smallest thing a person
+       * could do.
+       */
+      const arrived = JSON.parse(keys.result.value)
+
+      /*
+       * THE KEYBOARD IS MEASURED ON ITS TALLEST LAYER, NOT THE ONE IT OPENS ON.
+       *
+       * 14 columns was chosen so the 26 letters fill two rows with two cells left
+       * for Shift, and the 42 symbols fill exactly three, which leaves the wide
+       * keys a fourth. So the letter layer is 144px and the symbol layer is 194,
+       * and every screen carrying a keyboard needs 50px more headroom than the
+       * layer it opens on suggests.
+       *
+       * Five did not have it, including the unlock gate, which is the first
+       * screen anybody touches on a provisioned device: the bottom row of the
+       * symbol keys sat 48px under the action bar. A passphrase with a digit in
+       * it is the path PassphraseScreen's own strength estimate rewards, so this
+       * was not an exotic state. Nothing reported it for as long as the symbol
+       * layer has existed, because every measurement here was of the letters.
+       *
+       * Tapped rather than computed. The layer is a piece of component state and
+       * the only honest way to ask how tall it is, is to switch to it.
+       */
+      let widest = arrived
+      /** Faults found by switching layers, which is a state no rule above sees. */
+      const layerProblems = []
+      if (arrived.keyboard !== null) {
+        const flipped = await cdp(
+          page,
+          'Runtime.evaluate',
+          {
+            expression: `(() => {
             const key = document.querySelector('[data-testid="pk-symbols"]')
             if (key === null || key.disabled === true) return false
             key.click()
             return true
           })()`,
-          returnByValue: true,
-        },
-        state
-      )
-      if (flipped.result.value === true) {
+            returnByValue: true,
+          },
+          state
+        )
+        if (flipped.result.value === true) {
+          await sleep(220)
+          const onSymbols = JSON.parse(
+            (
+              await cdp(
+                page,
+                'Runtime.evaluate',
+                { expression: KEYBOARD, returnByValue: true },
+                state
+              )
+            ).result.value
+          )
+          if (onSymbols.keyboard !== null && onSymbols.keyboard > widest.keyboard)
+            widest = onSymbols
+          /*
+           * AND NOTHING IN THE WIDE ROW MOVED, which is a separate hazard from
+           * the height and a sharper one.
+           *
+           * These are the keys somebody reaches for by memory: Space, Back, and
+           * the one that reveals what they have typed. Letting them flow with the
+           * grid slid every key after Shift two columns between the letter layer
+           * and the symbol layer, and on the unlock gate that put Show exactly
+           * where Back had been. Tapping ?123 and then reaching for Back by
+           * memory would reveal the passphrase on a panel in whatever room the
+           * device is in, and nothing would say it had happened.
+           *
+           * A key present on one layer and absent on the other is fine, and is
+           * the deliberate swap that paid for a second page of symbols. A key on
+           * both, in two different places, is not.
+           */
+          for (const [id, where] of Object.entries(arrived.wide ?? {})) {
+            const moved = (onSymbols.wide ?? {})[id]
+            if (moved === undefined || moved === where) continue
+            layerProblems.push({
+              kind: 'key-moves-between-layers',
+              detail:
+                id +
+                ' is at ' +
+                where +
+                ' on the letters and ' +
+                moved +
+                ' on the symbols. These are reached by memory while somebody is ' +
+                'looking at what they type, and one of them reveals it.',
+            })
+          }
+          // Back to letters, so everything measured after this is the state the
+          // screen was in rather than one this check put it in.
+          await cdp(
+            page,
+            'Runtime.evaluate',
+            {
+              expression: `(() => {
+              const key = document.querySelector('[data-testid="pk-symbols"]')
+              if (key !== null && key.disabled !== true) key.click()
+            })()`,
+            },
+            state
+          )
+          await sleep(220)
+        }
+      }
+
+      let afterTyping = null
+      if (arrived.keyboard !== null) {
+        await cdp(
+          page,
+          'Runtime.evaluate',
+          {
+            expression: `(() => {
+            const key = document.querySelector('.nr-kb__keys button:not([disabled])')
+            if (key !== null) key.click()
+          })()`,
+          },
+          state
+        )
         await sleep(220)
-        const onSymbols = JSON.parse(
+        afterTyping = JSON.parse(
           (
             await cdp(
               page,
@@ -1263,169 +1614,103 @@ async function main() {
             )
           ).result.value
         )
-        if (onSymbols.keyboard !== null && onSymbols.keyboard > widest.keyboard) widest = onSymbols
-        /*
-         * AND NOTHING IN THE WIDE ROW MOVED, which is a separate hazard from
-         * the height and a sharper one.
-         *
-         * These are the keys somebody reaches for by memory: Space, Back, and
-         * the one that reveals what they have typed. Letting them flow with the
-         * grid slid every key after Shift two columns between the letter layer
-         * and the symbol layer, and on the unlock gate that put Show exactly
-         * where Back had been. Tapping ?123 and then reaching for Back by
-         * memory would reveal the passphrase on a panel in whatever room the
-         * device is in, and nothing would say it had happened.
-         *
-         * A key present on one layer and absent on the other is fine, and is
-         * the deliberate swap that paid for a second page of symbols. A key on
-         * both, in two different places, is not.
-         */
-        for (const [id, where] of Object.entries(arrived.wide ?? {})) {
-          const moved = (onSymbols.wide ?? {})[id]
-          if (moved === undefined || moved === where) continue
-          layerProblems.push({
-            kind: 'key-moves-between-layers',
-            detail:
-              id +
-              ' is at ' +
-              where +
-              ' on the letters and ' +
-              moved +
-              ' on the symbols. These are reached by memory while somebody is ' +
-              'looking at what they type, and one of them reveals it.',
-          })
+        // The displaced-by-a-refusal case: the screen said the banner would go,
+        // and the state that matters is the one after it has.
+        if (arrived.problems.some((p) => p.clearedByTyping === true)) {
+          keys = { result: { value: JSON.stringify(afterTyping) } }
         }
-        // Back to letters, so everything measured after this is the state the
-        // screen was in rather than one this check put it in.
-        await cdp(
-          page,
-          'Runtime.evaluate',
-          {
-            expression: `(() => {
-              const key = document.querySelector('[data-testid="pk-symbols"]')
-              if (key !== null && key.disabled !== true) key.click()
-            })()`,
-          },
-          state
-        )
-        await sleep(220)
       }
-    }
 
-    let afterTyping = null
-    if (arrived.keyboard !== null) {
-      await cdp(
+      await cdp(page, 'Runtime.evaluate', { expression: SCROLL_TO_END }, state)
+      await sleep(150)
+
+      const { result } = await cdp(
         page,
         'Runtime.evaluate',
-        {
-          expression: `(() => {
-            const key = document.querySelector('.nr-kb__keys button:not([disabled])')
-            if (key !== null) key.click()
-          })()`,
-        },
+        { expression: MEASURE, returnByValue: true },
         state
       )
-      await sleep(220)
-      afterTyping = JSON.parse(
-        (await cdp(page, 'Runtime.evaluate', { expression: KEYBOARD, returnByValue: true }, state))
-          .result.value
-      )
-      // The displaced-by-a-refusal case: the screen said the banner would go,
-      // and the state that matters is the one after it has.
-      if (arrived.problems.some((p) => p.clearedByTyping === true)) {
-        keys = { result: { value: JSON.stringify(afterTyping) } }
+      const measured = JSON.parse(result.value)
+
+      const mustSee = JSON.parse(seen.result.value)
+      for (const id of mustSee.drawn) {
+        if (!drawn.has(id)) drawn.set(id, label)
       }
-    }
+      /*
+       * The keys were on the panel and then somebody typed a character.
+       *
+       * Reported separately from `keyboard-below-the-fold` because it is a
+       * different defect with a different fix: the screen is not too full, it
+       * GREW, and what grew is something above the keys that changed size on a
+       * keystroke. Only when the arriving screen was clean, or this would restate
+       * a failure already reported against the state it arrived in.
+       */
+      const grew =
+        afterTyping !== null &&
+        arrived.problems.length === 0 &&
+        afterTyping.keyboard !== null &&
+        afterTyping.keyboard > arrived.keyboard
+          ? [
+              {
+                kind: 'keyboard-moved-by-typing',
+                detail:
+                  'the keys ended at ' +
+                  String(arrived.keyboard) +
+                  ' when the screen arrived and at ' +
+                  String(afterTyping.keyboard) +
+                  ' after one character, with the action bar at ' +
+                  String(afterTyping.limit) +
+                  '. Something above the keyboard grows on a keystroke, which moves ' +
+                  'the keys under the finger already on them. Moving up is fine and ' +
+                  'is what a cleared refusal does; moving down is this.',
+              },
+            ]
+          : []
 
-    await cdp(page, 'Runtime.evaluate', { expression: SCROLL_TO_END }, state)
-    await sleep(150)
+      /*
+       * The tallest layer, when the layer it opened on was fine.
+       *
+       * Reported separately because the fix is different: the screen is not too
+       * full for the keys it is showing, it is too full for the keys one tap
+       * away. Only when the arriving measurement was clean, or this restates a
+       * failure already reported against the state the screen arrives in.
+       */
+      const tallest =
+        arrived.problems.length === 0 &&
+        widest.keyboard !== null &&
+        widest.keyboard > widest.limit + 1
+          ? [
+              {
+                kind: 'keyboard-taller-on-another-layer',
+                detail:
+                  'the letter keys end at ' +
+                  String(arrived.keyboard) +
+                  ' and the symbol keys at ' +
+                  String(widest.keyboard) +
+                  ', with the action bar at ' +
+                  String(widest.limit) +
+                  '. A passphrase with a digit or a symbol in it is typed on the layer ' +
+                  'that does not fit.',
+              },
+            ]
+          : []
 
-    const { result } = await cdp(
-      page,
-      'Runtime.evaluate',
-      { expression: MEASURE, returnByValue: true },
-      state
-    )
-    const measured = JSON.parse(result.value)
+      const problems = [
+        ...JSON.parse(keys.result.value).problems,
+        ...tallest,
+        ...layerProblems,
+        ...grew,
+        ...(scrolled ? [] : mustSee.problems),
+        ...measured.problems,
+      ]
+      if (measured.overflow > 0) below.push({ label, px: measured.overflow })
 
-    const mustSee = JSON.parse(seen.result.value)
-    for (const id of mustSee.drawn) {
-      if (!drawn.has(id)) drawn.set(id, label)
-    }
-    /*
-     * The keys were on the panel and then somebody typed a character.
-     *
-     * Reported separately from `keyboard-below-the-fold` because it is a
-     * different defect with a different fix: the screen is not too full, it
-     * GREW, and what grew is something above the keys that changed size on a
-     * keystroke. Only when the arriving screen was clean, or this would restate
-     * a failure already reported against the state it arrived in.
-     */
-    const grew =
-      afterTyping !== null &&
-      arrived.problems.length === 0 &&
-      afterTyping.keyboard !== null &&
-      afterTyping.keyboard > arrived.keyboard
-        ? [
-            {
-              kind: 'keyboard-moved-by-typing',
-              detail:
-                'the keys ended at ' +
-                String(arrived.keyboard) +
-                ' when the screen arrived and at ' +
-                String(afterTyping.keyboard) +
-                ' after one character, with the action bar at ' +
-                String(afterTyping.limit) +
-                '. Something above the keyboard grows on a keystroke, which moves ' +
-                'the keys under the finger already on them. Moving up is fine and ' +
-                'is what a cleared refusal does; moving down is this.',
-            },
-          ]
-        : []
-
-    /*
-     * The tallest layer, when the layer it opened on was fine.
-     *
-     * Reported separately because the fix is different: the screen is not too
-     * full for the keys it is showing, it is too full for the keys one tap
-     * away. Only when the arriving measurement was clean, or this restates a
-     * failure already reported against the state the screen arrives in.
-     */
-    const tallest =
-      arrived.problems.length === 0 &&
-      widest.keyboard !== null &&
-      widest.keyboard > widest.limit + 1
-        ? [
-            {
-              kind: 'keyboard-taller-on-another-layer',
-              detail:
-                'the letter keys end at ' +
-                String(arrived.keyboard) +
-                ' and the symbol keys at ' +
-                String(widest.keyboard) +
-                ', with the action bar at ' +
-                String(widest.limit) +
-                '. A passphrase with a digit or a symbol in it is typed on the layer ' +
-                'that does not fit.',
-            },
-          ]
-        : []
-
-    const problems = [
-      ...JSON.parse(keys.result.value).problems,
-      ...tallest,
-      ...layerProblems,
-      ...grew,
-      ...(scrolled ? [] : mustSee.problems),
-      ...measured.problems,
-    ]
-    if (measured.overflow > 0) below.push({ label, px: measured.overflow })
-
-    if (problems.length > 0) {
-      failed += 1
-      console.error(`\n${label} does not fit ${String(WIDTH)}x${String(HEIGHT)}:`)
-      for (const problem of problems) {
-        console.error(`    ${problem.kind}: ${problem.detail}`)
+      if (problems.length > 0) {
+        failed += 1
+        console.error(`\n${label} does not fit ${viewport.label} (${viewport.names.join(', ')}):`)
+        for (const problem of problems) {
+          console.error(`    ${problem.kind}: ${problem.detail}`)
+        }
       }
     }
   }
@@ -1468,7 +1753,14 @@ async function main() {
 
   const marked = markedInSource()
   const uncovered = [...marked.keys()].filter((id) => !drawn.has(id)).sort()
-  if (uncovered.length > 0) {
+  if (ONLY !== undefined) {
+    // A partial run cannot say what no state drew, and must not pass. Exits
+    // on its own rather than adding to `failed`, which counts states.
+    console.error(
+      `\ncheck-screen-fit: --only ${[...ONLY].join(',')} measured part of the gallery; ` +
+        `the coverage ledger was not checked, so this is not a pass`
+    )
+  } else if (uncovered.length > 0) {
     failed += 1
     console.error(
       `\ncheck-screen-fit: ${String(uncovered.length)} of ${String(marked.size)} marked ` +
@@ -1488,14 +1780,15 @@ async function main() {
 
   if (failed > 0) {
     console.error(
-      `\ncheck-screen-fit: ${String(failed)} of ${String(screens.length)} screen states failed.\n\n` +
-        `  A state that does not fit: the device has one screen and no way to\n` +
-        `  scroll the document or resize the window, so a control that does not\n` +
+      `\ncheck-screen-fit: ${String(failed)} of ${String(screens.length * VIEWPORTS.length)} screen states failed ` +
+        `across ${VIEWPORTS.map((v) => v.label).join(', ')}.\n\n` +
+        `  A state that does not fit: each panel is one fixed screen with no way\n` +
+        `  to scroll the document or resize the window, so a control that does not\n` +
         `  fit is a control that does not exist, and a warning under a fixed\n` +
         `  action bar is a warning nobody reads. Move destinations into the body\n` +
         `  rather than adding a button.\n\n` +
-        `  A target too small or too close: this is a 7 inch panel operated by a\n` +
-        `  finger, with no cursor, no hover and no keyboard. The mis-tap lands on\n` +
+        `  A target too small or too close: these are 4 to 7 inch panels operated\n` +
+        `  by a finger, with no cursor, no hover and no keyboard. The mis-tap lands on\n` +
         `  whatever is beside it, and on several of these screens what is beside\n` +
         `  it erases a wallet. Give it ${String(MIN_TARGET)}px of box and ${String(MIN_GAP)}px of air.\n\n` +
         `  A must-see statement below the fold: something marked data-must-see is\n` +
@@ -1503,6 +1796,17 @@ async function main() {
         `  without having read it loses the money, so scrolling to it is not the\n` +
         `  claim. Shorten it or give it the room, and do not remove the marker to\n` +
         `  make this pass.\n\n` +
+        `  Text cut off: a run of words passes the edge of the panel, or of a box\n` +
+        `  that clips it, with no ellipsis to say anything is missing, or a line is\n` +
+        `  cut above or below, where an ellipsis says nothing. The reader gets part\n` +
+        `  of a sentence and no sign there was more.\n\n` +
+        `  A scrolling region squeezed: the blocks around an .nr-fill are taller\n` +
+        `  than the panel, so the body scrolls as well as the region and the\n` +
+        `  region is down to its floor. Move reading matter into the region and\n` +
+        `  keep only controls and verdicts outside it.\n\n` +
+        `  Text over text: two runs of words are drawn across each other with\n` +
+        `  nothing opaque between them, so neither can be read. Usually a box\n` +
+        `  that is shorter than what it holds and does not clip it.\n\n` +
         `  A state reported unreachable: the tap list in tools/screens/gallery.tsx\n` +
         `  names a testid that is gone, or one that is disabled in that state.\n` +
         `  Either is a state the harness never reached, so what it measured was\n` +
@@ -1511,9 +1815,10 @@ async function main() {
     )
     process.exit(1)
   }
+  if (ONLY !== undefined) process.exit(1)
   console.log(
     `check-screen-fit: ${String(screens.length)} screen states fit ` +
-      `${String(WIDTH)}x${String(HEIGHT)}` +
+      `${VIEWPORTS.map((v) => v.label).join(', ')}` +
       (below.length === 0 ? '' : `, ${String(below.length)} with content below the fold`) +
       `, ${String(marked.size)} marked statements all drawn`
   )

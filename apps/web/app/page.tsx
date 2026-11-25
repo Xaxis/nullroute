@@ -458,7 +458,8 @@ export default async function Home() {
           <Heading id="hardware">Parts, roughly {cost}</Heading>
           <p className="mt-4 text-[1rem] leading-relaxed text-body">
             Off the shelf, with nothing exotic and nothing to solder. Flash the image to the card,
-            check it, and assemble.
+            check it, and assemble. The same card also carries a smaller build, a Zero&nbsp;2&nbsp;W
+            behind a 4 inch panel, in bring-up with the rest.
           </p>
           <p className="mt-6 text-[0.9375rem] font-semibold">
             <Link href={START_HREF} className="link">

@@ -1,4 +1,4 @@
-import type { ReactElement, ReactNode } from 'react'
+import { type ReactElement, type ReactNode, useEffect, useRef } from 'react'
 import { Info } from './Info.js'
 
 /**
@@ -48,8 +48,22 @@ export interface WorkingProps {
 
 export function Working(props: WorkingProps): ReactElement {
   const { label, children, testId } = props
+  const ref = useRef<HTMLDivElement | null>(null)
+
+  /*
+   * INTO VIEW WHEN IT APPEARS, as a Refusal does. This note arrives inside a
+   * screen that is already open, at the top of a body that may be scrolled:
+   * somebody who read the explanation under the keyboard and then tapped
+   * Encrypt got "Do not power the device off" above the top of the panel,
+   * with the text under their eyes unchanged. The screen's own reset is keyed
+   * on the screen, so it never runs here. INV-UI-111.
+   */
+  useEffect(() => {
+    ref.current?.scrollIntoView({ block: 'nearest' })
+  }, [])
+
   return (
-    <Info label={label} testId={testId}>
+    <Info label={label} testId={testId} ref={ref}>
       This takes a few seconds, and it is meant to. The same arithmetic runs on every guess an
       attacker makes, so a key that is slow to derive once is expensive to attack repeatedly. Do not
       power the device off while it is working.

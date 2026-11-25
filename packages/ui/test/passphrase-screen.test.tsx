@@ -38,6 +38,29 @@ describe('ui.screens.passphrase', () => {
     expect(submitButton().disabled).toBe(false)
   })
 
+  // INV-UI-15. The two fields share one line of notes, and a mismatch holds
+  // it even while the first field is being edited: it is the only thing that
+  // says why Encrypt is disabled. The cost comes back once they match.
+  it('keeps-a-mismatch-in-view-from-either-field', () => {
+    render(<PassphraseScreen mode="set" onSubmit={vi.fn()} />)
+    const note = (): string => screen.getByTestId('passphrase-note').textContent
+    expect(note()).toBe('')
+
+    type('passphrase-input', 'correct horse battery staple')
+    expect(note()).toContain('28 characters')
+
+    type('passphrase-confirm', 'correct horse')
+    expect(note()).toBe('These do not match.')
+
+    fireEvent.click(screen.getByTestId('passphrase-input'))
+    type('passphrase-input', 'correct horse battery stapler')
+    expect(note()).toBe('These do not match.')
+    expect(submitButton().disabled).toBe(true)
+
+    type('passphrase-confirm', 'correct horse battery stapler')
+    expect(note()).toContain('29 characters')
+  })
+
   it('does-not-ask-twice-when-unlocking', () => {
     render(<PassphraseScreen mode="enter" onSubmit={vi.fn()} />)
     expect(screen.queryByTestId('passphrase-confirm')).toBeNull()
@@ -82,6 +105,15 @@ describe('ui.screens.passphrase', () => {
     const strong = document.body.textContent
     expect(strong).not.toBe(weak)
     expect(strong).toContain('worth anyone trying')
+  })
+
+  // A count of one is one character, not "1 characters".
+  it('says-one-character-in-the-singular', () => {
+    render(<PassphraseScreen mode="set" onSubmit={vi.fn()} />)
+    type('passphrase-input', 'x')
+    expect(document.body.textContent).toContain('1 character,')
+    type('passphrase-input', 'xy')
+    expect(document.body.textContent).toContain('2 characters,')
   })
 
   // The count has to be visible before the last attempt, not after it.

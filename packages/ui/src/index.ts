@@ -55,6 +55,9 @@ export type { IdleBannerProps } from './components/IdleBanner.js'
 export { useIdleLock } from './lib/idle.js'
 export type { IdleState, IdleWindow, UseIdleLockOptions } from './lib/idle.js'
 
+export { PanelGate } from './components/PanelGate.js'
+export { fitsAPanel } from './lib/panel.js'
+
 export { Steps } from './components/Steps.js'
 export type { StepsProps } from './components/Steps.js'
 
