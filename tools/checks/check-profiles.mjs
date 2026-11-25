@@ -460,6 +460,65 @@ for (const { file, profile } of loaded) {
   }
 }
 
+/*
+ * THE CARD IS BUILT FROM A SECOND LIST, and it has to be this one.
+ *
+ * build-system.sh stages the boot files in a directory, but genimage puts on
+ * the card only the files its config names one by one. The Pi 3 family's
+ * trees, its firmware and three panel overlays were staged, named in the
+ * profile and checked present in every tree, and never reached a card: the
+ * config was not told. verify-image caught it in CI, on the image job, after a
+ * build nobody can run on a machine without Docker. This catches it on every
+ * commit, from the two texts alone.
+ *
+ * Directories are left out of the profile's side: boot-files-exact lists
+ * `overlays` and each file in it, and genimage makes the directory from the
+ * paths of the files.
+ */
+{
+  const BUILD = 'provisioning/build/build-system.sh'
+  const script = readFileSync(join(ROOT, BUILD), 'utf8')
+  const cfg = /cat > "\$GEN\/genimage\.cfg" <<CFG\n([\s\S]*?)\nCFG\n/u.exec(script)
+  const boot = cfg === null ? null : /image boot\.vfat \{([\s\S]*?)\n {2}\}\n/u.exec(cfg[1])
+  if (boot === null) {
+    fail(
+      BUILD,
+      `the genimage config for boot.vfat was not found, so whether the card carries the ` +
+        `files the profile pins could not be compared. Update this check with the build.`
+    )
+  } else {
+    const placed = [...boot[1].matchAll(/^\s*file "([^"]+)"/gmu)].map((m) => m[1].toLowerCase())
+    for (const { file, profile } of loaded) {
+      for (const assertion of profile.assertions ?? []) {
+        for (const v of assertion.verify ?? []) {
+          if (v.check !== 'boot-files-exact') continue
+          const pinned = (v.params?.files ?? []).map((name) => String(name).toLowerCase())
+          const files = pinned.filter(
+            (name) => !pinned.some((other) => other.startsWith(name + '/'))
+          )
+          const unplaced = files.filter((name) => !placed.includes(name))
+          const unpinned = placed.filter((name) => !files.includes(name))
+          if (unplaced.length > 0) {
+            fail(
+              `${file}  ${assertion.id}`,
+              `the profile pins ${unplaced.join(', ')} on the boot partition and the ` +
+                `genimage config in ${BUILD} does not put ${unplaced.length === 1 ? 'it' : 'them'} ` +
+                `there. Staging a file is not enough: add a \`file\` line for each.`
+            )
+          }
+          if (unpinned.length > 0) {
+            fail(
+              `${file}  ${assertion.id}`,
+              `the genimage config in ${BUILD} puts ${unpinned.join(', ')} on the boot ` +
+                `partition and the profile does not pin ${unpinned.length === 1 ? 'it' : 'them'}.`
+            )
+          }
+        }
+      }
+    }
+  }
+}
+
 for (const where of ['provisioning/README.md', 'README.md']) {
   const readme = readFileSync(join(ROOT, where), 'utf8')
   // SPELLED OUT, BECAUSE THAT IS HOW THESE PARAGRAPHS ARE WRITTEN. The table

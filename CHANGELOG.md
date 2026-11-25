@@ -15,6 +15,13 @@ status and home pages.
 
 ## November 2026
 
+- **2026-11-25** The card did not carry the Pi 3 family's files. The device
+  trees, the firmware those boards load off the card and three overlays were
+  staged by the build and pinned by INV-PROV-22, but genimage puts on the boot
+  partition only the files its config names, and it was not told. CI's
+  `verify-image` refused the card. `check-profiles` now compares that config
+  with the profile on every commit, so a file pinned and not placed, or placed
+  and not pinned, fails before any image is built.
 - **2026-11-24** The interface is laid out for four panels instead of one:
   the 7 inch Touch Display at 800x480, Touch Display 2 in portrait at
   480x853 (7 inch) and 360x640 (5 inch), and the Pimoroni HyperPixel 4.0 at

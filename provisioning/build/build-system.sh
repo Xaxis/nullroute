@@ -1037,6 +1037,21 @@ image boot.vfat {
     file "overlays/vc4-kms-v3d-pi5.dtbo" { image = "overlays/vc4-kms-v3d-pi5.dtbo" }
     file "overlays/vc4-kms-dsi-7inch.dtbo" { image = "overlays/vc4-kms-dsi-7inch.dtbo" }
     file "overlays/vc4-kms-dsi-ili9881-7inch.dtbo" { image = "overlays/vc4-kms-dsi-ili9881-7inch.dtbo" }
+    # The Pi 3 family: a tree for each board, the firmware these boards load
+    # off the card (the cut-down pair because gpu_mem=16 on the Zero 2 W), the
+    # GPU overlay and the two small panels. Staged above and never put here
+    # until check-profiles compared this list with INV-PROV-22's.
+    file "bcm2710-rpi-3-b.dtb" { image = "bcm2710-rpi-3-b.dtb" }
+    file "bcm2710-rpi-3-b-plus.dtb" { image = "bcm2710-rpi-3-b-plus.dtb" }
+    file "bcm2710-rpi-zero-2-w.dtb" { image = "bcm2710-rpi-zero-2-w.dtb" }
+    file "bootcode.bin" { image = "bootcode.bin" }
+    file "start.elf" { image = "start.elf" }
+    file "fixup.dat" { image = "fixup.dat" }
+    file "start_cd.elf" { image = "start_cd.elf" }
+    file "fixup_cd.dat" { image = "fixup_cd.dat" }
+    file "overlays/vc4-kms-v3d.dtbo" { image = "overlays/vc4-kms-v3d.dtbo" }
+    file "overlays/vc4-kms-dsi-ili9881-5inch.dtbo" { image = "overlays/vc4-kms-dsi-ili9881-5inch.dtbo" }
+    file "overlays/vc4-kms-dpi-hyperpixel4.dtbo" { image = "overlays/vc4-kms-dpi-hyperpixel4.dtbo" }
   }
   # 128M, up from 64M when the Pi 5's kernel arrived. Two kernels, two
   # initramfs and the Pi 4's GPU firmware come to about 61MB, which would have
